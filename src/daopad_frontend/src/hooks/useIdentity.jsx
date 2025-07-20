@@ -1,6 +1,6 @@
-import { useInternetIdentity } from 'ic-use-internet-identity';
+import { useAuth } from '../providers/AuthProvider/IIProvider';
 
 export function useIdentity() {
-    // Always use Internet Identity
-    return useInternetIdentity();
+    // Use our custom auth implementation
+    return useAuth();
 }

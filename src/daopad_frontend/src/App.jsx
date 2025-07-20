@@ -44,7 +44,8 @@ function App() {
       <header>
         <div className="header-content">
           <div>
-            <h1>Partnership DAO</h1>
+            <h1>DAOPad</h1>
+            <p className="project-info">an Alexandria project</p>
             <p className="subtitle">Turn your local business into a community-owned entity</p>
           </div>
           <div className="auth-section">
@@ -145,10 +146,6 @@ function App() {
         </div>
       </section>
 
-      <section className="current-daos">
-        <h3>Active Partnership DAOs</h3>
-        <p className="coming-soon">First cohort launching Q1 2025</p>
-      </section>
 
       <section className="faq">
         <h3>Questions?</h3>
@@ -162,17 +159,19 @@ function App() {
         <details>
           <summary>Why locked liquidity?</summary>
           <p>
-            Locked LPs can't dump tokens. They're true long-term partners. 
-            In exchange, they get all voting rights and revenue sharing. 
-            Regular token holders can trade but don't vote.
+            Small businesses like LLCs cannot be liquid because that destroys the legal precedent 
+            for having DAO leaders act with impartial interests. If someone can dump tokens, 
+            their holdings shouldn't give them decision making power. Locked LPs are true long-term 
+            partners who get all voting rights and revenue sharing. Regular token holders can trade 
+            but don't vote or earn revenue.
           </p>
         </details>
         <details>
           <summary>What businesses work best?</summary>
           <p>
-            Any business with a loyal community. Coffee shops, farms, maker spaces, 
-            local stores, service businesses. If people care about your success, 
-            this model works.
+            Any business with a loyal community. Coffee shops, farms, tech incubators, 
+            virtual ventures, maker spaces, local stores, service businesses. If people 
+            care about your success, this model works.
           </p>
         </details>
         <details>
@@ -186,9 +185,9 @@ function App() {
 
       <footer>
         <p>
-          Built by <a href="https://alexandria.org" target="_blank" rel="noopener noreferrer">Alexandria</a> · 
-          <a href="https://github.com/AlexandriaDAO" target="_blank" rel="noopener noreferrer">GitHub</a> · 
-          <a href="mailto:contact@alexandria.org">Contact</a>
+          Built by <a href="https://lbry.fun" target="_blank" rel="noopener noreferrer">Alexandria</a> · 
+          <a href="https://github.com/AlexandriaDAO/daopad" target="_blank" rel="noopener noreferrer">GitHub</a> · 
+          <a href="https://x.com/alexandria_lbry" target="_blank" rel="noopener noreferrer">Twitter</a>
         </p>
       </footer>
     </div>

@@ -1,3 +1,7 @@
-service : {
-    "greet": (text) -> (text) query;
+service : (opt text) -> {
+    "get_orbit_control_panel_id": () -> (text) query;
+    "set_orbit_control_panel_id": (text) -> ();
+    "register_with_orbit": () -> (variant { Ok: text; Err: text });
+    "create_dao_treasury": (text) -> (variant { Ok: text; Err: text });
+    "get_orbit_stations": () -> (variant { Ok: vec record { text; text }; Err: text });
 }
