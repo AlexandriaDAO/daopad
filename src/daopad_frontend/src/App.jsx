@@ -3,12 +3,19 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useIdentity } from './hooks/useIdentity';
 import { useLogout } from './hooks/useLogout';
 import { setAuthSuccess, clearAuth, setAuthLoading, setAuthInitialized } from './features/auth/authSlice';
+import { fetchBalances } from './state/balance/balanceThunks';
+import { clearBalances } from './state/balance/balanceSlice';
+import DAOsTab from './components/DAOsTab';
+import ProposalsTab from './components/ProposalsTab';
 import './App.scss';
 
 function App() {
   const [activeStep, setActiveStep] = useState(null);
+  const [copyFeedback, setCopyFeedback] = useState(false);
+  const [activeTab, setActiveTab] = useState('home');
   const dispatch = useDispatch();
   const { principal, isAuthenticated } = useSelector(state => state.auth);
+  const { icpBalance, alexBalance, stakedAlexBalance, isLoading: balanceLoading } = useSelector(state => state.balance);
   const { login, identity } = useIdentity();
   const logout = useLogout();
 
@@ -17,8 +24,11 @@ function App() {
     if (identity) {
       const principalText = identity.getPrincipal().toString();
       dispatch(setAuthSuccess(principalText));
+      // Fetch balances when authenticated
+      dispatch(fetchBalances(identity));
     } else {
       dispatch(clearAuth());
+      dispatch(clearBalances());
     }
     dispatch(setAuthInitialized(true));
   }, [identity, dispatch]);
@@ -37,6 +47,17 @@ function App() {
   const handleLogout = async () => {
     await logout();
     dispatch(clearAuth());
+    dispatch(clearBalances());
+  };
+
+  const copyPrincipal = async () => {
+    try {
+      await navigator.clipboard.writeText(principal);
+      setCopyFeedback(true);
+      setTimeout(() => setCopyFeedback(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
   };
 
   return (
@@ -51,7 +72,34 @@ function App() {
           <div className="auth-section">
             {isAuthenticated ? (
               <div className="auth-info">
-                <span className="principal">{principal.slice(0, 8)}...{principal.slice(-8)}</span>
+                <div className="balance-info">
+                  {balanceLoading ? (
+                    <span className="loading">Loading balances...</span>
+                  ) : (
+                    <>
+                      <span className="balance">ICP: {icpBalance}</span>
+                      <span className="balance">ALEX: {alexBalance}</span>
+                      <span className="balance">Staked: {stakedAlexBalance}</span>
+                      <button 
+                        onClick={() => dispatch(fetchBalances(identity))} 
+                        className="refresh-button"
+                        title="Refresh balances"
+                      >
+                        ↻
+                      </button>
+                    </>
+                  )}
+                </div>
+                <div className="principal-container">
+                  <span className="principal">{principal.slice(0, 5)}...{principal.slice(-4)}</span>
+                  <button 
+                    onClick={copyPrincipal}
+                    className="copy-button"
+                    title="Copy principal"
+                  >
+                    {copyFeedback ? '✓' : '⧉'}
+                  </button>
+                </div>
                 <button onClick={handleLogout} className="auth-button logout">
                   Logout
                 </button>
@@ -65,12 +113,35 @@ function App() {
         </div>
       </header>
 
-      <section className="intro">
-        <p>
-          Three steps. No lawyers. No fees except 1% revenue share. 
-          Your community becomes real partners with voting rights and profit sharing.
-        </p>
-      </section>
+      <nav className="tab-navigation">
+        <button 
+          className={`tab ${activeTab === 'home' ? 'active' : ''}`}
+          onClick={() => setActiveTab('home')}
+        >
+          Home
+        </button>
+        <button 
+          className={`tab ${activeTab === 'proposals' ? 'active' : ''}`}
+          onClick={() => setActiveTab('proposals')}
+        >
+          Proposals
+        </button>
+        <button 
+          className={`tab ${activeTab === 'daos' ? 'active' : ''}`}
+          onClick={() => setActiveTab('daos')}
+        >
+          DAOs
+        </button>
+      </nav>
+
+      {activeTab === 'home' && (
+        <>
+          <section className="intro">
+            <p>
+              Three steps. No lawyers. No fees except 1% revenue share. 
+              Your community becomes real partners with voting rights and profit sharing.
+            </p>
+          </section>
 
       <section className="steps">
         <div className={`step ${activeStep === 1 ? 'active' : ''}`}>
@@ -182,6 +253,16 @@ function App() {
           </p>
         </details>
       </section>
+        </>
+      )}
+
+      {activeTab === 'proposals' && (
+        <ProposalsTab />
+      )}
+
+      {activeTab === 'daos' && (
+        <DAOsTab />
+      )}
 
       <footer>
         <p>

@@ -1,13 +1,13 @@
 import { useIdentity } from './useIdentity';
 
 export function useLogout() {
-    const {clear} = useIdentity();
+    const {logout} = useIdentity();
 
-    const logout = async () => {
-        await clear();
+    const handleLogout = async () => {
+        await logout();
         // Optionally refresh the page after logout
         window.location.reload();
     }
 
-    return logout;
+    return handleLogout;
 }

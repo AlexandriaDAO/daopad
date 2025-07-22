@@ -73,13 +73,66 @@ header {
       align-items: center;
       gap: 0.75rem;
       
-      .principal {
-        font-family: 'Courier New', monospace;
-        font-size: 0.75rem;
-        color: $text-secondary;
+      .balance-info {
+        display: flex;
+        gap: 0.75rem;
+        font-size: 0.6875rem;
+        align-items: center;
+        
+        .balance {
+          color: $ink-black;
+          font-weight: 500;
+        }
+        
+        .loading {
+          color: $text-secondary;
+          font-style: italic;
+        }
+        
+        .refresh-button {
+          background: none;
+          border: 1px solid $border-gray;
+          color: $text-secondary;
+          cursor: pointer;
+          padding: 0.125rem 0.25rem;
+          font-size: 0.875rem;
+          line-height: 1;
+          
+          &:hover {
+            color: $accent-blue;
+            border-color: $accent-blue;
+          }
+        }
+      }
+      
+      .principal-container {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
         background: $document-gray;
-        padding: 0.25rem 0.5rem;
         border: 1px solid $border-gray;
+        padding: 0.125rem 0.25rem 0.125rem 0.5rem;
+        
+        .principal {
+          font-family: 'Courier New', monospace;
+          font-size: 0.75rem;
+          color: $text-secondary;
+        }
+        
+        .copy-button {
+          background: none;
+          border: none;
+          color: $text-secondary;
+          cursor: pointer;
+          padding: 0.125rem 0.25rem;
+          font-size: 0.875rem;
+          line-height: 1;
+          transition: color 0.2s ease;
+          
+          &:hover {
+            color: $accent-blue;
+          }
+        }
       }
     }
     
@@ -290,6 +343,427 @@ header {
   }
 }
 
+// Tab Navigation
+.tab-navigation {
+  display: flex;
+  gap: 0;
+  margin: -3rem -3rem 2rem -3rem;
+  border-bottom: 2px solid $ink-black;
+  background: $document-gray;
+  
+  .tab {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: $text-secondary;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.2s ease;
+    position: relative;
+    margin-bottom: -2px;
+    
+    &:hover {
+      background: white;
+      color: $ink-black;
+    }
+    
+    &.active {
+      background: white;
+      color: $ink-black;
+      border-bottom: 2px solid white;
+    }
+  }
+}
+
+// Tab Content
+.tab-content {
+  h2 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    font-weight: 400;
+  }
+  
+  p {
+    color: $text-secondary;
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+}
+
+// DAOs Tab
+.daos-tab {
+  h2 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    font-weight: 400;
+  }
+  
+  > p {
+    color: $text-secondary;
+    font-style: italic;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+  }
+  
+  .stations-list {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .station-card {
+    background: white;
+    border: 1px solid $border-gray;
+    padding: 1.5rem;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      border-color: $ink-black;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    h3 {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 1.125rem;
+      margin: 0 0 0.5rem 0;
+      color: $ink-black;
+      font-weight: 400;
+    }
+    
+    .station-id {
+      margin: 0.5rem 0 1rem 0;
+      
+      span {
+        font-size: 0.75rem;
+        color: $text-secondary;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      code {
+        display: inline-block;
+        background: $document-gray;
+        padding: 0.25rem 0.5rem;
+        margin-left: 0.5rem;
+        font-family: 'Courier New', monospace;
+        font-size: 0.75rem;
+        color: $ink-black;
+        border: 1px solid $border-gray;
+      }
+    }
+    
+    .add-operator-btn {
+      background: $accent-blue;
+      color: white;
+      border: 1px solid darken($accent-blue, 10%);
+      padding: 0.375rem 0.875rem;
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      
+      &:hover:not(:disabled) {
+        background: darken($accent-blue, 10%);
+      }
+      
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+  }
+  
+  .help-section {
+    background: $document-gray;
+    border: 1px solid $border-gray;
+    padding: 1.5rem;
+    
+    h3 {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 1rem;
+      margin: 0 0 0.75rem 0;
+      font-weight: 400;
+    }
+    
+    ol {
+      margin: 0;
+      padding-left: 1.25rem;
+      color: $text-secondary;
+      font-size: 0.8125rem;
+      
+      li {
+        margin: 0.375rem 0;
+        line-height: 1.5;
+      }
+    }
+    
+    a {
+      color: $accent-blue;
+      text-decoration: none;
+      
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+  
+  .error {
+    color: #D32F2F;
+    margin: 1rem 0;
+    font-style: italic;
+    font-size: 0.875rem;
+  }
+}
+
+// Proposals Tab
+.proposals-tab {
+  h2 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    font-weight: 400;
+  }
+
+  .create-proposal-section {
+    background: $document-gray;
+    border: 1px solid $border-gray;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+
+    h3 {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 1.125rem;
+      margin: 0 0 1rem 0;
+      font-weight: 400;
+    }
+
+    .proposal-form {
+      display: flex;
+      gap: 0.75rem;
+
+      input {
+        flex: 1;
+        background: white;
+        border: 1px solid $border-gray;
+        color: $ink-black;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        font-family: inherit;
+
+        &::placeholder {
+          color: $text-secondary;
+          font-style: italic;
+        }
+
+        &:focus {
+          outline: none;
+          border-color: $ink-black;
+        }
+      }
+
+      button {
+        background: $accent-blue;
+        color: white;
+        border: 1px solid darken($accent-blue, 10%);
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.2s ease;
+
+        &:hover:not(:disabled) {
+          background: darken($accent-blue, 10%);
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+      }
+    }
+  }
+
+  .stake-notice {
+    background: lighten(#FF9800, 40%);
+    border: 1px solid #FF9800;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+
+    p {
+      color: darken(#FF9800, 10%);
+      margin: 0;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+  }
+
+  .proposals-list {
+    h3 {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 1.25rem;
+      margin: 0 0 1rem 0;
+      font-weight: 400;
+    }
+
+    > p {
+      color: $text-secondary;
+      font-style: italic;
+      font-size: 0.875rem;
+    }
+  }
+
+  .proposals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1rem;
+  }
+
+  .proposal-card {
+    background: white;
+    border: 1px solid $border-gray;
+    padding: 1.5rem;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: $ink-black;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .proposal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+      gap: 1rem;
+
+      h4 {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 1.125rem;
+        margin: 0;
+        font-weight: 400;
+        color: $ink-black;
+      }
+
+      .status-badge {
+        color: white;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.625rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+      }
+    }
+
+    .proposal-details {
+      p {
+        margin: 0.375rem 0;
+        color: $text-secondary;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+
+        strong {
+          color: $ink-black;
+          font-weight: 500;
+          text-transform: uppercase;
+          font-size: 0.75rem;
+          letter-spacing: 0.5px;
+        }
+
+        code {
+          background: $document-gray;
+          padding: 0.125rem 0.375rem;
+          font-family: 'Courier New', monospace;
+          font-size: 0.75rem;
+          color: $ink-black;
+          border: 1px solid $border-gray;
+        }
+      }
+    }
+
+    .proposal-actions {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid $border-gray;
+
+      .accept-button {
+        width: 100%;
+        background: #4CAF50;
+        color: white;
+        border: 1px solid darken(#4CAF50, 10%);
+        padding: 0.5rem;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.2s ease;
+
+        &:hover:not(:disabled) {
+          background: darken(#4CAF50, 10%);
+        }
+
+        &:disabled {
+          background: lighten(#4CAF50, 30%);
+          border-color: lighten(#4CAF50, 20%);
+          cursor: not-allowed;
+        }
+      }
+
+      .view-station-link {
+        display: inline-block;
+        width: 100%;
+        text-align: center;
+        background: $accent-blue;
+        color: white;
+        text-decoration: none;
+        padding: 0.5rem;
+        font-weight: 500;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border: 1px solid darken($accent-blue, 10%);
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: darken($accent-blue, 10%);
+        }
+      }
+
+      small {
+        display: block;
+        margin-top: 0.5rem;
+        color: $text-secondary;
+        text-align: center;
+        font-size: 0.75rem;
+        font-style: italic;
+      }
+    }
+  }
+
+  .error {
+    color: #D32F2F;
+    margin: 1rem 0;
+    font-style: italic;
+    font-size: 0.875rem;
+  }
+
+  button {
+    font-family: inherit;
+  }
+}
+
 // Footer
 footer {
   padding-top: 1.5rem;
@@ -316,6 +790,17 @@ footer {
     box-shadow: none;
     border-left: none;
     border-right: none;
+  }
+  
+  .tab-navigation {
+    margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+    overflow-x: auto;
+    
+    .tab {
+      font-size: 0.75rem;
+      padding: 0.625rem 0.75rem;
+      white-space: nowrap;
+    }
   }
   
   header {

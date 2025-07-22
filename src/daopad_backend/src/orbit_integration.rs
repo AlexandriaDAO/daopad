@@ -51,9 +51,61 @@ enum DeployStationResult {
     Err(ApiError),
 }
 
-// Group IDs from Orbit's system (for future use)
-// const ADMIN_GROUP_ID: u128 = 302240678275694148452352;
-// const OPERATOR_GROUP_ID: u128 = 302240678275694148452353;
+// UUID type for group IDs
+type UUID = [u8; 16];
+
+// Operator group ID from Orbit
+const OPERATOR_GROUP_ID: UUID = [0, 0, 0, 0, 0, 0, 64, 0, 128, 0, 0, 0, 0, 0, 0, 1];
+
+// Minimal types for adding a user
+#[derive(CandidType, Serialize, Deserialize)]
+enum UserStatusDTO {
+    Active,
+}
+
+#[derive(CandidType, Serialize, Deserialize)]
+struct AddUserOperationInput {
+    name: String,
+    identities: Vec<Principal>,
+    groups: Vec<UUID>,
+    status: UserStatusDTO,
+}
+
+#[derive(CandidType, Serialize, Deserialize)]
+enum RequestOperationInput {
+    AddUser(AddUserOperationInput),
+}
+
+#[derive(CandidType, Serialize, Deserialize)]
+enum RequestExecutionSchedule {
+    Immediate,
+}
+
+#[derive(CandidType, Serialize, Deserialize)]
+struct CreateRequestInput {
+    operation: RequestOperationInput,
+    title: Option<String>,
+    summary: Option<String>,
+    execution_plan: Option<RequestExecutionSchedule>,
+    expiration_dt: Option<String>,
+}
+
+// Simplified result type
+#[derive(CandidType, Serialize, Deserialize)]
+enum CreateRequestResult {
+    Ok(CreateRequestResponse),
+    Err(ApiError),
+}
+
+#[derive(CandidType, Serialize, Deserialize)]
+struct CreateRequestResponse {
+    request: RequestDTO,
+}
+
+#[derive(CandidType, Serialize, Deserialize)]
+struct RequestDTO {
+    id: String,
+}
 
 pub async fn open_station(station_name: String) -> Result<Principal, String> {
     let control_panel = Principal::from_text(&get_control_panel_id())
@@ -181,6 +233,40 @@ pub async fn query_stations() -> Result<Vec<(Principal, String)>, String> {
         }
         Ok((ListUserStationsResult::Err(api_error),)) => 
             Err(format!("API Error: {} - {:?}", api_error.code, api_error.message)),
+        Err((code, msg)) => Err(format!("Call failed: {:?} - {}", code, msg)),
+    }
+}
+
+pub async fn add_operator_to_station(
+    station_id: Principal,
+    operator_principal: Principal,
+) -> Result<String, String> {
+    // Create the request to add user as operator
+    let add_user_op = AddUserOperationInput {
+        name: "Hackathon User".to_string(), // Generic name for demo
+        identities: vec![operator_principal],
+        groups: vec![OPERATOR_GROUP_ID],
+        status: UserStatusDTO::Active,
+    };
+
+    let request = CreateRequestInput {
+        operation: RequestOperationInput::AddUser(add_user_op),
+        title: Some("Add operator for hackathon demo".to_string()),
+        summary: None,
+        execution_plan: Some(RequestExecutionSchedule::Immediate),
+        expiration_dt: None,
+    };
+
+    // Call the station to create the request
+    let result: Result<(CreateRequestResult,), _> = call(
+        station_id,
+        "create_request",
+        (request,)
+    ).await;
+
+    match result {
+        Ok((CreateRequestResult::Ok(_),)) => Ok("Operator added successfully!".to_string()),
+        Ok((CreateRequestResult::Err(e),)) => Err(format!("Failed: {}", e.code)),
         Err((code, msg)) => Err(format!("Call failed: {:?} - {}", code, msg)),
     }
 }
