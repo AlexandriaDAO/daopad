@@ -10,6 +10,8 @@ function DAOsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [addingOperator, setAddingOperator] = useState({});
+  const [expandedStation, setExpandedStation] = useState(null);
+  const [orbitPrincipal, setOrbitPrincipal] = useState('');
 
   useEffect(() => {
     const setupActor = async () => {
@@ -23,7 +25,12 @@ function DAOsTab() {
       }
       
       const canisterId = import.meta.env.VITE_CANISTER_ID_DAOPAD_BACKEND || 
-                        import.meta.env.VITE_DAOPAD_BACKEND_CANISTER_ID;
+                        import.meta.env.VITE_DAOPAD_BACKEND_CANISTER_ID ||
+                        "ucwa4-rx777-77774-qaada-cai"; // Hardcoded fallback for local dev
+      
+      if (!canisterId) {
+        throw new Error("Backend canister ID not found");
+      }
       
       const daopadActor = Actor.createActor(idlFactory, {
         agent,
@@ -41,6 +48,10 @@ function DAOsTab() {
       loadStations();
     }
   }, [actor]);
+
+  useEffect(() => {
+    console.log("addingOperator state:", addingOperator);
+  }, [addingOperator]);
 
   const loadStations = async () => {
     if (!actor) return;
@@ -64,27 +75,33 @@ function DAOsTab() {
   };
 
   const handleAddOperator = async (stationId) => {
-    const principal = prompt("Enter your Orbit principal (e.g., xxxxx-xxxxx-xxxxx-xxxxx):");
-    
-    if (!principal || !principal.trim()) {
+    if (!orbitPrincipal || !orbitPrincipal.trim()) {
+      alert("Please enter your Orbit principal");
       return;
     }
 
     try {
-      setAddingOperator({ ...addingOperator, [stationId]: true });
+      console.log("Adding operator to station:", stationId, "Principal:", orbitPrincipal);
+      setAddingOperator(prev => ({ ...prev, [stationId]: true }));
       
-      const result = await actor.add_me_to_station(stationId, principal.trim());
+      const result = await actor.add_me_to_station(stationId, orbitPrincipal.trim());
+      console.log("Add operator result:", result);
       
       if (result.Ok) {
         alert(`Success! ${result.Ok}\n\nYou can now access this station in Orbit UI at:\nhttps://orbitstation.org/station/${stationId}`);
+        setOrbitPrincipal(''); // Clear input
+        setExpandedStation(null); // Collapse form
       } else if (result.Err) {
         alert(`Error: ${result.Err}`);
+      } else {
+        console.error("Unexpected result format:", result);
+        alert("Unexpected response from server");
       }
     } catch (error) {
       console.error("Failed to add operator:", error);
       alert("Failed to add operator: " + error.message);
     } finally {
-      setAddingOperator({ ...addingOperator, [stationId]: false });
+      setAddingOperator(prev => ({ ...prev, [stationId]: false }));
     }
   };
 
@@ -109,39 +126,21 @@ function DAOsTab() {
 
   return (
     <div className="daos-tab">
-      <h2>Your Orbit Stations</h2>
+      <h2>DAOs</h2>
       
-      {stations.length === 0 ? (
-        <p>No stations found. Create a DAO first to see its treasury station here.</p>
-      ) : (
-        <div className="stations-list">
-          {stations.map(([id, name]) => (
-            <div key={id} className="station-card">
-              <h3>{name}</h3>
-              <div className="station-id">
-                <span>Station ID: </span>
-                <code>{id}</code>
-              </div>
-              <button 
-                onClick={() => handleAddOperator(id)}
-                disabled={addingOperator[id]}
-                className="add-operator-btn"
-              >
-                {addingOperator[id] ? "Adding..." : "Add Me as Operator"}
-              </button>
-            </div>
-          ))}
+      <div className="info-section">
+        <p>This platform now focuses on lbryfun pool proposals.</p>
+        <p>To propose a pool, go to the Proposals tab and submit the canister ID of an active lbryfun pool's primary token.</p>
+        
+        <div className="features-info">
+          <h3>Features:</h3>
+          <ul>
+            <li>Submit proposals for lbryfun pools</li>
+            <li>View token information including name, symbol, and total supply</li>
+            <li>Accept proposals with staked ALEX tokens</li>
+            <li>Track proposal status and history</li>
+          </ul>
         </div>
-      )}
-      
-      <div className="help-section">
-        <h3>How to find your Orbit principal:</h3>
-        <ol>
-          <li>Go to <a href="https://orbitstation.org" target="_blank" rel="noopener noreferrer">Orbit Station</a></li>
-          <li>Click on your profile/avatar in the top right</li>
-          <li>Copy your principal ID</li>
-          <li>Paste it when prompted above</li>
-        </ol>
       </div>
     </div>
   );

@@ -1,21 +1,33 @@
 mod orbit_integration;
 
-use candid::{CandidType, Deserialize, Principal};
+use candid::{CandidType, Deserialize, Principal, Nat};
 use serde::Serialize;
 use std::cell::RefCell;
 use std::collections::HashMap;
+
+// Token info fetched from ICRC1 canister
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+pub struct TokenInfo {
+    pub name: String,
+    pub symbol: String,
+    pub decimals: u8,
+    pub total_supply: Nat,
+    pub logo_url: Option<String>,
+    pub description: Option<String>,
+}
 
 // Proposal types
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
 pub struct Proposal {
     pub id: u64,
     pub proposer: Principal,
-    pub dao_name: String,
+    pub pool_canister_id: String,  // Changed from dao_name to pool_canister_id
     pub status: ProposalStatus,
     pub created_at: u64,
     pub accepted_by: Option<Principal>,
     pub accepted_at: Option<u64>,
     pub station_id: Option<String>,
+    pub token_info: Option<TokenInfo>,  // Token metadata from the pool
 }
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -51,12 +63,18 @@ async fn register_with_orbit() -> Result<String, String> {
     orbit_integration::register_with_orbit().await
 }
 
-// Create a new proposal for a DAO
+// Create a new proposal for a lbryfun pool
 #[ic_cdk::update]
-fn create_proposal(dao_name: String) -> Result<u64, String> {
-    if dao_name.trim().is_empty() {
-        return Err("DAO name cannot be empty".to_string());
+fn create_proposal(pool_canister_id: String) -> Result<u64, String> {
+    let trimmed_id = pool_canister_id.trim();
+    
+    if trimmed_id.is_empty() {
+        return Err("Pool canister ID cannot be empty".to_string());
     }
+
+    // Validate that the provided string is a valid Principal
+    Principal::from_text(trimmed_id)
+        .map_err(|_| "Invalid canister ID format. Must be a valid Principal".to_string())?;
 
     let proposal_id = NEXT_PROPOSAL_ID.with(|id| {
         let current = *id.borrow();
@@ -67,12 +85,13 @@ fn create_proposal(dao_name: String) -> Result<u64, String> {
     let proposal = Proposal {
         id: proposal_id,
         proposer: ic_cdk::caller(),
-        dao_name: dao_name.trim().to_string(),
+        pool_canister_id: trimmed_id.to_string(),
         status: ProposalStatus::Pending,
         created_at: ic_cdk::api::time(),
         accepted_by: None,
         accepted_at: None,
         station_id: None,
+        token_info: None,
     };
 
     PROPOSALS.with(|proposals| {
@@ -82,7 +101,7 @@ fn create_proposal(dao_name: String) -> Result<u64, String> {
     Ok(proposal_id)
 }
 
-// Accept a proposal and create the DAO (requires staked ALEX)
+// Accept a proposal for a lbryfun pool (requires staked ALEX)
 #[ic_cdk::update]
 async fn accept_proposal(proposal_id: u64, staked_alex_balance: String) -> Result<String, String> {
     // Parse the staked balance
@@ -107,9 +126,22 @@ async fn accept_proposal(proposal_id: u64, staked_alex_balance: String) -> Resul
     proposal.accepted_by = Some(ic_cdk::caller());
     proposal.accepted_at = Some(ic_cdk::api::time());
 
-    // Create the DAO
-    let station_id = create_dao(proposal.dao_name.clone()).await?;
-    proposal.station_id = Some(station_id.clone());
+    // Parse the canister ID
+    let canister_id = Principal::from_text(&proposal.pool_canister_id)
+        .map_err(|_| "Invalid canister ID in proposal".to_string())?;
+
+    // Fetch token info from the canister
+    match fetch_token_info(canister_id).await {
+        Ok(token_info) => {
+            proposal.token_info = Some(token_info);
+        },
+        Err(e) => {
+            // Log the error but don't fail the proposal acceptance
+            ic_cdk::print(format!("Warning: Failed to fetch token info: {}", e));
+        }
+    }
+
+    // Mark as executed
     proposal.status = ProposalStatus::Executed;
 
     // Save updated proposal
@@ -117,7 +149,7 @@ async fn accept_proposal(proposal_id: u64, staked_alex_balance: String) -> Resul
         proposals.borrow_mut().insert(proposal_id, proposal.clone());
     });
 
-    Ok(format!("DAO created successfully! Station ID: {}", station_id))
+    Ok(format!("Proposal accepted for pool: {}", proposal.pool_canister_id))
 }
 
 // Get all proposals
@@ -138,13 +170,7 @@ fn get_proposal(proposal_id: u64) -> Option<Proposal> {
     })
 }
 
-// Renamed from create_dao_treasury
-async fn create_dao(dao_name: String) -> Result<String, String> {
-    let treasury_name = format!("{} Treasury", dao_name);
-    
-    let station_id = orbit_integration::open_station(treasury_name).await?;
-    Ok(station_id.to_text())
-}
+// Note: create_dao function removed since we're using lbryfun pools instead
 
 #[ic_cdk::update]
 async fn get_orbit_stations() -> Result<Vec<(String, String)>, String> {
@@ -168,4 +194,96 @@ async fn add_me_to_station(
     
     // Add the user as operator
     orbit_integration::add_operator_to_station(station, orbit_principal).await
+}
+
+// Metadata value type for ICRC1 tokens
+#[derive(CandidType, Deserialize, Debug)]
+pub enum MetadataValue {
+    Nat(Nat),
+    Int(i128),
+    Text(String),
+    Blob(Vec<u8>),
+}
+
+// Fetch token info from an ICRC1 canister
+async fn fetch_token_info(canister_id: Principal) -> Result<TokenInfo, String> {
+    // Fetch name
+    let (name,): (String,) = ic_cdk::call(canister_id, "icrc1_name", ())
+        .await
+        .map_err(|(code, msg)| format!("Failed to fetch token name: {:?} - {}", code, msg))?;
+
+    // Fetch symbol
+    let (symbol,): (String,) = ic_cdk::call(canister_id, "icrc1_symbol", ())
+        .await
+        .map_err(|(code, msg)| format!("Failed to fetch token symbol: {:?} - {}", code, msg))?;
+
+    // Fetch decimals
+    let (decimals,): (u8,) = ic_cdk::call(canister_id, "icrc1_decimals", ())
+        .await
+        .map_err(|(code, msg)| format!("Failed to fetch token decimals: {:?} - {}", code, msg))?;
+
+    // Fetch total supply
+    let (total_supply,): (Nat,) = ic_cdk::call(canister_id, "icrc1_total_supply", ())
+        .await
+        .map_err(|(code, msg)| format!("Failed to fetch total supply: {:?} - {}", code, msg))?;
+
+    // Fetch metadata to look for logo and description
+    let (metadata,): (Vec<(String, MetadataValue)>,) = ic_cdk::call(canister_id, "icrc1_metadata", ())
+        .await
+        .map_err(|(code, msg)| format!("Failed to fetch metadata: {:?} - {}", code, msg))?;
+
+    let mut logo_url = None;
+    let mut description = None;
+
+    // Parse metadata for logo and description
+    for (key, value) in metadata {
+        // Log metadata for debugging
+        ic_cdk::print(format!("Metadata key: {}, value: {:?}", key, value));
+        
+        match key.as_str() {
+            "icrc1:logo" | "logo" => {
+                match value {
+                    MetadataValue::Text(url) => {
+                        logo_url = Some(url);
+                    },
+                    MetadataValue::Blob(data) => {
+                        // If logo is stored as blob, try to convert to data URL
+                        if data.len() > 0 {
+                            // Simple check for common image formats
+                            let data_url = if data.starts_with(&[0x89, 0x50, 0x4E, 0x47]) {
+                                format!("data:image/png;base64,{}", base64::encode(&data))
+                            } else if data.starts_with(&[0xFF, 0xD8, 0xFF]) {
+                                format!("data:image/jpeg;base64,{}", base64::encode(&data))
+                            } else if data.starts_with(&[0x47, 0x49, 0x46]) {
+                                format!("data:image/gif;base64,{}", base64::encode(&data))
+                            } else if data.starts_with(b"<svg") || data.starts_with(b"<?xml") {
+                                // SVG data
+                                format!("data:image/svg+xml;base64,{}", base64::encode(&data))
+                            } else {
+                                // Try as generic image
+                                format!("data:image/png;base64,{}", base64::encode(&data))
+                            };
+                            logo_url = Some(data_url);
+                        }
+                    },
+                    _ => {}
+                }
+            },
+            "icrc1:description" | "description" => {
+                if let MetadataValue::Text(desc) = value {
+                    description = Some(desc);
+                }
+            },
+            _ => {}
+        }
+    }
+
+    Ok(TokenInfo {
+        name,
+        symbol,
+        decimals,
+        total_supply,
+        logo_url,
+        description,
+    })
 }

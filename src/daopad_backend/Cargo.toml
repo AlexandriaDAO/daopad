@@ -12,3 +12,4 @@ crate-type = ["cdylib"]
 candid = "0.10"
 ic-cdk = "0.17"
 serde = "1.0"
+base64 = "0.21"

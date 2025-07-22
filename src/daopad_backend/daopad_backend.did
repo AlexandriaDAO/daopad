@@ -4,15 +4,25 @@ type ProposalStatus = variant {
     Executed;
 };
 
+type TokenInfo = record {
+    name: text;
+    symbol: text;
+    decimals: nat8;
+    total_supply: nat;
+    logo_url: opt text;
+    description: opt text;
+};
+
 type Proposal = record {
     id: nat64;
     proposer: principal;
-    dao_name: text;
+    pool_canister_id: text;
     status: ProposalStatus;
     created_at: nat64;
     accepted_by: opt principal;
     accepted_at: opt nat64;
     station_id: opt text;
+    token_info: opt TokenInfo;
 };
 
 service : (opt text) -> {

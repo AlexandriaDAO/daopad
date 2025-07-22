@@ -51,23 +51,21 @@ enum DeployStationResult {
     Err(ApiError),
 }
 
-// UUID type for group IDs
-type UUID = [u8; 16];
-
-// Operator group ID from Orbit
-const OPERATOR_GROUP_ID: UUID = [0, 0, 0, 0, 0, 0, 64, 0, 128, 0, 0, 0, 0, 0, 0, 1];
+// Operator group ID from Orbit (as a string UUID)
+const OPERATOR_GROUP_ID: &str = "00000000-0000-4000-8000-000000000001";
 
 // Minimal types for adding a user
 #[derive(CandidType, Serialize, Deserialize)]
 enum UserStatusDTO {
     Active,
+    Inactive,
 }
 
 #[derive(CandidType, Serialize, Deserialize)]
 struct AddUserOperationInput {
     name: String,
     identities: Vec<Principal>,
-    groups: Vec<UUID>,
+    groups: Vec<String>,
     status: UserStatusDTO,
 }
 
@@ -245,7 +243,7 @@ pub async fn add_operator_to_station(
     let add_user_op = AddUserOperationInput {
         name: "Hackathon User".to_string(), // Generic name for demo
         identities: vec![operator_principal],
-        groups: vec![OPERATOR_GROUP_ID],
+        groups: vec![OPERATOR_GROUP_ID.to_string()],
         status: UserStatusDTO::Active,
     };
 
@@ -261,7 +259,7 @@ pub async fn add_operator_to_station(
     let result: Result<(CreateRequestResult,), _> = call(
         station_id,
         "create_request",
-        (request,)
+        (&request,)
     ).await;
 
     match result {
