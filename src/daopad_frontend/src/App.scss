@@ -412,10 +412,152 @@ header {
     font-size: 0.875rem;
   }
   
+  .orbit-stations-section {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid $border-gray;
+    
+    h3 {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      font-weight: 400;
+    }
+    
+    .auth-message {
+      color: $text-secondary;
+      font-style: italic;
+      font-size: 0.875rem;
+    }
+  }
+  
   .stations-list {
     display: grid;
     gap: 1rem;
     margin-bottom: 2rem;
+  }
+  
+  .station-card {
+    background: white;
+    border: 1px solid $border-gray;
+    border-radius: 2px;
+    padding: 1.5rem;
+    
+    .station-header {
+      margin-bottom: 1rem;
+      
+      h4 {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 1.125rem;
+        margin: 0 0 0.5rem 0;
+        font-weight: 400;
+      }
+      
+      .station-id {
+        font-family: 'Courier New', monospace;
+        font-size: 0.75rem;
+        color: $text-secondary;
+      }
+    }
+    
+    .station-actions {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      
+      .expand-btn,
+      .view-orbit-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        border: 1px solid $ink-black;
+        background: white;
+        color: $ink-black;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        
+        &:hover:not(:disabled) {
+          background: $ink-black;
+          color: white;
+        }
+        
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+      }
+      
+      .view-orbit-btn {
+        display: inline-flex;
+        align-items: center;
+      }
+    }
+    
+    .operator-form {
+      background: $document-gray;
+      padding: 1rem;
+      border-radius: 2px;
+      margin-top: 1rem;
+      
+      p {
+        margin: 0 0 1rem 0;
+        font-size: 0.875rem;
+      }
+      
+      input {
+        width: 100%;
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+        border: 1px solid $border-gray;
+        font-family: 'Courier New', monospace;
+        font-size: 0.875rem;
+        
+        &:focus {
+          outline: none;
+          border-color: $ink-black;
+        }
+        
+        &:disabled {
+          background: $border-gray;
+          cursor: not-allowed;
+        }
+      }
+      
+      button {
+        width: 100%;
+        padding: 0.75rem;
+        background: $ink-black;
+        color: white;
+        border: none;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: opacity 0.2s ease;
+        
+        &:hover:not(:disabled) {
+          opacity: 0.85;
+        }
+        
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+      }
+    }
+  }
+  
+  .refresh-btn {
+    padding: 0.75rem 1.5rem;
+    background: white;
+    border: 1px solid $ink-black;
+    color: $ink-black;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background: $ink-black;
+      color: white;
+    }
   }
   
   .station-card {
@@ -823,6 +965,126 @@ header {
         font-style: italic;
       }
     }
+    
+    .voting-section {
+      margin-top: 1rem;
+      
+      .voting-progress {
+        margin-bottom: 1.5rem;
+        
+        .progress-bar-container {
+          width: 100%;
+          height: 24px;
+          background: $document-gray;
+          border: 1px solid $border-gray;
+          position: relative;
+          overflow: hidden;
+          
+          .progress-bar {
+            height: 100%;
+            background: #4CAF50;
+            transition: width 0.3s ease;
+            position: relative;
+            
+            &::after {
+              content: '';
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background: linear-gradient(
+                90deg,
+                rgba(255,255,255,0) 0%,
+                rgba(255,255,255,0.1) 50%,
+                rgba(255,255,255,0) 100%
+              );
+              animation: shimmer 2s infinite;
+            }
+          }
+        }
+        
+        .progress-text {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-top: 0.5rem;
+          font-size: 0.875rem;
+          
+          span:first-child {
+            font-weight: 600;
+            color: $ink-black;
+          }
+        }
+      }
+      
+      @keyframes shimmer {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+      }
+      
+      .proposal-actions {
+        padding-top: 1rem;
+        border-top: 1px solid $border-gray;
+        
+        h4 {
+          font-family: Georgia, 'Times New Roman', serif;
+          font-size: 1rem;
+          margin: 0 0 0.75rem 0;
+          font-weight: 400;
+          text-align: center;
+        }
+        
+        .vote-buttons {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0.75rem;
+        }
+        
+        .vote-button {
+          padding: 0.5rem;
+          cursor: pointer;
+          font-weight: 500;
+          font-size: 0.75rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          transition: all 0.2s ease;
+          border: 1px solid;
+          
+          &.accept-button {
+            background: #4CAF50;
+            color: white;
+            border-color: darken(#4CAF50, 10%);
+            
+            &:hover:not(:disabled) {
+              background: darken(#4CAF50, 10%);
+            }
+            
+            &:disabled {
+              background: lighten(#4CAF50, 30%);
+              border-color: lighten(#4CAF50, 20%);
+              cursor: not-allowed;
+            }
+          }
+          
+          &.reject-button {
+            background: #f44336;
+            color: white;
+            border-color: darken(#f44336, 10%);
+            
+            &:hover:not(:disabled) {
+              background: darken(#f44336, 10%);
+            }
+            
+            &:disabled {
+              background: lighten(#f44336, 30%);
+              border-color: lighten(#f44336, 20%);
+              cursor: not-allowed;
+            }
+          }
+        }
+      }
+    }
   }
 
   .error {
@@ -920,4 +1182,301 @@ footer {
   .step-content {
     padding-left: 0.75rem;
   }
+}
+
+// Pool Dashboard Styles
+.pools-dashboard {
+  .pools-header {
+    margin-bottom: 2rem;
+    
+    h2 {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      font-weight: 400;
+    }
+    
+    > p {
+      color: $text-secondary;
+      font-style: italic;
+      margin-bottom: 1.5rem;
+      font-size: 0.875rem;
+    }
+    
+    .filter-controls {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: center;
+      
+      .filter-button {
+        background: white;
+        border: 1px solid $border-gray;
+        color: $text-secondary;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.2s ease;
+        
+        &:hover {
+          border-color: $ink-black;
+          color: $ink-black;
+        }
+        
+        &.active {
+          background: $ink-black;
+          color: white;
+          border-color: $ink-black;
+        }
+      }
+      
+      .refresh-button {
+        margin-left: auto;
+        background: white;
+        border: 1px solid $border-gray;
+        color: $ink-black;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.2s ease;
+        
+        &:hover {
+          border-color: $ink-black;
+          background: $document-gray;
+        }
+      }
+    }
+  }
+  
+  .pools-loading,
+  .pools-error {
+    text-align: center;
+    padding: 3rem 0;
+    
+    .paper-content {
+      background: $document-gray;
+      border: 1px solid $border-gray;
+      padding: 2rem;
+      
+      p {
+        margin: 0 0 1rem 0;
+        color: $text-secondary;
+        font-style: italic;
+      }
+      
+      .error-message {
+        color: #D32F2F;
+      }
+    }
+  }
+  
+  .pools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 1.5rem;
+    
+    .no-pools {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 3rem;
+      color: $text-secondary;
+      font-style: italic;
+    }
+  }
+}
+
+.pool-card {
+  background: white;
+  border: 1px solid $border-gray;
+  padding: 1.5rem;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    border-color: $ink-black;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  
+  .pool-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid $border-gray;
+    
+    .token-pair {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      
+      .token-info {
+        h3 {
+          font-family: Georgia, 'Times New Roman', serif;
+          font-size: 1.25rem;
+          margin: 0;
+          font-weight: 600;
+          color: $ink-black;
+        }
+        
+        .token-name {
+          font-size: 0.75rem;
+          color: $text-secondary;
+          display: block;
+          margin-top: 0.125rem;
+        }
+      }
+      
+      .pair-separator {
+        font-size: 1.25rem;
+        color: $text-secondary;
+        margin: 0 0.25rem;
+      }
+    }
+    
+    .pool-status {
+      padding: 0.25rem 0.625rem;
+      font-size: 0.625rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 1px solid;
+      
+      &.status-live {
+        background: #4CAF50;
+        color: white;
+        border-color: darken(#4CAF50, 10%);
+      }
+      
+      &.status-pending {
+        background: #FF9800;
+        color: white;
+        border-color: darken(#FF9800, 10%);
+      }
+      
+      &.status-failed {
+        background: #f44336;
+        color: white;
+        border-color: darken(#f44336, 10%);
+      }
+    }
+  }
+  
+  .pool-details {
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 0.5rem 0;
+      font-size: 0.8125rem;
+      
+      .label {
+        color: $text-secondary;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+      }
+      
+      .value {
+        color: $ink-black;
+        font-weight: 500;
+        text-align: right;
+      }
+      
+      &.canister-ids {
+        flex-direction: column;
+        gap: 0.5rem;
+        
+        .canister-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+          
+          .canister-id {
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            background: $document-gray;
+            padding: 0.25rem 0.5rem;
+            border: 1px solid $border-gray;
+            color: $ink-black;
+            cursor: help;
+          }
+        }
+      }
+    }
+  }
+  
+  .pool-actions {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid $border-gray;
+    display: flex;
+    gap: 0.75rem;
+    flex-direction: column;
+    
+    .action-button {
+      width: 100%;
+      padding: 0.625rem;
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid;
+      
+      &:not(.secondary) {
+        background: $accent-blue;
+        color: white;
+        border-color: darken($accent-blue, 10%);
+        
+        &:hover {
+          background: darken($accent-blue, 10%);
+        }
+      }
+      
+      &.secondary {
+        background: white;
+        color: $ink-black;
+        border-color: $border-gray;
+        
+        &:hover {
+          background: $document-gray;
+          border-color: $ink-black;
+        }
+      }
+      
+      &.dao-button {
+        background: #4CAF50;
+        color: white;
+        border-color: darken(#4CAF50, 10%);
+        
+        &:hover {
+          background: darken(#4CAF50, 10%);
+        }
+      }
+    }
+    
+    .pending-message,
+    .failed-message {
+      text-align: center;
+      font-style: italic;
+      font-size: 0.875rem;
+      padding: 1rem;
+      background: $document-gray;
+      border: 1px solid $border-gray;
+    }
+    
+    .failed-message {
+      color: #D32F2F;
+      background: lighten(#f44336, 45%);
+      border-color: #f44336;
+    }
+  }
+}
+
+.paper-button {
+  font-family: inherit;
 }

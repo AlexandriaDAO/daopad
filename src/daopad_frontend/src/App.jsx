@@ -5,14 +5,15 @@ import { useLogout } from './hooks/useLogout';
 import { setAuthSuccess, clearAuth, setAuthLoading, setAuthInitialized } from './features/auth/authSlice';
 import { fetchBalances } from './state/balance/balanceThunks';
 import { clearBalances } from './state/balance/balanceSlice';
-import DAOsTab from './components/DAOsTab';
 import ProposalsTab from './components/ProposalsTab';
+import PoolDashboard from './components/PoolDashboard';
 import './App.scss';
 
 function App() {
   const [activeStep, setActiveStep] = useState(null);
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
+  const [proposalPoolId, setProposalPoolId] = useState('');
   const dispatch = useDispatch();
   const { principal, isAuthenticated } = useSelector(state => state.auth);
   const { icpBalance, alexBalance, stakedAlexBalance, isLoading: balanceLoading } = useSelector(state => state.balance);
@@ -121,14 +122,14 @@ function App() {
           Home
         </button>
         <button 
-          className={`tab ${activeTab === 'proposals' ? 'active' : ''}`}
-          onClick={() => setActiveTab('proposals')}
+          className={`tab ${activeTab === 'pools' ? 'active' : ''}`}
+          onClick={() => setActiveTab('pools')}
         >
-          Proposals
+          Pools
         </button>
         <button 
-          className={`tab ${activeTab === 'daos' ? 'active' : ''}`}
-          onClick={() => setActiveTab('daos')}
+          className={`tab ${activeTab === 'proposals' ? 'active' : ''}`}
+          onClick={() => setActiveTab('proposals')}
         >
           DAOs
         </button>
@@ -256,13 +257,17 @@ function App() {
         </>
       )}
 
-      {activeTab === 'proposals' && (
-        <ProposalsTab />
+      {activeTab === 'pools' && (
+        <PoolDashboard onNavigateToProposal={(poolId) => {
+          setProposalPoolId(poolId.toString());
+          setActiveTab('proposals');
+        }} />
       )}
 
-      {activeTab === 'daos' && (
-        <DAOsTab />
+      {activeTab === 'proposals' && (
+        <ProposalsTab prefilledPoolId={proposalPoolId} />
       )}
+
 
       <footer>
         <p>

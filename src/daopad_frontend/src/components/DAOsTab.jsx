@@ -142,6 +142,72 @@ function DAOsTab() {
           </ul>
         </div>
       </div>
+
+      <div className="orbit-stations-section">
+        <h3>Executed DAOs - Orbit Stations</h3>
+        
+        {!isAuthenticated ? (
+          <p className="auth-message">Please authenticate to view and manage Orbit stations.</p>
+        ) : (
+          <>
+            {stations.length === 0 ? (
+              <p>No Orbit stations found. Accepted proposals will appear here as stations.</p>
+            ) : (
+              <div className="stations-list">
+                {stations.map(([stationId, stationName]) => (
+                  <div key={stationId} className="station-card">
+                    <div className="station-header">
+                      <h4>{stationName}</h4>
+                      <p className="station-id">ID: {stationId}</p>
+                    </div>
+                    
+                    <div className="station-actions">
+                      <button 
+                        className="expand-btn"
+                        onClick={() => setExpandedStation(expandedStation === stationId ? null : stationId)}
+                      >
+                        {expandedStation === stationId ? 'Hide' : 'Add Operator'}
+                      </button>
+                      
+                      <a 
+                        href={`https://orbitstation.org/station/${stationId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="view-orbit-btn"
+                      >
+                        View in Orbit
+                      </a>
+                    </div>
+                    
+                    {expandedStation === stationId && (
+                      <div className="operator-form">
+                        <p>Add yourself as an operator to manage this DAO:</p>
+                        <input
+                          type="text"
+                          placeholder="Enter your Orbit principal"
+                          value={orbitPrincipal}
+                          onChange={(e) => setOrbitPrincipal(e.target.value)}
+                          disabled={addingOperator[stationId]}
+                        />
+                        <button
+                          onClick={() => handleAddOperator(stationId)}
+                          disabled={addingOperator[stationId] || !orbitPrincipal.trim()}
+                        >
+                          {addingOperator[stationId] ? 'Adding...' : 'Add Me as Operator'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <button className="refresh-btn" onClick={loadStations}>
+              Refresh Stations
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

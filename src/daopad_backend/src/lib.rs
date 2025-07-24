@@ -16,18 +16,37 @@ pub struct TokenInfo {
     pub description: Option<String>,
 }
 
+// Pool info from lbryfun
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+pub struct LbryfunPoolInfo {
+    pub id: u64,
+    pub primary_token_name: String,
+    pub primary_token_symbol: String,
+    pub secondary_token_name: String,
+    pub secondary_token_symbol: String,
+    pub pool_creation_failed: bool,
+    pub primary_token_id: Principal,
+    pub secondary_token_id: Principal,
+    pub icp_swap_canister_id: Principal,
+    pub tokenomics_canister_id: Principal,
+    pub primary_token_max_supply: u64,
+    pub halving_step: u64,
+    pub created_time: u64,
+    pub pool_created_at: u64,
+}
+
 // Proposal types
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
 pub struct Proposal {
     pub id: u64,
     pub proposer: Principal,
-    pub pool_canister_id: String,  // Changed from dao_name to pool_canister_id
+    pub lbryfun_pool_id: u64,  // Changed to lbryfun pool ID
     pub status: ProposalStatus,
     pub created_at: u64,
     pub accepted_by: Option<Principal>,
     pub accepted_at: Option<u64>,
     pub station_id: Option<String>,
-    pub token_info: Option<TokenInfo>,  // Token metadata from the pool
+    pub pool_info: Option<LbryfunPoolInfo>,  // Pool data from lbryfun
 }
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -41,16 +60,32 @@ pub enum ProposalStatus {
 thread_local! {
     static PROPOSALS: RefCell<HashMap<u64, Proposal>> = RefCell::new(HashMap::new());
     static NEXT_PROPOSAL_ID: RefCell<u64> = RefCell::new(1);
+    static LBRYFUN_CANISTER_ID: RefCell<Option<Principal>> = RefCell::new(None);
 }
 
 #[ic_cdk::init]
-fn init(orbit_control_panel_id: Option<String>) {
+fn init(orbit_control_panel_id: Option<String>, lbryfun_canister_id: Option<String>) {
     orbit_integration::init_control_panel(orbit_control_panel_id);
+    
+    // Set lbryfun canister ID if provided, otherwise use default local ID
+    let lbryfun_id = lbryfun_canister_id
+        .unwrap_or_else(|| "oni4e-oyaaa-aaaap-qp2pq-cai".to_string());
+    
+    if let Ok(principal) = Principal::from_text(&lbryfun_id) {
+        LBRYFUN_CANISTER_ID.with(|id| *id.borrow_mut() = Some(principal));
+    }
 }
 
 #[ic_cdk::query]
 fn get_orbit_control_panel_id() -> String {
     orbit_integration::get_control_panel_id()
+}
+
+#[ic_cdk::query]
+fn get_lbryfun_canister_id() -> Option<String> {
+    LBRYFUN_CANISTER_ID.with(|id| {
+        id.borrow().as_ref().map(|p| p.to_text())
+    })
 }
 
 #[ic_cdk::update]
@@ -65,17 +100,7 @@ async fn register_with_orbit() -> Result<String, String> {
 
 // Create a new proposal for a lbryfun pool
 #[ic_cdk::update]
-fn create_proposal(pool_canister_id: String) -> Result<u64, String> {
-    let trimmed_id = pool_canister_id.trim();
-    
-    if trimmed_id.is_empty() {
-        return Err("Pool canister ID cannot be empty".to_string());
-    }
-
-    // Validate that the provided string is a valid Principal
-    Principal::from_text(trimmed_id)
-        .map_err(|_| "Invalid canister ID format. Must be a valid Principal".to_string())?;
-
+fn create_proposal(lbryfun_pool_id: u64) -> Result<u64, String> {
     let proposal_id = NEXT_PROPOSAL_ID.with(|id| {
         let current = *id.borrow();
         *id.borrow_mut() = current + 1;
@@ -85,13 +110,13 @@ fn create_proposal(pool_canister_id: String) -> Result<u64, String> {
     let proposal = Proposal {
         id: proposal_id,
         proposer: ic_cdk::caller(),
-        pool_canister_id: trimmed_id.to_string(),
+        lbryfun_pool_id,
         status: ProposalStatus::Pending,
         created_at: ic_cdk::api::time(),
         accepted_by: None,
         accepted_at: None,
         station_id: None,
-        token_info: None,
+        pool_info: None,
     };
 
     PROPOSALS.with(|proposals| {
@@ -126,18 +151,26 @@ async fn accept_proposal(proposal_id: u64, staked_alex_balance: String) -> Resul
     proposal.accepted_by = Some(ic_cdk::caller());
     proposal.accepted_at = Some(ic_cdk::api::time());
 
-    // Parse the canister ID
-    let canister_id = Principal::from_text(&proposal.pool_canister_id)
-        .map_err(|_| "Invalid canister ID in proposal".to_string())?;
-
-    // Fetch token info from the canister
-    match fetch_token_info(canister_id).await {
-        Ok(token_info) => {
-            proposal.token_info = Some(token_info);
+    // Fetch pool info from lbryfun
+    match fetch_lbryfun_pool_info(proposal.lbryfun_pool_id).await {
+        Ok(pool_info) => {
+            proposal.pool_info = Some(pool_info.clone());
+            
+            // Create an Orbit station for this DAO
+            let station_name = format!("{} DAO", pool_info.primary_token_symbol);
+            match orbit_integration::open_station(station_name).await {
+                Ok(station_id) => {
+                    proposal.station_id = Some(station_id.to_text());
+                    ic_cdk::print(format!("Created Orbit station: {}", station_id));
+                },
+                Err(e) => {
+                    ic_cdk::print(format!("Warning: Failed to create Orbit station: {}", e));
+                }
+            }
         },
         Err(e) => {
             // Log the error but don't fail the proposal acceptance
-            ic_cdk::print(format!("Warning: Failed to fetch token info: {}", e));
+            ic_cdk::print(format!("Warning: Failed to fetch pool info: {}", e));
         }
     }
 
@@ -149,7 +182,7 @@ async fn accept_proposal(proposal_id: u64, staked_alex_balance: String) -> Resul
         proposals.borrow_mut().insert(proposal_id, proposal.clone());
     });
 
-    Ok(format!("Proposal accepted for pool: {}", proposal.pool_canister_id))
+    Ok(format!("Proposal accepted for pool ID: {}", proposal.lbryfun_pool_id))
 }
 
 // Get all proposals
@@ -285,5 +318,65 @@ async fn fetch_token_info(canister_id: Principal) -> Result<TokenInfo, String> {
         total_supply,
         logo_url,
         description,
+    })
+}
+
+// TokenRecord type from lbryfun
+#[derive(CandidType, Deserialize)]
+struct TokenRecord {
+    id: u64,
+    secondary_token_symbol: String,
+    secondary_token_id: Principal,
+    primary_token_name: String,
+    tokenomics_canister_id: Principal,
+    secondary_token_name: String,
+    primary_token_symbol: String,
+    launch_delay_seconds: u64,
+    icp_swap_canister_id: Principal,
+    halving_step: u64,
+    primary_token_max_supply: u64,
+    pool_creation_failed: bool,
+    initial_reward_per_burn_unit: u64,
+    initial_primary_mint: u64,
+    threshold_multiplier: f64,
+    primary_token_id: Principal,
+    caller: Principal,
+    pool_created_at: u64,
+    distribution_interval_seconds: u64,
+    created_time: u64,
+    initial_secondary_burn: u64,
+    logs_canister_id: Principal,
+}
+
+// Fetch pool info from lbryfun canister
+async fn fetch_lbryfun_pool_info(pool_id: u64) -> Result<LbryfunPoolInfo, String> {
+    let lbryfun_canister = LBRYFUN_CANISTER_ID.with(|id| id.borrow().clone())
+        .ok_or("Lbryfun canister ID not set".to_string())?;
+    
+    // Call get_all_token_record to get all pools
+    let (all_records,): (Vec<(u64, TokenRecord)>,) = ic_cdk::call(lbryfun_canister, "get_all_token_record", ())
+        .await
+        .map_err(|(code, msg)| format!("Failed to fetch pool records: {:?} - {}", code, msg))?;
+    
+    // Find the pool with matching ID
+    let (_, record) = all_records.into_iter()
+        .find(|(id, _)| *id == pool_id)
+        .ok_or_else(|| format!("Pool with ID {} not found", pool_id))?;
+    
+    Ok(LbryfunPoolInfo {
+        id: pool_id,
+        primary_token_name: record.primary_token_name,
+        primary_token_symbol: record.primary_token_symbol,
+        secondary_token_name: record.secondary_token_name,
+        secondary_token_symbol: record.secondary_token_symbol,
+        pool_creation_failed: record.pool_creation_failed,
+        primary_token_id: record.primary_token_id,
+        secondary_token_id: record.secondary_token_id,
+        icp_swap_canister_id: record.icp_swap_canister_id,
+        tokenomics_canister_id: record.tokenomics_canister_id,
+        primary_token_max_supply: record.primary_token_max_supply,
+        halving_step: record.halving_step,
+        created_time: record.created_time,
+        pool_created_at: record.pool_created_at,
     })
 }
