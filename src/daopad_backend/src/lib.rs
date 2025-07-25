@@ -3,7 +3,7 @@ mod orbit_integration;
 use candid::{CandidType, Deserialize, Principal, Nat};
 use serde::Serialize;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 // Token info fetched from ICRC1 canister
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
@@ -35,33 +35,34 @@ pub struct LbryfunPoolInfo {
     pub pool_created_at: u64,
 }
 
-// Proposal types
+// Pool voting status
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
-pub struct Proposal {
-    pub id: u64,
-    pub proposer: Principal,
-    pub lbryfun_pool_id: u64,  // Changed to lbryfun pool ID
-    pub status: ProposalStatus,
-    pub created_at: u64,
-    pub accepted_by: Option<Principal>,
-    pub accepted_at: Option<u64>,
+pub struct PoolStatus {
+    pub current_votes: f64,
+    pub has_user_voted: bool,
+    pub dao_created: bool,
     pub station_id: Option<String>,
-    pub pool_info: Option<LbryfunPoolInfo>,  // Pool data from lbryfun
 }
 
-#[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum ProposalStatus {
-    Pending,
-    Accepted,
-    Executed,
+// Vote result
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+pub enum VoteResult {
+    Voted { new_total: f64 },
+    DaoCreated { station_id: String, total_votes: f64 },
 }
 
 // Storage
 thread_local! {
-    static PROPOSALS: RefCell<HashMap<u64, Proposal>> = RefCell::new(HashMap::new());
-    static NEXT_PROPOSAL_ID: RefCell<u64> = RefCell::new(1);
+    // Maps pool_id to total votes
+    static VOTES: RefCell<BTreeMap<u64, f64>> = RefCell::new(BTreeMap::new());
+    // Maps (pool_id, voter) to vote amount
+    static VOTERS: RefCell<BTreeMap<(u64, Principal), f64>> = RefCell::new(BTreeMap::new());
+    // Set of pool_ids that have DAOs created
+    static CREATED_DAOS: RefCell<BTreeMap<u64, String>> = RefCell::new(BTreeMap::new());
     static LBRYFUN_CANISTER_ID: RefCell<Option<Principal>> = RefCell::new(None);
 }
+
+const VOTE_THRESHOLD: f64 = 20.0;
 
 #[ic_cdk::init]
 fn init(orbit_control_panel_id: Option<String>, lbryfun_canister_id: Option<String>) {
@@ -98,109 +99,115 @@ async fn register_with_orbit() -> Result<String, String> {
     orbit_integration::register_with_orbit().await
 }
 
-// Create a new proposal for a lbryfun pool
+// Vote for a pool to create a DAO
 #[ic_cdk::update]
-fn create_proposal(lbryfun_pool_id: u64) -> Result<u64, String> {
-    let proposal_id = NEXT_PROPOSAL_ID.with(|id| {
-        let current = *id.borrow();
-        *id.borrow_mut() = current + 1;
-        current
-    });
-
-    let proposal = Proposal {
-        id: proposal_id,
-        proposer: ic_cdk::caller(),
-        lbryfun_pool_id,
-        status: ProposalStatus::Pending,
-        created_at: ic_cdk::api::time(),
-        accepted_by: None,
-        accepted_at: None,
-        station_id: None,
-        pool_info: None,
-    };
-
-    PROPOSALS.with(|proposals| {
-        proposals.borrow_mut().insert(proposal_id, proposal);
-    });
-
-    Ok(proposal_id)
-}
-
-// Accept a proposal for a lbryfun pool (requires staked ALEX)
-#[ic_cdk::update]
-async fn accept_proposal(proposal_id: u64, staked_alex_balance: String) -> Result<String, String> {
+async fn vote(pool_id: u64, staked_alex_balance: String) -> Result<VoteResult, String> {
+    let caller = ic_cdk::caller();
+    
     // Parse the staked balance
     let balance: f64 = staked_alex_balance.parse()
         .map_err(|_| "Invalid staked balance format".to_string())?;
     
     if balance <= 0.0 {
-        return Err("Must have staked ALEX to accept proposals".to_string());
+        return Err("Must have staked ALEX to vote".to_string());
     }
 
-    // Get and validate the proposal
-    let mut proposal = PROPOSALS.with(|proposals| {
-        proposals.borrow().get(&proposal_id).cloned()
-    }).ok_or("Proposal not found".to_string())?;
-
-    if proposal.status != ProposalStatus::Pending {
-        return Err("Proposal is no longer pending".to_string());
+    // Check if DAO already exists
+    let dao_exists = CREATED_DAOS.with(|daos| daos.borrow().contains_key(&pool_id));
+    if dao_exists {
+        return Err("DAO already created for this pool".to_string());
     }
 
-    // Update proposal status
-    proposal.status = ProposalStatus::Accepted;
-    proposal.accepted_by = Some(ic_cdk::caller());
-    proposal.accepted_at = Some(ic_cdk::api::time());
-
-    // Fetch pool info from lbryfun
-    match fetch_lbryfun_pool_info(proposal.lbryfun_pool_id).await {
-        Ok(pool_info) => {
-            proposal.pool_info = Some(pool_info.clone());
-            
-            // Create an Orbit station for this DAO
-            let station_name = format!("{} DAO", pool_info.primary_token_symbol);
-            match orbit_integration::open_station(station_name).await {
-                Ok(station_id) => {
-                    proposal.station_id = Some(station_id.to_text());
-                    ic_cdk::print(format!("Created Orbit station: {}", station_id));
-                },
-                Err(e) => {
-                    ic_cdk::print(format!("Warning: Failed to create Orbit station: {}", e));
-                }
-            }
-        },
-        Err(e) => {
-            // Log the error but don't fail the proposal acceptance
-            ic_cdk::print(format!("Warning: Failed to fetch pool info: {}", e));
-        }
+    // Check if user already voted
+    let already_voted = VOTERS.with(|voters| {
+        voters.borrow().contains_key(&(pool_id, caller))
+    });
+    if already_voted {
+        return Err("You have already voted for this pool".to_string());
     }
 
-    // Mark as executed
-    proposal.status = ProposalStatus::Executed;
-
-    // Save updated proposal
-    PROPOSALS.with(|proposals| {
-        proposals.borrow_mut().insert(proposal_id, proposal.clone());
+    // Record the vote
+    VOTERS.with(|voters| {
+        voters.borrow_mut().insert((pool_id, caller), balance);
     });
 
-    Ok(format!("Proposal accepted for pool ID: {}", proposal.lbryfun_pool_id))
+    // Update total votes
+    let new_total = VOTES.with(|votes| {
+        let mut votes_mut = votes.borrow_mut();
+        let current = votes_mut.get(&pool_id).copied().unwrap_or(0.0);
+        let new_total = current + balance;
+        votes_mut.insert(pool_id, new_total);
+        new_total
+    });
+
+    // Check if threshold is met
+    if new_total >= VOTE_THRESHOLD {
+        // Fetch pool info and create DAO
+        match fetch_lbryfun_pool_info(pool_id).await {
+            Ok(pool_info) => {
+                let station_name = format!("{} DAO", pool_info.primary_token_symbol);
+                match orbit_integration::open_station(station_name).await {
+                    Ok(station_id) => {
+                        let station_id_text = station_id.to_text();
+                        ic_cdk::print(format!("Created Orbit station: {}", station_id_text));
+                        
+                        // Record DAO creation
+                        CREATED_DAOS.with(|daos| {
+                            daos.borrow_mut().insert(pool_id, station_id_text.clone());
+                        });
+                        
+                        // Clean up votes data to save storage
+                        VOTES.with(|votes| votes.borrow_mut().remove(&pool_id));
+                        VOTERS.with(|voters| {
+                            let mut voters_mut = voters.borrow_mut();
+                            voters_mut.retain(|(pid, _), _| *pid != pool_id);
+                        });
+                        
+                        Ok(VoteResult::DaoCreated { 
+                            station_id: station_id_text, 
+                            total_votes: new_total 
+                        })
+                    },
+                    Err(e) => {
+                        Err(format!("Failed to create Orbit station: {}", e))
+                    }
+                }
+            },
+            Err(e) => {
+                Err(format!("Failed to fetch pool info: {}", e))
+            }
+        }
+    } else {
+        Ok(VoteResult::Voted { new_total })
+    }
 }
 
-// Get all proposals
+// Get voting status for a pool
 #[ic_cdk::query]
-fn list_proposals() -> Vec<Proposal> {
-    PROPOSALS.with(|proposals| {
-        let mut proposal_list: Vec<Proposal> = proposals.borrow().values().cloned().collect();
-        proposal_list.sort_by(|a, b| b.created_at.cmp(&a.created_at));
-        proposal_list
-    })
-}
-
-// Get a specific proposal
-#[ic_cdk::query]
-fn get_proposal(proposal_id: u64) -> Option<Proposal> {
-    PROPOSALS.with(|proposals| {
-        proposals.borrow().get(&proposal_id).cloned()
-    })
+fn get_pool_status(pool_id: u64) -> PoolStatus {
+    let caller = ic_cdk::caller();
+    
+    let current_votes = VOTES.with(|votes| {
+        votes.borrow().get(&pool_id).copied().unwrap_or(0.0)
+    });
+    
+    let has_user_voted = VOTERS.with(|voters| {
+        voters.borrow().contains_key(&(pool_id, caller))
+    });
+    
+    let (dao_created, station_id) = CREATED_DAOS.with(|daos| {
+        match daos.borrow().get(&pool_id) {
+            Some(station) => (true, Some(station.clone())),
+            None => (false, None)
+        }
+    });
+    
+    PoolStatus {
+        current_votes,
+        has_user_voted,
+        dao_created,
+        station_id,
+    }
 }
 
 // Note: create_dao function removed since we're using lbryfun pools instead

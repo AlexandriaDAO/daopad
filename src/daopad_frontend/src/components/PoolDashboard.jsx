@@ -3,34 +3,22 @@ import { useSelector } from 'react-redux';
 import { lbryfunService } from '../services/lbryfunService';
 import PoolCard from './PoolCard';
 
-function PoolDashboard({ onNavigateToProposal }) {
+function PoolDashboard() {
   const { principal, isAuthenticated } = useSelector(state => state.auth);
   const [pools, setPools] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filter, setFilter] = useState('all'); // all, live, upcoming
 
   useEffect(() => {
     fetchPools();
-  }, [filter]);
+  }, []);
 
   const fetchPools = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      let poolData;
-      
-      switch (filter) {
-        case 'live':
-          poolData = await lbryfunService.getLiveTokens();
-          break;
-        case 'upcoming':
-          poolData = await lbryfunService.getUpcomingTokens();
-          break;
-        default:
-          poolData = await lbryfunService.getAllTokenRecords();
-      }
+      const poolData = await lbryfunService.getAllTokenRecords();
       
       // Sort by creation time, newest first
       poolData.sort((a, b) => Number(b.created_time) - Number(a.created_time));
@@ -76,30 +64,9 @@ function PoolDashboard({ onNavigateToProposal }) {
       <div className="pools-header paper-content">
         <h2>LbryFun Token Pools</h2>
         <p>Browse and interact with token pools from LbryFun</p>
-        
-        <div className="filter-controls">
-          <button 
-            className={`filter-button ${filter === 'all' ? 'active' : ''}`}
-            onClick={() => setFilter('all')}
-          >
-            All Pools ({pools.length})
-          </button>
-          <button 
-            className={`filter-button ${filter === 'live' ? 'active' : ''}`}
-            onClick={() => setFilter('live')}
-          >
-            Live Pools
-          </button>
-          <button 
-            className={`filter-button ${filter === 'upcoming' ? 'active' : ''}`}
-            onClick={() => setFilter('upcoming')}
-          >
-            Upcoming Pools
-          </button>
-          <button onClick={handleRefresh} className="paper-button refresh-button">
-            Refresh
-          </button>
-        </div>
+        <button onClick={handleRefresh} className="refresh-button" title="Refresh">
+          ↻ Refresh
+        </button>
       </div>
 
       <div className="pools-grid">
@@ -109,7 +76,7 @@ function PoolDashboard({ onNavigateToProposal }) {
           </div>
         ) : (
           pools.map((pool) => (
-            <PoolCard key={pool.id} pool={pool} onNavigateToProposal={onNavigateToProposal} />
+            <PoolCard key={pool.id} pool={pool} />
           ))
         )}
       </div>

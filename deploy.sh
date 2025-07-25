@@ -9,6 +9,7 @@ export DFX_NETWORK=local
 echo "=== Deploying daopad ==="
 echo "DFX_NETWORK set to: $DFX_NETWORK"
 
+
 # Check if dfx is running
 if ! dfx ping &>/dev/null; then
     echo "ERROR: dfx is not running. Please start it manually without --clean flag"
