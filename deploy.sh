@@ -83,3 +83,27 @@ else
     echo "3. Try registering again with:"
     echo "   dfx canister call daopad_backend register_with_orbit '()'"
 fi
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# # For when it's time to add orbit station:
+# # For orbit_station (Alexandria DAO)
+# mkdir -p src/orbit_station && export DFX_WARNING=-mainnet_plaintext_identity && dfx canister --network ic metadata fec7w-zyaaa-aaaaa-qaffq-cai candid:service > src/orbit_station/orbit_station.did
+
+# # Copy the .did file to declarations directory
+# mkdir -p src/declarations/orbit_station
+# cp src/orbit_station/orbit_station.did src/declarations/orbit_station/orbit_station.did
+
+# # Ensure orbit_station declarations are properly generated
+# dfx generate orbit_station

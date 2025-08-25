@@ -1,24 +1,9 @@
-type PoolStatus = record {
-    current_votes: float64;
-    has_user_voted: bool;
-    dao_created: bool;
-    station_id: opt text;
-};
-
-type VoteResult = variant {
-    Voted: record { new_total: float64; };
-    DaoCreated: record { station_id: text; total_votes: float64; };
-};
-
-service : (opt text, opt text) -> {
-    "get_orbit_control_panel_id": () -> (text) query;
-    "get_lbryfun_canister_id": () -> (opt text) query;
-    "set_orbit_control_panel_id": (text) -> ();
-    "register_with_orbit": () -> (variant { Ok: text; Err: text });
-    "get_orbit_stations": () -> (variant { Ok: vec record { text; text }; Err: text });
-    "add_me_to_station": (text, text) -> (variant { Ok: text; Err: text });
+service : (opt text) -> {
+    // Query methods
+    "get_alexandria_station_id": () -> (opt text) query;
+    "health_check": () -> (text) query;
+    "get_backend_principal": () -> (text) query;
     
-    // Voting methods
-    "vote": (nat64, text) -> (variant { Ok: VoteResult; Err: text });
-    "get_pool_status": (nat64) -> (PoolStatus) query;
+    // Update methods
+    "set_alexandria_station_id": (text) -> ();
 }

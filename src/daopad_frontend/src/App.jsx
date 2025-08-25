@@ -5,13 +5,11 @@ import { useLogout } from './hooks/useLogout';
 import { setAuthSuccess, clearAuth, setAuthLoading, setAuthInitialized } from './features/auth/authSlice';
 import { fetchBalances } from './state/balance/balanceThunks';
 import { clearBalances } from './state/balance/balanceSlice';
-import PoolDashboard from './components/PoolDashboard';
 import './App.scss';
 
 function App() {
   const [activeStep, setActiveStep] = useState(null);
   const [copyFeedback, setCopyFeedback] = useState(false);
-  const [activeTab, setActiveTab] = useState('home');
   const dispatch = useDispatch();
   const { principal, isAuthenticated } = useSelector(state => state.auth);
   const { icpBalance, alexBalance, stakedAlexBalance, isLoading: balanceLoading } = useSelector(state => state.balance);
@@ -112,29 +110,12 @@ function App() {
         </div>
       </header>
 
-      <nav className="tab-navigation">
-        <button 
-          className={`tab ${activeTab === 'home' ? 'active' : ''}`}
-          onClick={() => setActiveTab('home')}
-        >
-          Home
-        </button>
-        <button 
-          className={`tab ${activeTab === 'daos' ? 'active' : ''}`}
-          onClick={() => setActiveTab('daos')}
-        >
-          DAOs
-        </button>
-      </nav>
-
-      {activeTab === 'home' && (
-        <>
-          <section className="intro">
-            <p>
-              Three steps. No lawyers. No fees except 1% revenue share. 
-              Your community becomes real partners with voting rights and profit sharing.
-            </p>
-          </section>
+      <section className="intro">
+        <p>
+          Three steps. No lawyers. No fees except 1% revenue share. 
+          Your community becomes real partners with voting rights and profit sharing.
+        </p>
+      </section>
 
       <section className="steps">
         <div className={`step ${activeStep === 1 ? 'active' : ''}`}>
@@ -210,7 +191,6 @@ function App() {
         </div>
       </section>
 
-
       <section className="faq">
         <h3>Questions?</h3>
         <details>
@@ -246,13 +226,6 @@ function App() {
           </p>
         </details>
       </section>
-        </>
-      )}
-
-      {activeTab === 'daos' && (
-        <PoolDashboard />
-      )}
-
 
       <footer>
         <p>
