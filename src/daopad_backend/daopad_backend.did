@@ -1,9 +1,17 @@
+type AlexandriaConfig = record {
+  requires_authentication : bool;
+  station_id : text;
+  integration_status : text;
+};
+type CacheStatus = record { last_updated : opt text; proposal_count : nat32 };
+type Result = variant { Ok : text; Err : text };
 service : (opt text) -> {
-    // Query methods
-    "get_alexandria_station_id": () -> (opt text) query;
-    "health_check": () -> (text) query;
-    "get_backend_principal": () -> (text) query;
-    
-    // Update methods
-    "set_alexandria_station_id": (text) -> ();
+  get_alexandria_config : () -> (AlexandriaConfig) query;
+  get_alexandria_station_id : () -> (opt text) query;
+  get_backend_principal : () -> (text) query;
+  get_cache_status : () -> (CacheStatus) query;
+  health_check : () -> (text) query;
+  refresh_alexandria_cache : () -> (Result);
+  register_backend_with_alexandria : () -> (Result);
+  set_alexandria_station_id : (text) -> ();
 }

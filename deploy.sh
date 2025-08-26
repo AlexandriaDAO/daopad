@@ -1,109 +1,291 @@
 #!/bin/bash
-# Deploy daopad to local network
+# Unified deployment script for DAOPad
+# Usage: ./deploy.sh [--network ic] [--fresh] [--backend-only|--frontend-only]
 
 set -e
 
-# Set environment variable for local development
-export DFX_NETWORK=local
+# Parse arguments
+NETWORK="local"
+FRESH_DEPLOY=false
+DEPLOY_TARGET="all"
+ALEXANDRIA_STATION_ID="fec7w-zyaaa-aaaaa-qaffq-cai"
 
-echo "=== Deploying daopad ==="
-echo "DFX_NETWORK set to: $DFX_NETWORK"
+# Track deployment success
+BACKEND_DEPLOYED=false
+FRONTEND_DEPLOYED=false
 
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --network)
+            NETWORK="$2"
+            shift 2
+            ;;
+        --fresh)
+            FRESH_DEPLOY=true
+            shift
+            ;;
+        --backend-only)
+            DEPLOY_TARGET="backend"
+            shift
+            ;;
+        --frontend-only)
+            DEPLOY_TARGET="frontend"
+            shift
+            ;;
+        --help)
+            echo "Usage: ./deploy.sh [options]"
+            echo ""
+            echo "Options:"
+            echo "  --network ic        Deploy to mainnet (default: local)"
+            echo "  --fresh            Clean deployment (uninstalls code first)"
+            echo "  --backend-only     Deploy only the backend"
+            echo "  --frontend-only    Deploy only the frontend"
+            echo "  --help             Show this help message"
+            echo ""
+            echo "Examples:"
+            echo "  ./deploy.sh                    # Deploy to local"
+            echo "  ./deploy.sh --network ic       # Deploy to mainnet"
+            echo "  ./deploy.sh --fresh            # Fresh local deployment"
+            echo "  ./deploy.sh --network ic --backend-only  # Deploy only backend to mainnet"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
 
-# Check if dfx is running
-if ! dfx ping &>/dev/null; then
-    echo "ERROR: dfx is not running. Please start it manually without --clean flag"
-    echo "Run: dfx start --background --host 127.0.0.1:4943"
-    exit 1
-fi
+# Display deployment configuration
+echo "================================================"
+echo "DAOPad Deployment"
+echo "================================================"
+echo "Network: $NETWORK"
+echo "Target: $DEPLOY_TARGET"
+echo "Fresh deploy: $FRESH_DEPLOY"
 
-# Check for --fresh flag
-if [[ "$1" == "--fresh" ]]; then
-    echo "Fresh deployment requested - uninstalling backend canister..."
-    dfx canister uninstall-code daopad_backend 2>/dev/null || true
-    echo "Backend canister uninstalled for fresh initialization"
-else
-    echo "Upgrading daopad canisters (use --fresh for clean deployment)..."
-fi
-
-echo "Creating canisters..."
-dfx canister create --all 2>/dev/null || echo "Canisters already created"
-
-echo "Deploying backend..."
-dfx deploy daopad_backend --mode upgrade 2>/dev/null || dfx deploy daopad_backend
-
-# If ORBIT_CONTROL_PANEL_ID is set, update it in the backend
-if [ ! -z "$ORBIT_CONTROL_PANEL_ID" ]; then
-    echo "Setting Orbit Control Panel ID to: $ORBIT_CONTROL_PANEL_ID"
-    dfx canister call daopad_backend set_orbit_control_panel_id "(\"$ORBIT_CONTROL_PANEL_ID\")" || echo "Failed to set control panel ID"
-fi
-
-echo "Deploying Internet Identity..."
-# Check if Internet Identity is already deployed
-if dfx canister id internet_identity >/dev/null 2>&1; then
-    echo "Internet Identity already deployed at $(dfx canister id internet_identity), skipping..."
-else
-    echo "Internet Identity not found, deploying..."
-    dfx deploy internet_identity --specified-id rdmx6-jaaaa-aaaaa-aaadq-cai
-fi
-
-echo "Building frontend..."
-cd src/daopad_frontend
-npm install
-npm run build
-cd ../..
-
-echo "Deploying frontend..."
-dfx deploy daopad_frontend --mode upgrade 2>/dev/null || dfx deploy daopad_frontend
-
-echo "=== Deployment complete ==="
-echo ""
-echo "Backend canister: $(dfx canister id daopad_backend)"
-echo "Frontend URL: http://$(dfx canister id daopad_frontend).localhost:4943"
-echo "Backend Candid UI: http://127.0.0.1:4943/?canisterId=$(dfx canister id __Candid_UI 2>/dev/null || echo 'vpyes-67777-77774-qaaeq-cai')&id=$(dfx canister id daopad_backend)"
-echo ""
-echo "=== Orbit Integration Setup ==="
-CONTROL_PANEL_ID=$(dfx canister call daopad_backend get_orbit_control_panel_id '()' 2>/dev/null | grep -o '"[^"]*"' | tr -d '"')
-echo "Current Orbit Control Panel ID: $CONTROL_PANEL_ID"
-
-# Try to register with Orbit
-echo "Attempting to register with Orbit..."
-REGISTER_RESULT=$(dfx canister call daopad_backend register_with_orbit '()' 2>&1)
-if [[ $REGISTER_RESULT == *"Ok"* ]]; then
-    echo "✓ Successfully registered with Orbit"
-elif [[ $REGISTER_RESULT == *"Already registered"* ]]; then
-    echo "✓ Already registered with Orbit"
-else
-    echo "✗ Failed to register with Orbit: $REGISTER_RESULT"
+if [ "$NETWORK" == "ic" ]; then
     echo ""
-    echo "To use Orbit integration:"
-    echo "1. Make sure Orbit is deployed locally"
-    echo "2. Update the control panel ID with:"
-    echo "   dfx canister call daopad_backend set_orbit_control_panel_id '(\"<control-panel-id>\")'"
-    echo "3. Try registering again with:"
-    echo "   dfx canister call daopad_backend register_with_orbit '()'"
+    echo "Mainnet Canister IDs (from canister_ids.json):"
+    if [ -f "canister_ids.json" ]; then
+        BACKEND_ID=$(jq -r '.daopad_backend.ic // empty' canister_ids.json)
+        FRONTEND_ID=$(jq -r '.daopad_frontend.ic // empty' canister_ids.json)
+        [ -n "$BACKEND_ID" ] && echo "  Backend:  $BACKEND_ID"
+        [ -n "$FRONTEND_ID" ] && echo "  Frontend: $FRONTEND_ID"
+    fi
+    echo "  Alexandria Station: $ALEXANDRIA_STATION_ID"
 fi
 
+echo "================================================"
+echo ""
 
+# Check network connection
+if [ "$NETWORK" == "local" ]; then
+    # Check if dfx is running for local
+    if ! dfx ping &>/dev/null; then
+        echo "ERROR: dfx is not running. Please start it manually"
+        echo "Run: dfx start --background --host 127.0.0.1:4943"
+        exit 1
+    fi
+else
+    # For mainnet, check identity
+    echo "Checking identity for mainnet deployment..."
+    IDENTITY=$(dfx identity whoami)
+    echo "Using identity: $IDENTITY"
+    echo ""
+    read -p "Continue with this identity? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Deployment cancelled. Switch identity with: dfx identity use <identity-name>"
+        exit 1
+    fi
+fi
 
+# Handle fresh deployment if requested
+if [ "$FRESH_DEPLOY" = true ] && [ "$NETWORK" == "local" ]; then
+    if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
+        echo "Fresh deployment requested - uninstalling backend canister..."
+        dfx canister uninstall-code daopad_backend 2>/dev/null || true
+        echo "Backend canister uninstalled for fresh initialization"
+    fi
+fi
 
+# Deploy backend
+if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
+    echo ""
+    echo "Building backend..."
+    
+    # Build the WASM
+    if ! cargo build --target wasm32-unknown-unknown --release -p daopad_backend --locked; then
+        echo "❌ Backend build failed!"
+        exit 1
+    fi
+    
+    # Extract candid interface
+    echo "Extracting Candid interface..."
+    if command -v candid-extractor &> /dev/null; then
+        candid-extractor target/wasm32-unknown-unknown/release/daopad_backend.wasm > src/daopad_backend/daopad_backend.did
+        echo "✓ Candid interface extracted"
+    else
+        echo "❌ ERROR: candid-extractor not found!"
+        echo "Please install with: cargo install candid-extractor"
+        exit 1
+    fi
+    
+    echo "Deploying backend..."
+    if [ "$NETWORK" == "ic" ]; then
+        # Deploy to mainnet using standard dfx deploy
+        echo "Deploying backend to mainnet..."
+        if dfx deploy --network ic daopad_backend --argument "(opt \"$ALEXANDRIA_STATION_ID\")"; then
+            echo "✓ Backend deployed successfully"
+            BACKEND_DEPLOYED=true
+        else
+            echo "❌ Backend deployment failed!"
+            exit 1
+        fi
+    else
+        # For local deployment
+        if dfx deploy daopad_backend --argument "(opt \"$ALEXANDRIA_STATION_ID\")"; then
+            echo "✓ Backend deployed successfully"
+            BACKEND_DEPLOYED=true
+        else
+            echo "❌ Backend deployment failed!"
+            exit 1
+        fi
+    fi
+fi
 
+# Deploy frontend
+if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "frontend" ]; then
+    echo ""
+    echo "Building frontend..."
+    cd src/daopad_frontend
+    
+    if ! npm install; then
+        echo "❌ npm install failed!"
+        cd ../..
+        exit 1
+    fi
+    
+    # Generate declarations for backend
+    echo "Generating backend declarations..."
+    dfx generate daopad_backend || echo "Warning: Failed to generate backend declarations"
+    
+    if ! npm run build; then
+        echo "❌ Frontend build failed!"
+        cd ../..
+        exit 1
+    fi
+    
+    cd ../..
+    
+    echo "Deploying frontend..."
+    if [ "$NETWORK" == "ic" ]; then
+        # Deploy to mainnet using standard dfx deploy
+        echo "Deploying frontend to mainnet..."
+        if dfx deploy --network ic daopad_frontend; then
+            FRONTEND_ID=$(dfx canister --network ic id daopad_frontend 2>/dev/null || echo "unknown")
+            echo "✓ Frontend deployed successfully"
+            echo "   Frontend URL: https://$FRONTEND_ID.icp0.io/"
+            FRONTEND_DEPLOYED=true
+        else
+            echo "❌ Frontend deployment failed!"
+            exit 1
+        fi
+    else
+        # Deploy Internet Identity for local development
+        if [ "$NETWORK" == "local" ] && [ "$DEPLOY_TARGET" == "all" ]; then
+            if dfx canister id internet_identity >/dev/null 2>&1; then
+                echo "Internet Identity already deployed, skipping..."
+            else
+                echo "Deploying Internet Identity..."
+                if ! dfx deploy internet_identity; then
+                    echo "⚠️  Internet Identity deployment failed, continuing anyway..."
+                fi
+            fi
+        fi
+        
+        # Deploy frontend locally
+        if dfx deploy daopad_frontend; then
+            echo "✓ Frontend deployed successfully"
+            FRONTEND_DEPLOYED=true
+        else
+            echo "❌ Frontend deployment failed!"
+            exit 1
+        fi
+    fi
+fi
 
+# Display deployment summary
+echo ""
+echo "================================================"
+echo "Deployment Summary"
+echo "================================================"
 
+if [ "$NETWORK" == "ic" ]; then
+    echo ""
+    echo "Mainnet Status:"
+    if [ "$BACKEND_DEPLOYED" == true ]; then
+        BACKEND_ID=$(dfx canister --network ic id daopad_backend 2>/dev/null || echo "unknown")
+        echo "  ✓ Backend:  $BACKEND_ID"
+    elif [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
+        echo "  ❌ Backend:  Deployment failed"
+    fi
+    
+    if [ "$FRONTEND_DEPLOYED" == true ]; then
+        FRONTEND_ID=$(dfx canister --network ic id daopad_frontend 2>/dev/null || echo "unknown")
+        echo "  ✓ Frontend: https://$FRONTEND_ID.icp0.io/"
+    elif [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "frontend" ]; then
+        echo "  ❌ Frontend: Deployment failed"
+    fi
+    
+    if [ "$BACKEND_DEPLOYED" == true ]; then
+        echo ""
+        echo "Next steps for backend:"
+        echo "1. Get the backend principal:"
+        echo "   dfx canister --network ic call daopad_backend get_backend_principal"
+        echo ""
+        echo "2. Register the principal with Alexandria Orbit Station ($ALEXANDRIA_STATION_ID)"
+        echo ""
+        echo "3. Test the integration:"
+        echo "   dfx canister --network ic call daopad_backend get_cache_status"
+        echo "   dfx canister --network ic call daopad_backend get_alexandria_proposals"
+    fi
+else
+    echo ""
+    echo "Local Status:"
+    if [ "$BACKEND_DEPLOYED" == true ]; then
+        BACKEND_ID=$(dfx canister id daopad_backend)
+        echo "  ✓ Backend:  $BACKEND_ID"
+        echo "    Candid UI: http://127.0.0.1:4943/?canisterId=$(dfx canister id __Candid_UI 2>/dev/null || echo 'vpyes-67777-77774-qaaeq-cai')&id=$BACKEND_ID"
+    elif [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
+        echo "  ❌ Backend: Deployment failed"
+    fi
+    
+    if [ "$FRONTEND_DEPLOYED" == true ]; then
+        FRONTEND_ID=$(dfx canister id daopad_frontend)
+        echo "  ✓ Frontend: http://$FRONTEND_ID.localhost:4943"
+    elif [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "frontend" ]; then
+        echo "  ❌ Frontend: Deployment failed"
+    fi
+    
+    if [ "$BACKEND_DEPLOYED" == true ]; then
+        echo ""
+        echo "Testing backend locally:"
+        echo "  dfx canister call daopad_backend get_backend_principal"
+        echo "  dfx canister call daopad_backend get_cache_status"
+    fi
+fi
 
+# Show overall status
+echo ""
+if [ "$BACKEND_DEPLOYED" == false ] && [ "$FRONTEND_DEPLOYED" == false ]; then
+    echo "⚠️  No components were successfully deployed. Please check the errors above."
+elif [ "$BACKEND_DEPLOYED" == false ] || [ "$FRONTEND_DEPLOYED" == false ]; then
+    echo "⚠️  Some components failed to deploy. Please check the warnings above."
+else
+    echo "✅ All requested components deployed successfully!"
+fi
 
-
-
-
-
-
-# # For when it's time to add orbit station:
-# # For orbit_station (Alexandria DAO)
-# mkdir -p src/orbit_station && export DFX_WARNING=-mainnet_plaintext_identity && dfx canister --network ic metadata fec7w-zyaaa-aaaaa-qaffq-cai candid:service > src/orbit_station/orbit_station.did
-
-# # Copy the .did file to declarations directory
-# mkdir -p src/declarations/orbit_station
-# cp src/orbit_station/orbit_station.did src/declarations/orbit_station/orbit_station.did
-
-# # Ensure orbit_station declarations are properly generated
-# dfx generate orbit_station
+echo "================================================"

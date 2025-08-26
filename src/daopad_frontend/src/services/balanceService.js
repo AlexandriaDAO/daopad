@@ -31,7 +31,7 @@ const icpSwapIdl = ({ IDL }) => {
 
 export const createBalanceService = (identity) => {
   const isLocal = import.meta.env.VITE_DFX_NETWORK === "local";
-  const host = isLocal ? "http://localhost:4943" : "https://ic0.app";
+  const host = isLocal ? "http://localhost:4943" : "https://icp0.io";
   console.log("Creating balance service with host:", host, "isLocal:", isLocal);
   
   const agent = new HttpAgent({

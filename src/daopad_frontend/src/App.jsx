@@ -5,11 +5,13 @@ import { useLogout } from './hooks/useLogout';
 import { setAuthSuccess, clearAuth, setAuthLoading, setAuthInitialized } from './features/auth/authSlice';
 import { fetchBalances } from './state/balance/balanceThunks';
 import { clearBalances } from './state/balance/balanceSlice';
+import AlexandriaProposals from './components/AlexandriaProposals';
 import './App.scss';
 
 function App() {
   const [activeStep, setActiveStep] = useState(null);
   const [copyFeedback, setCopyFeedback] = useState(false);
+  const [currentView, setCurrentView] = useState('home'); // 'home' or 'proposals'
   const dispatch = useDispatch();
   const { principal, isAuthenticated } = useSelector(state => state.auth);
   const { icpBalance, alexBalance, stakedAlexBalance, isLoading: balanceLoading } = useSelector(state => state.balance);
@@ -65,6 +67,20 @@ function App() {
             <h1>DAOPad</h1>
             <p className="project-info">an Alexandria project</p>
             <p className="subtitle">Turn your local business into a community-owned entity</p>
+            <div className="view-toggle">
+              <button 
+                className={`view-btn ${currentView === 'home' ? 'active' : ''}`}
+                onClick={() => setCurrentView('home')}
+              >
+                Home
+              </button>
+              <button 
+                className={`view-btn ${currentView === 'proposals' ? 'active' : ''}`}
+                onClick={() => setCurrentView('proposals')}
+              >
+                Alexandria Proposals
+              </button>
+            </div>
           </div>
           <div className="auth-section">
             {isAuthenticated ? (
@@ -110,14 +126,16 @@ function App() {
         </div>
       </header>
 
-      <section className="intro">
-        <p>
-          Three steps. No lawyers. No fees except 1% revenue share. 
-          Your community becomes real partners with voting rights and profit sharing.
-        </p>
-      </section>
+      {currentView === 'home' ? (
+        <>
+          <section className="intro">
+            <p>
+              Three steps. No lawyers. No fees except 1% revenue share. 
+              Your community becomes real partners with voting rights and profit sharing.
+            </p>
+          </section>
 
-      <section className="steps">
+          <section className="steps">
         <div className={`step ${activeStep === 1 ? 'active' : ''}`}>
           <div className="step-header" onClick={() => setActiveStep(activeStep === 1 ? null : 1)}>
             <span className="step-number">1</span>
@@ -189,9 +207,9 @@ function App() {
             </div>
           )}
         </div>
-      </section>
+          </section>
 
-      <section className="faq">
+          <section className="faq">
         <h3>Questions?</h3>
         <details>
           <summary>What's the catch?</summary>
@@ -225,7 +243,11 @@ function App() {
             that can own property, hire employees, and operate like any business.
           </p>
         </details>
-      </section>
+          </section>
+        </>
+      ) : (
+        <AlexandriaProposals />
+      )}
 
       <footer>
         <p>

@@ -2,19 +2,19 @@
 
 ## Overview
 
-This document outlines the plan to integrate the Daopad application with the Alexandria DAO's Orbit Station to query and display governance proposals. The integration will allow users to view Alexandria DAO proposals through the Daopad interface without requiring individual authentication.
+This document outlines the plan to integrate the simplified Daopad application with the Alexandria DAO's Orbit Station to query and display governance proposals. After removing all lbryfun/pool voting functionality, we now have a clean foundation focused solely on Alexandria DAO integration. The integration will allow users to view Alexandria DAO proposals through the Daopad interface without requiring individual authentication.
 
 ## Key Technical Confirmation
 
 **Q: Can a locally deployed backend canister call mainnet canisters?**  
-**A: Yes!** The existing Daopad backend already makes successful inter-canister calls to the mainnet Orbit Control Panel (`wdqqk-naaaa-aaaaa-774aq-cai`). We will use the same pattern to call the Alexandria Orbit Station (`fec7w-zyaaa-aaaaa-qaffq-cai`).
+**A: Yes!** The previous version successfully made inter-canister calls to the mainnet Orbit Control Panel. We will use the same pattern to call the Alexandria Orbit Station (`fec7w-zyaaa-aaaaa-qaffq-cai`).
 
 ## Architecture
 
-### Current State
-- **Daopad Backend**: Rust canister that manages voting for lbryfun pools and creates DAOs via Orbit Control Panel
-- **Daopad Frontend**: React application with Internet Identity authentication
-- **Existing Integration**: Backend already calls mainnet Orbit Control Panel for station creation
+### Current State (Post-Cleanup)
+- **Daopad Backend**: Minimal Rust canister with Alexandria Station ID storage, health check, and backend principal query
+- **Daopad Frontend**: Single-page React application with home page information and Internet Identity authentication
+- **Removed Features**: All lbryfun pool voting, DAO creation, and Orbit Control Panel integration have been removed
 
 ### Proposed Architecture
 ```
@@ -59,9 +59,9 @@ Since Orbit Station requires registered users for `list_requests` (even with "pu
 
 **Changes**:
 - Import alexandria_dao module
-- Add storage for cached proposals
+- Add storage for cached proposals (already has ALEXANDRIA_STATION_ID storage)
 - Expose new query and update methods
-- Add initialization for Alexandria Station ID
+- Enhance existing init function (already accepts alexandria_station_id)
 
 ### Phase 2: Candid Interface Updates
 
@@ -104,10 +104,14 @@ type ProposalFilter = record {
 
 #### 2.2 Add New Service Methods
 ```candid
-service : {
-    // ... existing methods ...
+service : (opt text) -> {
+    // Existing methods
+    "get_alexandria_station_id": () -> (opt text) query;
+    "health_check": () -> (text) query;
+    "get_backend_principal": () -> (text) query;
+    "set_alexandria_station_id": (text) -> ();
     
-    // Alexandria DAO Integration
+    // New Alexandria DAO Integration methods
     "register_backend_with_alexandria": () -> (variant { Ok: text; Err: text });
     "get_alexandria_proposals": (opt ProposalFilter) -> (variant { Ok: vec ProposalSummary; Err: text }) query;
     "get_proposal_details": (text) -> (variant { Ok: ProposalDetails; Err: text }) query;
@@ -151,9 +155,16 @@ service : {
 **File**: `src/daopad_frontend/src/App.jsx`
 
 **Changes**:
-- Add third tab: "Alexandria DAO"
+Since we removed tabs, we have two options:
+
+**Option A**: Add as a new section below FAQ
 - Import AlexandriaProposals component
-- Update navigation logic
+- Add proposals section after FAQ, before footer
+
+**Option B**: Add a toggle button to switch views
+- Add view state ('info' or 'proposals')
+- Toggle between home content and proposals
+- Keep header and footer visible in both views
 
 ### Phase 4: Styling
 
@@ -182,14 +193,12 @@ VITE_AUTO_REFRESH_INTERVAL=30000
 
 ### Initialization Parameters
 
-The backend `init` function will accept:
+The backend `init` function already accepts:
 ```rust
-init(
-    orbit_control_panel_id: Option<String>,  // existing
-    lbryfun_canister_id: Option<String>,     // existing
-    alexandria_station_id: Option<String>     // new
-)
+init(alexandria_station_id: Option<String>)
 ```
+
+No changes needed - this is already implemented.
 
 ## Deployment Steps
 
@@ -197,11 +206,7 @@ init(
 
 1. **Deploy Backend**:
    ```bash
-   dfx deploy daopad_backend --argument '(
-     opt "wdqqk-naaaa-aaaaa-774aq-cai",
-     opt "oni4e-oyaaa-aaaap-qp2pq-cai",
-     opt "fec7w-zyaaa-aaaaa-qaffq-cai"
-   )'
+   dfx deploy daopad_backend --argument '(opt "fec7w-zyaaa-aaaaa-qaffq-cai")'
    ```
 
 2. **Register Backend with Alexandria**:
@@ -314,14 +319,24 @@ init(
 
 ## Timeline Estimate
 
-- **Phase 1**: Backend Integration - 2 days
-- **Phase 2**: Interface Updates - 1 day
-- **Phase 3**: Frontend Components - 3 days
-- **Phase 4**: Styling & Polish - 1 day
-- **Testing & Deployment**: 2 days
+Given the simplified codebase:
 
-**Total**: ~9 days
+- **Phase 1**: Backend Integration - 1-2 days (cleaner starting point)
+- **Phase 2**: Interface Updates - 0.5 days (minimal changes)
+- **Phase 3**: Frontend Components - 2 days (simpler integration)
+- **Phase 4**: Styling & Polish - 0.5 days
+- **Testing & Deployment**: 1-2 days
+
+**Total**: ~5-7 days (reduced from 9 days)
+
+## Key Benefits of Simplified Codebase
+
+- **Cleaner Integration**: No existing DAO code to work around
+- **Single Focus**: Dedicated to Alexandria DAO only
+- **Faster Development**: Reduced from ~9 to ~5-7 days
+- **Less Complexity**: No multi-DAO support, no pool voting logic
+- **Better Maintainability**: Simpler codebase easier to debug and extend
 
 ## Conclusion
 
-This integration will provide Daopad users with seamless access to Alexandria DAO proposals without requiring individual authentication. The backend proxy pattern elegantly solves the authentication challenge while maintaining good performance through caching.
+With the lbryfun/pool voting functionality removed, this integration is now much more straightforward. The simplified codebase provides a clean foundation for displaying Alexandria DAO proposals. The backend proxy pattern remains the optimal solution for the authentication challenge while maintaining good performance through caching.
