@@ -1,17 +1,51 @@
 type AlexandriaConfig = record {
-  requires_authentication : bool;
-  station_id : text;
-  integration_status : text;
+  backend_principal : text;
+  station_canister_id : text;
+  frontend_url : text;
 };
-type CacheStatus = record { last_updated : opt text; proposal_count : nat32 };
-type Result = variant { Ok : text; Err : text };
+type ProposalSummary = record {
+  id : text;
+  status : text;
+  title : text;
+  operation_type : text;
+  required_approvals : nat32;
+  created_at : text;
+  approval_count : nat32;
+};
+type RegistrationInfo = record {
+  request_id : text;
+  user_name : text;
+  staked_amount : nat;
+  timestamp : nat64;
+};
+type RegistrationResult = variant {
+  Error : record { message : text };
+  AlreadyRegistered : record { request_id : text; registered_at : nat64 };
+  InsufficientStake : record { required : nat; current : nat };
+  Success : record { request_id : text; message : text };
+};
+type RegistrationStatus = record {
+  request_id : opt text;
+  user_name : opt text;
+  staked_amount : nat;
+  required_stake : nat;
+  is_registered : bool;
+};
+type Result = variant { Ok : vec ProposalSummary; Err : text };
+type Result_1 = variant { Ok : text; Err : text };
 service : (opt text) -> {
+  check_registration_status : () -> (RegistrationStatus);
   get_alexandria_config : () -> (AlexandriaConfig) query;
+  get_alexandria_proposals : () -> (Result) query;
   get_alexandria_station_id : () -> (opt text) query;
   get_backend_principal : () -> (text) query;
-  get_cache_status : () -> (CacheStatus) query;
+  get_cache_status : () -> (opt text, nat32) query;
+  get_required_stake_amount : () -> (nat) query;
   health_check : () -> (text) query;
-  refresh_alexandria_cache : () -> (Result);
-  register_backend_with_alexandria : () -> (Result);
+  list_registered_users : () -> (vec record { text; RegistrationInfo }) query;
+  refresh_cache : () -> (Result_1);
+  register_as_orbit_operator : () -> (RegistrationResult);
+  register_backend_with_alexandria : () -> (Result_1);
   set_alexandria_station_id : (text) -> ();
+  set_minimum_stake : (nat) -> (Result_1);
 }
