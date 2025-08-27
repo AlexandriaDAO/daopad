@@ -14,7 +14,8 @@ const ICP_SWAP_ID: &str = "54fqz-5iaaa-aaaap-qkmqa-cai";
 // Timestamp type alias
 pub type TimestampRfc3339 = String; // RFC3339 formatted timestamp
 
-// UUID type (for user/group IDs)
+// UUID type (for user/group IDs) - kept for documentation purposes
+#[allow(dead_code)]
 pub type UUID = String; // Hyphenated format: "00000000-0000-4000-8000-000000000000"
 
 // ========== STAKING TYPES ==========
@@ -389,6 +390,7 @@ impl ProposalCache {
         }
     }
 
+    #[allow(dead_code)]
     fn is_valid(&self) -> bool {
         if let Some(last_updated) = self.last_updated {
             let now = ic_cdk::api::time() / 1_000_000_000; // Convert to seconds
@@ -398,6 +400,7 @@ impl ProposalCache {
         }
     }
 
+    #[allow(dead_code)]
     fn update(&mut self, proposals: Vec<ProposalSummary>) {
         self.proposals = proposals;
         self.last_updated = Some(ic_cdk::api::time() / 1_000_000_000);
@@ -727,6 +730,7 @@ struct EvaluationSummaryReason {}
 // Public functions
 
 // Query version - can call other query methods but cannot update cache
+#[allow(dead_code)]
 pub async fn fetch_proposals_no_cache(filter: Option<ProposalFilter>) -> Result<Vec<ProposalSummary>, String> {
     let station_id = Principal::from_text(ALEXANDRIA_STATION_ID)
         .map_err(|e| format!("Invalid station ID: {}", e))?;
@@ -812,6 +816,7 @@ pub async fn register_with_alexandria_station() -> Result<String, String> {
     ))
 }
 
+#[allow(dead_code)]
 pub async fn fetch_proposals(filter: Option<ProposalFilter>) -> Result<Vec<ProposalSummary>, String> {
     // Check cache first
     let cached = PROPOSAL_CACHE.with(|cache| {
@@ -908,6 +913,7 @@ pub async fn fetch_proposals(filter: Option<ProposalFilter>) -> Result<Vec<Propo
     }
 }
 
+#[allow(dead_code)]
 pub async fn get_proposal_details(proposal_id: String) -> Result<ProposalDetails, String> {
     let station_id = Principal::from_text(ALEXANDRIA_STATION_ID)
         .map_err(|e| format!("Invalid station ID: {}", e))?;

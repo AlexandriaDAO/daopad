@@ -181,11 +181,32 @@ export class OrbitStationService {
   
   async listRequests(filter = {}) {
     try {
+      // For optional fields in Candid, [] means None, [value] means Some(value)
+      // For variants, we need to ensure they're properly formatted
+      
+      // Build status filter - wrap the array in another array for the optional
+      let statusFilter = [];
+      if (filter.status) {
+        const statusVariant = {};
+        statusVariant[filter.status] = null;
+        // For IDL.Opt(IDL.Vec(...)), we need [[variant]] not [variant]
+        statusFilter = [[statusVariant]];
+        console.log('Status filter (for optional vec):', statusFilter);
+      }
+      
+      // Build operation type variant similarly
+      let typeFilter = [];
+      if (filter.type) {
+        const typeVariant = {};
+        typeVariant[filter.type] = null;
+        typeFilter = [[typeVariant]];
+      }
+      
       const input = {
         requester_ids: [],
         approver_ids: [],
-        statuses: filter.status ? [{ [filter.status]: null }] : [],
-        operation_types: filter.type ? [{ [filter.type]: null }] : [],
+        statuses: statusFilter,
+        operation_types: typeFilter,
         expiration_from_dt: [],
         expiration_to_dt: [],
         created_from_dt: filter.fromDate ? [filter.fromDate] : [],

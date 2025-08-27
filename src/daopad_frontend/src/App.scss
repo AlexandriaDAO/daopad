@@ -264,10 +264,10 @@ header {
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border: 1px solid darken($accent-blue, 10%);
+  border: 1px solid color.adjust($accent-blue, $lightness: -10%);
   
   &:hover {
-    background: darken($accent-blue, 10%);
+    background: color.adjust($accent-blue, $lightness: -10%);
   }
 }
 
@@ -604,7 +604,7 @@ header {
     .add-operator-btn {
       background: $accent-blue;
       color: white;
-      border: 1px solid darken($accent-blue, 10%);
+      border: 1px solid color.adjust($accent-blue, $lightness: -10%);
       padding: 0.375rem 0.875rem;
       font-weight: 500;
       font-size: 0.75rem;
@@ -614,7 +614,7 @@ header {
       transition: all 0.2s ease;
       
       &:hover:not(:disabled) {
-        background: darken($accent-blue, 10%);
+        background: color.adjust($accent-blue, $lightness: -10%);
       }
       
       &:disabled {
@@ -653,7 +653,7 @@ header {
         .submit-btn {
           background: #4CAF50;
           color: white;
-          border: 1px solid darken(#4CAF50, 10%);
+          border: 1px solid color.adjust(#4CAF50, $lightness: -10%);
           padding: 0.375rem 0.875rem;
           font-weight: 500;
           font-size: 0.75rem;
@@ -663,7 +663,7 @@ header {
           transition: all 0.2s ease;
           
           &:hover:not(:disabled) {
-            background: darken(#4CAF50, 10%);
+            background: color.adjust(#4CAF50, $lightness: -10%);
           }
           
           &:disabled {
@@ -675,7 +675,7 @@ header {
         .cancel-btn {
           background: $text-secondary;
           color: white;
-          border: 1px solid darken($text-secondary, 10%);
+          border: 1px solid color.adjust($text-secondary, $lightness: -10%);
           padding: 0.375rem 0.875rem;
           font-weight: 500;
           font-size: 0.75rem;
@@ -685,7 +685,7 @@ header {
           transition: all 0.2s ease;
           
           &:hover:not(:disabled) {
-            background: darken($text-secondary, 10%);
+            background: color.adjust($text-secondary, $lightness: -10%);
           }
           
           &:disabled {
@@ -788,7 +788,7 @@ header {
       button {
         background: $accent-blue;
         color: white;
-        border: 1px solid darken($accent-blue, 10%);
+        border: 1px solid color.adjust($accent-blue, $lightness: -10%);
         padding: 0.5rem 1rem;
         cursor: pointer;
         font-weight: 500;
@@ -798,7 +798,7 @@ header {
         transition: all 0.2s ease;
 
         &:hover:not(:disabled) {
-          background: darken($accent-blue, 10%);
+          background: color.adjust($accent-blue, $lightness: -10%);
         }
 
         &:disabled {
@@ -810,13 +810,13 @@ header {
   }
 
   .stake-notice {
-    background: lighten(#FF9800, 40%);
+    background: color.adjust(#FF9800, $lightness: 40%);
     border: 1px solid #FF9800;
     padding: 1rem;
     margin-bottom: 1.5rem;
 
     p {
-      color: darken(#FF9800, 10%);
+      color: color.adjust(#FF9800, $lightness: -10%);
       margin: 0;
       font-size: 0.875rem;
       font-weight: 500;
@@ -916,7 +916,7 @@ header {
         width: 100%;
         background: #4CAF50;
         color: white;
-        border: 1px solid darken(#4CAF50, 10%);
+        border: 1px solid color.adjust(#4CAF50, $lightness: -10%);
         padding: 0.5rem;
         cursor: pointer;
         font-weight: 500;
@@ -926,12 +926,12 @@ header {
         transition: all 0.2s ease;
 
         &:hover:not(:disabled) {
-          background: darken(#4CAF50, 10%);
+          background: color.adjust(#4CAF50, $lightness: -10%);
         }
 
         &:disabled {
-          background: lighten(#4CAF50, 30%);
-          border-color: lighten(#4CAF50, 20%);
+          background: color.adjust(#4CAF50, $lightness: 30%);
+          border-color: color.adjust(#4CAF50, $lightness: 20%);
           cursor: not-allowed;
         }
       }
@@ -948,11 +948,11 @@ header {
         font-size: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        border: 1px solid darken($accent-blue, 10%);
+        border: 1px solid color.adjust($accent-blue, $lightness: -10%);
         transition: all 0.2s ease;
 
         &:hover {
-          background: darken($accent-blue, 10%);
+          background: color.adjust($accent-blue, $lightness: -10%);
         }
       }
 
@@ -1054,15 +1054,15 @@ header {
           &.accept-button {
             background: #4CAF50;
             color: white;
-            border-color: darken(#4CAF50, 10%);
+            border-color: color.adjust(#4CAF50, $lightness: -10%);
             
             &:hover:not(:disabled) {
-              background: darken(#4CAF50, 10%);
+              background: color.adjust(#4CAF50, $lightness: -10%);
             }
             
             &:disabled {
-              background: lighten(#4CAF50, 30%);
-              border-color: lighten(#4CAF50, 20%);
+              background: color.adjust(#4CAF50, $lightness: 30%);
+              border-color: color.adjust(#4CAF50, $lightness: 20%);
               cursor: not-allowed;
             }
           }
@@ -1070,15 +1070,15 @@ header {
           &.reject-button {
             background: #f44336;
             color: white;
-            border-color: darken(#f44336, 10%);
+            border-color: color.adjust(#f44336, $lightness: -10%);
             
             &:hover:not(:disabled) {
-              background: darken(#f44336, 10%);
+              background: color.adjust(#f44336, $lightness: -10%);
             }
             
             &:disabled {
-              background: lighten(#f44336, 30%);
-              border-color: lighten(#f44336, 20%);
+              background: color.adjust(#f44336, $lightness: 30%);
+              border-color: color.adjust(#f44336, $lightness: 20%);
               cursor: not-allowed;
             }
           }
@@ -1566,7 +1566,7 @@ footer {
       transition: all 0.2s ease;
       
       &:hover:not(:disabled) {
-        background: lighten($ink-black, 10%);
+        background: color.adjust($ink-black, $lightness: 10%);
       }
       
       &:disabled {
@@ -1736,13 +1736,13 @@ footer {
       .station-info {
         margin-top: 0.75rem;
         padding: 0.75rem;
-        background: lighten($accent-blue, 45%);
-        border: 1px solid lighten($accent-blue, 30%);
+        background: color.adjust($accent-blue, $lightness: 45%);
+        border: 1px solid color.adjust($accent-blue, $lightness: 30%);
         border-radius: 4px;
         
         p {
           margin: 0;
-          color: darken($accent-blue, 20%);
+          color: color.adjust($accent-blue, $lightness: -20%);
           font-size: 0.8125rem;
           font-weight: 500;
           text-align: center;
@@ -1778,7 +1778,7 @@ footer {
           color: white;
           
           &:hover {
-            background: darken($accent-blue, 10%);
+            background: color.adjust($accent-blue, $lightness: -10%);
           }
         }
         
@@ -1798,7 +1798,7 @@ footer {
           color: white;
           
           &:hover {
-            background: darken(#4CAF50, 10%);
+            background: color.adjust(#4CAF50, $lightness: -10%);
           }
         }
       }
