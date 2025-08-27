@@ -1,8 +1,0 @@
-// Security policy for frontend assets
-[
-  {
-    // Apply security headers to all assets
-    "match": "**/*",
-    "security_policy": "standard"
-  }
-]

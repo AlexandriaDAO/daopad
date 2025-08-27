@@ -1,6 +1,9 @@
 // Paper Document Theme - Swiss Minimalist Monochrome
 @use 'sass:color';
 
+// Import component styles
+@import './components/AlexandriaProposals.scss';
+
 // Color Variables
 $paper-white: #FAFAF9;
 $ink-black: #000000;

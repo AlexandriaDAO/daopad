@@ -1,0 +1,7 @@
+// Security policy configuration for frontend assets
+[
+  {
+    "match": "**/*",
+    "security_policy": "standard"
+  }
+]

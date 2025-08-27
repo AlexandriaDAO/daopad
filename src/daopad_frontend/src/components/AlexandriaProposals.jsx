@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { useIdentity } from '../hooks/useIdentity';
 import { OrbitStationService } from '../services/orbitStation';
 import { DAOPadBackendService } from '../services/daopadBackend';
 import ProposalCard from './ProposalCard';
 import ProposalDetailsModal from './ProposalDetailsModal';
+import './AlexandriaProposals.scss';
 
 const AlexandriaProposals = () => {
   const [proposals, setProposals] = useState([]);
@@ -30,49 +31,50 @@ const AlexandriaProposals = () => {
   const [orbitService, setOrbitService] = useState(null);
   const [daopadService, setDaopadService] = useState(null);
 
-  // Initialize services when identity changes
+  // Combined effect for service initialization and registration check
+  // This ensures registration is checked whenever identity/authentication changes
   useEffect(() => {
-    setOrbitService(new OrbitStationService(identity));
-    setDaopadService(new DAOPadBackendService(identity));
-  }, [identity]);
+    // Clear everything when logging out
+    if (!identity || !isAuthenticated) {
+      setOrbitService(null);
+      setDaopadService(null);
+      setRegistrationStatus(null);
+      setProposals([]);
+      setLoading(false);
+      return;
+    }
 
-  // Check registration status when DAOPad service is ready
-  useEffect(() => {
+    // Initialize services with new identity
+    const newOrbitService = new OrbitStationService(identity);
+    const newDaopadService = new DAOPadBackendService(identity);
+    setOrbitService(newOrbitService);
+    setDaopadService(newDaopadService);
+
+    // Check registration status with the new services
     const checkRegistration = async () => {
-      if (!daopadService || !isAuthenticated) {
-        setRegistrationStatus(null);
-        setLoading(false);
-        return;
-      }
-      
       setCheckingRegistration(true);
+      setLoading(true);
       try {
-        const result = await daopadService.checkRegistrationStatus();
+        const result = await newDaopadService.checkRegistrationStatus();
         console.log('Registration status check result:', result);
         if (result.success) {
           setRegistrationStatus(result.data);
-          // If registered, proceed to fetch proposals
-          if (result.data.is_registered && orbitService) {
-            await fetchProposals();
-          } else {
-            setLoading(false);
-          }
+          // Registration status is set, the effect watching registrationStatus will handle fetching proposals
         } else {
           console.error('Failed to check registration:', result.error);
           setError(`Failed to check registration status: ${result.error}`);
-          setLoading(false);
         }
       } catch (err) {
         console.error('Error checking registration status:', err);
         setError(`Failed to check registration status: ${err.message}`);
-        setLoading(false);
       } finally {
         setCheckingRegistration(false);
+        setLoading(false);
       }
     };
 
     checkRegistration();
-  }, [daopadService, orbitService, isAuthenticated]);
+  }, [identity, isAuthenticated]); // Key dependencies: identity and isAuthenticated
   
   // Periodically re-check registration status to catch external changes
   useEffect(() => {
@@ -103,7 +105,7 @@ const AlexandriaProposals = () => {
   }, [daopadService, isAuthenticated, orbitService]);
 
   // Fetch proposals (only called when user is registered)
-  const fetchProposals = async () => {
+  const fetchProposals = useCallback(async () => {
     if (!orbitService) return;
     
     setLoading(true);
@@ -125,7 +127,7 @@ const AlexandriaProposals = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [orbitService, filter]);
 
   // Handle registration for Orbit access
   const handleRegisterForOrbit = async () => {
@@ -200,12 +202,12 @@ const AlexandriaProposals = () => {
     setFilter(prev => ({ ...prev, ...newFilter }));
   };
 
-  // Re-fetch proposals when filter changes (only if registered)
+  // Fetch proposals when registration status changes or filter changes
   useEffect(() => {
     if (registrationStatus?.is_registered && orbitService) {
       fetchProposals();
     }
-  }, [filter, registrationStatus?.is_registered]);
+  }, [registrationStatus?.is_registered, fetchProposals]);
 
   // Render authentication prompt
   if (!isAuthenticated) {
@@ -214,15 +216,9 @@ const AlexandriaProposals = () => {
         <div className="proposals-header">
           <h2>Alexandria DAO Proposals</h2>
         </div>
-        <div className="auth-notice" style={{
-          backgroundColor: '#e7f3ff',
-          border: '1px solid #b3d9ff',
-          padding: '20px',
-          borderRadius: '8px',
-          textAlign: 'center',
-          margin: '20px 0'
-        }}>
-          <h3>🔒 Authentication Required</h3>
+        <div className="auth-banner">
+          <div className="auth-icon"></div>
+          <h3>Authentication Required</h3>
           <p>Please login using the "Connect with Internet Identity" button in the header to view and interact with Alexandria DAO proposals.</p>
         </div>
       </div>
@@ -236,23 +232,11 @@ const AlexandriaProposals = () => {
         <div className="proposals-header">
           <h2>Alexandria DAO Proposals</h2>
         </div>
-        <div className="loading-container" style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          padding: '40px',
-          textAlign: 'center'
-        }}>
-          <div className="spinner" style={{
-            width: '40px',
-            height: '40px',
-            border: '4px solid #f3f3f3',
-            borderTop: '4px solid #3498db',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            marginBottom: '20px'
-          }}></div>
-          <p>Checking registration status...</p>
+        <div className="loading-state">
+          <div className="spinner-container">
+            <div className="spinner"></div>
+          </div>
+          <p className="loading-text">Checking registration status...</p>
         </div>
       </div>
     );
@@ -271,93 +255,71 @@ const AlexandriaProposals = () => {
         </div>
 
         {error && (
-          <div className="error-message" style={{
-            backgroundColor: '#ffebee',
-            border: '1px solid #ffcdd2',
-            color: '#c62828',
-            padding: '15px',
-            borderRadius: '6px',
-            margin: '10px 0'
-          }}>
-            <strong>Error:</strong> {error}
+          <div className="error-banner">
+            <div className="error-icon"></div>
+            <div className="error-content">
+              <strong>Error</strong>
+              <p>{error}</p>
+            </div>
           </div>
         )}
 
-        <div className="registration-required" style={{
-          backgroundColor: '#fff3cd',
-          border: '1px solid #ffeaa7',
-          padding: '30px',
-          borderRadius: '10px',
-          margin: '20px 0',
-          textAlign: 'center'
-        }}>
-          <h3>🎯 DAO Membership Required</h3>
-          <p>To view and participate in Alexandria DAO proposals, you need to be registered as an Orbit Station operator.</p>
+        <div className="registration-banner">
+          <div className="registration-header">
+            <div className="registration-icon"></div>
+            <h3>DAO Membership Required</h3>
+            <p className="registration-subtitle">To view and participate in Alexandria DAO proposals, you need to be registered as an Orbit Station operator.</p>
+          </div>
           
-          <div className="stake-info" style={{
-            backgroundColor: 'white',
-            padding: '20px',
-            borderRadius: '8px',
-            margin: '20px 0',
-            border: '1px solid #e0e0e0'
-          }}>
-            <h4>Your Staking Status:</h4>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '10px 0' }}>
-              <span>Current Staked ALEX:</span>
-              <strong>{userStake.toLocaleString()} ALEX</strong>
+          <div className="stake-status-card">
+            <h4>Your Staking Status</h4>
+            <div className="stake-item">
+              <span className="stake-label">Current Staked ALEX:</span>
+              <span className="stake-value">{userStake.toLocaleString()} ALEX</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '10px 0' }}>
-              <span>Required for Registration:</span>
-              <strong>{requiredStake.toLocaleString()} ALEX</strong>
+            <div className="stake-item">
+              <span className="stake-label">Required for Registration:</span>
+              <span className="stake-value">{requiredStake.toLocaleString()} ALEX</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '10px 0' }}>
-              <span>Status:</span>
-              <strong style={{ color: canRegister ? '#27ae60' : '#e74c3c' }}>
-                {canRegister ? '✅ Eligible' : '❌ Insufficient Stake'}
-              </strong>
+            <div className="stake-item">
+              <span className="stake-label">Status:</span>
+              <span className={`stake-status ${canRegister ? 'status-eligible' : 'status-insufficient'}`}>
+                {canRegister ? 'Eligible' : 'Insufficient Stake'}
+              </span>
             </div>
           </div>
 
-          {canRegister ? (
-            <div>
-              <p style={{ color: '#27ae60', fontWeight: 'bold', marginBottom: '15px' }}>
-                🎉 Congratulations! You meet the requirements and can register now.
-              </p>
-              <button 
-                className="register-button"
-                onClick={handleRegisterForOrbit} 
-                disabled={registering}
-                style={{
-                  backgroundColor: '#27ae60',
-                  color: 'white',
-                  border: 'none',
-                  padding: '15px 30px',
-                  borderRadius: '8px',
-                  cursor: registering ? 'not-allowed' : 'pointer',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  opacity: registering ? 0.7 : 1
-                }}
-              >
-                {registering ? '🔄 Registering...' : '🚀 Register as DAO Member'}
-              </button>
-            </div>
-          ) : (
-            <div>
-              <p style={{ color: '#e74c3c', fontWeight: 'bold', marginBottom: '15px' }}>
-                You need {(requiredStake - userStake).toLocaleString()} more staked ALEX to register.
-              </p>
-              <div style={{ textAlign: 'left', maxWidth: '400px', margin: '0 auto' }}>
-                <p><strong>To get more staked ALEX:</strong></p>
-                <ol style={{ paddingLeft: '20px' }}>
-                  <li>Go to <a href="https://app.icpswap.com/swap" target="_blank" rel="noopener noreferrer">ICP Swap</a></li>
-                  <li>Swap ICP for more ALEX tokens</li>
-                  <li>Stake your ALEX in the liquidity pool</li>
-                  <li>Return here once you have {requiredStake.toLocaleString()} staked ALEX</li>
-                </ol>
+          <div className="registration-actions">
+            {canRegister ? (
+              <>
+                <p className="register-success-message">
+                  Congratulations! You meet the requirements and can register now.
+                </p>
+                <button 
+                  className={`btn-register ${registering ? 'registering' : ''}`}
+                  onClick={handleRegisterForOrbit} 
+                  disabled={registering}
+                >
+                  {registering ? 'Registering...' : 'Register as DAO Member'}
+                </button>
+              </>
+            ) : (
+              <div className="insufficient-stake-info">
+                <p className="shortage-message">
+                  You need {(requiredStake - userStake).toLocaleString()} more staked ALEX to register.
+                </p>
+                <div className="stake-instructions">
+                  <p>To get more staked ALEX:</p>
+                  <ol>
+                    <li>Go to <a href="https://app.icpswap.com/swap" target="_blank" rel="noopener noreferrer">ICP Swap</a></li>
+                    <li>Swap ICP for more ALEX tokens</li>
+                    <li>Stake your ALEX in the liquidity pool</li>
+                    <li>Return here once you have {requiredStake.toLocaleString()} staked ALEX</li>
+                  </ol>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     );
@@ -371,48 +333,28 @@ const AlexandriaProposals = () => {
       </div>
 
       {/* Registration Success Banner */}
-      <div className="registration-success" style={{
-        backgroundColor: '#d4edda',
-        border: '1px solid #c3e6cb',
-        color: '#155724',
-        padding: '12px 20px',
-        borderRadius: '6px',
-        margin: '10px 0',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <div>
-          <strong>✅ Registered DAO Member</strong>
-          <span style={{ marginLeft: '10px', fontSize: '14px', opacity: 0.8 }}>
-            You can now view and interact with DAO proposals
-          </span>
+      <div className="member-status-banner">
+        <div className="status-content">
+          <div className="status-icon"></div>
+          <div className="status-text">
+            <strong>Registered DAO Member</strong>
+            <span>You can now view and interact with DAO proposals</span>
+          </div>
         </div>
         {registrationStatus?.user_name && (
-          <span style={{ fontSize: '14px', fontFamily: 'monospace' }}>
+          <span className="member-id">
             {registrationStatus.user_name}
           </span>
         )}
       </div>
 
       {/* Filters */}
-      <div className="proposals-filters" style={{
-        backgroundColor: '#f8f9fa',
-        padding: '15px',
-        borderRadius: '8px',
-        margin: '15px 0'
-      }}>
+      <div className="proposals-filters">
         <div className="filter-group">
-          <label style={{ marginRight: '10px', fontWeight: 'bold' }}>Status:</label>
+          <label>Status</label>
           <select 
             value={filter.status || ''} 
             onChange={(e) => handleFilterChange({ status: e.target.value || null })}
-            style={{
-              padding: '8px',
-              borderRadius: '4px',
-              border: '1px solid #ddd',
-              marginRight: '20px'
-            }}
           >
             <option value="">All</option>
             <option value="Created">Created</option>
@@ -421,70 +363,43 @@ const AlexandriaProposals = () => {
             <option value="Completed">Completed</option>
             <option value="Failed">Failed</option>
           </select>
-          
-          <button 
-            onClick={() => fetchProposals()}
-            style={{
-              padding: '8px 15px',
-              backgroundColor: '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            🔄 Refresh
-          </button>
         </div>
+        
+        <button 
+          className="btn-refresh"
+          onClick={() => fetchProposals()}
+        >
+          Refresh
+        </button>
       </div>
 
       {/* Error Display */}
       {error && (
-        <div className="error-message" style={{
-          backgroundColor: '#ffebee',
-          border: '1px solid #ffcdd2',
-          color: '#c62828',
-          padding: '15px',
-          borderRadius: '6px',
-          margin: '10px 0'
-        }}>
-          <strong>Error:</strong> {error}
+        <div className="error-banner">
+          <div className="error-icon"></div>
+          <div className="error-content">
+            <strong>Error</strong>
+            <p>{error}</p>
+          </div>
         </div>
       )}
 
       {/* Loading State */}
       {loading ? (
-        <div className="loading-container" style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          padding: '40px',
-          textAlign: 'center'
-        }}>
-          <div className="spinner" style={{
-            width: '40px',
-            height: '40px',
-            border: '4px solid #f3f3f3',
-            borderTop: '4px solid #3498db',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            marginBottom: '20px'
-          }}></div>
-          <p>Loading proposals...</p>
+        <div className="loading-state">
+          <div className="spinner-container">
+            <div className="spinner"></div>
+          </div>
+          <p className="loading-text">Loading proposals...</p>
         </div>
       ) : (
         /* Proposals List */
         <div className="proposals-list">
           {proposals.length === 0 ? (
-            <div className="no-proposals" style={{
-              textAlign: 'center',
-              padding: '40px',
-              backgroundColor: '#f8f9fa',
-              borderRadius: '8px',
-              margin: '20px 0'
-            }}>
-              <p style={{ fontSize: '18px', marginBottom: '10px' }}>📋 No proposals found</p>
-              <p className="text-muted" style={{ color: '#6c757d' }}>
+            <div className="no-proposals">
+              <div className="no-proposals-icon"></div>
+              <p>No proposals found</p>
+              <p className="text-muted">
                 Try adjusting your filters or check back later for new proposals
               </p>
             </div>
@@ -510,52 +425,23 @@ const AlexandriaProposals = () => {
 
       {/* Pagination */}
       {proposals.length > 0 && (
-        <div className="pagination" style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: '10px',
-          margin: '20px 0',
-          padding: '20px'
-        }}>
+        <div className="pagination">
           <button 
             onClick={() => handleFilterChange({ offset: Math.max(0, filter.offset - filter.limit) })}
             disabled={filter.offset === 0}
-            style={{
-              padding: '10px 15px',
-              backgroundColor: filter.offset === 0 ? '#e9ecef' : '#007bff',
-              color: filter.offset === 0 ? '#6c757d' : 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: filter.offset === 0 ? 'not-allowed' : 'pointer'
-            }}
           >
             ← Previous
           </button>
-          <span>Page {Math.floor(filter.offset / filter.limit) + 1}</span>
+          <span className="page-info">Page {Math.floor(filter.offset / filter.limit) + 1}</span>
           <button 
             onClick={() => handleFilterChange({ offset: filter.offset + filter.limit })}
             disabled={proposals.length < filter.limit}
-            style={{
-              padding: '10px 15px',
-              backgroundColor: proposals.length < filter.limit ? '#e9ecef' : '#007bff',
-              color: proposals.length < filter.limit ? '#6c757d' : 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: proposals.length < filter.limit ? 'not-allowed' : 'pointer'
-            }}
           >
             Next →
           </button>
         </div>
       )}
 
-      <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 };
