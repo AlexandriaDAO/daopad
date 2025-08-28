@@ -109,19 +109,20 @@ if [ "$FRESH_DEPLOY" = true ] && [ "$NETWORK" == "local" ]; then
     fi
 fi
 
-# Deploy backend
+# Deploy backend (includes lp_locking)
 if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
     echo ""
-    echo "Building backend..."
+    echo "Building backend canisters..."
     
-    # Build the WASM
+    # Build DAOPad backend
+    echo "Building daopad_backend..."
     if ! cargo build --target wasm32-unknown-unknown --release -p daopad_backend --locked; then
-        echo "❌ Backend build failed!"
+        echo "❌ DAOPad backend build failed!"
         exit 1
     fi
     
-    # Extract candid interface
-    echo "Extracting Candid interface..."
+    # Extract candid interface for daopad_backend
+    echo "Extracting Candid interface for daopad_backend..."
     if command -v candid-extractor &> /dev/null; then
         candid-extractor target/wasm32-unknown-unknown/release/daopad_backend.wasm > src/daopad_backend/daopad_backend.did
         echo "✓ Candid interface extracted"
@@ -131,24 +132,64 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
         exit 1
     fi
     
-    echo "Deploying backend..."
+    # Build LP Locking canister
+    echo "Building lp_locking..."
+    if ! cargo build --target wasm32-unknown-unknown --release -p lp_locking --locked; then
+        echo "❌ LP Locking build failed!"
+        exit 1
+    fi
+    
+    # Extract candid interface for lp_locking
+    echo "Extracting Candid interface for lp_locking..."
+    if command -v candid-extractor &> /dev/null; then
+        candid-extractor target/wasm32-unknown-unknown/release/lp_locking.wasm > src/lp_locking/lp_locking.did
+        echo "✓ Candid interface extracted"
+    else
+        echo "❌ ERROR: candid-extractor not found!"
+        echo "Please install with: cargo install candid-extractor"
+        exit 1
+    fi
+    
+    # Deploy DAOPad backend
+    echo "Deploying daopad_backend..."
     if [ "$NETWORK" == "ic" ]; then
         # Deploy to mainnet using standard dfx deploy
-        echo "Deploying backend to mainnet..."
+        echo "Deploying daopad_backend to mainnet..."
         if dfx deploy --network ic daopad_backend --argument "(opt \"$ALEXANDRIA_STATION_ID\")"; then
-            echo "✓ Backend deployed successfully"
+            echo "✓ DAOPad backend deployed successfully"
             BACKEND_DEPLOYED=true
         else
-            echo "❌ Backend deployment failed!"
+            echo "❌ DAOPad backend deployment failed!"
             exit 1
         fi
     else
         # For local deployment
         if dfx deploy daopad_backend --argument "(opt \"$ALEXANDRIA_STATION_ID\")"; then
-            echo "✓ Backend deployed successfully"
+            echo "✓ DAOPad backend deployed successfully"
             BACKEND_DEPLOYED=true
         else
-            echo "❌ Backend deployment failed!"
+            echo "❌ DAOPad backend deployment failed!"
+            exit 1
+        fi
+    fi
+    
+    # Deploy LP Locking canister with specified ID
+    echo "Deploying lp_locking..."
+    if [ "$NETWORK" == "ic" ]; then
+        # Deploy to mainnet with specified ID
+        echo "Deploying lp_locking to mainnet..."
+        if dfx deploy --network ic lp_locking --specified-id 7zv6y-5qaaa-aaaar-qbviq-cai; then
+            echo "✓ LP Locking deployed successfully"
+        else
+            echo "❌ LP Locking deployment failed!"
+            exit 1
+        fi
+    else
+        # For local deployment, also use specified ID
+        if dfx deploy lp_locking --specified-id 7zv6y-5qaaa-aaaar-qbviq-cai; then
+            echo "✓ LP Locking deployed successfully (local with specified ID)"
+        else
+            echo "❌ LP Locking deployment failed!"
             exit 1
         fi
     fi

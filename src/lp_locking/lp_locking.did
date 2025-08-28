@@ -1,0 +1,44 @@
+type CanisterInfo = record {
+  description : text;
+  version : text;
+  has_withdrawal_functions : bool;
+  kong_backend_canister : text;
+  total_registrations : nat64;
+};
+type ClaimRecord = record {
+  request_id : nat64;
+  lp_token_symbol : text;
+  kong_principal : principal;
+  claimer : principal;
+  timestamp : nat64;
+  amount : nat;
+};
+type RegistrationRecord = record {
+  kong_principal : principal;
+  last_activity : nat64;
+  registered_at : nat64;
+  daopad_principal : principal;
+};
+type Result = variant { Ok : ClaimRecord; Err : text };
+type Result_1 = variant { Ok; Err : text };
+service : () -> {
+  claim_lp_lock : (nat64) -> (Result);
+  get_all_registrations : () -> (vec RegistrationRecord) query;
+  get_all_voting_power : (principal) -> (vec record { text; nat }) query;
+  get_canister_info : () -> (CanisterInfo) query;
+  get_claim_history : (principal) -> (vec ClaimRecord) query;
+  get_linked_daopad_principal : (principal) -> (opt principal) query;
+  get_linked_kong_principal : (principal) -> (opt principal) query;
+  get_my_all_voting_power : () -> (vec record { text; nat }) query;
+  get_my_claim_history : () -> (vec ClaimRecord) query;
+  get_my_kong_principal : () -> (opt principal) query;
+  get_my_registration_info : () -> (opt RegistrationRecord) query;
+  get_my_voting_power : (text) -> (nat) query;
+  get_registration_count : () -> (nat64) query;
+  get_registration_info : (principal) -> (opt RegistrationRecord) query;
+  get_token_claims : (text) -> (vec ClaimRecord) query;
+  get_total_locked : (text) -> (nat) query;
+  get_voting_power : (principal, text) -> (nat) query;
+  is_link_valid : (principal, principal) -> (bool) query;
+  register_kong_principal : (principal) -> (Result_1);
+}

@@ -24,6 +24,12 @@
           "ic": "rdmx6-jaaaa-aaaaa-aaadq-cai"
         }
       }
+    },
+    "lp_locking": {
+      "candid": "src/lp_locking/lp_locking.did",
+      "package": "lp_locking",
+      "type": "rust",
+      "specified_id": "7zv6y-5qaaa-aaaar-qbviq-cai"
     }
   },
   "defaults": {

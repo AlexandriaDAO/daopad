@@ -102,307 +102,156 @@ $dao-error: #dc2626;
     }
   }
 
-  // Registration Banner Styles
-  .registration-banner {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border: 2px solid #f59e0b;
-    border-radius: 16px;
-    padding: 2rem;
-    margin: 2rem 0;
-    box-shadow: 0 10px 25px rgba(245, 158, 11, 0.1);
+  // Compact Registration Status
+  .registration-status {
+    background: white;
+    border: 1px solid $border-gray;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
 
-    .registration-header {
-      text-align: center;
-      margin-bottom: 2rem;
+    .status-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
 
-      .registration-icon {
-        width: 70px;
-        height: 70px;
-        margin: 0 auto 1.5rem;
-        background: linear-gradient(135deg, $warning-amber, color.adjust($warning-amber, $lightness: -10%));
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-
-        &::before {
-          content: '';
-          width: 32px;
-          height: 32px;
-          background: white;
-          mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z' /></svg>");
-          mask-size: contain;
-          mask-repeat: no-repeat;
-          mask-position: center;
-        }
-      }
-
-      h3 {
-        font-size: 1.75rem;
-        margin: 0 0 0.5rem;
-        color: $dao-primary;
-        font-weight: 700;
-      }
-
-      .registration-subtitle {
+      .status-title {
+        font-size: 0.875rem;
         color: $text-secondary;
-        font-size: 1rem;
-        line-height: 1.5;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
       }
-    }
 
-    .stake-status-card {
-      background: white;
-      border-radius: 12px;
-      padding: 1.5rem;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-      margin-bottom: 2rem;
-
-      h4 {
-        font-size: 1rem;
-        color: $dao-primary;
-        margin: 0 0 1.5rem;
+      .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        padding-bottom: 0.75rem;
-        border-bottom: 2px solid $document-gray;
+
+        &.not-registered {
+          background: #fff7ed;
+          color: #c2410c;
+          border: 1px solid #fed7aa;
+        }
+
+        &.insufficient {
+          background: #fef2f2;
+          color: #dc2626;
+          border: 1px solid #fecaca;
+        }
       }
+    }
 
-      .stake-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.75rem 0;
-        border-bottom: 1px solid $document-gray;
+    .stake-info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
 
-        &:last-child {
-          border-bottom: none;
-        }
-
-        .stake-label {
+      .info-item {
+        .info-label {
+          font-size: 0.75rem;
           color: $text-secondary;
-          font-size: 0.875rem;
-          font-weight: 500;
+          margin-bottom: 0.25rem;
         }
 
-        .stake-value {
-          font-weight: 700;
+        .info-value {
           font-size: 1rem;
+          font-weight: 600;
           color: $dao-primary;
           font-family: 'Courier New', monospace;
+
+          &.eligible {
+            color: $success-green;
+          }
+
+          &.insufficient {
+            color: $error-red;
+          }
         }
 
-        .stake-status {
-          padding: 0.25rem 0.75rem;
-          border-radius: 20px;
+        .info-shortage {
           font-size: 0.75rem;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-
-          &.status-eligible {
-            background: color.adjust($success-green, $lightness: 40%);
-            color: color.adjust($success-green, $lightness: -20%);
-            border: 1px solid $success-green;
-          }
-
-          &.status-insufficient {
-            background: color.adjust($error-red, $lightness: 40%);
-            color: color.adjust($error-red, $lightness: -20%);
-            border: 1px solid $error-red;
-          }
+          color: $error-red;
+          margin-top: 0.25rem;
         }
       }
     }
 
     .registration-actions {
-      text-align: center;
-
-      .register-success-message {
-        color: $dao-success;
-        font-weight: 600;
-        font-size: 1.125rem;
-        margin-bottom: 1rem;
-      }
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
 
       .btn-register {
-        background: linear-gradient(135deg, $dao-success, color.adjust($dao-success, $lightness: -10%));
+        padding: 0.5rem 1.25rem;
+        background: $dao-primary;
         color: white;
         border: none;
-        padding: 1rem 2.5rem;
-        border-radius: 8px;
-        font-size: 1rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
         font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 1px;
         cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
-        position: relative;
-        overflow: hidden;
-
-        &::before {
-          content: '';
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          width: 0;
-          height: 0;
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 50%;
-          transform: translate(-50%, -50%);
-          transition: width 0.6s ease, height 0.6s ease;
-        }
+        transition: all 0.2s ease;
 
         &:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(5, 150, 105, 0.4);
-
-          &::before {
-            width: 300px;
-            height: 300px;
-          }
+          background: color.adjust($dao-primary, $lightness: -10%);
         }
 
         &:disabled {
-          opacity: 0.6;
+          opacity: 0.5;
           cursor: not-allowed;
-          transform: none;
-        }
-
-        &.registering {
-          &::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 1rem;
-            width: 20px;
-            height: 20px;
-            margin: -10px 0 0 0;
-            border: 3px solid white;
-            border-top-color: transparent;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-          }
         }
       }
 
-      .insufficient-stake-info {
-        .shortage-message {
-          color: $dao-error;
-          font-weight: 600;
-          font-size: 1rem;
-          margin-bottom: 1.5rem;
-        }
+      .help-link {
+        color: $accent-blue;
+        font-size: 0.875rem;
+        text-decoration: none;
 
-        .stake-instructions {
-          background: white;
-          border-radius: 8px;
-          padding: 1.5rem;
-          text-align: left;
-          max-width: 500px;
-          margin: 0 auto;
-
-          p {
-            font-weight: 600;
-            color: $dao-primary;
-            margin: 0 0 1rem;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-          }
-
-          ol {
-            margin: 0;
-            padding-left: 1.5rem;
-            color: $text-secondary;
-
-            li {
-              margin-bottom: 0.75rem;
-              line-height: 1.6;
-
-              a {
-                color: $accent-blue;
-                text-decoration: none;
-                font-weight: 600;
-                border-bottom: 1px solid transparent;
-                transition: border-color 0.2s ease;
-
-                &:hover {
-                  border-bottom-color: $accent-blue;
-                }
-              }
-            }
-          }
+        &:hover {
+          text-decoration: underline;
         }
       }
     }
   }
 
-  // Success Banner Styles
-  .member-status-banner {
-    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-    border: 2px solid $success-green;
-    border-radius: 12px;
-    padding: 1rem 1.5rem;
-    margin: 1.5rem 0;
-    display: flex;
+  // Compact Member Status Indicator
+  .member-status-indicator {
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    background: #f0fdf4;
+    border: 1px solid $success-green;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
 
-    .status-content {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-
-      .status-icon {
-        width: 40px;
-        height: 40px;
-        background: $success-green;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-
-        &::before {
-          content: '';
-          width: 20px;
-          height: 20px;
-          background: white;
-          mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M5 13l4 4L19 7' /></svg>");
-          mask-size: contain;
-          mask-repeat: no-repeat;
-          mask-position: center;
-        }
-      }
-
-      .status-text {
-        strong {
-          display: block;
-          color: color.adjust($success-green, $lightness: -20%);
-          font-size: 1.125rem;
-          margin-bottom: 0.25rem;
-        }
-
-        span {
-          color: $text-secondary;
-          font-size: 0.875rem;
-        }
-      }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: $success-green;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
     }
 
-    .member-id {
-      font-family: 'Courier New', monospace;
-      font-size: 0.875rem;
-      color: $dao-primary;
-      background: white;
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
-      border: 1px solid $border-gray;
+    .status-text {
+      color: color.adjust($success-green, $lightness: -20%);
+      font-weight: 600;
+    }
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
     }
   }
 

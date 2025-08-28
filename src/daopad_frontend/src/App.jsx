@@ -66,7 +66,8 @@ function App() {
           <div>
             <h1>DAOPad</h1>
             <p className="project-info">an Alexandria project</p>
-            <p className="subtitle">Turn your local business into a community-owned entity</p>
+            <p className="subtitle">Turn any ICRC1 token into a legally compliant DAO</p>
+            <p className="subtitle-secondary">Control treasury, canisters, and real bank accounts through locked LP voting</p>
             <div className="view-toggle">
               <button 
                 className={`view-btn ${currentView === 'home' ? 'active' : ''}`}
@@ -128,119 +129,131 @@ function App() {
 
       {currentView === 'home' ? (
         <>
-          <section className="intro">
-            <p>
-              Three steps. No lawyers. No fees except 1% revenue share. 
-              Your community becomes real partners with voting rights and profit sharing.
-            </p>
+          <section className="innovation-banner">
+            <div className="banner-content">
+              <strong>Key Innovation:</strong> DAOpad makes YOUR CANISTER the admin of Orbit Station.
+              <br />
+              No humans. No multi-sig risk. Just code executing community decisions.
+            </div>
           </section>
 
-          <section className="steps">
-        <div className={`step ${activeStep === 1 ? 'active' : ''}`}>
-          <div className="step-header" onClick={() => setActiveStep(activeStep === 1 ? null : 1)}>
-            <span className="step-number">1</span>
-            <h2>Launch on lbry.fun</h2>
-            <span className="step-status">Ready now</span>
-          </div>
-          {activeStep === 1 && (
-            <div className="step-content">
-              <p>Create a dual-token system where community members become locked liquidity providers.</p>
+          <section className="paths-section">
+            <div className="path-card">
+              <h3>Existing Token?</h3>
               <ul>
-                <li>Fair launch - no pre-mine, no VCs</li>
-                <li>Community mints tokens with ICP</li>
-                <li>Locked LPs can't sell but get all voting rights</li>
-                <li>1% revenue to Alexandria ecosystem</li>
+                <li>Free integration</li>
+                <li>Keep your tokenomics</li>
+                <li>Add DAO capabilities instantly</li>
               </ul>
-              <a href="https://lbry.fun" target="_blank" rel="noopener noreferrer" className="action-link">
-                Go to lbry.fun →
+              <button className="path-button primary">Connect Your Token</button>
+            </div>
+            <div className="path-card">
+              <h3>New Project?</h3>
+              <ul>
+                <li>Fair launch on lbry.fun</li>
+                <li>1% revenue share only</li>
+                <li>Built-in community</li>
+              </ul>
+              <a href="https://lbry.fun" target="_blank" rel="noopener noreferrer" className="path-button secondary">
+                Launch Your DAO →
               </a>
             </div>
-          )}
-        </div>
+          </section>
 
-        <div className={`step ${activeStep === 2 ? 'active' : ''}`}>
-          <div className="step-header" onClick={() => setActiveStep(activeStep === 2 ? null : 2)}>
-            <span className="step-number">2</span>
-            <h2>Set up Orbit wallet</h2>
-            <span className="step-status">After token launch</span>
-          </div>
-          {activeStep === 2 && (
-            <div className="step-content">
-              <p>Create a multi-sig wallet controlled by your locked LP holders.</p>
-              <ul>
-                <li>Treasury management for your DAO</li>
-                <li>Multi-approval for all transactions</li>
-                <li>On-chain voting and execution</li>
-                <li>Integrates with your lbry.fun token</li>
-              </ul>
-              <a href="https://orbit.global" target="_blank" rel="noopener noreferrer" className="action-link">
-                Launch Orbit wallet →
-              </a>
-            </div>
-          )}
-        </div>
-
-        <div className={`step ${activeStep === 3 ? 'active' : ''}`}>
-          <div className="step-header" onClick={() => setActiveStep(activeStep === 3 ? null : 3)}>
-            <span className="step-number">3</span>
-            <h2>Form legal entity</h2>
-            <span className="step-status">Requirements below</span>
-          </div>
-          {activeStep === 3 && (
-            <div className="step-content">
-              <p>Meet these requirements to form a real DAO LLC:</p>
-              <div className="requirements">
-                <div className="requirement">
-                  <strong>Treasury:</strong> $5,000+ in DAO wallet
+          <section className="how-it-works">
+            <h2>How It Works</h2>
+            <div className="flow-cards">
+              <div className={`flow-card ${activeStep === 1 ? 'active' : ''}`} onClick={() => setActiveStep(activeStep === 1 ? null : 1)}>
+                <div className="flow-header">
+                  <span className="flow-icon">1</span>
+                  <h3>Connect Your Token</h3>
                 </div>
-                <div className="requirement">
-                  <strong>Board:</strong> 5+ locked LP holders
-                </div>
-                <div className="requirement">
-                  <strong>Approval:</strong> Alexandria DAO vote
-                </div>
+                {activeStep === 1 && (
+                  <div className="flow-content">
+                    <ul>
+                      <li>Any ICRC1 token works - existing or new</li>
+                      <li>DAOpad backend becomes Orbit Station admin</li>
+                      <li>No migration needed, keep your current setup</li>
+                      <li>Free for existing tokens, 1% for new launches via lbry.fun</li>
+                    </ul>
+                  </div>
+                )}
               </div>
-              <p className="note">
-                Once approved, we'll help you register as a Wyoming DAO LLC with a real bank account 
-                that your on-chain treasury controls.
-              </p>
+
+              <div className={`flow-card ${activeStep === 2 ? 'active' : ''}`} onClick={() => setActiveStep(activeStep === 2 ? null : 2)}>
+                <div className="flow-header">
+                  <span className="flow-icon">2</span>
+                  <h3>Lock LP Tokens for Voting Power</h3>
+                </div>
+                {activeStep === 2 && (
+                  <div className="flow-content">
+                    <ul>
+                      <li>Provide liquidity on KongSwap and lock permanently</li>
+                      <li>Locked value determines your voting weight</li>
+                      <li>Create proposals: transfer funds, upgrade canisters, manage treasury</li>
+                      <li>Proposals execute automatically when vote threshold met</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              <div className={`flow-card ${activeStep === 3 ? 'active' : ''}`} onClick={() => setActiveStep(activeStep === 3 ? null : 3)}>
+                <div className="flow-header">
+                  <span className="flow-icon">3</span>
+                  <h3>Form Legal Entity & Bank Account</h3>
+                </div>
+                {activeStep === 3 && (
+                  <div className="flow-content">
+                    <ul>
+                      <li>Register Wyoming DAO LLC (we handle paperwork)</li>
+                      <li>Open business bank account controlled by DAO votes</li>
+                      <li>Transfer funds from treasury to bank via proposals</li>
+                      <li>Sign contracts, hire employees, own property - all through voting</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </div>
           </section>
 
           <section className="faq">
         <h3>Questions?</h3>
         <details>
-          <summary>What's the catch?</summary>
+          <summary>How is this different from other DAOs?</summary>
           <p>
-            No catch. We take 1% of revenue through the lbry.fun protocol. 
-            That's it. No hidden fees, no equity stake, no control.
+            DAOpad eliminates human administrators. Your canister becomes the Orbit Station admin, 
+            executing decisions automatically based on LP token votes. No multi-sig committees, 
+            no trusted parties - just trustless code executing community will.
           </p>
         </details>
         <details>
-          <summary>Why locked liquidity?</summary>
+          <summary>Why locked LP instead of regular tokens?</summary>
           <p>
-            Small businesses like LLCs cannot be liquid because that destroys the legal precedent 
-            for having DAO leaders act with impartial interests. If someone can dump tokens, 
-            their holdings shouldn't give them decision making power. Locked LPs are true long-term 
-            partners who get all voting rights and revenue sharing. Regular token holders can trade 
-            but don't vote or earn revenue.
+            Locked liquidity providers can't dump. This creates aligned incentives - only those 
+            permanently committed to the project get voting rights. It also satisfies legal requirements 
+            for Wyoming DAOs where decision-makers must have long-term aligned interests.
           </p>
         </details>
         <details>
-          <summary>What businesses work best?</summary>
+          <summary>Can existing projects use this?</summary>
           <p>
-            Any business with a loyal community. Coffee shops, farms, tech incubators, 
-            virtual ventures, maker spaces, local stores, service businesses. If people 
-            care about your success, this model works.
+            Yes! Any ICRC1 token can integrate DAOpad for free. Keep your existing tokenomics, 
+            just add DAO capabilities. New projects can launch through lbry.fun with a 1% revenue share.
+          </p>
+        </details>
+        <details>
+          <summary>How does the fiat bridge work?</summary>
+          <p>
+            Once your DAO forms a Wyoming LLC, it gets a real bank account. LP token holders vote 
+            to transfer funds from the on-chain treasury to the bank. No intermediaries - your 
+            votes directly control real-world finances.
           </p>
         </details>
         <details>
           <summary>Is this legal?</summary>
           <p>
             Yes. Wyoming recognizes DAO LLCs. Your DAO becomes a real legal entity 
-            that can own property, hire employees, and operate like any business.
+            that can own property, hire employees, sign contracts, and operate like any business.
           </p>
         </details>
           </section>

@@ -264,62 +264,50 @@ const AlexandriaProposals = () => {
           </div>
         )}
 
-        <div className="registration-banner">
-          <div className="registration-header">
-            <div className="registration-icon"></div>
-            <h3>DAO Membership Required</h3>
-            <p className="registration-subtitle">To view and participate in Alexandria DAO proposals, you need to be registered as an Orbit Station operator.</p>
+        <div className="registration-status">
+          <div className="status-header">
+            <span className="status-title">Registration Status</span>
+            <span className={`status-badge ${canRegister ? 'not-registered' : 'insufficient'}`}>
+              {canRegister ? 'Not Registered' : 'Insufficient Stake'}
+            </span>
           </div>
           
-          <div className="stake-status-card">
-            <h4>Your Staking Status</h4>
-            <div className="stake-item">
-              <span className="stake-label">Current Staked ALEX:</span>
-              <span className="stake-value">{userStake.toLocaleString()} ALEX</span>
+          <div className="stake-info">
+            <div className="info-item">
+              <div className="info-label">Your Stake</div>
+              <div className={`info-value ${canRegister ? 'eligible' : 'insufficient'}`}>
+                {userStake.toLocaleString()} ALEX
+              </div>
             </div>
-            <div className="stake-item">
-              <span className="stake-label">Required for Registration:</span>
-              <span className="stake-value">{requiredStake.toLocaleString()} ALEX</span>
-            </div>
-            <div className="stake-item">
-              <span className="stake-label">Status:</span>
-              <span className={`stake-status ${canRegister ? 'status-eligible' : 'status-insufficient'}`}>
-                {canRegister ? 'Eligible' : 'Insufficient Stake'}
-              </span>
+            <div className="info-item">
+              <div className="info-label">Required</div>
+              <div className="info-value">{requiredStake.toLocaleString()} ALEX</div>
+              {!canRegister && (
+                <div className="info-shortage">
+                  Need {(requiredStake - userStake).toLocaleString()} more
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="registration-actions">
-            {canRegister ? (
-              <>
-                <p className="register-success-message">
-                  Congratulations! You meet the requirements and can register now.
-                </p>
-                <button 
-                  className={`btn-register ${registering ? 'registering' : ''}`}
-                  onClick={handleRegisterForOrbit} 
-                  disabled={registering}
-                >
-                  {registering ? 'Registering...' : 'Register as DAO Member'}
-                </button>
-              </>
-            ) : (
-              <div className="insufficient-stake-info">
-                <p className="shortage-message">
-                  You need {(requiredStake - userStake).toLocaleString()} more staked ALEX to register.
-                </p>
-                <div className="stake-instructions">
-                  <p>To get more staked ALEX:</p>
-                  <ol>
-                    <li>Go to <a href="https://app.icpswap.com/swap" target="_blank" rel="noopener noreferrer">ICP Swap</a></li>
-                    <li>Swap ICP for more ALEX tokens</li>
-                    <li>Stake your ALEX in the liquidity pool</li>
-                    <li>Return here once you have {requiredStake.toLocaleString()} staked ALEX</li>
-                  </ol>
-                </div>
-              </div>
-            )}
-          </div>
+          {canRegister && (
+            <div className="registration-actions">
+              <button 
+                className="btn-register"
+                onClick={handleRegisterForOrbit} 
+                disabled={registering}
+              >
+                {registering ? 'Registering...' : 'Register for Access'}
+              </button>
+            </div>
+          )}
+          {!canRegister && (
+            <div className="registration-actions">
+              <a href="https://app.icpswap.com/swap" target="_blank" rel="noopener noreferrer" className="help-link">
+                Get more ALEX on ICP Swap →
+              </a>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -332,20 +320,10 @@ const AlexandriaProposals = () => {
         <h2>Alexandria DAO Proposals</h2>
       </div>
 
-      {/* Registration Success Banner */}
-      <div className="member-status-banner">
-        <div className="status-content">
-          <div className="status-icon"></div>
-          <div className="status-text">
-            <strong>Registered DAO Member</strong>
-            <span>You can now view and interact with DAO proposals</span>
-          </div>
-        </div>
-        {registrationStatus?.user_name && (
-          <span className="member-id">
-            {registrationStatus.user_name}
-          </span>
-        )}
+      {/* Member Status Indicator */}
+      <div className="member-status-indicator">
+        <span className="status-dot"></span>
+        <span className="status-text">Active Member</span>
       </div>
 
       {/* Filters */}
