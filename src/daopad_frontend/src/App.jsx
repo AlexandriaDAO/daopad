@@ -6,12 +6,13 @@ import { setAuthSuccess, clearAuth, setAuthLoading, setAuthInitialized } from '.
 import { fetchBalances } from './state/balance/balanceThunks';
 import { clearBalances } from './state/balance/balanceSlice';
 import AlexandriaProposals from './components/AlexandriaProposals';
+import LPTokenLocker from './components/LPTokenLocker';
 import './App.scss';
 
 function App() {
   const [activeStep, setActiveStep] = useState(null);
   const [copyFeedback, setCopyFeedback] = useState(false);
-  const [currentView, setCurrentView] = useState('home'); // 'home' or 'proposals'
+  const [currentView, setCurrentView] = useState('home'); // 'home', 'proposals', or 'lp-locker'
   const dispatch = useDispatch();
   const { principal, isAuthenticated } = useSelector(state => state.auth);
   const { icpBalance, alexBalance, stakedAlexBalance, isLoading: balanceLoading } = useSelector(state => state.balance);
@@ -81,6 +82,12 @@ function App() {
               >
                 Alexandria Proposals
               </button>
+              <button 
+                className={`view-btn ${currentView === 'lp-locker' ? 'active' : ''}`}
+                onClick={() => setCurrentView('lp-locker')}
+              >
+                LP Locker
+              </button>
             </div>
           </div>
           <div className="auth-section">
@@ -88,16 +95,14 @@ function App() {
               <div className="auth-info">
                 <div className="balance-info">
                   {balanceLoading ? (
-                    <span className="loading">Loading balances...</span>
+                    <span className="loading">Loading balance...</span>
                   ) : (
                     <>
                       <span className="balance">ICP: {icpBalance}</span>
-                      <span className="balance">ALEX: {alexBalance}</span>
-                      <span className="balance">Staked: {stakedAlexBalance}</span>
                       <button 
                         onClick={() => dispatch(fetchBalances(identity))} 
                         className="refresh-button"
-                        title="Refresh balances"
+                        title="Refresh balance"
                       >
                         ↻
                       </button>
@@ -258,9 +263,11 @@ function App() {
         </details>
           </section>
         </>
-      ) : (
+      ) : currentView === 'proposals' ? (
         <AlexandriaProposals />
-      )}
+      ) : currentView === 'lp-locker' ? (
+        <LPTokenLocker />
+      ) : null}
 
       <footer>
         <p>

@@ -1,0 +1,26 @@
+[
+  {
+    "match": "**/*",
+    "headers": {
+      "Cache-Control": "public, max-age=0, must-revalidate"
+    }
+  },
+  {
+    "match": "**/*.html",
+    "headers": {
+      "Content-Type": "text/html"
+    }
+  },
+  {
+    "match": "**/*.js",
+    "headers": {
+      "Content-Type": "application/javascript"
+    }
+  },
+  {
+    "match": "**/*.css",
+    "headers": {
+      "Content-Type": "text/css"
+    }
+  }
+]

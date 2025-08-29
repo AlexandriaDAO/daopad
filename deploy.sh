@@ -150,6 +150,8 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
         exit 1
     fi
     
+    # No Rust build needed for lp_lock_frontend - it's a frontend asset canister
+    
     # Deploy DAOPad backend
     echo "Deploying daopad_backend..."
     if [ "$NETWORK" == "ic" ]; then
@@ -193,6 +195,8 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
             exit 1
         fi
     fi
+    
+    # lp_lock_frontend is now deployed as a frontend asset canister, not here
 fi
 
 # Deploy frontend
@@ -254,6 +258,47 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "frontend" ]; then
             exit 1
         fi
     fi
+    
+    # Build and Deploy LP Lock Frontend (React app for LP locking)
+    echo ""
+    echo "Building LP Lock Frontend..."
+    cd src/lp_locker_frontend
+    
+    if ! npm install; then
+        echo "❌ npm install failed for LP Lock Frontend!"
+        cd ../..
+        exit 1
+    fi
+    
+    if ! npm run build; then
+        echo "❌ LP Lock Frontend build failed!"
+        cd ../..
+        exit 1
+    fi
+    
+    cd ../..
+    
+    echo "Deploying LP Lock Frontend..."
+    if [ "$NETWORK" == "ic" ]; then
+        echo "Deploying LP Lock Frontend to mainnet..."
+        if dfx deploy --network ic lp_lock_frontend --specified-id c6w56-taaaa-aaaai-atlma-cai; then
+            LP_LOCK_FRONTEND_ID=$(dfx canister --network ic id lp_lock_frontend 2>/dev/null || echo "c6w56-taaaa-aaaai-atlma-cai")
+            echo "✓ LP Lock Frontend deployed successfully"
+            echo "   LP Lock Frontend URL: https://$LP_LOCK_FRONTEND_ID.icp0.io/"
+            LP_LOCK_FRONTEND_DEPLOYED=true
+        else
+            echo "❌ LP Lock Frontend deployment failed!"
+            exit 1
+        fi
+    else
+        if dfx deploy lp_lock_frontend --specified-id c6w56-taaaa-aaaai-atlma-cai; then
+            echo "✓ LP Lock Frontend deployed successfully (local)"
+            LP_LOCK_FRONTEND_DEPLOYED=true
+        else
+            echo "❌ LP Lock Frontend deployment failed!"
+            exit 1
+        fi
+    fi
 fi
 
 # Display deployment summary
@@ -277,6 +322,11 @@ if [ "$NETWORK" == "ic" ]; then
         echo "  ✓ Frontend: https://$FRONTEND_ID.icp0.io/"
     elif [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "frontend" ]; then
         echo "  ❌ Frontend: Deployment failed"
+    fi
+    
+    if [ "$LP_LOCK_FRONTEND_DEPLOYED" == true ]; then
+        LP_LOCK_FRONTEND_ID=$(dfx canister --network ic id lp_lock_frontend 2>/dev/null || echo "c6w56-taaaa-aaaai-atlma-cai")
+        echo "  ✓ LP Lock Frontend: https://$LP_LOCK_FRONTEND_ID.icp0.io/"
     fi
     
     if [ "$BACKEND_DEPLOYED" == true ]; then

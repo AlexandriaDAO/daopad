@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useIdentity } from '../hooks/useIdentity';
 import { OrbitStationService } from '../services/orbitStation';
 import { DAOPadBackendService } from '../services/daopadBackend';
+import { fetchAlexandriaBalances } from '../state/balance/balanceThunks';
 import ProposalCard from './ProposalCard';
 import ProposalDetailsModal from './ProposalDetailsModal';
+import KongSwapRegistration from './KongSwapRegistration';
 import './AlexandriaProposals.scss';
 
 const AlexandriaProposals = () => {
+  const dispatch = useDispatch();
   const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -16,10 +19,17 @@ const AlexandriaProposals = () => {
   const [registering, setRegistering] = useState(false);
   const [registrationStatus, setRegistrationStatus] = useState(null);
   const [checkingRegistration, setCheckingRegistration] = useState(false);
+  const [alexandriaBalancesLoaded, setAlexandriaBalancesLoaded] = useState(false);
   
   // Get authentication state and balances from Redux
   const { isAuthenticated } = useSelector(state => state.auth);
-  const { stakedAlexBalance } = useSelector(state => state.balance);
+  const { 
+    alexBalance, 
+    stakedAlexBalance, 
+    totalLpVotingPower,
+    lpVotingPower,
+    isLoadingAlexandria 
+  } = useSelector(state => state.balance);
   const { identity } = useIdentity();
   
   const [filter, setFilter] = useState({
@@ -31,6 +41,14 @@ const AlexandriaProposals = () => {
   const [orbitService, setOrbitService] = useState(null);
   const [daopadService, setDaopadService] = useState(null);
 
+  // Fetch Alexandria-specific balances when component mounts with valid identity
+  useEffect(() => {
+    if (identity && isAuthenticated && !alexandriaBalancesLoaded) {
+      dispatch(fetchAlexandriaBalances(identity));
+      setAlexandriaBalancesLoaded(true);
+    }
+  }, [identity, isAuthenticated, dispatch, alexandriaBalancesLoaded]);
+
   // Combined effect for service initialization and registration check
   // This ensures registration is checked whenever identity/authentication changes
   useEffect(() => {
@@ -41,6 +59,7 @@ const AlexandriaProposals = () => {
       setRegistrationStatus(null);
       setProposals([]);
       setLoading(false);
+      setAlexandriaBalancesLoaded(false);
       return;
     }
 
@@ -325,6 +344,56 @@ const AlexandriaProposals = () => {
         <span className="status-dot"></span>
         <span className="status-text">Active Member</span>
       </div>
+
+      {/* Balance and Voting Power Section */}
+      <div className="voting-power-section">
+        <h3>Your Voting Power</h3>
+        <div className="balance-grid">
+          <div className="balance-item">
+            <span className="balance-label">ALEX Balance:</span>
+            <span className="balance-value">{isLoadingAlexandria ? 'Loading...' : alexBalance}</span>
+          </div>
+          <div className="balance-item">
+            <span className="balance-label">Staked ALEX:</span>
+            <span className="balance-value staked">{isLoadingAlexandria ? 'Loading...' : stakedAlexBalance}</span>
+          </div>
+          <div className="balance-item">
+            <span className="balance-label">LP Voting Power:</span>
+            <span className="balance-value lp">{isLoadingAlexandria ? 'Loading...' : totalLpVotingPower}</span>
+            {!isLoadingAlexandria && lpVotingPower && Object.keys(lpVotingPower).filter(token => token.includes('ALEX')).length > 0 && (
+              <div className="lp-breakdown">
+                {Object.entries(lpVotingPower)
+                  .filter(([token]) => token.includes('ALEX'))
+                  .map(([token, amount], index, arr) => (
+                    <div key={token} className="lp-pool-item">
+                      <span className="tree-symbol">{index === arr.length - 1 ? '└─' : '├─'}</span>
+                      <span className="pool-name">{token}:</span>
+                      <span className="pool-amount">{amount}</span>
+                    </div>
+                  ))
+                }
+              </div>
+            )}
+          </div>
+          <div className="balance-item total">
+            <span className="balance-label">Total Voting Power:</span>
+            <span className="balance-value">
+              {isLoadingAlexandria ? 'Loading...' : 
+                (parseFloat(stakedAlexBalance || 0) + parseFloat(totalLpVotingPower || 0)).toFixed(2)}
+            </span>
+          </div>
+        </div>
+        <button 
+          className="refresh-balances-btn"
+          onClick={() => dispatch(fetchAlexandriaBalances(identity))}
+          disabled={isLoadingAlexandria}
+        >
+          {isLoadingAlexandria ? 'Refreshing...' : 'Refresh Balances'}
+        </button>
+      </div>
+
+      {/* KongSwap Registration Component */}
+      <KongSwapRegistration identity={identity} />
 
       {/* Filters */}
       <div className="proposals-filters">

@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Token Locker - KongSwap</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .label {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .value {
+            color: #333;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            word-break: break-all;
+        }
+        
+        .button {
+            width: 100%;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+        
+        .button-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .button-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .button-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .button-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .instructions {
+            background: #e8f4f8;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        
+        .instructions h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .instructions ol {
+            margin-left: 20px;
+            color: #555;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        
+        .balance-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin: 15px 0;
+        }
+        
+        .copy-button {
+            display: inline-block;
+            margin-left: 10px;
+            padding: 4px 8px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .copy-button:hover {
+            background: #5a6fd8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 LP Token Locker</h1>
+        <p class="subtitle">Lock your KongSwap LP tokens permanently</p>
+        
+        <!-- Connection Section -->
+        <div id="connectionSection" class="section">
+            <h2>Connect Wallet</h2>
+            <button id="connectBtn" class="button button-primary">
+                Connect with Internet Identity
+            </button>
+        </div>
+        
+        <!-- Account Section (Hidden initially) -->
+        <div id="accountSection" class="section hidden">
+            <h2>Account Information</h2>
+            <div class="info-row">
+                <span class="label">Your Principal:</span>
+                <span class="value" id="userPrincipal">-</span>
+            </div>
+            <div class="info-row">
+                <span class="label">ICP Balance:</span>
+                <span class="value" id="icpBalance">-</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Lock Address:</span>
+                <span class="value" id="lockAddress">Loading...</span>
+                <button class="copy-button" id="copyLockAddress" style="display:none;">Copy</button>
+            </div>
+        </div>
+        
+        <!-- Registration Section (Hidden initially) -->
+        <div id="registrationSection" class="section hidden">
+            <h2>KongSwap Registration</h2>
+            <div id="registrationStatus"></div>
+            <button id="registerBtn" class="button button-primary">
+                Register with KongSwap (0.001 ICP)
+            </button>
+            <button id="checkRegistrationBtn" class="button button-secondary">
+                Check Registration Status
+            </button>
+        </div>
+        
+        <!-- LP Balance Section (Hidden initially) -->
+        <div id="balanceSection" class="section hidden">
+            <h2>Your LP Tokens</h2>
+            <div id="lpBalanceDisplay" class="balance-display">-</div>
+            <button id="refreshBalanceBtn" class="button button-secondary">
+                Refresh Balance
+            </button>
+        </div>
+        
+        <!-- Locked Tokens Section (Hidden initially) -->
+        <div id="lockedSection" class="section hidden">
+            <h2>Locked LP Tokens</h2>
+            <div id="lockedBalanceDisplay" class="balance-display">-</div>
+            <button id="checkLockedBtn" class="button button-secondary">
+                Check Locked Tokens
+            </button>
+            <p style="margin-top: 10px; color: #666; font-size: 14px;">
+                LP tokens sent to your Lock Address are permanently locked and cannot be withdrawn.
+            </p>
+        </div>
+        
+        <!-- Instructions -->
+        <div class="instructions">
+            <h3>How to Lock LP Tokens:</h3>
+            <ol>
+                <li>Connect your wallet using Internet Identity</li>
+                <li>Register with KongSwap (one-time fee: 0.001 ICP)</li>
+                <li>Provide liquidity on KongSwap to receive LP tokens</li>
+                <li>Send LP tokens to your Lock Address shown above</li>
+                <li>Tokens are permanently locked and count toward DAO governance</li>
+            </ol>
+        </div>
+        
+        <!-- Status Messages -->
+        <div id="statusMessage" class="hidden"></div>
+    </div>
+    
+    <script type="module">
+        import { AuthClient } from 'https://cdn.jsdelivr.net/npm/@dfinity/auth-client@1.0.1/+esm';
+        import { Actor, HttpAgent } from 'https://cdn.jsdelivr.net/npm/@dfinity/agent@1.0.1/+esm';
+        import { Principal } from 'https://cdn.jsdelivr.net/npm/@dfinity/principal@1.0.1/+esm';
+        import { IDL } from 'https://cdn.jsdelivr.net/npm/@dfinity/candid@1.0.1/+esm';
+        
+        // Configuration
+        const KONG_BACKEND_ID = '2ipq2-uqaaa-aaaar-qailq-cai';
+        const LP_LOCK_FRONTEND_ID = 'c6w56-taaaa-aaaai-atlma-cai';
+        const ICP_LEDGER_ID = 'ryjl3-tyaaa-aaaaa-aaaba-cai';
+        
+        let authClient;
+        let identity;
+        let userPrincipal;
+        let kongActor;
+        let lpLockActor;
+        let icpLedgerActor;
+        
+        // Show status message
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.className = `status status-${type}`;
+            statusEl.textContent = message;
+            statusEl.classList.remove('hidden');
+            setTimeout(() => statusEl.classList.add('hidden'), 5000);
+        }
+        
+        // Update UI element
+        function updateUI(elementId, value) {
+            const element = document.getElementById(elementId);
+            if (element) element.textContent = value;
+        }
+        
+        // Kong IDL
+        const kongIdlFactory = ({ IDL }) => {
+            const TxId = IDL.Variant({
+                'BlockIndex': IDL.Nat,
+                'TransactionId': IDL.Text,
+            });
+            
+            const SwapArgs = IDL.Record({
+                'pay_token': IDL.Text,
+                'pay_amount': IDL.Nat,
+                'receive_token': IDL.Text,
+                'receive_amount': IDL.Opt(IDL.Nat),
+                'max_slippage': IDL.Opt(IDL.Float64),
+                'referred_by': IDL.Opt(IDL.Text),
+                'pay_tx_id': IDL.Opt(TxId),
+            });
+            
+            return IDL.Service({
+                'swap': IDL.Func([SwapArgs], [IDL.Variant({
+                    'Ok': IDL.Record({}), // Simplified
+                    'Err': IDL.Text,
+                })], []),
+                'user_balances': IDL.Func([IDL.Text], [IDL.Variant({
+                    'Ok': IDL.Vec(IDL.Record({})), // Simplified
+                    'Err': IDL.Text,
+                })], ['query']),
+            });
+        };
+        
+        // LP Lock Frontend IDL
+        const lpLockIdlFactory = ({ IDL }) => {
+            return IDL.Service({
+                'get_my_deposit_address': IDL.Func([], [IDL.Text], ['query']),
+                'check_my_lp_balance': IDL.Func([], [IDL.Variant({
+                    'Ok': IDL.Vec(IDL.Text),
+                    'Err': IDL.Text,
+                })], []),
+            });
+        };
+        
+        // ICP Ledger IDL
+        const icpLedgerIdlFactory = ({ IDL }) => {
+            const Account = IDL.Record({
+                'owner': IDL.Principal,
+                'subaccount': IDL.Opt(IDL.Vec(IDL.Nat8)),
+            });
+            
+            const TransferArg = IDL.Record({
+                'to': Account,
+                'amount': IDL.Nat,
+                'fee': IDL.Opt(IDL.Nat),
+                'memo': IDL.Opt(IDL.Vec(IDL.Nat8)),
+                'from_subaccount': IDL.Opt(IDL.Vec(IDL.Nat8)),
+                'created_at_time': IDL.Opt(IDL.Nat64),
+            });
+            
+            return IDL.Service({
+                'icrc1_transfer': IDL.Func([TransferArg], [IDL.Variant({
+                    'Ok': IDL.Nat,
+                    'Err': IDL.Record({}), // Simplified
+                })], []),
+                'icrc1_balance_of': IDL.Func([Account], [IDL.Nat], ['query']),
+            });
+        };
+        
+        // Initialize
+        async function init() {
+            authClient = await AuthClient.create();
+            const isAuthenticated = await authClient.isAuthenticated();
+            
+            if (isAuthenticated) {
+                await handleAuthenticated();
+            }
+        }
+        
+        // Handle authentication
+        async function handleAuthenticated() {
+            identity = authClient.getIdentity();
+            userPrincipal = identity.getPrincipal().toText();
+            
+            // Update UI
+            updateUI('userPrincipal', userPrincipal.slice(0, 5) + '...' + userPrincipal.slice(-4));
+            document.getElementById('connectionSection').classList.add('hidden');
+            document.getElementById('accountSection').classList.remove('hidden');
+            document.getElementById('registrationSection').classList.remove('hidden');
+            document.getElementById('balanceSection').classList.remove('hidden');
+            document.getElementById('lockedSection').classList.remove('hidden');
+            
+            // Create actors
+            const agent = new HttpAgent({
+                identity,
+                host: 'https://ic0.app',
+            });
+            
+            kongActor = Actor.createActor(kongIdlFactory, {
+                agent,
+                canisterId: KONG_BACKEND_ID,
+            });
+            
+            lpLockActor = Actor.createActor(lpLockIdlFactory, {
+                agent,
+                canisterId: LP_LOCK_FRONTEND_ID,
+            });
+            
+            icpLedgerActor = Actor.createActor(icpLedgerIdlFactory, {
+                agent,
+                canisterId: ICP_LEDGER_ID,
+            });
+            
+            // Load initial data
+            await loadAccountData();
+        }
+        
+        // Load account data
+        async function loadAccountData() {
+            try {
+                // Get lock address
+                const lockAddress = await lpLockActor.get_my_deposit_address();
+                updateUI('lockAddress', lockAddress);
+                document.getElementById('copyLockAddress').style.display = 'inline-block';
+                
+                // Get ICP balance
+                const account = {
+                    owner: Principal.fromText(userPrincipal),
+                    subaccount: [],
+                };
+                const balance = await icpLedgerActor.icrc1_balance_of(account);
+                const icpAmount = Number(balance) / 100000000;
+                updateUI('icpBalance', icpAmount.toFixed(4) + ' ICP');
+                
+                // Check registration status
+                await checkRegistration();
+                
+            } catch (error) {
+                console.error('Error loading account data:', error);
+                showStatus('Failed to load account data', 'error');
+            }
+        }
+        
+        // Check registration
+        async function checkRegistration() {
+            try {
+                const result = await kongActor.user_balances(userPrincipal);
+                
+                if ('Err' in result && result.Err.includes('User not found')) {
+                    document.getElementById('registrationStatus').innerHTML = 
+                        '<div class="status status-warning">Not registered with KongSwap</div>';
+                } else {
+                    document.getElementById('registrationStatus').innerHTML = 
+                        '<div class="status status-success">✓ Registered with KongSwap</div>';
+                    document.getElementById('registerBtn').disabled = true;
+                    document.getElementById('registerBtn').textContent = 'Already Registered';
+                }
+            } catch (error) {
+                console.error('Error checking registration:', error);
+            }
+        }
+        
+        // Connect wallet
+        document.getElementById('connectBtn').addEventListener('click', async () => {
+            try {
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('connectBtn').textContent = 'Connecting...';
+                
+                await authClient.login({
+                    identityProvider: 'https://identity.ic0.app',
+                    onSuccess: handleAuthenticated,
+                    onError: (error) => {
+                        showStatus('Failed to connect: ' + error, 'error');
+                        document.getElementById('connectBtn').disabled = false;
+                        document.getElementById('connectBtn').textContent = 'Connect with Internet Identity';
+                    }
+                });
+            } catch (error) {
+                showStatus('Connection error: ' + error.message, 'error');
+                document.getElementById('connectBtn').disabled = false;
+                document.getElementById('connectBtn').textContent = 'Connect with Internet Identity';
+            }
+        });
+        
+        // Register with KongSwap
+        document.getElementById('registerBtn').addEventListener('click', async () => {
+            try {
+                document.getElementById('registerBtn').disabled = true;
+                document.getElementById('registerBtn').textContent = 'Registering...';
+                
+                // Transfer ICP to KongSwap
+                const transferArg = {
+                    to: {
+                        owner: Principal.fromText(KONG_BACKEND_ID),
+                        subaccount: [],
+                    },
+                    amount: BigInt(100000), // 0.001 ICP
+                    fee: [BigInt(10000)],
+                    memo: [],
+                    from_subaccount: [],
+                    created_at_time: [],
+                };
+                
+                const transferResult = await icpLedgerActor.icrc1_transfer(transferArg);
+                
+                if ('Ok' in transferResult) {
+                    // Call swap with the transfer ID
+                    const swapArgs = {
+                        pay_token: 'ICP',
+                        pay_amount: BigInt(100000),
+                        receive_token: 'ALEX',
+                        receive_amount: [BigInt(0)],
+                        max_slippage: [100.0],
+                        referred_by: [],
+                        pay_tx_id: [{ BlockIndex: transferResult.Ok }],
+                    };
+                    
+                    const swapResult = await kongActor.swap(swapArgs);
+                    
+                    if ('Ok' in swapResult) {
+                        showStatus('Successfully registered with KongSwap!', 'success');
+                        await checkRegistration();
+                    } else {
+                        showStatus('Registration may have succeeded, check status', 'warning');
+                    }
+                } else {
+                    showStatus('Transfer failed: Insufficient ICP', 'error');
+                }
+                
+            } catch (error) {
+                showStatus('Registration error: ' + error.message, 'error');
+            } finally {
+                document.getElementById('registerBtn').disabled = false;
+                document.getElementById('registerBtn').textContent = 'Register with KongSwap (0.001 ICP)';
+            }
+        });
+        
+        // Check registration status
+        document.getElementById('checkRegistrationBtn').addEventListener('click', async () => {
+            await checkRegistration();
+            showStatus('Registration status updated', 'info');
+        });
+        
+        // Refresh balance
+        document.getElementById('refreshBalanceBtn').addEventListener('click', async () => {
+            try {
+                const result = await kongActor.user_balances(userPrincipal);
+                if ('Ok' in result && result.Ok.length > 0) {
+                    updateUI('lpBalanceDisplay', `${result.Ok.length} LP position(s)`);
+                } else {
+                    updateUI('lpBalanceDisplay', 'No LP tokens');
+                }
+            } catch (error) {
+                showStatus('Failed to fetch balance', 'error');
+            }
+        });
+        
+        // Check locked tokens
+        document.getElementById('checkLockedBtn').addEventListener('click', async () => {
+            try {
+                const result = await lpLockActor.check_my_lp_balance();
+                if ('Ok' in result) {
+                    const balances = result.Ok;
+                    if (balances.length > 0 && !balances[0].includes('No LP tokens')) {
+                        updateUI('lockedBalanceDisplay', balances.join(', '));
+                    } else {
+                        updateUI('lockedBalanceDisplay', 'No locked tokens');
+                    }
+                } else {
+                    showStatus('Failed to check locked tokens: ' + result.Err, 'error');
+                }
+            } catch (error) {
+                showStatus('Error checking locked tokens', 'error');
+            }
+        });
+        
+        // Copy lock address
+        document.getElementById('copyLockAddress').addEventListener('click', async () => {
+            const lockAddress = document.getElementById('lockAddress').textContent;
+            await navigator.clipboard.writeText(lockAddress);
+            showStatus('Lock address copied!', 'success');
+        });
+        
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>

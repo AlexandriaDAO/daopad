@@ -30,6 +30,13 @@
       "package": "lp_locking",
       "type": "rust",
       "specified_id": "7zv6y-5qaaa-aaaar-qbviq-cai"
+    },
+    "lp_lock_frontend": {
+      "source": [
+        "src/lp_locker_frontend/dist"
+      ],
+      "type": "assets",
+      "specified_id": "c6w56-taaaa-aaaai-atlma-cai"
     }
   },
   "defaults": {
