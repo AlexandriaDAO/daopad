@@ -1,11 +1,28 @@
+type LPBalancesReply = record {
+  ts : nat64;
+  usd_balance : float64;
+  balance : float64;
+  name : text;
+  amount_0 : float64;
+  amount_1 : float64;
+  address_0 : text;
+  address_1 : text;
+  symbol_0 : text;
+  symbol_1 : text;
+  usd_amount_0 : float64;
+  usd_amount_1 : float64;
+  chain_0 : text;
+  chain_1 : text;
+  symbol : text;
+  lp_token_id : nat64;
+};
 type Result = variant { Ok : text; Err : text };
 type Result_1 = variant { Ok : nat; Err : text };
 service : {
-  get_address : () -> (text) query;
-  get_all_voting_powers : () -> (vec record { principal; nat; text }) query;
-  get_my_lp_address : () -> (Result) query;
-  get_my_voting_power : () -> (nat) query;
-  register_for_lp_locking : () -> (Result);
+  get_all_lp_positions : () -> (vec record { text; vec LPBalancesReply }) query;
+  get_all_voting_powers : () -> (vec record { text; nat }) query;
+  get_lp_positions : () -> (vec LPBalancesReply) query;
+  get_voting_power : () -> (nat) query;
   register_with_kongswap : () -> (Result);
-  sync_my_voting_power : () -> (Result_1);
+  sync_voting_power : () -> (Result_1);
 }

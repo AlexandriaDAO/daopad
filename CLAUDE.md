@@ -28,12 +28,18 @@ Query methods (like `list_requests`) cannot be called via inter-canister calls. 
 ### Canister IDs
 - **DAOPad Backend (mainnet)**: `lwsav-iiaaa-aaaap-qp2qq-cai`
 - **DAOPad Frontend (mainnet)**: `l7rlj-6aaaa-aaaaa-qaffq-cai`
+- **LP Locker Frontend (mainnet)**: `c6w56-taaaa-aaaai-atlma-cai`
+- **LP Locking Backend (mainnet)**: `7zv6y-5qaaa-aaaar-qbviq-cai`
 - **Alexandria Orbit Station**: `fec7w-zyaaa-aaaaa-qaffq-cai`
+
+## Development Workflow
+
+**IMPORTANT**: This project NEVER uses local development. Everything deploys directly to mainnet IC. We test in production only.
 
 ## Key Commands
 
 ```bash
-# Always use alex identity for mainnet testing
+# Always use alex identity for mainnet deployment
 dfx identity use alex
 
 # Build backend
@@ -43,21 +49,26 @@ cargo build --target wasm32-unknown-unknown --release -p daopad_backend --locked
 candid-extractor target/wasm32-unknown-unknown/release/daopad_backend.wasm > src/daopad_backend/daopad_backend.did
 
 # Deploy (always to mainnet - we test in production)
-./deploy.sh --network ic  # Full deployment (requires password)
+./deploy.sh --network ic  # Full deployment (requires password - ONLY RUN BY USER)
 ./deploy.sh --network ic --backend-only  # Backend only
+./deploy.sh --network ic --frontend-only  # Frontend only
 
-# Frontend development (still local dev server, but talks to mainnet)
+# Frontend development (local dev server, but talks to mainnet)
 cd src/daopad_frontend && npm install && npm run dev
+cd src/lp_locker_frontend && npm install && npm run start
 
 # Test backend functions directly on mainnet
 dfx canister --network ic call daopad_backend get_alexandria_config
 dfx canister --network ic call daopad_backend get_backend_principal
+dfx canister --network ic call lp_locking get_all_voting_powers
 ```
 
 ## Entry Points
 
-- **Backend**: `src/daopad_backend/src/lib.rs` - Main canister logic
+- **Backend**: `src/daopad_backend/src/lib.rs` - Main canister logic  
 - **Frontend**: `src/daopad_frontend/src/App.jsx` - React application root
+- **LP Locker Frontend**: `src/lp_locker_frontend/src/App.jsx` - LP token locking interface
+- **LP Locking Backend**: `src/lp_locking/src/lib.rs` - LP token management canister
 - **Alexandria Module**: `src/daopad_backend/src/alexandria_dao.rs` - Orbit integration
 
 ## Current Integration Status
@@ -75,6 +86,20 @@ dfx canister --network ic call daopad_backend get_backend_principal
 
 ## Deployment Notes
 
+- **CRITICAL**: Only the USER can run deployment commands (`./deploy.sh`) due to encrypted identity requirements
+- When code changes are complete, Claude should ask the user to run the appropriate deploy command  
 - Backend canister must be registered in Orbit Station for any access
 - The `remote` config in dfx.json breaks deployment - already removed
 - Use `--backend-only` to avoid unnecessary frontend rebuilds
+- Use `--frontend-only` to deploy only frontend changes
+
+## For Claude Code
+
+When working on this project:
+1. **NEVER attempt to run deployment commands** - they require encrypted identity access
+2. **NEVER suggest local development** - this project only uses mainnet
+3. **After completing changes**, ask the user to run the appropriate deploy command:
+   - `./deploy.sh --network ic --frontend-only` for frontend-only changes
+   - `./deploy.sh --network ic --backend-only` for backend-only changes  
+   - `./deploy.sh --network ic` for full deployment
+4. All testing and development happens directly on mainnet IC
