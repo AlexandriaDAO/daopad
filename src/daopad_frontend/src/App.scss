@@ -1,13 +1,12 @@
 // Paper Document Theme - Swiss Minimalist Monochrome
 @use 'sass:color';
 
-// Import component styles
-@import './components/AlexandriaProposals.scss';
+// Component styles are included inline
 
 // Color Variables
 $paper-white: #FAFAF9;
 $ink-black: #000000;
-$accent-blue: #1E40AF;
+$accent-color: #1E40AF;
 $document-gray: #F5F5F4;
 $border-gray: #E5E5E4;
 $text-secondary: #525252;
@@ -110,8 +109,8 @@ header {
           line-height: 1;
           
           &:hover {
-            color: $accent-blue;
-            border-color: $accent-blue;
+            color: $accent-color;
+            border-color: $accent-color;
           }
         }
       }
@@ -141,16 +140,31 @@ header {
           transition: color 0.2s ease;
           
           &:hover {
-            color: $accent-blue;
+            color: $accent-color;
           }
+        }
+      }
+      
+      .lp-principal-indicator {
+        background: #e8f5e9;
+        border: 1px solid #4caf50;
+        padding: 0.25rem 0.5rem;
+        margin: 0 0.5rem;
+        
+        .lp-badge {
+          color: #2e7d32;
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
       }
     }
     
     .auth-button {
-      background: $accent-blue;
+      background: $accent-color;
       color: white;
-      border: 1px solid color.adjust($accent-blue, $lightness: -10%);
+      border: 1px solid $ink-black;
       padding: 0.375rem 0.75rem;
       font-size: 0.75rem;
       font-weight: 500;
@@ -161,15 +175,15 @@ header {
       
       &.logout {
         background: $text-secondary;
-        border-color: color.adjust($text-secondary, $lightness: -10%);
+        border-color: $text-secondary;
         
         &:hover {
-          background: color.adjust($text-secondary, $lightness: -10%);
+          background: $text-secondary;
         }
       }
       
       &:hover {
-        background: color.adjust($accent-blue, $lightness: -10%);
+        background: $ink-black;
       }
     }
   }
@@ -268,17 +282,17 @@ header {
 .action-link {
   display: inline-block;
   padding: 0.375rem 0.875rem;
-  background: $accent-blue;
+  background: $accent-color;
   color: white;
   text-decoration: none;
   font-weight: 500;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border: 1px solid color.adjust($accent-blue, $lightness: -10%);
+  border: 1px solid $ink-black;
   
   &:hover {
-    background: color.adjust($accent-blue, $lightness: -10%);
+    background: $ink-black;
   }
 }
 
@@ -288,14 +302,14 @@ header {
   
   .banner-content {
     padding: 1.25rem;
-    background: lighten($accent-blue, 45%);
-    border: 2px solid $accent-blue;
+    background: $document-gray;
+    border: 2px solid $accent-color;
     border-radius: 2px;
     font-size: 0.875rem;
     line-height: 1.6;
     
     strong {
-      color: $accent-blue;
+      color: $accent-color;
       text-transform: uppercase;
       font-size: 0.75rem;
       letter-spacing: 0.5px;
@@ -361,22 +375,22 @@ header {
       border: 1px solid;
       
       &.primary {
-        background: $accent-blue;
+        background: $accent-color;
         color: white;
-        border-color: $accent-blue;
+        border-color: $accent-color;
         
         &:hover {
-          background: color.adjust($accent-blue, $lightness: -10%);
+          background: $ink-black;
         }
       }
       
       &.secondary {
         background: white;
-        color: $accent-blue;
-        border-color: $accent-blue;
+        color: $accent-color;
+        border-color: $accent-color;
         
         &:hover {
-          background: lighten($accent-blue, 45%);
+          background: $document-gray;
         }
       }
     }
@@ -791,9 +805,9 @@ header {
     }
     
     .add-operator-btn {
-      background: $accent-blue;
+      background: $accent-color;
       color: white;
-      border: 1px solid color.adjust($accent-blue, $lightness: -10%);
+      border: 1px solid $ink-black;
       padding: 0.375rem 0.875rem;
       font-weight: 500;
       font-size: 0.75rem;
@@ -803,7 +817,7 @@ header {
       transition: all 0.2s ease;
       
       &:hover:not(:disabled) {
-        background: color.adjust($accent-blue, $lightness: -10%);
+        background: $ink-black;
       }
       
       &:disabled {
@@ -864,7 +878,7 @@ header {
         .cancel-btn {
           background: $text-secondary;
           color: white;
-          border: 1px solid color.adjust($text-secondary, $lightness: -10%);
+          border: 1px solid $text-secondary;
           padding: 0.375rem 0.875rem;
           font-weight: 500;
           font-size: 0.75rem;
@@ -874,7 +888,7 @@ header {
           transition: all 0.2s ease;
           
           &:hover:not(:disabled) {
-            background: color.adjust($text-secondary, $lightness: -10%);
+            background: $text-secondary;
           }
           
           &:disabled {
@@ -911,7 +925,7 @@ header {
     }
     
     a {
-      color: $accent-blue;
+      color: $accent-color;
       text-decoration: none;
       
       &:hover {
@@ -975,9 +989,9 @@ header {
       }
 
       button {
-        background: $accent-blue;
+        background: $accent-color;
         color: white;
-        border: 1px solid color.adjust($accent-blue, $lightness: -10%);
+        border: 1px solid $ink-black;
         padding: 0.5rem 1rem;
         cursor: pointer;
         font-weight: 500;
@@ -987,7 +1001,7 @@ header {
         transition: all 0.2s ease;
 
         &:hover:not(:disabled) {
-          background: color.adjust($accent-blue, $lightness: -10%);
+          background: $ink-black;
         }
 
         &:disabled {
@@ -1129,7 +1143,7 @@ header {
         display: inline-block;
         width: 100%;
         text-align: center;
-        background: $accent-blue;
+        background: $accent-color;
         color: white;
         text-decoration: none;
         padding: 0.5rem;
@@ -1137,11 +1151,11 @@ header {
         font-size: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        border: 1px solid color.adjust($accent-blue, $lightness: -10%);
+        border: 1px solid $ink-black;
         transition: all 0.2s ease;
 
         &:hover {
-          background: color.adjust($accent-blue, $lightness: -10%);
+          background: $ink-black;
         }
       }
 
@@ -1297,7 +1311,7 @@ footer {
   font-size: 0.75rem;
   
   a {
-    color: $accent-blue;
+    color: $accent-color;
     text-decoration: none;
     margin: 0 0.375rem;
     
@@ -1685,7 +1699,7 @@ footer {
     gap: 0.25rem;
     margin-bottom: 0.75rem;
     font-size: 0.75rem;
-    color: $accent-blue;
+    color: $accent-color;
     
     .countdown-icon {
       font-size: 0.875rem;
@@ -1925,13 +1939,13 @@ footer {
       .station-info {
         margin-top: 0.75rem;
         padding: 0.75rem;
-        background: color.adjust($accent-blue, $lightness: 45%);
-        border: 1px solid color.adjust($accent-blue, $lightness: 30%);
+        background: color.adjust($accent-color, $lightness: 45%);
+        border: 1px solid color.adjust($accent-color, $lightness: 30%);
         border-radius: 4px;
         
         p {
           margin: 0;
-          color: color.adjust($accent-blue, $lightness: -20%);
+          color: color.adjust($accent-color, $lightness: -20%);
           font-size: 0.8125rem;
           font-weight: 500;
           text-align: center;
@@ -1963,11 +1977,11 @@ footer {
         transition: all 0.2s ease;
         
         &.primary {
-          background: $accent-blue;
+          background: $accent-color;
           color: white;
           
           &:hover {
-            background: color.adjust($accent-blue, $lightness: -10%);
+            background: $ink-black;
           }
         }
         
@@ -2013,7 +2027,7 @@ footer {
           
           &:focus {
             outline: none;
-            border-color: $accent-blue;
+            border-color: $accent-color;
           }
           
           &:disabled {

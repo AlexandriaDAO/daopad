@@ -2,7 +2,8 @@ import { Actor, HttpAgent } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
 import { IDL } from '@dfinity/candid';
 
-const ORBIT_STATION_ID = "fec7w-zyaaa-aaaaa-qaffq-cai";
+// Default Orbit Station ID (Alexandria) - can be overridden in constructor
+const DEFAULT_ORBIT_STATION_ID = "fec7w-zyaaa-aaaaa-qaffq-cai";
 
 // Define the minimal IDL for list_requests
 const orbitStationIDL = ({ IDL }) => {
@@ -161,7 +162,8 @@ const orbitStationIDL = ({ IDL }) => {
 };
 
 export class OrbitStationService {
-  constructor(identity = null) {
+  constructor(identity = null, stationId = null) {
+    this.stationId = stationId || DEFAULT_ORBIT_STATION_ID;
     const isLocal = import.meta.env.VITE_DFX_NETWORK === 'local';
     this.agent = new HttpAgent({ 
       identity,
@@ -175,7 +177,7 @@ export class OrbitStationService {
     
     this.actor = Actor.createActor(orbitStationIDL, {
       agent: this.agent,
-      canisterId: ORBIT_STATION_ID,
+      canisterId: this.stationId,
     });
   }
   

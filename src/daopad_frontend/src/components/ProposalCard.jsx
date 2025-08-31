@@ -31,7 +31,7 @@ const getStatusText = (status) => {
   return 'Unknown';
 };
 
-const ProposalCard = ({ proposal, onClick }) => {
+const ProposalCard = ({ proposal, onClick, onApprove, onReject, canVote, isVotingLoading }) => {
   const approvals = proposal.approvals || [];
   const approvalProgress = 0; // We'll calculate this based on policy rules if available
 
@@ -91,6 +91,33 @@ const ProposalCard = ({ proposal, onClick }) => {
           )}
         </div>
       </div>
+      
+      {canVote && getStatusText(proposal.status) === 'Created' && (
+        <div className="proposal-actions">
+          <button 
+            className={`approve-btn ${isVotingLoading === 'approving' ? 'loading' : ''} ${isVotingLoading === 'approved' ? 'success' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onApprove(proposal.id);
+            }}
+            disabled={isVotingLoading}
+          >
+            {isVotingLoading === 'approving' ? '⏳ Approving...' : 
+             isVotingLoading === 'approved' ? '✅ Approved!' : '✓ Approve'}
+          </button>
+          <button 
+            className={`reject-btn ${isVotingLoading === 'rejecting' ? 'loading' : ''} ${isVotingLoading === 'rejected' ? 'success' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onReject(proposal.id, 'Rejected by DAO vote');
+            }}
+            disabled={isVotingLoading}
+          >
+            {isVotingLoading === 'rejecting' ? '⏳ Rejecting...' : 
+             isVotingLoading === 'rejected' ? '✅ Rejected!' : '✗ Reject'}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

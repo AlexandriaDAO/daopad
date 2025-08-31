@@ -4,10 +4,7 @@ use serde::Serialize;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-// Alexandria Orbit Station Canister ID
-const ALEXANDRIA_STATION_ID: &str = "fec7w-zyaaa-aaaaa-qaffq-cai";
-// ICP Swap Canister ID for staking data
-const ICP_SWAP_ID: &str = "54fqz-5iaaa-aaaap-qkmqa-cai";
+// No hardcoded defaults - all stations passed as parameters
 
 // ========== REGISTRATION TYPES ==========
 
@@ -280,9 +277,7 @@ pub async fn get_alex_stake(user_principal: Principal) -> Result<Option<Stake>, 
 // ========== ORBIT STATION INTERFACE ==========
 
 // Check if a user exists in Orbit Station
-pub async fn check_user_exists_in_orbit(user_principal: Principal) -> Result<bool, String> {
-    let orbit_station_id = Principal::from_text(ALEXANDRIA_STATION_ID)
-        .map_err(|e| format!("Invalid Orbit Station ID: {:?}", e))?;
+pub async fn check_user_exists_in_orbit(user_principal: Principal, orbit_station_id: Principal) -> Result<bool, String> {
     
     // Call list_users to get all users
     let result: Result<(Vec<UserDTO>,), _> = 
@@ -308,9 +303,8 @@ pub async fn create_user_in_orbit(
     user_name: String,
     user_principal: Principal,
     is_admin: bool,
+    orbit_station_id: Principal,
 ) -> Result<String, String> {
-    let orbit_station_id = Principal::from_text(ALEXANDRIA_STATION_ID)
-        .map_err(|e| format!("Invalid Orbit Station ID: {:?}", e))?;
     
     // Determine groups based on role
     let groups = if is_admin {
@@ -806,15 +800,6 @@ pub async fn fetch_proposals_no_cache(filter: Option<ProposalFilter>) -> Result<
     }
 }
 
-pub async fn register_with_alexandria_station() -> Result<String, String> {
-    // Registration would typically involve calling an add_viewer or similar method
-    // For now, we'll assume the backend principal needs to be added manually
-    let backend_principal = ic_cdk::id();
-    Ok(format!(
-        "Backend principal {} ready to be registered with Alexandria Station",
-        backend_principal.to_text()
-    ))
-}
 
 #[allow(dead_code)]
 pub async fn fetch_proposals(filter: Option<ProposalFilter>) -> Result<Vec<ProposalSummary>, String> {

@@ -1,51 +1,51 @@
-type AlexandriaConfig = record {
-  backend_principal : text;
-  station_canister_id : text;
-  frontend_url : text;
-};
-type ProposalSummary = record {
-  id : text;
-  status : text;
-  title : text;
-  operation_type : text;
-  required_approvals : nat32;
-  created_at : text;
-  approval_count : nat32;
+type LPBalancesReply = record {
+  ts : nat64;
+  usd_balance : float64;
+  balance : float64;
+  name : text;
+  amount_0 : float64;
+  amount_1 : float64;
+  address_0 : text;
+  address_1 : text;
+  symbol_0 : text;
+  symbol_1 : text;
+  usd_amount_0 : float64;
+  usd_amount_1 : float64;
+  chain_0 : text;
+  chain_1 : text;
+  symbol : text;
+  lp_token_id : nat64;
 };
 type RegistrationInfo = record {
   request_id : text;
   user_name : text;
-  staked_amount : nat;
+  token_canister : principal;
   timestamp : nat64;
 };
-type RegistrationResult = variant {
-  Error : record { message : text };
-  AlreadyRegistered : record { request_id : text; registered_at : nat64 };
-  InsufficientStake : record { required : nat; current : nat };
-  Success : record { request_id : text; message : text };
-};
-type RegistrationStatus = record {
-  request_id : opt text;
-  user_name : opt text;
-  staked_amount : nat;
-  required_stake : nat;
+type Result = variant { Ok : text; Err : text };
+type Result_1 = variant { Ok : vec TokenDAOStatus; Err : text };
+type Result_2 = variant { Ok : vec LPBalancesReply; Err : text };
+type TokenDAOStatus = record {
+  token_canister : principal;
+  station_canister : opt principal;
   is_registered : bool;
 };
-type Result = variant { Ok : vec ProposalSummary; Err : text };
-type Result_1 = variant { Ok : text; Err : text };
-service : (opt text) -> {
-  check_registration_status : () -> (RegistrationStatus);
-  get_alexandria_config : () -> (AlexandriaConfig) query;
-  get_alexandria_proposals : () -> (Result) query;
-  get_alexandria_station_id : () -> (opt text) query;
-  get_backend_principal : () -> (text) query;
-  get_cache_status : () -> (opt text, nat32) query;
-  get_required_stake_amount : () -> (nat) query;
+service : () -> {
+  check_registration_for_token : (principal) -> (opt RegistrationInfo) query;
+  dao_approve_request : (principal, text, opt text) -> (Result);
+  dao_reject_request : (principal, text, opt text) -> (Result);
+  detect_available_daos : () -> (Result_1);
+  get_my_dao_registrations : () -> (
+      vec record { principal; RegistrationInfo },
+    ) query;
+  get_my_lp_positions : () -> (Result_2);
+  get_my_lp_principal : () -> (opt text) query;
+  get_station_for_token : (principal) -> (opt principal) query;
   health_check : () -> (text) query;
-  list_registered_users : () -> (vec record { text; RegistrationInfo }) query;
-  refresh_cache : () -> (Result_1);
-  register_as_orbit_operator : () -> (RegistrationResult);
-  register_backend_with_alexandria : () -> (Result_1);
-  set_alexandria_station_id : (text) -> ();
-  set_minimum_stake : (nat) -> (Result_1);
+  link_token_to_station : (principal, principal) -> (Result);
+  list_all_registrations : () -> (vec record { text; RegistrationInfo }) query;
+  list_token_stations : () -> (vec record { principal; principal }) query;
+  register_with_token_dao : (principal) -> (Result);
+  set_lp_principal : (text) -> (Result);
+  unlink_token_from_station : (principal) -> (Result);
 }

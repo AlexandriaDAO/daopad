@@ -62,10 +62,13 @@ function App() {
 
   return (
     <div className="app">
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <header>
         <div className="header-content">
           <div>
+            <div className="project-info">Alexandria DAO · KongSwap</div>
             <h1>LP Token Locker</h1>
+            <p className="subtitle">Lock KongSwap Liquidity Forever</p>
           </div>
           <div className="auth-section">
             {isAuthenticated ? (
@@ -109,13 +112,16 @@ function App() {
         </div>
       </header>
 
-      <LPLockerDashboard />
+      <main id="main-content">
+        <LPLockerDashboard />
+      </main>
 
       <footer>
         <p>
           Built by <a href="https://lbry.fun" target="_blank" rel="noopener noreferrer">Alexandria</a> · 
           <a href="https://github.com/AlexandriaDAO/daopad" target="_blank" rel="noopener noreferrer">GitHub</a> · 
-          <a href="https://x.com/alexandria_lbry" target="_blank" rel="noopener noreferrer">Twitter</a>
+          <a href="https://x.com/alexandria_lbry" target="_blank" rel="noopener noreferrer">Twitter</a> · 
+          <a href="https://kongswap.io" target="_blank" rel="noopener noreferrer">KongSwap</a>
         </p>
       </footer>
     </div>

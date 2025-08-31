@@ -1,0 +1,327 @@
+.dao-proposals {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  
+  .no-dao-selected {
+    background: #f5f5f4;
+    border: 1px solid #e5e5e4;
+    padding: 3rem;
+    text-align: center;
+    
+    h3 {
+      color: #000;
+      margin-bottom: 1rem;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 1.375rem;
+      font-weight: 400;
+    }
+    
+    p {
+      color: #525252;
+      font-size: 0.875rem;
+    }
+  }
+  
+  .proposals-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+    
+    .dao-info {
+      h2 {
+        color: #000;
+        margin-bottom: 0.5rem;
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 1.75rem;
+        font-weight: 400;
+      }
+      
+      .dao-details {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        
+        .token-id, .station-id {
+          color: #666;
+          font-size: 0.75rem;
+          font-family: 'Courier New', monospace;
+          background: #f5f5f4;
+          padding: 0.25rem 0.5rem;
+          border: 1px solid #e5e5e4;
+        }
+      }
+    }
+    
+    .filter-controls {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      
+      .filter-select {
+        padding: 0.5rem;
+        border: 1px solid #e5e5e4;
+        background: white;
+        color: #000;
+        cursor: pointer;
+        font-size: 0.875rem;
+        
+        option {
+          background: white;
+          color: #000;
+        }
+        
+        &:focus {
+          outline: none;
+          border-color: #000;
+        }
+      }
+      
+      .refresh-button {
+        padding: 0.5rem 1rem;
+        border: 2px solid #000;
+        background: white;
+        color: #000;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        
+        &:hover {
+          background: #000;
+          color: white;
+        }
+      }
+    }
+  }
+  
+  .loading, .error, .no-proposals {
+    background: #f5f5f4;
+    border: 1px solid #e5e5e4;
+    padding: 2rem;
+    text-align: center;
+    color: #525252;
+  }
+  
+  .error {
+    border-color: #fcc;
+    background: #fef5f5;
+    
+    p {
+      margin-bottom: 1rem;
+      color: #d32f2f;
+    }
+    
+    button {
+      padding: 0.5rem 1rem;
+      border: 2px solid #d32f2f;
+      background: white;
+      color: #d32f2f;
+      cursor: pointer;
+      
+      &:hover {
+        background: #d32f2f;
+        color: white;
+      }
+    }
+  }
+  
+  .no-proposals {
+    h3 {
+      color: #000;
+      margin-bottom: 0.5rem;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 1.125rem;
+      font-weight: 400;
+    }
+    
+    p {
+      color: #525252;
+      font-size: 0.875rem;
+    }
+  }
+  
+  .lp-positions-section {
+    margin: 2rem 0;
+    background: #f8f8f7;
+    border: 1px solid #e5e5e4;
+    padding: 1.5rem;
+    
+    h3 {
+      color: #000;
+      margin-bottom: 1rem;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 1.25rem;
+      font-weight: 400;
+    }
+    
+    .lp-positions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    .lp-position-card {
+      background: white;
+      border: 1px solid #e5e5e4;
+      padding: 1rem;
+      
+      .position-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+        
+        .pool-pair {
+          font-weight: 600;
+          color: #000;
+          font-size: 0.875rem;
+        }
+        
+        .usd-value {
+          color: #000;
+          font-weight: 600;
+          font-size: 0.875rem;
+        }
+      }
+      
+      .position-details {
+        .token-amounts {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+          margin-bottom: 0.5rem;
+          
+          span {
+            color: #525252;
+            font-size: 0.75rem;
+            font-family: 'Courier New', monospace;
+          }
+        }
+        
+        .lp-balance {
+          span {
+            color: #666;
+            font-size: 0.75rem;
+            font-family: 'Courier New', monospace;
+          }
+        }
+      }
+    }
+    
+    .positions-summary {
+      text-align: center;
+      padding-top: 1rem;
+      border-top: 1px solid #e5e5e4;
+      color: #000;
+      font-size: 0.875rem;
+    }
+  }
+
+  .proposals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+// Proposal Card Actions Styling
+.proposal-card {
+  .proposal-actions {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e5e4;
+    display: flex;
+    gap: 0.5rem;
+    
+    .approve-btn, .reject-btn {
+      padding: 0.5rem 1rem;
+      border: 1px solid;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      
+      &:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+      
+      &.loading {
+        position: relative;
+        
+        &::after {
+          content: '';
+          position: absolute;
+          right: 8px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 12px;
+          height: 12px;
+          border: 2px solid currentColor;
+          border-right-color: transparent;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+      }
+      
+      &.success {
+        background: #28a745 !important;
+        border-color: #28a745 !important;
+        animation: success-pulse 0.6s ease-in-out;
+      }
+    }
+    
+    .approve-btn {
+      background: #28a745;
+      color: white;
+      border-color: #28a745;
+      
+      &:hover {
+        background: #218838;
+        border-color: #1e7e34;
+      }
+    }
+    
+    .reject-btn {
+      background: #dc3545;
+      color: white;
+      border-color: #dc3545;
+      
+      &:hover {
+        background: #c82333;
+        border-color: #bd2130;
+      }
+    }
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes success-pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

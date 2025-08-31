@@ -198,7 +198,9 @@ dependencies = [
  "base64",
  "candid 0.10.17",
  "ic-cdk 0.17.2",
+ "ic-stable-structures",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

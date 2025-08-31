@@ -32,6 +32,16 @@ Query methods (like `list_requests`) cannot be called via inter-canister calls. 
 - **LP Locking Backend (mainnet)**: `7zv6y-5qaaa-aaaar-qbviq-cai`
 - **Alexandria Orbit Station**: `fec7w-zyaaa-aaaaa-qaffq-cai`
 
+## Project Components Clarification
+
+**LP Locker (konglocker.org)**: A standalone service for locking and tracking KongSwap liquidity positions. Users permanently lock their LP tokens here and receive a unique principal that represents their locked liquidity. This is a simple, immutable service focused solely on LP token management.
+- Frontend canister: `lp_locker_frontend` - User interface for viewing LP positions
+- Backend canister: `lp_locking` - Queries KongSwap and stores LP position data
+
+**DAOPad**: A comprehensive governance framework that enables DAO management of Orbit Station wallets. Users register by providing their LP Locker principal as proof of locked liquidity, which grants them voting power to participate in treasury management and protocol decisions. DAOPad connects locked liquidity (from LP Locker) to governance rights (in Orbit Station).
+- Frontend canister: `daopad_frontend` - Governance interface and proposal viewer
+- Backend canister: `daopad_backend` - Manages registrations and Orbit Station integration
+
 ## Development Workflow
 
 **IMPORTANT**: This project NEVER uses local development. Everything deploys directly to mainnet IC. We test in production only.

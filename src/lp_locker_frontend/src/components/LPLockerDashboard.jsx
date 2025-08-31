@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useIdentity } from '../hooks/useIdentity';
-import { syncVotingPower, registerWithKongSwap } from '../state/lpLocker/lpLockerThunks';
+import { syncVotingPower, registerWithKongSwap, fetchLpLockerData } from '../state/lpLocker/lpLockerThunks';
 
 const LPLockerDashboard = () => {
   const dispatch = useDispatch();
@@ -14,10 +14,17 @@ const LPLockerDashboard = () => {
     isLoading, 
     isSyncing, 
     message, 
-    error 
+    error,
+    icpBalance 
   } = useSelector(state => state.lpLocker);
   
   const [isRegistering, setIsRegistering] = useState(false);
+
+  const refreshData = () => {
+    if (identity) {
+      dispatch(fetchLpLockerData(identity));
+    }
+  };
 
   const handleSyncVotingPower = async () => {
     if (!identity) return;
@@ -45,179 +52,251 @@ const LPLockerDashboard = () => {
   return (
     <div className="lp-locker-dashboard">
       {message && (
-        <div className="message-banner">
-          <p>{message}</p>
+        <div className="notification-banner success">
+          <div className="notification-content">
+            <span className="status-indicator success">✓</span>
+            <p><strong>Success:</strong> {message}</p>
+          </div>
         </div>
       )}
 
       {error && (
-        <div className="error-banner">
-          <p>Error: {error}</p>
+        <div className="notification-banner error">
+          <div className="notification-content">
+            <span className="status-indicator error">✕</span>
+            <p><strong>Error:</strong> {error}</p>
+          </div>
         </div>
       )}
 
-      <div className="dashboard-sections">
-
-        {/* LP Summary Section */}
-        <section className="dashboard-card">
-          <h2>Your LP Summary</h2>
-          <div className="voting-power-display">
-            <span className="power-value">{votingPower.toLocaleString()}</span>
-            <span className="power-label">Total LP Balance</span>
-          </div>
-          
-          <button 
-            onClick={handleSyncVotingPower} 
-            disabled={!identity || isSyncing}
-            className="action-button primary"
-          >
-            {isSyncing ? 'Syncing...' : 'Sync LP Positions'}
-          </button>
-          
-          <p className="help-text">
-            Sync your LP positions from KongSwap. This tracks all your liquidity pool tokens.
-          </p>
-        </section>
-
-        {/* LP Position Details Section */}
-        <section className="dashboard-card">
-          <h2>Your LP Positions</h2>
-          {lpPositions && lpPositions.length > 0 ? (
-            <div className="lp-positions-list">
-              {lpPositions.map((position, index) => (
-                <div key={index} className="lp-position-card">
-                  <div className="position-header">
-                    <h3>{position.symbol_0}/{position.symbol_1}</h3>
-                    <span className="pool-name">{position.name}</span>
-                  </div>
-                  <div className="position-details">
-                    <div className="detail-row">
-                      <span className="label">LP Balance:</span>
-                      <span className="value">{position.balance.toFixed(6)}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="label">{position.symbol_0}:</span>
-                      <span className="value">{position.amount_0.toFixed(4)} (${position.usd_amount_0.toFixed(2)})</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="label">{position.symbol_1}:</span>
-                      <span className="value">{position.amount_1.toFixed(4)} (${position.usd_amount_1.toFixed(2)})</span>
-                    </div>
-                    <div className="detail-row total">
-                      <span className="label">Total Value:</span>
-                      <span className="value">${position.usd_balance.toFixed(2)}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="label">LP Token ID:</span>
-                      <span className="value">{position.lp_token_id}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              <div className="positions-summary">
-                <p>Total Positions: {lpPositions.length}</p>
-                <p>Combined USD Value: ${lpPositions.reduce((sum, p) => sum + p.usd_balance, 0).toFixed(2)}</p>
-              </div>
-            </div>
-          ) : (
-            <p className="no-data">No LP positions found. Provide liquidity on KongSwap and sync to see your positions.</p>
-          )}
-        </section>
-
-        {/* KongSwap Registration Section */}
-        <section className="dashboard-card">
-          <h2>KongSwap Registration</h2>
-          <div className="registration-status">
-            <span className={`status-badge ${isRegisteredWithKong ? 'registered' : 'not-registered'}`}>
-              {isRegisteredWithKong ? 'Registered' : 'Not Registered'}
-            </span>
-          </div>
-          
-          {!isRegisteredWithKong && (
-            <div className="registration-actions">
-              <button 
-                onClick={handleRegisterWithKong}
-                disabled={!identity || isRegistering}
-                className="action-button secondary"
-              >
-                {isRegistering ? 'Registering...' : 'Register with KongSwap (0.001 ICP)'}
-              </button>
-              <p className="help-text">
-                You need to register with KongSwap before you can provide liquidity. This costs 0.001 ICP.
-              </p>
-            </div>
-          )}
-
-          {isRegisteredWithKong && (
-            <div className="registered-actions">
-              <a 
-                href="https://kongswap.io" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="action-button secondary"
-              >
-                Open KongSwap →
-              </a>
-              <p className="help-text">
-                Great! You're registered. Provide liquidity on KongSwap, then sync your voting power here.
-              </p>
-            </div>
-          )}
-        </section>
-
-        {/* All Voting Powers Section */}
-        <section className="dashboard-card">
-          <h2>Community Voting Power</h2>
-          {allVotingPowers.length > 0 ? (
-            <div className="voting-powers-list">
-              <div className="list-header">
-                <span>Principal</span>
-                <span>Voting Power</span>
-              </div>
-              {allVotingPowers.slice(0, 10).map((entry, index) => (
-                <div key={index} className="list-item">
-                  <span className="principal">{entry.principal.slice(0, 8)}...{entry.principal.slice(-6)}</span>
-                  <span className="power">{Number(entry.voting_power).toLocaleString()}</span>
-                </div>
-              ))}
-              {allVotingPowers.length > 10 && (
-                <p className="list-note">Showing top 10 out of {allVotingPowers.length} participants</p>
-              )}
-            </div>
-          ) : (
-            <p className="no-data">No voting power data available.</p>
-          )}
-        </section>
+      {/* Quick Stats Banner */}
+      <div className="quick-stats-banner">
+        <div className="stat-item">
+          <span className="stat-value">
+            ${lpPositions ? lpPositions.reduce((sum, p) => sum + p.usd_balance, 0).toFixed(2) : '0.00'}
+          </span>
+          <span className="stat-label">Total LP Value</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-value">{lpPositions ? lpPositions.length : 0}</span>
+          <span className="stat-label">LP Positions</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-value">
+            {lpPositions ? lpPositions.reduce((sum, p) => sum + p.balance, 0).toFixed(4) : '0.0000'}
+          </span>
+          <span className="stat-label">Total LP Tokens</span>
+        </div>
       </div>
 
-      {/* How It Works Section */}
-      <section className="how-it-works">
-        <h2>How It Works</h2>
-        <div className="steps-grid">
-          <div className="step-card">
-            <div className="step-number">1</div>
-            <h3>Register with KongSwap</h3>
-            <p>Pay 0.001 ICP to register your account with the KongSwap decentralized exchange.</p>
+      <div className="dashboard-layout">
+        {/* Sidebar - User Status & Controls */}
+        <aside className="dashboard-sidebar">
+          {/* Connection & Balance Status */}
+          <div className="status-card">
+            <h3>Account Status</h3>
+            <div className="status-item">
+              <span className="status-indicator connected">●</span>
+              <span>Connected</span>
+            </div>
+            <div className="balance-display">
+              <span className="balance-value">{icpBalance}</span>
+              <span className="balance-label">ICP Balance</span>
+              <button 
+                onClick={refreshData} 
+                className="refresh-btn"
+                title="Refresh balance"
+              >
+                ↻
+              </button>
+            </div>
           </div>
-          
-          <div className="step-card">
-            <div className="step-number">2</div>
-            <h3>Provide Liquidity</h3>
-            <p>Go to KongSwap and provide liquidity to earn LP tokens. These represent your share of the pool.</p>
+
+          {/* Registration Status */}
+          <div className="status-card">
+            <h3>KongSwap Status</h3>
+            <div className="registration-status">
+              <span className={`status-indicator ${isRegisteredWithKong ? 'registered' : 'pending'}`}>
+                {isRegisteredWithKong ? '●' : '○'}
+              </span>
+              <span>{isRegisteredWithKong ? 'Registered' : 'Not Registered'}</span>
+            </div>
+            
+            {!isRegisteredWithKong ? (
+              <div className="action-group">
+                <button 
+                  onClick={handleRegisterWithKong}
+                  disabled={!identity || isRegistering}
+                  className={`btn-primary ${isRegistering ? 'loading' : ''}`}
+                >
+                  {isRegistering ? 'Registering...' : 'Register (0.001 ICP)'}
+                </button>
+                <p className="help-text">
+                  Register with KongSwap to start providing liquidity that can be locked forever.
+                </p>
+              </div>
+            ) : (
+              <div className="action-group">
+                <a 
+                  href="https://kongswap.io" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="btn-secondary"
+                >
+                  Open KongSwap →
+                </a>
+              </div>
+            )}
           </div>
-          
-          <div className="step-card">
-            <div className="step-number">3</div>
-            <h3>Sync Voting Power</h3>
-            <p>Your LP tokens automatically provide voting power. Just sync here to update your governance weight.</p>
+
+          {/* Sync Control */}
+          <div className="status-card">
+            <h3>Data Management</h3>
+            <button 
+              onClick={handleSyncVotingPower} 
+              disabled={!identity || isSyncing}
+              className={`btn-primary ${isSyncing ? 'loading' : ''}`}
+            >
+              {isSyncing ? 'Syncing...' : 'Sync LP Positions'}
+            </button>
+            <p className="help-text">
+              Sync your LP positions from KongSwap to view current USD values of your locked liquidity.
+            </p>
           </div>
-          
-          <div className="step-card">
-            <div className="step-number">4</div>
-            <h3>Participate in Governance</h3>
-            <p>Use your voting power to participate in Alexandria DAO governance and influence protocol decisions.</p>
+        </aside>
+
+        {/* Main Content - LP Positions Table */}
+        <main className="dashboard-main">
+          <section className="positions-section">
+            <header className="section-header">
+              <h2>Your LP Positions</h2>
+              {lpPositions && lpPositions.length > 0 && (
+                <span className="position-count">{lpPositions.length} position{lpPositions.length !== 1 ? 's' : ''}</span>
+              )}
+            </header>
+            
+            {lpPositions && lpPositions.length > 0 ? (
+              <>
+                <div className="positions-table-container">
+                  <table className="positions-table">
+                  <thead>
+                    <tr>
+                      <th>Pool Details</th>
+                      <th>LP Balance</th>
+                      <th>USD Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lpPositions.map((position, index) => (
+                      <tr key={index} className="position-row">
+                        <td className="pool-cell">
+                          <div className="pool-info">
+                            <div className="pool-pair">{position.symbol_0}/{position.symbol_1}</div>
+                            <div className="pool-name">{position.name}</div>
+                            <div className="token-breakdown">
+                              <span className="token-detail">{position.symbol_0}: {position.amount_0.toFixed(4)} (${position.usd_amount_0.toFixed(2)})</span>
+                              <span className="token-detail">{position.symbol_1}: {position.amount_1.toFixed(4)} (${position.usd_amount_1.toFixed(2)})</span>
+                            </div>
+                            <span className="lp-token-id">ID: {position.lp_token_id}</span>
+                          </div>
+                        </td>
+                        <td className="balance-cell">
+                          <span className="balance-value">{position.balance.toFixed(6)}</span>
+                        </td>
+                        <td className="value-cell">
+                          <span className="total-value">${position.usd_balance.toFixed(2)}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  </table>
+                </div>
+                
+                {/* Mobile Cards View */}
+                <div className="mobile-positions">
+                  {lpPositions.map((position, index) => (
+                    <div key={index} className="mobile-position-card">
+                      <div className="position-header">
+                        <div className="pool-info">
+                          <div className="pool-pair">{position.symbol_0}/{position.symbol_1}</div>
+                          <div className="pool-name">{position.name}</div>
+                        </div>
+                        <div className="total-value">${position.usd_balance.toFixed(2)}</div>
+                      </div>
+                      
+                      <div className="position-details">
+                        <div className="detail-item">
+                          <div className="label">LP Balance</div>
+                          <div className="value">{position.balance.toFixed(6)}</div>
+                        </div>
+                        <div className="detail-item">
+                          <div className="label">{position.symbol_0}</div>
+                          <div className="value">{position.amount_0.toFixed(4)} (${position.usd_amount_0.toFixed(2)})</div>
+                        </div>
+                        <div className="detail-item">
+                          <div className="label">{position.symbol_1}</div>
+                          <div className="value">{position.amount_1.toFixed(4)} (${position.usd_amount_1.toFixed(2)})</div>
+                        </div>
+                        <div className="detail-item">
+                          <div className="label">LP Token ID</div>
+                          <div className="value">{position.lp_token_id}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="empty-state">
+                <div className="empty-icon">📊</div>
+                <h3>No LP Positions Yet</h3>
+                <p>Add liquidity on KongSwap to see positions here</p>
+                <a 
+                  href="https://kongswap.io" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="btn-primary"
+                >
+                  Go to KongSwap
+                </a>
+              </div>
+            )}
+          </section>
+        </main>
+      </div>
+
+      {/* Community Stats - Collapsible Section */}
+      <section className="community-stats-section">
+        <details className="community-stats">
+          <summary className="stats-toggle">
+            <h3>Community LP Activity</h3>
+            <span className="toggle-icon">▼</span>
+          </summary>
+          <div className="stats-content">
+            {allVotingPowers.length > 0 ? (
+              <div className="community-lp-list">
+                <div className="list-header">
+                  <span>Principal</span>
+                  <span>LP Token Count</span>
+                </div>
+                {allVotingPowers.slice(0, 10).map((entry, index) => (
+                  <div key={index} className="list-item">
+                    <span className="principal">{entry.principal.slice(0, 8)}...{entry.principal.slice(-6)}</span>
+                    <span className="power">{Number(entry.voting_power).toLocaleString()}</span>
+                  </div>
+                ))}
+                {allVotingPowers.length > 10 && (
+                  <p className="list-note">Showing top 10 out of {allVotingPowers.length} participants</p>
+                )}
+                <div className="community-note">
+                  <p><strong>Note:</strong> LP token counts vary by pool. Higher counts don't necessarily mean higher USD value since different pools have different token values.</p>
+                </div>
+              </div>
+            ) : (
+              <p className="no-data">No community data available.</p>
+            )}
           </div>
-        </div>
+        </details>
       </section>
     </div>
   );
