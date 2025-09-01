@@ -2,6 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project Structure
+
+This repository contains two separate but related projects:
+1. **DAOPad** (`src/daopad/`) - DAO governance framework for managing Orbit Station
+   - `daopad_backend` - Rust canister for governance operations
+   - `daopad_frontend` - React interface for proposals and voting
+   - `orbit_station` - Candid definitions for Orbit Station integration
+   
+2. **Kong Locker** (`src/kong_locker/`) - LP token locking and tracking service
+   - `lp_locking` - Rust canister for LP token management
+   - `lp_locker_frontend` - React interface for viewing LP positions
+
+Both projects share the same root `dfx.json` and deployment script (`deploy.sh`) for unified deployment.
+
 ## Project Vision
 
 **Goal**: Transform Orbit into a DAO framework by making the DAOPad backend canister THE admin of Orbit Station, where Alexandria's $ALEX token stakers vote on admin decisions before execution.
@@ -17,8 +31,8 @@ Orbit is a platform layer for ICP that simplifies blockchain application develop
 ## Architecture Overview
 
 DAOPad integrates with Alexandria DAO's Orbit Station (`fec7w-zyaaa-aaaaa-qaffq-cai`):
-- **Backend** (`src/daopad_backend/src/lib.rs`): Rust canister that will execute admin operations on Orbit Station after DAO approval
-- **Frontend** (`src/daopad_frontend/src/App.jsx`): React app for viewing proposals and voting interface
+- **Backend** (`src/daopad/daopad_backend/src/lib.rs`): Rust canister that will execute admin operations on Orbit Station after DAO approval
+- **Frontend** (`src/daopad/daopad_frontend/src/App.jsx`): React app for viewing proposals and voting interface
 - **Governance Token**: Using Alexandria's $ALEX token for voting (test phase)
 - **Development**: All testing happens on mainnet - the Orbit Station is for testing only (no real assets)
 
@@ -34,13 +48,13 @@ Query methods (like `list_requests`) cannot be called via inter-canister calls. 
 
 ## Project Components Clarification
 
-**LP Locker (konglocker.org)**: A standalone service for locking and tracking KongSwap liquidity positions. Users permanently lock their LP tokens here and receive a unique principal that represents their locked liquidity. This is a simple, immutable service focused solely on LP token management.
-- Frontend canister: `lp_locker_frontend` - User interface for viewing LP positions
-- Backend canister: `lp_locking` - Queries KongSwap and stores LP position data
+**Kong Locker (konglocker.org)**: A standalone service for locking and tracking KongSwap liquidity positions. Users permanently lock their LP tokens here and receive a unique principal that represents their locked liquidity. This is a simple, immutable service focused solely on LP token management.
+- Frontend canister: `lp_locker_frontend` (`src/kong_locker/lp_locker_frontend`) - User interface for viewing LP positions
+- Backend canister: `lp_locking` (`src/kong_locker/lp_locking`) - Queries KongSwap and stores LP position data
 
 **DAOPad**: A comprehensive governance framework that enables DAO management of Orbit Station wallets. Users register by providing their LP Locker principal as proof of locked liquidity, which grants them voting power to participate in treasury management and protocol decisions. DAOPad connects locked liquidity (from LP Locker) to governance rights (in Orbit Station).
-- Frontend canister: `daopad_frontend` - Governance interface and proposal viewer
-- Backend canister: `daopad_backend` - Manages registrations and Orbit Station integration
+- Frontend canister: `daopad_frontend` (`src/daopad/daopad_frontend`) - Governance interface and proposal viewer
+- Backend canister: `daopad_backend` (`src/daopad/daopad_backend`) - Manages registrations and Orbit Station integration
 
 ## Development Workflow
 
@@ -64,8 +78,8 @@ candid-extractor target/wasm32-unknown-unknown/release/daopad_backend.wasm > src
 ./deploy.sh --network ic --frontend-only  # Frontend only
 
 # Frontend development (local dev server, but talks to mainnet)
-cd src/daopad_frontend && npm install && npm run dev
-cd src/lp_locker_frontend && npm install && npm run start
+cd src/daopad/daopad_frontend && npm install && npm run dev
+cd src/kong_locker/lp_locker_frontend && npm install && npm run start
 
 # Test backend functions directly on mainnet
 dfx canister --network ic call daopad_backend get_alexandria_config
@@ -75,11 +89,15 @@ dfx canister --network ic call lp_locking get_all_voting_powers
 
 ## Entry Points
 
-- **Backend**: `src/daopad_backend/src/lib.rs` - Main canister logic  
-- **Frontend**: `src/daopad_frontend/src/App.jsx` - React application root
-- **LP Locker Frontend**: `src/lp_locker_frontend/src/App.jsx` - LP token locking interface
-- **LP Locking Backend**: `src/lp_locking/src/lib.rs` - LP token management canister
-- **Alexandria Module**: `src/daopad_backend/src/alexandria_dao.rs` - Orbit integration
+### DAOPad Project
+- **Backend**: `src/daopad/daopad_backend/src/lib.rs` - Main canister logic  
+- **Frontend**: `src/daopad/daopad_frontend/src/App.jsx` - React application root
+- **Alexandria Module**: `src/daopad/daopad_backend/src/alexandria_dao.rs` - Orbit integration
+- **Orbit Station DID**: `src/daopad/orbit_station/` - Candid definitions for Orbit Station
+
+### Kong Locker Project
+- **LP Locker Frontend**: `src/kong_locker/lp_locker_frontend/src/App.jsx` - LP token locking interface
+- **LP Locking Backend**: `src/kong_locker/lp_locking/src/lib.rs` - LP token management canister
 
 ## Current Integration Status
 

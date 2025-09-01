@@ -1,7 +1,7 @@
 {
   "canisters": {
     "daopad_backend": {
-      "candid": "src/daopad_backend/daopad_backend.did",
+      "candid": "src/daopad/daopad_backend/daopad_backend.did",
       "package": "daopad_backend",
       "type": "rust"
     },
@@ -10,10 +10,10 @@
         "daopad_backend"
       ],
       "source": [
-        "src/daopad_frontend/dist"
+        "src/daopad/daopad_frontend/dist"
       ],
       "type": "assets",
-      "workspace": "daopad_frontend"
+      "build": "cd src/daopad/daopad_frontend && npm run build"
     },
     "internet_identity": {
       "type": "custom",
@@ -26,16 +26,17 @@
       }
     },
     "lp_locking": {
-      "candid": "src/lp_locking/lp_locking.did",
+      "candid": "src/kong_locker/lp_locking/lp_locking.did",
       "package": "lp_locking",
       "type": "rust",
       "specified_id": "7zv6y-5qaaa-aaaar-qbviq-cai"
     },
     "lp_lock_frontend": {
       "source": [
-        "src/lp_locker_frontend/dist"
+        "src/kong_locker/lp_locker_frontend/dist"
       ],
       "type": "assets",
+      "build": "cd src/kong_locker/lp_locker_frontend && npm run build",
       "specified_id": "c6w56-taaaa-aaaai-atlma-cai"
     }
   },

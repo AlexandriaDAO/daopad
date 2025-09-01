@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "src/daopad_backend",
-    "src/lp_locking"
+    "src/daopad/daopad_backend",
+    "src/kong_locker/lp_locking"
 ]
 resolver = "2"

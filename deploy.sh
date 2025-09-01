@@ -124,7 +124,7 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
     # Extract candid interface for daopad_backend
     echo "Extracting Candid interface for daopad_backend..."
     if command -v candid-extractor &> /dev/null; then
-        candid-extractor target/wasm32-unknown-unknown/release/daopad_backend.wasm > src/daopad_backend/daopad_backend.did
+        candid-extractor target/wasm32-unknown-unknown/release/daopad_backend.wasm > src/daopad/daopad_backend/daopad_backend.did
         echo "✓ Candid interface extracted"
     else
         echo "❌ ERROR: candid-extractor not found!"
@@ -142,7 +142,7 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
     # Extract candid interface for lp_locking
     echo "Extracting Candid interface for lp_locking..."
     if command -v candid-extractor &> /dev/null; then
-        candid-extractor target/wasm32-unknown-unknown/release/lp_locking.wasm > src/lp_locking/lp_locking.did
+        candid-extractor target/wasm32-unknown-unknown/release/lp_locking.wasm > src/kong_locker/lp_locking/lp_locking.did
         echo "✓ Candid interface extracted"
     else
         echo "❌ ERROR: candid-extractor not found!"
@@ -203,7 +203,7 @@ fi
 if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "frontend" ]; then
     echo ""
     echo "Building frontend..."
-    cd src/daopad_frontend
+    cd src/daopad/daopad_frontend
     
     if ! npm install; then
         echo "❌ npm install failed!"
@@ -262,7 +262,7 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "frontend" ]; then
     # Build and Deploy LP Lock Frontend (React app for LP locking)
     echo ""
     echo "Building LP Lock Frontend..."
-    cd src/lp_locker_frontend
+    cd src/kong_locker/lp_locker_frontend
     
     if ! npm install; then
         echo "❌ npm install failed for LP Lock Frontend!"
