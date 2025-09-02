@@ -1,145 +1,208 @@
-use ic_cdk::{query, update, caller};
-use candid::{CandidType, Deserialize, Nat, Principal};
+use ic_cdk::{update, query};
+use ic_cdk::api::management_canister::main::{
+    create_canister, install_code, update_settings,
+    CanisterSettings, CreateCanisterArgument, InstallCodeArgument, 
+    UpdateSettingsArgument, CanisterInstallMode,
+};
+use ic_stable_structures::{
+    DefaultMemoryImpl, 
+    memory_manager::{MemoryId, MemoryManager, VirtualMemory},
+    StableBTreeMap, Storable,
+};
+use candid::{CandidType, Deserialize, Principal, Nat};
+use serde::Serialize;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::borrow::Cow;
+
+type Memory = VirtualMemory<DefaultMemoryImpl>;
+
+// Wrapper for Principal to implement Storable
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct StorablePrincipal(Principal);
+
+// ===== KongSwap Types for Factory =====
+#[derive(CandidType, Clone, Debug, Serialize, Deserialize)]
+pub enum UserBalancesResult {
+    Ok(Vec<UserBalancesReply>),
+    Err(String),
+}
+
+#[derive(CandidType, Clone, Debug, Serialize, Deserialize)]
+pub enum UserBalancesReply {
+    LP(LPReply),  // Only LP token balances
+}
+
+#[derive(CandidType, Clone, Debug, Serialize, Deserialize)]
+pub struct LPReply {
+    pub symbol: String,        // LP token symbol (e.g., "ICP_ckUSDT")
+    pub name: String,          // Full name of LP token
+    pub balance: f64,          // LP token balance (human-readable)
+    pub usd_balance: f64,      // Total USD value of LP position
+    pub symbol_0: String,      // First token symbol
+    pub amount_0: f64,         // Amount of first token
+    pub usd_amount_0: f64,     // USD value of first token
+    pub symbol_1: String,      // Second token symbol
+    pub amount_1: f64,         // Amount of second token
+    pub usd_amount_1: f64,     // USD value of second token
+    pub ts: u64,              // Timestamp
+}
+
+// ===== Storage Implementation =====
+// Make StorablePrincipal storable for stable structures
+impl Storable for StorablePrincipal {
+    fn to_bytes(&self) -> Cow<[u8]> {
+        Cow::Owned(self.0.as_slice().to_vec())
+    }
+    
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        StorablePrincipal(Principal::from_slice(&bytes))
+    }
+    
+    const BOUND: ic_stable_structures::storable::Bound = 
+        ic_stable_structures::storable::Bound::Bounded {
+            max_size: 29,
+            is_fixed_size: false,
+        };
+}
+
+// Embed the lock canister WASM at compile time
+// This requires building lock_canister FIRST, then building factory
+const LOCK_CANISTER_WASM: &[u8] = include_bytes!("../../../../target/wasm32-unknown-unknown/release/lock_canister.wasm");
 
 thread_local! {
-    // Simple storage: principal -> voting power
-    static VOTING_POWER: RefCell<HashMap<Principal, Nat>> = RefCell::new(HashMap::new());
-    // Store complete LP position details
-    static LP_POSITIONS: RefCell<HashMap<Principal, Vec<LPBalancesReply>>> = RefCell::new(HashMap::new());
+    static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> = 
+        RefCell::new(MemoryManager::init(DefaultMemoryImpl::default()));
+    
+    // Permanent user → lock canister mapping  
+    static USER_LOCK_CANISTERS: RefCell<StableBTreeMap<StorablePrincipal, StorablePrincipal, Memory>> = 
+        RefCell::new(StableBTreeMap::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(0)))
+        ));
 }
 
-// KongSwap types needed for decoding
-#[derive(CandidType, Deserialize, Debug, Clone)]
-pub struct LPBalancesReply {
-    pub symbol: String,
-    pub balance: f64,  // This is what we sum up
-    pub lp_token_id: u64,
-    pub name: String,
-    pub usd_balance: f64,
-    pub chain_0: String,
-    pub symbol_0: String,
-    pub address_0: String,
-    pub amount_0: f64,
-    pub usd_amount_0: f64,
-    pub chain_1: String,
-    pub symbol_1: String,
-    pub address_1: String,
-    pub amount_1: f64,
-    pub usd_amount_1: f64,
-    pub ts: u64,
-}
-
-#[derive(CandidType, Deserialize, Debug)]
-enum UserBalancesReply {
-    LP(LPBalancesReply),
-}
-
-type UserBalancesResult = Result<Vec<UserBalancesReply>, String>;
-
-// Sync voting power by querying KongSwap with the user's PRINCIPAL
+/// Create and immediately blackhole a lock canister
 #[update]
-pub async fn sync_voting_power() -> Result<Nat, String> {
-    let user_principal = caller();
-
-    if user_principal == Principal::anonymous() {
-        return Err("Anonymous users not allowed".to_string());
+async fn create_lock_canister() -> Result<Principal, String> {
+    let user = ic_cdk::caller();
+    
+    // Check if user already has one
+    if USER_LOCK_CANISTERS.with(|c| c.borrow().contains_key(&StorablePrincipal(user))) {
+        return Err("You already have a lock canister".to_string());
     }
+    
+    // Use the embedded WASM (compiled at build time)
+    let wasm = LOCK_CANISTER_WASM.to_vec();
+    
+    // Create canister with minimal cycles (10B = $0.012)
+    let create_args = CreateCanisterArgument {
+        settings: Some(CanisterSettings {
+            controllers: Some(vec![ic_cdk::id()]), // Factory as temporary controller
+            compute_allocation: None,
+            memory_allocation: None,
+            freezing_threshold: None,
+            reserved_cycles_limit: None,
+            log_visibility: None,
+            wasm_memory_limit: None,
+        }),
+    };
+    
+    let canister_id_record = create_canister(create_args, 10_000_000_000u128)
+        .await
+        .map_err(|e| format!("Failed to create canister: {:?}", e))?;
+    let canister_id = canister_id_record.0.canister_id;
+    
+    // Install the minimal lock canister code
+    let install_args = InstallCodeArgument {
+        mode: CanisterInstallMode::Install,
+        canister_id: canister_id.clone(),
+        wasm_module: wasm,
+        arg: vec![], // No init args needed
+    };
+    
+    install_code(install_args)
+        .await
+        .map_err(|e| format!("Failed to install code: {:?}", e))?;
+    
+    // IMMEDIATELY BLACKHOLE - remove all controllers
+    let blackhole_args = UpdateSettingsArgument {
+        canister_id: canister_id.clone(),
+        settings: CanisterSettings {
+            controllers: Some(vec![]), // Empty = blackholed forever!
+            compute_allocation: None,
+            memory_allocation: None,
+            freezing_threshold: None,
+            reserved_cycles_limit: None,
+            log_visibility: None,
+            wasm_memory_limit: None,
+        },
+    };
+    
+    update_settings(blackhole_args)
+        .await
+        .map_err(|e| format!("Failed to blackhole: {:?}", e))?;
+    
+    // Store the mapping
+    USER_LOCK_CANISTERS.with(|c| {
+        c.borrow_mut().insert(StorablePrincipal(user), StorablePrincipal(canister_id));
+    });
+    
+    Ok(canister_id)
+}
 
-    // Query KongSwap with the PRINCIPAL as text (NOT account ID!)
+/// Get user's lock canister
+#[query]
+fn get_my_lock_canister() -> Option<Principal> {
+    let user = ic_cdk::caller();
+    USER_LOCK_CANISTERS.with(|c| 
+        c.borrow().get(&StorablePrincipal(user)).map(|sp| sp.0)
+    )
+}
+
+/// Get all lock canisters
+#[query]
+fn get_all_lock_canisters() -> Vec<(Principal, Principal)> {
+    USER_LOCK_CANISTERS.with(|c| {
+        c.borrow().iter()
+            .map(|(user, canister)| (user.0, canister.0))
+            .collect()
+    })
+}
+
+
+/// Get voting power by querying KongSwap
+#[update]
+async fn get_voting_power(user: Principal) -> Result<Nat, String> {
+    let lock_canister = USER_LOCK_CANISTERS.with(|c| 
+        c.borrow().get(&StorablePrincipal(user)).map(|sp| sp.0)
+    ).ok_or("No lock canister found")?;
+    
+    // Query KongSwap for LP balance at lock canister principal
     let kong_backend = Principal::from_text("2ipq2-uqaaa-aaaar-qailq-cai").unwrap();
-
+    
     let result: Result<(UserBalancesResult,), _> = ic_cdk::call(
         kong_backend,
         "user_balances",
-        (user_principal.to_text(),)  // <-- PRINCIPAL AS TEXT, not account ID!
+        (lock_canister.to_text(),)
     ).await;
-
+    
     match result {
-        Ok((Ok(balances),)) => {
-            // Store the detailed LP positions
-            let mut lp_details = Vec::new();
-            let mut total = 0u64;
+        Ok((UserBalancesResult::Ok(balances),)) => {
+            // Sum LP balances USD value for voting power
+            let total_usd: f64 = balances.iter()
+                .map(|balance| match balance {
+                    UserBalancesReply::LP(lp) => lp.usd_balance,
+                })
+                .sum();
             
-            for balance in balances {
-                let UserBalancesReply::LP(lp) = balance;
-                lp_details.push(lp.clone());
-                // Convert float to integer (multiply by 1e8 for precision)
-                total += (lp.balance * 100_000_000.0) as u64;
-            }
-            
-            // Store detailed positions
-            LP_POSITIONS.with(|positions| {
-                positions.borrow_mut().insert(user_principal, lp_details);
-            });
-
-            let total_nat = Nat::from(total);
-
-            // Store voting power
-            VOTING_POWER.with(|vp| {
-                vp.borrow_mut().insert(user_principal, total_nat.clone());
-            });
-
-            Ok(total_nat)
+            // Convert USD to Nat (multiply by 100 to preserve 2 decimal places)
+            Ok(Nat::from((total_usd * 100.0) as u64))
         },
-        Ok((Err(e),)) => {
-            if e.contains("User not found") {
-                Err("Not registered with KongSwap. Please register first.".to_string())
-            } else {
-                Err(format!("KongSwap error: {}", e))
-            }
+        Ok((UserBalancesResult::Err(msg),)) if msg.contains("User not found") => {
+            // Not registered yet
+            Ok(Nat::from(0u64))
         },
-        Err((code, msg)) => {
-            Err(format!("Failed to query KongSwap: {:?} - {}", code, msg))
-        }
+        _ => Ok(Nat::from(0u64))
     }
-}
-
-// Get caller's voting power
-#[query]
-pub fn get_voting_power() -> Nat {
-    let user = caller();
-    VOTING_POWER.with(|vp| {
-        vp.borrow().get(&user).cloned().unwrap_or_else(|| Nat::from(0u64))
-    })
-}
-
-// Get all voting powers for leaderboard
-#[query]
-pub fn get_all_voting_powers() -> Vec<(String, Nat)> {
-    VOTING_POWER.with(|vp| {
-        vp.borrow()
-            .iter()
-            .map(|(principal, power)| (principal.to_text(), power.clone()))
-            .collect()
-    })
-}
-
-// Get detailed LP positions for the caller
-#[query]
-pub fn get_lp_positions() -> Vec<LPBalancesReply> {
-    let user = caller();
-    LP_POSITIONS.with(|lp| {
-        lp.borrow().get(&user).cloned().unwrap_or_else(Vec::new)
-    })
-}
-
-// Get all users' LP positions (for applications that need global data)
-#[query]
-pub fn get_all_lp_positions() -> Vec<(String, Vec<LPBalancesReply>)> {
-    LP_POSITIONS.with(|lp| {
-        lp.borrow()
-            .iter()
-            .map(|(principal, positions)| (principal.to_text(), positions.clone()))
-            .collect()
-    })
-}
-
-// Registration happens on frontend - this just returns instructions
-#[update]
-pub async fn register_with_kongswap() -> Result<String, String> {
-    Ok("Registration handled by frontend. Transfer ICP and call swap directly.".to_string())
 }
 
 ic_cdk::export_candid!();

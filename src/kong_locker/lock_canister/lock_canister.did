@@ -1,0 +1,8 @@
+type Result = variant { Ok : text; Err : text };
+service : {
+  // Get the canister's principal (for sending LP tokens to)
+  get_principal : () -> (principal) query;
+  // Register with KongSwap if ICP is available
+  // Anyone can call this - ICP requirement prevents spam
+  register_if_funded : () -> (Result);
+}

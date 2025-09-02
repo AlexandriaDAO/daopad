@@ -4,6 +4,9 @@
 
 set -e
 
+# Get the directory where this script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 # Parse arguments
 NETWORK="local"
 FRESH_DEPLOY=false
@@ -89,14 +92,14 @@ if [ "$NETWORK" == "local" ]; then
         exit 1
     fi
 else
-    # For mainnet, use alex identity as per CLAUDE.md
-    echo "Switching to alex identity for mainnet deployment..."
-    dfx identity use alex
+    # For mainnet, use daopad identity (no password required for Claude)
+    echo "Switching to daopad identity for mainnet deployment..."
+    dfx identity use daopad
     IDENTITY=$(dfx identity whoami)
     echo "Using identity: $IDENTITY"
     echo ""
     
-    # Set environment variable to suppress the plaintext identity warning if using alex
+    # Set environment variable to suppress the plaintext identity warning if using daopad
     export DFX_WARNING=-mainnet_plaintext_identity
 fi
 
@@ -262,6 +265,8 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "frontend" ]; then
     # Build and Deploy LP Lock Frontend (React app for LP locking)
     echo ""
     echo "Building LP Lock Frontend..."
+    # Make sure we're in the right directory first
+    cd "$SCRIPT_DIR"
     cd src/kong_locker/lp_locker_frontend
     
     if ! npm install; then

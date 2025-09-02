@@ -1,21 +1,21 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { fetchLpLockerData, syncVotingPower } from './lpLockerThunks';
+import { fetchLpLockerData } from './lpLockerThunks';
 
 const initialState = {
   // Balance data
   icpBalance: '0.00',
+  votingPower: '0',  // User's voting power from locked LP
   
-  // LP Locker data
-  votingPower: 0,
-  allVotingPowers: [],
-  lpPositions: [],  // Detailed LP position data
+  // LP position data (no longer from backend, placeholder for KongSwap data)
+  lpPositions: [],  // Empty - would need direct KongSwap integration
   
-  // KongSwap data
-  isRegisteredWithKong: false,
+  // Lock canister data
+  lockCanister: null,           // Principal string or null
+  lockCanisterStatus: 'none',  // 'none' | 'created' | 'registered'
+  lockingInProgress: false,    // Boolean for UI loading state
   
   // Loading states
   isLoading: false,
-  isSyncing: false,
   error: null,
   message: '',
 };
@@ -33,6 +33,15 @@ const lpLockerSlice = createSlice({
     clearMessage: (state) => {
       state.message = '';
     },
+    setLockCanister: (state, action) => {
+      state.lockCanister = action.payload;
+    },
+    setLockCanisterStatus: (state, action) => {
+      state.lockCanisterStatus = action.payload;
+    },
+    setLockingInProgress: (state, action) => {
+      state.lockingInProgress = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -49,24 +58,6 @@ const lpLockerSlice = createSlice({
       .addCase(fetchLpLockerData.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
-      })
-      
-      // Sync Voting Power
-      .addCase(syncVotingPower.pending, (state) => {
-        state.isSyncing = true;
-        state.error = null;
-        state.message = '';
-      })
-      .addCase(syncVotingPower.fulfilled, (state, action) => {
-        state.isSyncing = false;
-        state.votingPower = action.payload.votingPower;
-        state.allVotingPowers = action.payload.allVotingPowers;
-        state.lpPositions = action.payload.lpPositions;
-        state.message = action.payload.message;
-      })
-      .addCase(syncVotingPower.rejected, (state, action) => {
-        state.isSyncing = false;
-        state.error = action.payload;
       });
   },
 });
@@ -75,6 +66,9 @@ export const {
   clearLpLockerData,
   setMessage,
   clearMessage,
+  setLockCanister,
+  setLockCanisterStatus,
+  setLockingInProgress,
 } = lpLockerSlice.actions;
 
 export default lpLockerSlice.reducer;

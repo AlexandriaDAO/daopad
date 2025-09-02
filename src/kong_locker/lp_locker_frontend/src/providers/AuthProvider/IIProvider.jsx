@@ -63,7 +63,7 @@ const IIProvider = ({ children }) => {
 				onError: (error) => {
 					console.error("Login error:", error);
 				},
-				// No derivationOrigin - authenticate to our own canister
+				derivationOrigin: "https://yj5ba-aiaaa-aaaap-qkmoa-cai.icp0.io",
 				maxTimeToLive: BigInt(7) * BigInt(24) * BigInt(3_600_000_000_000), // 1 week
 			});
 		} catch (error) {

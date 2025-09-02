@@ -4,7 +4,7 @@ import { useIdentity } from './hooks/useIdentity';
 import { useLogout } from './hooks/useLogout';
 import { setAuthSuccess, clearAuth, setAuthInitialized } from './features/auth/authSlice';
 import { fetchLpLockerData } from './state/lpLocker/lpLockerThunks';
-import { clearLpLockerData } from './state/lpLocker/lpLockerSlice';
+import { clearLpLockerData, setLockCanister, setLockCanisterStatus } from './state/lpLocker/lpLockerSlice';
 import LPLockerDashboard from './components/LPLockerDashboard';
 import './App.scss';
 
@@ -21,6 +21,11 @@ function App() {
     if (identity) {
       const principalText = identity.getPrincipal().toString();
       dispatch(setAuthSuccess(principalText));
+      
+      // FORCE CLEAR lock canister state on authentication to fix phantom state
+      dispatch(setLockCanister(null));
+      dispatch(setLockCanisterStatus('none'));
+      
       // Fetch LP locker data when authenticated
       dispatch(fetchLpLockerData(identity));
     } else {

@@ -1,24 +1,26 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useIdentity } from '../hooks/useIdentity';
-import { syncVotingPower, registerWithKongSwap, fetchLpLockerData } from '../state/lpLocker/lpLockerThunks';
+import { fetchLpLockerData } from '../state/lpLocker/lpLockerThunks';
+import LockCanisterStatus from './LockCanisterStatus';
+import LPTransferGuide from './LPTransferGuide';
 
 const LPLockerDashboard = () => {
   const dispatch = useDispatch();
   const { identity, isAuthenticated } = useIdentity();
   const { 
-    votingPower, 
-    allVotingPowers,
-    lpPositions,
-    isRegisteredWithKong, 
     isLoading, 
-    isSyncing, 
     message, 
     error,
-    icpBalance 
+    icpBalance,
+    votingPower,
+    lockCanister,
+    lockCanisterStatus
   } = useSelector(state => state.lpLocker);
   
-  const [isRegistering, setIsRegistering] = useState(false);
+  // State for modals
+  const [showTransferGuide, setShowTransferGuide] = useState(false);
+  
 
   const refreshData = () => {
     if (identity) {
@@ -26,20 +28,8 @@ const LPLockerDashboard = () => {
     }
   };
 
-  const handleSyncVotingPower = async () => {
-    if (!identity) return;
-    dispatch(syncVotingPower(identity));
-  };
 
-  const handleRegisterWithKong = async () => {
-    if (!identity) return;
-    setIsRegistering(true);
-    try {
-      await dispatch(registerWithKongSwap(identity));
-    } finally {
-      setIsRegistering(false);
-    }
-  };
+
 
   if (!isAuthenticated) {
     return (
@@ -73,19 +63,19 @@ const LPLockerDashboard = () => {
       <div className="quick-stats-banner">
         <div className="stat-item">
           <span className="stat-value">
-            ${lpPositions ? lpPositions.reduce((sum, p) => sum + p.usd_balance, 0).toFixed(2) : '0.00'}
+            {votingPower || '0'}
           </span>
-          <span className="stat-label">Total LP Value</span>
+          <span className="stat-label">Voting Power</span>
         </div>
         <div className="stat-item">
-          <span className="stat-value">{lpPositions ? lpPositions.length : 0}</span>
-          <span className="stat-label">LP Positions</span>
+          <span className="stat-value">{lockCanisterStatus === 'registered' ? '✅' : '⏳'}</span>
+          <span className="stat-label">Lock Status</span>
         </div>
         <div className="stat-item">
           <span className="stat-value">
-            {lpPositions ? lpPositions.reduce((sum, p) => sum + p.balance, 0).toFixed(4) : '0.0000'}
+            {lockCanister ? '1' : '0'}
           </span>
-          <span className="stat-label">Total LP Tokens</span>
+          <span className="stat-label">Lock Canister</span>
         </div>
       </div>
 
@@ -112,192 +102,110 @@ const LPLockerDashboard = () => {
             </div>
           </div>
 
-          {/* Registration Status */}
+          {/* KongSwap Link */}
           <div className="status-card">
-            <h3>KongSwap Status</h3>
-            <div className="registration-status">
-              <span className={`status-indicator ${isRegisteredWithKong ? 'registered' : 'pending'}`}>
-                {isRegisteredWithKong ? '●' : '○'}
-              </span>
-              <span>{isRegisteredWithKong ? 'Registered' : 'Not Registered'}</span>
+            <h3>Add Liquidity</h3>
+            <div className="action-group">
+              <a 
+                href="https://kongswap.io" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="btn-primary"
+              >
+                Open KongSwap →
+              </a>
+              <p className="help-text">
+                Add liquidity on KongSwap to see your LP positions here.
+              </p>
             </div>
-            
-            {!isRegisteredWithKong ? (
-              <div className="action-group">
-                <button 
-                  onClick={handleRegisterWithKong}
-                  disabled={!identity || isRegistering}
-                  className={`btn-primary ${isRegistering ? 'loading' : ''}`}
-                >
-                  {isRegistering ? 'Registering...' : 'Register (0.001 ICP)'}
-                </button>
-                <p className="help-text">
-                  Register with KongSwap to start providing liquidity that can be locked forever.
-                </p>
-              </div>
-            ) : (
-              <div className="action-group">
-                <a 
-                  href="https://kongswap.io" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="btn-secondary"
-                >
-                  Open KongSwap →
-                </a>
-              </div>
-            )}
           </div>
 
-          {/* Sync Control */}
-          <div className="status-card">
-            <h3>Data Management</h3>
-            <button 
-              onClick={handleSyncVotingPower} 
-              disabled={!identity || isSyncing}
-              className={`btn-primary ${isSyncing ? 'loading' : ''}`}
-            >
-              {isSyncing ? 'Syncing...' : 'Sync LP Positions'}
-            </button>
-            <p className="help-text">
-              Sync your LP positions from KongSwap to view current USD values of your locked liquidity.
-            </p>
-          </div>
+          {/* ADD this to sidebar (after existing status-card): */}
+          <LockCanisterStatus />
+
         </aside>
 
-        {/* Main Content - LP Positions Table */}
+        {/* Main Content - Lock Canister Info */}
         <main className="dashboard-main">
           <section className="positions-section">
             <header className="section-header">
-              <h2>Your LP Positions</h2>
-              {lpPositions && lpPositions.length > 0 && (
-                <span className="position-count">{lpPositions.length} position{lpPositions.length !== 1 ? 's' : ''}</span>
+              <h2>Lock Canister Management</h2>
+              {lockCanister && (
+                <span className="position-count">Status: {lockCanisterStatus}</span>
               )}
             </header>
             
-            {lpPositions && lpPositions.length > 0 ? (
-              <>
-                <div className="positions-table-container">
-                  <table className="positions-table">
-                  <thead>
-                    <tr>
-                      <th>Pool Details</th>
-                      <th>LP Balance</th>
-                      <th>USD Value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lpPositions.map((position, index) => (
-                      <tr key={index} className="position-row">
-                        <td className="pool-cell">
-                          <div className="pool-info">
-                            <div className="pool-pair">{position.symbol_0}/{position.symbol_1}</div>
-                            <div className="pool-name">{position.name}</div>
-                            <div className="token-breakdown">
-                              <span className="token-detail">{position.symbol_0}: {position.amount_0.toFixed(4)} (${position.usd_amount_0.toFixed(2)})</span>
-                              <span className="token-detail">{position.symbol_1}: {position.amount_1.toFixed(4)} (${position.usd_amount_1.toFixed(2)})</span>
-                            </div>
-                            <span className="lp-token-id">ID: {position.lp_token_id}</span>
-                          </div>
-                        </td>
-                        <td className="balance-cell">
-                          <span className="balance-value">{position.balance.toFixed(6)}</span>
-                        </td>
-                        <td className="value-cell">
-                          <span className="total-value">${position.usd_balance.toFixed(2)}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  </table>
-                </div>
-                
-                {/* Mobile Cards View */}
-                <div className="mobile-positions">
-                  {lpPositions.map((position, index) => (
-                    <div key={index} className="mobile-position-card">
-                      <div className="position-header">
-                        <div className="pool-info">
-                          <div className="pool-pair">{position.symbol_0}/{position.symbol_1}</div>
-                          <div className="pool-name">{position.name}</div>
-                        </div>
-                        <div className="total-value">${position.usd_balance.toFixed(2)}</div>
-                      </div>
-                      
-                      <div className="position-details">
-                        <div className="detail-item">
-                          <div className="label">LP Balance</div>
-                          <div className="value">{position.balance.toFixed(6)}</div>
-                        </div>
-                        <div className="detail-item">
-                          <div className="label">{position.symbol_0}</div>
-                          <div className="value">{position.amount_0.toFixed(4)} (${position.usd_amount_0.toFixed(2)})</div>
-                        </div>
-                        <div className="detail-item">
-                          <div className="label">{position.symbol_1}</div>
-                          <div className="value">{position.amount_1.toFixed(4)} (${position.usd_amount_1.toFixed(2)})</div>
-                        </div>
-                        <div className="detail-item">
-                          <div className="label">LP Token ID</div>
-                          <div className="value">{position.lp_token_id}</div>
-                        </div>
-                      </div>
+            {lockCanister ? (
+              <div className="lock-canister-info">
+                <div className="info-card">
+                  <h3>Your Lock Canister</h3>
+                  <div className="canister-details">
+                    <div className="detail-row">
+                      <span className="label">Principal ID:</span>
+                      <span className="value mono">{lockCanister}</span>
                     </div>
-                  ))}
+                    <div className="detail-row">
+                      <span className="label">Status:</span>
+                      <span className="value">{lockCanisterStatus}</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="label">Voting Power:</span>
+                      <span className="value">{votingPower || '0'}</span>
+                    </div>
+                  </div>
+                  
+                  {lockCanisterStatus === 'registered' ? (
+                    <div className="action-section">
+                      <h4>Next Steps</h4>
+                      <p>Your lock canister is registered with KongSwap. You can now:</p>
+                      <ol>
+                        <li>Go to KongSwap and transfer LP tokens to your lock canister</li>
+                        <li>LP tokens sent to this address will be locked permanently</li>
+                        <li>Your voting power will update automatically</li>
+                      </ol>
+                      <button 
+                        onClick={() => setShowTransferGuide(true)}
+                        className="btn-primary"
+                      >
+                        Show Transfer Guide
+                      </button>
+                    </div>
+                  ) : lockCanisterStatus === 'created' ? (
+                    <div className="action-section">
+                      <h4>Registration Required</h4>
+                      <p>Your lock canister needs to be registered with KongSwap.</p>
+                      <p>Send at least 1 ICP to your lock canister, then call the registration function.</p>
+                    </div>
+                  ) : null}
                 </div>
-              </>
+              </div>
             ) : (
               <div className="empty-state">
-                <div className="empty-icon">📊</div>
-                <h3>No LP Positions Yet</h3>
-                <p>Add liquidity on KongSwap to see positions here</p>
-                <a 
-                  href="https://kongswap.io" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="btn-primary"
-                >
-                  Go to KongSwap
-                </a>
+                <div className="empty-icon">🔒</div>
+                <h3>No Lock Canister Yet</h3>
+                <p>Create a lock canister to permanently lock your LP tokens and earn voting power.</p>
+                <p className="warning-text">⚠️ Warning: Locked tokens cannot be retrieved!</p>
               </div>
             )}
           </section>
         </main>
       </div>
 
-      {/* Community Stats - Collapsible Section */}
-      <section className="community-stats-section">
-        <details className="community-stats">
-          <summary className="stats-toggle">
-            <h3>Community LP Activity</h3>
-            <span className="toggle-icon">▼</span>
-          </summary>
-          <div className="stats-content">
-            {allVotingPowers.length > 0 ? (
-              <div className="community-lp-list">
-                <div className="list-header">
-                  <span>Principal</span>
-                  <span>LP Token Count</span>
-                </div>
-                {allVotingPowers.slice(0, 10).map((entry, index) => (
-                  <div key={index} className="list-item">
-                    <span className="principal">{entry.principal.slice(0, 8)}...{entry.principal.slice(-6)}</span>
-                    <span className="power">{Number(entry.voting_power).toLocaleString()}</span>
-                  </div>
-                ))}
-                {allVotingPowers.length > 10 && (
-                  <p className="list-note">Showing top 10 out of {allVotingPowers.length} participants</p>
-                )}
-                <div className="community-note">
-                  <p><strong>Note:</strong> LP token counts vary by pool. Higher counts don't necessarily mean higher USD value since different pools have different token values.</p>
-                </div>
-              </div>
-            ) : (
-              <p className="no-data">No community data available.</p>
-            )}
+      {/* Transfer guide modal */}
+      {showTransferGuide && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <LPTransferGuide
+              lockCanister={lockCanister}
+              onComplete={() => {
+                setShowTransferGuide(false);
+                refreshData(); // Refresh to update voting power
+              }}
+            />
           </div>
-        </details>
-      </section>
+        </div>
+      )}
+
     </div>
   );
 };

@@ -111,6 +111,7 @@ export const login = async (onSuccess, onError) => {
     identityProvider: 'https://identity.ic0.app',
     onSuccess,
     onError: onError || ((error) => console.error('Login failed:', error)),
+    derivationOrigin: "https://yj5ba-aiaaa-aaaap-qkmoa-cai.icp0.io",
     maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1000 * 1000 * 1000), // 7 days in nanoseconds
   });
 };
