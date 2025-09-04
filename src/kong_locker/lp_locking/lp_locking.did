@@ -1,12 +1,26 @@
-type Result = variant { Ok : principal; Err : text };
-type Result_1 = variant { Ok : nat; Err : text };
+type CanisterStatus = record {
+  has_icp : bool;
+  is_blackholed : bool;
+  canister_id : principal;
+  is_registered : bool;
+  has_code : bool;
+};
+type Result = variant { Ok : text; Err : text };
+type Result_1 = variant { Ok : principal; Err : text };
+type Result_2 = variant { Ok : nat; Err : text };
 service : {
-  // Create and immediately blackhole a lock canister
-  create_lock_canister : () -> (Result);
+  // Complete setup for a partially created canister
+  complete_my_canister_setup : () -> (Result);
+  // Create and immediately blackhole a lock canister (with 5 ICP payment required)
+  create_lock_canister : () -> (Result_1);
   // Get all lock canisters
   get_all_lock_canisters : () -> (vec record { principal; principal }) query;
+  // Get the status of a user's lock canister
+  get_my_canister_status : () -> (opt CanisterStatus) query;
   // Get user's lock canister
   get_my_lock_canister : () -> (opt principal) query;
   // Get voting power by querying KongSwap
-  get_voting_power : (principal) -> (Result_1);
+  // Note: This is marked as #[update] because it makes an inter-canister call,
+  // but logically it's a read-only query operation
+  get_voting_power : (principal) -> (Result_2);
 }

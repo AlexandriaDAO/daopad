@@ -78,9 +78,9 @@ async fn register_if_funded() -> Result<String, String> {
         Err(_) => return Err("Failed to check balance".to_string()),
     };
     
-    // Need at least 1 ICP (100_000_000 e8s) + fees (10_000 e8s)
-    if balance < Nat::from(100_010_000u64) {
-        return Err("Insufficient ICP. Send at least 1 ICP".to_string());
+    // Need at least 0.1 ICP (10_000_000 e8s) + fees (10_000 e8s) for KongSwap registration
+    if balance < Nat::from(10_010_000u64) {
+        return Err("Insufficient ICP. Send at least 0.1 ICP".to_string());
     }
     
     // Transfer ALL ICP to KongSwap (minus fee) to avoid idle funds
