@@ -1,7 +1,8 @@
 use ic_cdk::{query, update};
-use candid::{Principal, Nat, CandidType, Deserialize};
+use candid::{Principal, Nat};
+use ic_cdk::api::management_canister::main::{canister_status, CanisterIdRecord};
 
-use crate::types::{UserBalancesResult, UserBalancesReply};
+use crate::types::{UserBalancesResult, UserBalancesReply, DetailedCanisterStatus};
 use crate::storage::{StorablePrincipal, USER_LOCK_CANISTERS};
 
 /// Get user's lock canister
@@ -61,31 +62,33 @@ pub async fn get_voting_power(user: Principal) -> Result<Nat, String> {
     }
 }
 
-#[derive(CandidType, Deserialize)]
-pub struct CanisterStatus {
-    pub canister_id: Principal,
-    pub has_code: bool,
-    pub has_icp: bool,
-    pub is_registered: bool,
-    pub is_blackholed: bool,
-}
-
-/// Get the status of a user's lock canister
-#[query]
-pub fn get_my_canister_status() -> Option<CanisterStatus> {
+/// Get detailed status including cycles and blackhole verification
+/// Note: This is an update call because it queries the management canister
+#[update]
+pub async fn get_detailed_canister_status() -> Result<DetailedCanisterStatus, String> {
     let user = ic_cdk::caller();
     
-    USER_LOCK_CANISTERS.with(|c| 
-        c.borrow().get(&StorablePrincipal(user)).map(|sp| {
-            CanisterStatus {
-                canister_id: sp.0,
-                // In production, you'd want to check these async
-                // For now, return the ID and let frontend check status
-                has_code: true, // Would need async check
-                has_icp: false, // Would need async check
-                is_registered: false, // Would need async check
-                is_blackholed: false, // Would need async check
-            }
-        })
-    )
+    // Get user's lock canister
+    let canister_id = USER_LOCK_CANISTERS.with(|c| 
+        c.borrow().get(&StorablePrincipal(user)).map(|sp| sp.0)
+    ).ok_or("No lock canister found")?;
+    
+    // Query canister status from management canister
+    let status_result = canister_status(CanisterIdRecord { canister_id }).await
+        .map_err(|e| format!("Failed to get canister status: {:?}", e))?;
+    
+    let status = status_result.0;
+    
+    // Check if blackholed (no controllers)
+    let is_blackholed = status.settings.controllers.is_empty();
+    let controller_count = status.settings.controllers.len() as u32;
+    
+    Ok(DetailedCanisterStatus {
+        canister_id,
+        is_blackholed,
+        controller_count,
+        cycle_balance: status.cycles,
+        memory_size: status.memory_size,
+        module_hash: status.module_hash,
+    })
 }

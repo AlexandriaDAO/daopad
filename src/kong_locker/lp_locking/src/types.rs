@@ -1,10 +1,10 @@
-use candid::{CandidType, Deserialize, Nat};
+use candid::{CandidType, Deserialize, Nat, Principal};
 use serde::Serialize;
 
 // ===== ICRC-2 Types for Payment =====
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct Account {
-    pub owner: candid::Principal,
+    pub owner: Principal,
     pub subaccount: Option<Vec<u8>>,
 }
 
@@ -80,4 +80,15 @@ pub struct LPReply {
     pub amount_1: f64,         // Amount of second token
     pub usd_amount_1: f64,     // USD value of second token
     pub ts: u64,              // Timestamp
+}
+
+/// Detailed canister status with cycles and controller info
+#[derive(CandidType, Deserialize)]
+pub struct DetailedCanisterStatus {
+    pub canister_id: Principal,
+    pub is_blackholed: bool,
+    pub controller_count: u32,
+    pub cycle_balance: Nat,
+    pub memory_size: Nat,
+    pub module_hash: Option<Vec<u8>>,
 }

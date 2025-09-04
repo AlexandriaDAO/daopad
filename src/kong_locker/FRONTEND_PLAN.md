@@ -84,12 +84,37 @@
 ┌─────────────────────────────────┐
 │ Your Lock Canister              │
 │ ────────────────────────        │
-│ Status: ✅ Ready                 │
+│ Status: 🔒 Blackholed ✓         │
 │ Address: xxxxx-xxxxx-xxxxx      │
-│ [Copy Address] [View on IC]     │
+│ Cycles: 792B (healthy)          │
+│ [Copy Address] [View Details]   │
 │                                  │
 │ Voting Power: 0                 │
 │ (No LP tokens locked yet)       │
+└─────────────────────────────────┘
+```
+
+**Details Modal (when clicking View Details):**
+```
+┌─────────────────────────────────┐
+│ Lock Canister Security Details  │
+│ ────────────────────────        │
+│ ✅ Blackholed                   │
+│    No controllers - permanent   │
+│                                  │
+│ ✅ Cycles: 792,000,000,000      │
+│    Sufficient for ~3 years      │
+│                                  │
+│ ✅ Memory: 2.1 MB / 4 GB        │
+│    Operating normally           │
+│                                  │
+│ Module Hash:                    │
+│ 0x3f2a...9b1c                   │
+│                                  │
+│ This canister is autonomous     │
+│ and cannot be modified.         │
+│                                  │
+│ [Close]                         │
 └─────────────────────────────────┘
 ```
 
@@ -157,23 +182,24 @@
    - Called on: Every page load when connected
    - Determines: Which state to show (A, C, or D)
 
-3. **`get_voting_power()`**
+3. **`get_detailed_canister_status()`** ✨ NEW
+   - Called when: User has a lock canister
+   - Shows: Blackhole status, cycle balance, memory usage
+   - Updates: Security badge and cycle display
+   - Frequency: On page load and when viewing details
+
+4. **`get_voting_power()`**
    - Called when: User has a lock canister
    - Updates: Voting power display
    - Frequency: On page load and after "Refresh" button
 
 ### Hidden Recovery Functions
 
-4. **`complete_my_canister_setup()`**
+5. **`complete_my_canister_setup()`**
    - Only shown if: create_lock_canister returns specific errors
    - Or if: get_my_lock_canister returns canister but operations fail
    - UI: Small warning banner with "Complete Setup" button
    - Never shown in normal flow
-
-5. **`get_my_canister_status()`**
-   - Called silently in background
-   - If any status is false, may trigger recovery UI
-   - User doesn't see this directly
 
 ### Admin/Advanced Functions
 
@@ -253,7 +279,7 @@ interface UserState {
 // On page load
 1. checkConnection()
 2. if (connected) -> get_my_lock_canister()
-3. if (hasCanister) -> get_voting_power()
+3. if (hasCanister) -> get_detailed_canister_status() & get_voting_power()
 4. if (error) -> determine if recovery needed
 
 // On create button
