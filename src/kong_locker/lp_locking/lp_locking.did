@@ -8,7 +8,13 @@ type CanisterStatus = record {
 type Result = variant { Ok : text; Err : text };
 type Result_1 = variant { Ok : principal; Err : text };
 type Result_2 = variant { Ok : nat; Err : text };
-service : {
+type RevshareStats = record {
+  total_lbry_burned : nat64;
+  last_swap_amount_icp : nat64;
+  last_swap_time : nat64;
+  total_icp_swapped : nat64;
+};
+service : () -> {
   // Complete setup for a partially created canister
   complete_my_canister_setup : () -> (Result);
   // Create and immediately blackhole a lock canister (with 5 ICP payment required)
@@ -19,6 +25,7 @@ service : {
   get_my_canister_status : () -> (opt CanisterStatus) query;
   // Get user's lock canister
   get_my_lock_canister : () -> (opt principal) query;
+  get_revshare_stats : () -> (RevshareStats) query;
   // Get voting power by querying KongSwap
   // Note: This is marked as #[update] because it makes an inter-canister call,
   // but logically it's a read-only query operation

@@ -11,6 +11,7 @@ crate-type = ["cdylib"]
 candid = "0.10"
 ic-cdk = "0.15"
 ic-cdk-macros = "0.15"
+ic-cdk-timers = "0.9"
 ic-stable-structures = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 
