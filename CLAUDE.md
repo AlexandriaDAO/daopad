@@ -12,7 +12,7 @@ This repository contains two **independent but related** projects that share dep
 ### Work on Kong Locker (`src/kong_locker/`) when:
 - User mentions: LP tokens, liquidity locking, KongSwap, konglocker.org
 - Tasks involve: tracking locked positions, LP token management
-- Keywords: lp_locking, lp_locker_frontend, Kong
+- Keywords: kong_locker, kong_locker_frontend, Kong
 
 **IMPORTANT**: These projects are architecturally separate. Changes in one should NOT require changes in the other unless explicitly working on their integration point (registration system).
 
@@ -43,8 +43,8 @@ src/
 │   ├── daopad_frontend/
 │   └── orbit_station/
 ├── kong_locker/      # See src/kong_locker/CLAUDE.md
-│   ├── lp_locking/
-│   └── lp_locker_frontend/
+│   ├── kong_locker/
+│   └── kong_locker_frontend/
 └── declarations/     # Auto-generated, DO NOT EDIT
 ```
 
@@ -74,7 +74,7 @@ Kong Locker provides the **proof of liquidity** (LP Principal) that DAOPad uses 
 |---------|----------|-----|
 | DAOPad | Backend | `lwsav-iiaaa-aaaap-qp2qq-cai` |
 | DAOPad | Frontend | `l7rlj-6aaaa-aaaaa-qaffq-cai` |
-| Kong Locker | Backend | `7zv6y-5qaaa-aaaar-qbviq-cai` |
+| Kong Locker | Backend | `eazgb-giaaa-aaaap-qqc2q-cai` |
 | Kong Locker | Frontend | `c6w56-taaaa-aaaai-atlma-cai` |
 | External | Orbit Station | `fec7w-zyaaa-aaaaa-qaffq-cai` |
 
@@ -83,15 +83,15 @@ Kong Locker provides the **proof of liquidity** (LP Principal) that DAOPad uses 
 ```bash
 # Build specific backend
 cargo build --target wasm32-unknown-unknown --release -p daopad_backend --locked
-cargo build --target wasm32-unknown-unknown --release -p lp_locking --locked
+cargo build --target wasm32-unknown-unknown --release -p kong_locker --locked
 
 # Extract candid (ALWAYS after Rust changes)
 candid-extractor target/wasm32-unknown-unknown/release/daopad_backend.wasm > src/daopad/daopad_backend/daopad_backend.did
-candid-extractor target/wasm32-unknown-unknown/release/lp_locking.wasm > src/kong_locker/lp_locking/lp_locking.did
+candid-extractor target/wasm32-unknown-unknown/release/kong_locker.wasm > src/kong_locker/kong_locker/kong_locker.did
 
 # Test canisters
 dfx canister --network ic call daopad_backend get_backend_principal
-dfx canister --network ic call lp_locking get_all_voting_powers
+dfx canister --network ic call kong_locker get_all_voting_powers
 ```
 
 ## 📚 Project-Specific Documentation

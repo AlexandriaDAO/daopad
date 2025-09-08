@@ -4,12 +4,15 @@ use ic_cdk::api::management_canister::main::{
     CanisterSettings, CreateCanisterArgument, InstallCodeArgument, 
     UpdateSettingsArgument, CanisterInstallMode, CanisterIdRecord,
 };
-use candid::{Principal, Nat};
+use candid::{Principal, Nat, Encode};
 
-use crate::types::{Account, TransferFromArgs, TransferFromError, TransferArgs, TransferError, UserBalancesResult};
+use icrc_ledger_types::icrc1::account::Account;
+use icrc_ledger_types::icrc2::transfer_from::{TransferFromArgs, TransferFromError};
+use icrc_ledger_types::icrc1::transfer::{TransferArg as TransferArgs, TransferError};
+use crate::types::UserBalancesReply;
 use crate::storage::{StorablePrincipal, USER_LOCK_CANISTERS, LOCK_CANISTER_WASM};
 
-/// Create and immediately blackhole a lock canister (with 5 ICP payment required)
+/// Create and immediately blackhole a lock canister (with 2 ICP payment required)
 #[update]
 pub async fn create_lock_canister() -> Result<Principal, String> {
     let user = ic_cdk::caller();
@@ -19,7 +22,7 @@ pub async fn create_lock_canister() -> Result<Principal, String> {
         return Err("You already have a lock canister".to_string());
     }
     
-    // STEP 1: Take 5 ICP payment from user (atomic - succeeds or fails completely)
+    // STEP 1: Take 2 ICP payment from user (atomic - succeeds or fails completely)
     let icp_ledger = Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap();
     let transfer_result: Result<(Result<Nat, TransferFromError>,), _> = ic_cdk::call(
         icp_ledger,
@@ -28,7 +31,7 @@ pub async fn create_lock_canister() -> Result<Principal, String> {
             spender_subaccount: None,
             from: Account { owner: user, subaccount: None },
             to: Account { owner: ic_cdk::id(), subaccount: None },
-            amount: Nat::from(500_000_000u64), // 5 ICP
+            amount: Nat::from(200_000_000u64), // 2 ICP
             fee: Some(Nat::from(10_000u64)),
             memo: None,
             created_at_time: None,
@@ -40,7 +43,7 @@ pub async fn create_lock_canister() -> Result<Principal, String> {
             // Payment successful, continue
         },
         Ok((Err(e),)) => {
-            return Err(format!("Payment failed: {:?}. Please approve 5 ICP first", e));
+            return Err(format!("Payment failed: {:?}. Please approve 2 ICP first", e));
         },
         Err(e) => {
             return Err(format!("Transfer call failed: {:?}", e));
@@ -61,17 +64,17 @@ pub async fn create_lock_canister() -> Result<Principal, String> {
         }),
     };
     
-    let canister_id_record = create_canister(create_args, 800_000_000_000u128)
+    let canister_id_record = create_canister(create_args, 1_500_000_000_000u128)
         .await
         .map_err(|e| format!("Failed to create canister: {:?}", e))?;
     let canister_id = canister_id_record.0.canister_id;
     
-    // STEP 3: Install code
+    // STEP 3: Install code with creator principal as init argument
     let install_args = InstallCodeArgument {
         mode: CanisterInstallMode::Install,
         canister_id: canister_id.clone(),
         wasm_module: wasm,
-        arg: vec![],
+        arg: Encode!(&user).unwrap(),
     };
     
     install_code(install_args)
@@ -85,11 +88,11 @@ pub async fn create_lock_canister() -> Result<Principal, String> {
     });
     ic_cdk::print(format!("Stored mapping for user {} -> canister {}", user, canister_id));
     
-    // STEP 4: Send 0.1 ICP (best effort - don't fail if this fails)
+    // STEP 4: Send 1 ICP (best effort - don't fail if this fails)
     let transfer_args = TransferArgs {
         from_subaccount: None,
         to: Account { owner: canister_id, subaccount: None },
-        amount: Nat::from(10_000_000u64), // 0.1 ICP
+        amount: Nat::from(100_000_000u64), // 1 ICP
         fee: Some(Nat::from(10_000u64)),
         memo: None,
         created_at_time: None,
@@ -148,6 +151,7 @@ pub async fn create_lock_canister() -> Result<Principal, String> {
     Ok(canister_id)
 }
 
+
 /// Complete setup for a partially created canister
 #[update]
 pub async fn complete_my_canister_setup() -> Result<String, String> {
@@ -167,13 +171,13 @@ pub async fn complete_my_canister_setup() -> Result<String, String> {
             // Has code, proceed to next checks
         },
         Err(_) => {
-            // No code, install it
+            // No code, install it with creator principal as init argument
             let wasm = LOCK_CANISTER_WASM.to_vec();
             let install_args = InstallCodeArgument {
                 mode: CanisterInstallMode::Install,
                 canister_id: canister_id.clone(),
                 wasm_module: wasm,
-                arg: vec![],
+                arg: Encode!(&user).unwrap(),
             };
             
             install_code(install_args)
@@ -192,16 +196,16 @@ pub async fn complete_my_canister_setup() -> Result<String, String> {
     ).await;
     
     let needs_funding = match balance_result {
-        Ok((balance,)) => balance < Nat::from(10_010_000u64), // Need 0.1 ICP + fees
+        Ok((balance,)) => balance < Nat::from(100_010_000u64), // Need 1 ICP + fees
         Err(_) => true,
     };
     
     if needs_funding {
-        // Send 0.1 ICP
+        // Send 1 ICP
         let transfer_args = TransferArgs {
             from_subaccount: None,
             to: Account { owner: canister_id, subaccount: None },
-            amount: Nat::from(10_000_000u64),
+            amount: Nat::from(100_000_000u64),
             fee: Some(Nat::from(10_000u64)),
             memo: None,
             created_at_time: None,
@@ -213,25 +217,25 @@ pub async fn complete_my_canister_setup() -> Result<String, String> {
             (transfer_args,)
         ).await {
             Ok((Ok(_),)) => {
-                actions_taken.push("funded with 0.1 ICP");
+                actions_taken.push("funded with 1 ICP");
             },
             _ => {
-                return Err("Failed to fund canister. Please send 0.1 ICP manually.".to_string());
+                return Err("Failed to fund canister. Please send 1 ICP manually.".to_string());
             }
         }
     }
     
     // Check 3: Is it registered with KongSwap?
     let kong_backend = Principal::from_text("2ipq2-uqaaa-aaaar-qailq-cai").unwrap();
-    let kong_check: Result<(UserBalancesResult,), _> = ic_cdk::call(
+    let kong_check: Result<(Result<Vec<UserBalancesReply>, String>,), _> = ic_cdk::call(
         kong_backend,
         "user_balances",
         (canister_id.to_text(),)
     ).await;
     
     let needs_registration = match kong_check {
-        Ok((UserBalancesResult::Err(msg),)) if msg.contains("User not found") => true,
-        Ok((UserBalancesResult::Ok(_),)) => false,
+        Ok((Err(msg),)) if msg.contains("User not found") => true,
+        Ok((Ok(_),)) => false,
         _ => true, // Assume needs registration if unclear
     };
     

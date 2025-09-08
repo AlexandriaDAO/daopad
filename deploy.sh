@@ -112,7 +112,7 @@ if [ "$FRESH_DEPLOY" = true ] && [ "$NETWORK" == "local" ]; then
     fi
 fi
 
-# Deploy backend (includes lp_locking)
+# Deploy backend (includes kong_locker)
 if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
     echo ""
     echo "Building backend canisters..."
@@ -136,16 +136,16 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
     fi
     
     # Build LP Locking canister
-    echo "Building lp_locking..."
-    if ! cargo build --target wasm32-unknown-unknown --release -p lp_locking --locked; then
+    echo "Building kong_locker..."
+    if ! cargo build --target wasm32-unknown-unknown --release -p kong_locker --locked; then
         echo "❌ LP Locking build failed!"
         exit 1
     fi
     
-    # Extract candid interface for lp_locking
-    echo "Extracting Candid interface for lp_locking..."
+    # Extract candid interface for kong_locker
+    echo "Extracting Candid interface for kong_locker..."
     if command -v candid-extractor &> /dev/null; then
-        candid-extractor target/wasm32-unknown-unknown/release/lp_locking.wasm > src/kong_locker/lp_locking/lp_locking.did
+        candid-extractor target/wasm32-unknown-unknown/release/kong_locker.wasm > src/kong_locker/kong_locker/kong_locker.did
         echo "✓ Candid interface extracted"
     else
         echo "❌ ERROR: candid-extractor not found!"
@@ -153,7 +153,7 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
         exit 1
     fi
     
-    # No Rust build needed for lp_lock_frontend - it's a frontend asset canister
+    # No Rust build needed for kong_locker_frontend - it's a frontend asset canister
     
     # Deploy DAOPad backend
     echo "Deploying daopad_backend..."
@@ -179,11 +179,11 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
     fi
     
     # Deploy LP Locking canister with specified ID
-    echo "Deploying lp_locking..."
+    echo "Deploying kong_locker..."
     if [ "$NETWORK" == "ic" ]; then
         # Deploy to mainnet with specified ID
-        echo "Deploying lp_locking to mainnet..."
-        if dfx deploy --network ic lp_locking --specified-id 7zv6y-5qaaa-aaaar-qbviq-cai; then
+        echo "Deploying kong_locker to mainnet..."
+        if dfx deploy --network ic kong_locker --specified-id eazgb-giaaa-aaaap-qqc2q-cai; then
             echo "✓ LP Locking deployed successfully"
         else
             echo "❌ LP Locking deployment failed!"
@@ -191,7 +191,7 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
         fi
     else
         # For local deployment, also use specified ID
-        if dfx deploy lp_locking --specified-id 7zv6y-5qaaa-aaaar-qbviq-cai; then
+        if dfx deploy kong_locker --specified-id eazgb-giaaa-aaaap-qqc2q-cai; then
             echo "✓ LP Locking deployed successfully (local with specified ID)"
         else
             echo "❌ LP Locking deployment failed!"
@@ -199,7 +199,7 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
         fi
     fi
     
-    # lp_lock_frontend is now deployed as a frontend asset canister, not here
+    # kong_locker_frontend is now deployed as a frontend asset canister, not here
 fi
 
 # Deploy frontend
@@ -267,7 +267,7 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "frontend" ]; then
     echo "Building LP Lock Frontend..."
     # Make sure we're in the right directory first
     cd "$SCRIPT_DIR"
-    cd src/kong_locker/lp_locker_frontend
+    cd src/kong_locker/kong_locker_frontend
     
     if ! npm install; then
         echo "❌ npm install failed for LP Lock Frontend!"
@@ -286,8 +286,8 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "frontend" ]; then
     echo "Deploying LP Lock Frontend..."
     if [ "$NETWORK" == "ic" ]; then
         echo "Deploying LP Lock Frontend to mainnet..."
-        if dfx deploy --network ic lp_lock_frontend --specified-id c6w56-taaaa-aaaai-atlma-cai; then
-            LP_LOCK_FRONTEND_ID=$(dfx canister --network ic id lp_lock_frontend 2>/dev/null || echo "c6w56-taaaa-aaaai-atlma-cai")
+        if dfx deploy --network ic kong_locker_frontend --specified-id c6w56-taaaa-aaaai-atlma-cai; then
+            LP_LOCK_FRONTEND_ID=$(dfx canister --network ic id kong_locker_frontend 2>/dev/null || echo "c6w56-taaaa-aaaai-atlma-cai")
             echo "✓ LP Lock Frontend deployed successfully"
             echo "   LP Lock Frontend URL: https://$LP_LOCK_FRONTEND_ID.icp0.io/"
             LP_LOCK_FRONTEND_DEPLOYED=true
@@ -296,7 +296,7 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "frontend" ]; then
             exit 1
         fi
     else
-        if dfx deploy lp_lock_frontend --specified-id c6w56-taaaa-aaaai-atlma-cai; then
+        if dfx deploy kong_locker_frontend --specified-id c6w56-taaaa-aaaai-atlma-cai; then
             echo "✓ LP Lock Frontend deployed successfully (local)"
             LP_LOCK_FRONTEND_DEPLOYED=true
         else
@@ -330,7 +330,7 @@ if [ "$NETWORK" == "ic" ]; then
     fi
     
     if [ "$LP_LOCK_FRONTEND_DEPLOYED" == true ]; then
-        LP_LOCK_FRONTEND_ID=$(dfx canister --network ic id lp_lock_frontend 2>/dev/null || echo "c6w56-taaaa-aaaai-atlma-cai")
+        LP_LOCK_FRONTEND_ID=$(dfx canister --network ic id kong_locker_frontend 2>/dev/null || echo "c6w56-taaaa-aaaai-atlma-cai")
         echo "  ✓ LP Lock Frontend: https://$LP_LOCK_FRONTEND_ID.icp0.io/"
     fi
     

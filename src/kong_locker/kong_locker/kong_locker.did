@@ -10,25 +10,26 @@ type Result = variant { Ok : text; Err : text };
 type Result_1 = variant { Ok : principal; Err : text };
 type Result_2 = variant { Ok : DetailedCanisterStatus; Err : text };
 type Result_3 = variant { Ok : nat; Err : text };
-type RevshareStats = record {
-  total_lbry_burned : nat64;
-  last_swap_amount_icp : nat64;
-  last_swap_time : nat64;
-  total_icp_swapped : nat64;
-};
 service : () -> {
   // Complete setup for a partially created canister
   complete_my_canister_setup : () -> (Result);
-  // Create and immediately blackhole a lock canister (with 5 ICP payment required)
+  // Create and immediately blackhole a lock canister (with 2 ICP payment required)
   create_lock_canister : () -> (Result_1);
   // Get all lock canisters
   get_all_lock_canisters : () -> (vec record { principal; principal }) query;
+  // Get all voting powers for all users
+  // Returns list of (user_principal, voting_power_in_cents)
+  get_all_voting_powers : () -> (vec record { principal; nat });
   // Get detailed status including cycles and blackhole verification
   // Note: This is an update call because it queries the management canister
   get_detailed_canister_status : () -> (Result_2);
   // Get user's lock canister
   get_my_lock_canister : () -> (opt principal) query;
-  get_revshare_stats : () -> (RevshareStats) query;
+  // Get total number of lock positions (unique users with lock canisters)
+  get_total_positions_count : () -> (nat64) query;
+  // Get total value locked across all users
+  // Note: This makes multiple inter-canister calls so must be an update call
+  get_total_value_locked : () -> (Result_3);
   // Get voting power by querying KongSwap
   // Note: This is marked as #[update] because it makes an inter-canister call,
   // but logically it's a read-only query operation

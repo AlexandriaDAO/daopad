@@ -25,18 +25,18 @@
         }
       }
     },
-    "lp_locking": {
-      "candid": "src/kong_locker/lp_locking/lp_locking.did",
-      "package": "lp_locking",
+    "kong_locker": {
+      "candid": "src/kong_locker/kong_locker/kong_locker.did",
+      "package": "kong_locker",
       "type": "rust",
-      "specified_id": "7zv6y-5qaaa-aaaar-qbviq-cai"
+      "specified_id": "eazgb-giaaa-aaaap-qqc2q-cai"
     },
-    "lp_lock_frontend": {
+    "kong_locker_frontend": {
       "source": [
-        "src/kong_locker/lp_locker_frontend/dist"
+        "src/kong_locker/kong_locker_frontend/dist"
       ],
       "type": "assets",
-      "build": "cd src/kong_locker/lp_locker_frontend && npm run build",
+      "build": "cd src/kong_locker/kong_locker_frontend && npm run build",
       "specified_id": "c6w56-taaaa-aaaai-atlma-cai"
     }
   },

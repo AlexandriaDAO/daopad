@@ -8,9 +8,7 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-candid = "0.10"
-ic-cdk = "0.15"
+candid = "0.10.18"
+ic-cdk = "0.17.2"
 serde = { version = "1.0", features = ["derive"] }
 
-[build-dependencies]
-candid-extractor = "0.1.6"

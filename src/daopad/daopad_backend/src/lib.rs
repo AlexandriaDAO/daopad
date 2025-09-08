@@ -19,7 +19,7 @@ const DAO_REGISTRATIONS_MEM_ID: MemoryId = MemoryId::new(2);
 
 const ICP_TOKEN: &str = "ryjl3-tyaaa-aaaaa-aaaba-cai";
 const CKUSDT_TOKEN: &str = "cngnf-vqaaa-aaaar-qag4q-cai";
-const LP_LOCKER_BACKEND: &str = "7zv6y-5qaaa-aaaar-qbviq-cai";
+const LP_LOCKER_BACKEND: &str = "eazgb-giaaa-aaaap-qqc2q-cai";
 
 // Wrapper types for Storable implementation
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]

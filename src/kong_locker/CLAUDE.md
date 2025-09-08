@@ -1,246 +1,280 @@
 # Kong Locker - CLAUDE.md
 
-**Context**: You are working on Kong Locker, a specialized service for permanently locking KongSwap liquidity positions to create verifiable proof of commitment.
+**Context**: You are working on Kong Locker, a permanent liquidity locking service for KongSwap LP tokens on the Internet Computer.
 
-## 🎯 Project Mission
+## 🎯 Project Purpose
 
-Provide a simple, immutable service where users lock their KongSwap LP tokens permanently and receive a unique principal that represents their locked liquidity. This principal serves as proof of commitment for governance systems like DAOPad.
+Kong Locker provides a trustless, immutable way to permanently lock KongSwap LP tokens. Users receive a unique "lock canister" that holds their LP tokens forever, serving as verifiable proof of long-term commitment for governance systems.
 
-## 🏛️ Architecture
+## 🏛️ Architecture Overview
 
-### Core Components
+### Two-Canister System
+
+```
+kong_locker (Factory)
+├── Creates individual lock canisters
+├── Maintains user→canister mappings
+├── Handles payments and revenue sharing
+└── Queries KongSwap for voting power
+
+lock_canister (Individual)
+├── Holds LP tokens permanently
+├── No unlock mechanism (by design)
+├── Immediately blackholed (no controllers)
+└── Stores creator principal
+```
+
+### Key Design Principles
+1. **Permanent Locking**: No unlock mechanism exists or will ever be added
+2. **Trustless**: Canisters are blackholed immediately after creation
+3. **Self-Contained**: Each lock canister operates independently
+4. **Revenue Sharing**: Excess ICP automatically sent to alex_revshare
+
+## 📁 Project Structure
 
 ```
 kong_locker/
-├── lp_locking/           # Rust canister - LP token management
+├── kong_locker/           # Factory canister (Rust)
 │   ├── src/
-│   │   ├── lib.rs       # Main canister logic
-│   │   ├── kong_integration.rs  # KongSwap API integration
-│   │   └── types.rs     # LP position types
-│   └── lp_locking.did   # Candid interface (auto-generated)
+│   │   ├── lib.rs        # Module exports and initialization
+│   │   ├── types.rs      # KongSwap integration types
+│   │   ├── storage.rs    # Stable storage and embedded WASM
+│   │   ├── update.rs     # Canister creation and setup
+│   │   ├── query.rs      # Voting power and status queries
+│   │   └── revshare.rs   # Automatic revenue distribution
+│   ├── kong_locker.did   # Auto-generated, DO NOT EDIT
+│   └── Cargo.toml
 │
-└── lp_locker_frontend/   # React app - LP position viewer
+├── lock_canister/         # Individual lock canister (Rust)
+│   ├── src/
+│   │   └── lib.rs        # Minimal logic: receive tokens, register
+│   ├── lock_canister.did # Auto-generated, DO NOT EDIT
+│   └── Cargo.toml
+│
+└── lp_locker_frontend/    # React frontend
     ├── src/
-    │   ├── App.jsx      # Main application
-    │   └── components/  # UI components
-    └── dist/            # Build output (DO NOT EDIT)
+    │   ├── App.jsx
+    │   └── components/
+    ├── dist/             # Build output, DO NOT EDIT
+    └── package.json
 ```
 
-## 🔑 Key Concepts
+## 🔑 Core Concepts
 
-### What is Kong Locker?
-- **Purpose**: Lock LP tokens permanently (no unlock mechanism)
-- **Output**: Unique principal representing locked liquidity
-- **Website**: konglocker.org
-- **Design Philosophy**: Simple, immutable, trustless
-
-### LP Token Flow
+### Lock Canister Lifecycle
 ```mermaid
 graph LR
-    A[User LP Tokens] -->|Lock Forever| B[Kong Locker]
-    B -->|Issues| C[LP Principal]
-    C -->|Used as proof in| D[DAOPad/Other Services]
+    A[User pays 2 ICP] -->|create_lock_canister| B[Factory creates canister]
+    B --> C[Install code with creator principal]
+    C --> D[Fund with 1 ICP]
+    D --> E[Register on KongSwap]
+    E --> F[Blackhole canister]
+    F --> G[User sends LP tokens]
+    G --> H[Tokens locked forever]
 ```
 
-### Why Permanent Locking?
-- Prevents gaming the system
-- Creates genuine long-term commitment
-- Simplifies the architecture (no unlock logic)
-- Makes the service truly trustless
+### Payment Flow
+- **2 ICP Required**: 1 ICP for KongSwap registration, 1 ICP for operations/revenue
+- **Atomic Transaction**: Payment taken before canister creation
+- **Revenue Sharing**: Excess ICP above reserve threshold sent to alex_revshare every 4 hours
 
-## 💎 Core Functionality
+### Voting Power Calculation
+- Queries KongSwap's `user_balances` API
+- Calculates USD value of all LP positions
+- Returns value * 100 (preserving 2 decimal places as Nat)
 
-### Backend Methods
-```rust
-// Primary Operations
-lock_lp_tokens(amount: Nat, pool_id: Text) -> Result<Principal>
-get_locked_position(principal: Principal) -> Result<LockedPosition>
-get_all_voting_powers() -> Vec<(Principal, Nat)>
+## 💻 Development Workflow
 
-// KongSwap Integration
-query_kong_pool(pool_id: Text) -> Result<PoolInfo>
-verify_lp_ownership(user: Principal, amount: Nat) -> Result<bool>
+### Building the Canisters
 
-// Statistics
-get_total_locked_value() -> Result<Nat>
-get_lock_count() -> Result<u64>
-get_top_lockers(limit: usize) -> Vec<LockedPosition>
-```
-
-### Data Structure
-```rust
-struct LockedPosition {
-    owner: Principal,           // Original owner who locked
-    lp_principal: Principal,    // Unique principal issued
-    amount: Nat,               // Amount of LP tokens locked
-    pool_id: Text,            // KongSwap pool identifier
-    locked_at: u64,           // Timestamp of lock
-    token_0: TokenInfo,       // First token in pair
-    token_1: TokenInfo,       // Second token in pair
-    usd_value: Option<Nat>,   // USD value at lock time
-}
-
-struct TokenInfo {
-    symbol: Text,
-    canister_id: Principal,
-    decimals: u8,
-}
-```
-
-## 🔗 KongSwap Integration
-
-### Pool Queries
-```rust
-// Get pool information from KongSwap
-async fn get_pool_info(pool_id: &str) -> Result<PoolInfo> {
-    let kong_swap = Principal::from_text(KONGSWAP_CANISTER)?;
-    kong_swap.get_pool(pool_id).await
-}
-```
-
-### LP Token Verification
-```rust
-// Verify user owns the LP tokens before locking
-async fn verify_ownership(user: Principal, amount: Nat) -> Result<bool> {
-    // Check balance on KongSwap
-    // Verify approval for transfer
-    // Return verification status
-}
-```
-
-## 🛠️ Development Workflow
-
-### Backend Changes
 ```bash
-# 1. Make Rust changes
-vim lp_locking/src/lib.rs
+# Build lock_canister FIRST (embedded in factory)
+cargo build --target wasm32-unknown-unknown --release -p lock_canister --locked
 
-# 2. Build
-cargo build --target wasm32-unknown-unknown --release -p lp_locking --locked
+# Extract candid for lock_canister
+candid-extractor target/wasm32-unknown-unknown/release/lock_canister.wasm > src/kong_locker/lock_canister/lock_canister.did
 
-# 3. CRITICAL: Regenerate candid
-candid-extractor target/wasm32-unknown-unknown/release/lp_locking.wasm > lp_locking/lp_locking.did
+# Build kong_locker (embeds lock_canister WASM)
+cargo build --target wasm32-unknown-unknown --release -p kong_locker --locked
 
-# 4. Ask user to deploy
-echo "Please run: ./deploy.sh --network ic --backend-only"
+# Extract candid for kong_locker
+candid-extractor target/wasm32-unknown-unknown/release/kong_locker.wasm > src/kong_locker/kong_locker/kong_locker.did
 ```
 
-### Frontend Development
+### Deployment
+
 ```bash
-# 1. Start dev server
-cd lp_locker_frontend
-npm install
-npm run start  # Opens at localhost:3001
+# Deploy to mainnet (Claude can do this)
+dfx identity use daopad
+./deploy.sh --network ic --backend-only
 
-# 2. After changes, ask user to deploy
-echo "Please run: ./deploy.sh --network ic --frontend-only"
+# Deploy frontend only
+./deploy.sh --network ic --frontend-only
 ```
 
-## 📊 Frontend Features
+### Testing Commands
 
-### Main Views
-- **Home**: Statistics dashboard (total locked, number of positions)
-- **Lock**: Interface to lock LP tokens
-- **Positions**: View all locked positions
-- **Leaderboard**: Top lockers by value
+```bash
+# Create a lock canister (requires 2 ICP approval)
+dfx canister --network ic call kong_locker create_lock_canister
 
-### User Flow
-1. Connect wallet
-2. Select KongSwap LP tokens to lock
-3. Approve transfer
-4. Confirm permanent lock (with warnings!)
-5. Receive LP principal
-6. Copy principal for use in DAOPad
+# Check your lock canister
+dfx canister --network ic call kong_locker get_my_lock_canister
 
-## ⚠️ Important Constraints
+# Get voting power for a user
+dfx canister --network ic call kong_locker get_voting_power '(principal "USER_PRINCIPAL")'
 
-### Immutability Rules
+# Get all lock canisters
+dfx canister --network ic call kong_locker get_all_lock_canisters
+
+# Check canister status
+dfx canister --network ic call kong_locker get_detailed_canister_status
+
+# Get creator of a lock canister
+dfx canister --network ic call LOCK_CANISTER_ID get_creator
+```
+
+## 🔐 Security Model
+
+### Immutability Guarantees
 ```rust
-// ❌ NEVER IMPLEMENT
-fn unlock_tokens() { /* FORBIDDEN */ }
-fn transfer_locked_position() { /* FORBIDDEN */ }
-fn modify_locked_amount() { /* FORBIDDEN */ }
+// ✅ ALLOWED Operations
+- Create lock canister
+- Query positions and voting power
+- Receive LP tokens
 
-// ✅ ONLY THESE OPERATIONS
-fn lock_tokens() { /* CREATE only */ }
-fn get_position() { /* READ only */ }
+// ❌ FORBIDDEN Operations (NEVER implement)
+- Unlock or withdraw tokens
+- Transfer lock ownership
+- Modify locked amounts
+- Upgrade lock canisters
 ```
 
-### Security Considerations
-- **No admin functions**: Canister is fully autonomous
-- **No upgrades after stable**: Lock mechanism must be immutable
-- **No backdoors**: Not even for emergencies
-- **Verify everything**: Always verify LP token ownership before locking
+### Blackholing Process
+1. Factory creates canister with itself as controller
+2. Installs code and configures canister
+3. Removes all controllers (blackholes)
+4. Canister becomes permanently immutable
 
-## 🔴 Common Issues
+### Trust Assumptions
+- Factory canister is trusted until lock canisters are created
+- Once blackholed, lock canisters need zero trust
+- KongSwap API is trusted for balance queries
+- No admin functions or backdoors exist
+
+## 🔗 External Integrations
+
+### KongSwap (2ipq2-uqaaa-aaaar-qailq-cai)
+- **user_balances**: Query LP token positions
+- **swap**: Convert ICP to ALEX for registration
+- **Transfer**: Users send LP tokens to lock canisters
+
+### ICP Ledger (ryjl3-tyaaa-aaaaa-aaaba-cai)
+- **icrc2_transfer_from**: Take payment from users
+- **icrc1_transfer**: Fund lock canisters
+- **icrc1_balance_of**: Check balances
+
+### Alex Revshare (e454q-riaaa-aaaap-qqcyq-cai)
+- Receives excess ICP every 4 hours
+- Distributes to ALEX stakers
+
+## ⚠️ Critical Rules
+
+1. **NEVER add unlock functionality** - Permanence is the core feature
+2. **ALWAYS blackhole lock canisters** - No exceptions
+3. **ALWAYS extract candid after Rust changes** - Keep interfaces in sync
+4. **NEVER modify lock_canister after deployment** - It must remain immutable
+5. **ALWAYS build lock_canister before kong_locker** - Factory embeds the WASM
+
+## 🔴 Common Issues & Solutions
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| "LP tokens not found" | Wrong pool ID | Verify pool exists on KongSwap |
-| "Transfer failed" | No approval | User must approve token transfer first |
-| "Invalid principal" | Format error | Check Principal.from_text() format |
-| "Position not found" | Wrong principal | Use correct LP principal, not user principal |
+| "You already have a lock canister" | User trying to create second | Use existing canister |
+| "Payment failed" | No ICP approval | User must approve 2 ICP first |
+| "User not found" | Not registered on KongSwap | Call register_if_funded with 1 ICP |
+| "Insufficient ICP" | Lock canister needs funding | Send 1+ ICP to canister |
+| Build fails | Wrong build order | Build lock_canister first, then kong_locker |
+| Candid mismatch | Forgot to extract | Run candid-extractor after changes |
 
-## 🚨 Testing Checklist
+## 📊 Data Structures
 
-When modifying Kong Locker:
-- [ ] Verify LP token locking works
-- [ ] Check principal generation is unique
-- [ ] Test KongSwap integration
-- [ ] Ensure no unlock mechanism exists
-- [ ] Validate voting power calculations
-- [ ] Test frontend displays positions correctly
+### Factory Storage
+```rust
+// Stable BTreeMap: user principal → lock canister principal
+USER_LOCK_CANISTERS: StableBTreeMap<StorablePrincipal, StorablePrincipal>
+
+// Embedded at compile time
+LOCK_CANISTER_WASM: &[u8] = include_bytes!("../lock_canister.wasm")
+```
+
+### Lock Canister Storage
+```rust
+// Creator principal (set once at init, never changed)
+CREATOR: RefCell<Principal>
+```
+
+### KongSwap Types
+```rust
+struct LPReply {
+    symbol: String,         // LP token symbol
+    balance: f64,          // LP token balance
+    usd_balance: f64,      // Total USD value
+    symbol_0: String,      // First token
+    amount_0: f64,         // First token amount
+    symbol_1: String,      // Second token
+    amount_1: f64,         // Second token amount
+}
+```
+
+## 🚀 Deployment Checklist
+
+When deploying changes:
+- [ ] Build lock_canister first
+- [ ] Extract lock_canister candid
+- [ ] Build kong_locker (embeds WASM)
+- [ ] Extract kong_locker candid
+- [ ] Test locally if needed
+- [ ] Deploy with `./deploy.sh --network ic`
+- [ ] Verify with query commands
 
 ## 📈 Monitoring
 
-### Key Metrics
-```rust
-struct SystemStats {
-    total_positions: u64,
-    total_value_locked: Nat,
-    unique_pools: u32,
-    average_lock_size: Nat,
-    largest_position: Nat,
-}
-```
-
-### Health Checks
 ```bash
-# Check system health
-dfx canister --network ic call lp_locking get_stats
+# System health
+dfx canister --network ic call kong_locker get_total_positions_count
+dfx canister --network ic call kong_locker get_total_value_locked
 
-# Verify KongSwap connection
-dfx canister --network ic call lp_locking ping_kongswap
+# Individual canister
+dfx canister --network ic call kong_locker get_detailed_canister_status
 
-# Get recent locks
-dfx canister --network ic call lp_locking get_recent_locks '(10)'
+# All voting powers
+dfx canister --network ic call kong_locker get_all_voting_powers
 ```
 
-## 🔗 Integration with DAOPad
+## 🔄 Recovery Procedures
 
-Kong Locker provides the LP principals that DAOPad uses for governance:
-
-```rust
-// In DAOPad
-register_with_lp_principal(lp_principal: Principal) {
-    // Query Kong Locker for position details
-    let position = kong_locker.get_locked_position(lp_principal)?;
-    // Grant voting power based on locked amount
-    grant_voting_power(user, position.amount);
-}
+### Incomplete Canister Setup
+If a canister creation partially fails:
+```bash
+# User can complete setup themselves
+dfx canister --network ic call kong_locker complete_my_canister_setup
 ```
 
-## 📚 Resources
-
-- [KongSwap Documentation](https://kongswap.io/docs)
-- [IC Principal Spec](https://internetcomputer.org/docs/current/references/id-encoding-spec)
-- [Token Standards](https://github.com/dfinity/ICRC-1)
+This will:
+1. Install code if missing
+2. Fund with ICP if needed
+3. Register on KongSwap
+4. Blackhole the canister
 
 ## For Claude Code
 
 When working on Kong Locker:
-1. **Maintain simplicity** - This is a lock-only service
-2. **Never add unlock** - Permanence is the core feature
-3. **Verify everything** - Always check token ownership
-4. **Focus on reliability** - This handles real value
-5. **Update candid** - ALWAYS after Rust changes
+1. **Maintain simplicity** - This is a lock-only service, no complex features
+2. **Never add unlock** - Users must understand tokens are locked forever
+3. **Build order matters** - Always lock_canister before kong_locker
+4. **Extract candid** - After every Rust change
+5. **Test queries** - Most operations require update calls due to IC limitations
+6. **Respect immutability** - Once deployed and blackholed, that's it
+
+Remember: The beauty of this system is its simplicity. LP tokens go in, they never come out, and that's the entire point.

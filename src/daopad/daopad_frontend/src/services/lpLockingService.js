@@ -1,7 +1,7 @@
 import { Actor, HttpAgent } from '@dfinity/agent';
 
 // LP Locking Backend Canister ID
-const LP_LOCKING_BACKEND_ID = '7zv6y-5qaaa-aaaar-qbviq-cai';
+const LP_LOCKING_BACKEND_ID = 'eazgb-giaaa-aaaap-qqc2q-cai';
 
 // IDL Factory for LP Locking Backend
 const idlFactory = ({ IDL }) => {

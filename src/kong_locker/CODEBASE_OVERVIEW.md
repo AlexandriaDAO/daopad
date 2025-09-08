@@ -3,21 +3,21 @@
 ## 🏗️ Architecture Summary
 
 Kong Locker is a two-canister system for permanently locking KongSwap LP tokens:
-1. **Factory Canister** (`lp_locking`) - Creates and tracks lock canisters
+1. **Factory Canister** (`kong_locker`) - Creates and tracks lock canisters
 2. **Lock Canisters** (`lock_canister`) - Individual blackholed canisters that hold LP tokens
 
 ## 📁 Project Structure
 
 ```
 kong_locker/
-├── lp_locking/          # Factory canister (manages lock canisters)
+├── kong_locker/          # Factory canister (manages lock canisters)
 ├── lock_canister/       # Template for individual lock canisters
-└── lp_locker_frontend/ # React frontend
+└── kong_locker_frontend/ # React frontend
 ```
 
 ## 🔧 Backend Components
 
-### Factory Canister (`lp_locking/`)
+### Factory Canister (`kong_locker/`)
 
 #### **lib.rs** - Entry Point
 - Module declarations and exports
@@ -38,10 +38,10 @@ kong_locker/
 ```yaml
 create_lock_canister():
   1. Verify user doesn't have existing canister
-  2. Take 5 ICP payment (requires prior approval)
+  2. Take 2 ICP payment (requires prior approval)
   3. Create new canister with factory as controller
   4. Install lock_canister WASM code
-  5. Send 0.1 ICP to canister for registration
+  5. Send 1 ICP to canister for registration
   6. Trigger KongSwap registration
   7. Blackhole canister (remove all controllers)
   8. Store user→canister mapping
@@ -126,10 +126,10 @@ Core Functions:
 
 ```mermaid
 graph TD
-    A[User] -->|1. Approve 5 ICP| B[Factory Canister]
+    A[User] -->|1. Approve 2 ICP| B[Factory Canister]
     B -->|2. Create Canister| C[New Lock Canister]
     B -->|3. Install Code| C
-    B -->|4. Send 0.1 ICP| C
+    B -->|4. Send 1 ICP| C
     C -->|5. Register on KongSwap| D[KongSwap]
     B -->|6. Blackhole| C
     A -->|7. Send LP Tokens| C
@@ -140,9 +140,9 @@ graph TD
 ## 💰 Economics
 
 ### Creation Cost Breakdown
-- **User Pays**: 5 ICP total
-- **KongSwap Registration**: 0.1 ICP
-- **Factory Retains**: 4.9 ICP for operations
+- **User Pays**: 2 ICP total
+- **KongSwap Registration**: 1 ICP
+- **Factory Retains**: 1 ICP for operations
 - **Cycles**: 800B cycles for canister creation
 
 ### Operational Model
@@ -179,7 +179,7 @@ graph TD
 - Simple principal-based identification
 - Direct KongSwap integration
 
-### Why 5 ICP Fee?
+### Why 2 ICP Fee?
 - Covers canister creation costs
 - Funds KongSwap registration
 - Sustains factory operations
@@ -203,7 +203,7 @@ Voting Power Calculation:
 - Lock permanence (no unlock ever)
 - Blackhole status (no controllers)
 - Code immutability (no upgrades)
-- Fee structure (5 ICP requirement)
+- Fee structure (2 ICP requirement)
 
 ### Technical Limitations
 - Inter-canister query calls don't work (IC limitation)
@@ -226,7 +226,7 @@ candid-extractor target/wasm32-unknown-unknown/release/lp_locking.wasm > lp_lock
 ```
 
 ### Canister IDs (Mainnet)
-- **Factory**: `7zv6y-5qaaa-aaaar-qbviq-cai`
+- **Factory**: `eazgb-giaaa-aaaap-qqc2q-cai`
 - **Frontend**: `c6w56-taaaa-aaaai-atlma-cai`
 - **Lock Canisters**: Dynamically created per user
 

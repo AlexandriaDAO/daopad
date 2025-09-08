@@ -5,10 +5,10 @@
   "daopad_frontend": {
     "ic": "l7rlj-6aaaa-aaaap-qp2ra-cai"
   },
-  "lp_locking": {
-    "ic": "7zv6y-5qaaa-aaaar-qbviq-cai"
+  "kong_locker": {
+    "ic": "eazgb-giaaa-aaaap-qqc2q-cai"
   },
-  "lp_lock_frontend": {
+  "kong_locker_frontend": {
     "ic": "c6w56-taaaa-aaaai-atlma-cai"
   }
 }

@@ -9,10 +9,10 @@ pub mod revshare;
 pub use update::{create_lock_canister, complete_my_canister_setup};
 pub use query::{
     get_my_lock_canister, get_all_lock_canisters, get_voting_power, 
-    get_detailed_canister_status
+    get_detailed_canister_status, get_total_positions_count,
+    get_total_value_locked, get_all_voting_powers
 };
 pub use types::DetailedCanisterStatus;
-pub use revshare::{get_revshare_stats, RevshareStats};
 
 // Required imports for export_candid macro
 use candid::{Principal, Nat};

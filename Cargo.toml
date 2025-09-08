@@ -1,7 +1,14 @@
 [workspace]
 members = [
     "src/daopad/daopad_backend",
-    "src/kong_locker/lp_locking",
+    "src/kong_locker/kong_locker",
     "src/kong_locker/lock_canister"
 ]
 resolver = "2"
+
+[profile.release]
+opt-level = "z"     # Optimize for size
+lto = true         # Enable Link Time Optimization
+codegen-units = 1  # Single codegen unit for better optimization
+strip = true       # Strip symbols
+panic = "abort"    # Smaller panic handler
