@@ -2,6 +2,8 @@
   import { Lock, Copy, Eye, Check } from 'lucide-svelte';
   import { userLockStore } from '../../stores/userLock';
   
+  export let integrated = false;
+  
   let copySuccess = false;
   let showDetailsModal = false;
   
@@ -40,17 +42,19 @@
   }
 </script>
 
-<section class="max-w-2xl mx-auto space-y-6">
+<div class="{integrated ? 'border-t border-kong-border/30 pt-6 space-y-6' : 'max-w-2xl mx-auto'}">
   
   <!-- Main Dashboard -->
-  <div class="kong-panel space-y-6">
+  <div class="{integrated ? 'space-y-6' : 'kong-panel space-y-6'}">
     <div class="flex items-center justify-between">
       <div class="flex items-center space-x-3">
         <div class="p-2 bg-kong-accent-green/20 rounded-full">
           <Lock class="w-6 h-6 text-kong-accent-green" />
         </div>
         <div>
-          <h2 class="text-xl font-semibold text-kong-text-primary">Your Lock Canister</h2>
+          <h3 class="{integrated ? 'text-lg' : 'text-xl'} font-semibold text-kong-text-primary">
+            {integrated ? 'Your Lock Canister' : 'Your Lock Canister'}
+          </h3>
           <div class="flex items-center space-x-2">
             <div class="flex items-center space-x-1">
               <div class="w-2 h-2 bg-kong-accent-green rounded-full animate-pulse"></div>
@@ -112,7 +116,7 @@
       </div>
     </div>
   </div>
-</section>
+</div>
 
 <!-- Details Modal -->
 {#if showDetailsModal}

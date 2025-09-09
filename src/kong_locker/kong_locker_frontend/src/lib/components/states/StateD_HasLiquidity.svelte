@@ -2,6 +2,9 @@
   import { Lock, Copy, ExternalLink, Eye, Check, Plus, ArrowRight, TrendingUp } from 'lucide-svelte';
   import { userLockStore } from '../../stores/userLock';
   import { formatUsd } from '../../services/lpLocking';
+  import LPPositionCard from '../LPPositionCard.svelte';
+  
+  export let integrated = false;
   
   let copySuccess = false;
   let showDetailsModal = false;
@@ -9,6 +12,8 @@
   // Use real voting power and value from store
   $: totalVotingPower = $userLockStore.votingPower;
   $: totalUsdValue = totalVotingPower / 100; // Convert cents to dollars
+  $: lpPositions = $userLockStore.lpPositions;
+  $: hasMultiplePositions = lpPositions.length > 1;
   
   // Use real canister details from store
   $: canisterDetails = {
@@ -36,11 +41,11 @@
   }
   
   function openDAOPad() {
-    window.open('https://daopad.io', '_blank');
+    window.open('https://daopad.org', '_blank');
   }
   
   function openKongSwap() {
-    window.open('https://app.kongswap.io', '_blank');
+    window.open('https://kongswap.io/pools', '_blank');
   }
   
   function truncateAddress(address: string): string {
@@ -53,17 +58,19 @@
   }
 </script>
 
-<section class="max-w-4xl mx-auto space-y-6">
+<div class="{integrated ? 'border-t border-kong-border/30 pt-6 space-y-6' : 'max-w-4xl mx-auto space-y-4'}">
   
-  <!-- Main Dashboard -->
-  <div class="kong-panel space-y-6">
+  <!-- User Liquidity Overview -->
+  <div class="{integrated ? 'space-y-4' : 'kong-panel space-y-4'}">
     <div class="flex items-center justify-between">
       <div class="flex items-center space-x-3">
         <div class="p-2 bg-kong-accent-green/20 rounded-full">
           <Lock class="w-6 h-6 text-kong-accent-green" />
         </div>
         <div>
-          <h2 class="text-xl font-semibold text-kong-text-primary">Your Locked Liquidity</h2>
+          <h3 class="{integrated ? 'text-lg' : 'text-xl'} font-semibold text-kong-text-primary">
+            {integrated ? 'Your Locked Liquidity' : 'Your Locked Liquidity'}
+          </h3>
           <div class="flex items-center space-x-2">
             <div class="flex items-center space-x-1">
               <div class="w-2 h-2 bg-kong-accent-green rounded-full animate-pulse"></div>
@@ -110,60 +117,106 @@
       {/if}
     </div>
     
-    <!-- Total Voting Power - Prominent Display -->
-    <div class="text-center py-6 bg-gradient-to-br from-kong-accent-green/10 to-kong-accent-blue/10 border border-kong-accent-green/20 rounded-xl">
-      <div class="space-y-3">
-        <div class="flex items-center justify-center space-x-2 mb-2">
-          <TrendingUp class="w-6 h-6 text-kong-accent-green" />
-          <h3 class="text-xl font-semibold text-kong-text-primary">Total Voting Power</h3>
+    <!-- Your Voting Power Dashboard -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- Main Voting Power -->
+      <div class="bg-gradient-to-br from-kong-accent-green/10 to-kong-accent-green/5 border border-kong-accent-green/20 rounded-lg p-6">
+        <div class="flex items-center space-x-3 mb-4">
+          <div class="p-2 bg-kong-accent-green/20 rounded-lg">
+            <TrendingUp class="w-6 h-6 text-kong-accent-green" />
+          </div>
+          <div>
+            <h3 class="text-base font-medium text-kong-text-primary">Voting Power</h3>
+            <p class="text-sm text-kong-text-secondary">Total governance weight</p>
+          </div>
         </div>
-        <div class="text-5xl font-bold kong-gradient-text">
+        <div class="text-3xl font-bold kong-gradient-text">
           {totalVotingPower.toLocaleString()}
         </div>
-        <p class="text-lg text-kong-text-secondary">
-          Based on {formatUsd(totalUsdValue)} locked liquidity
+        <p class="text-sm text-kong-text-secondary mt-1">
+          Based on {formatUsd(totalUsdValue)} locked
         </p>
-        <div class="flex items-center justify-center space-x-4 mt-4">
-          <div class="text-center">
-            <div class="text-2xl font-bold text-kong-accent-blue">1</div>
-            <div class="text-xs text-kong-text-secondary uppercase tracking-wide">Position</div>
+      </div>
+      
+      <!-- Pool Count -->
+      <div class="bg-gradient-to-br from-kong-accent-blue/10 to-kong-accent-blue/5 border border-kong-accent-blue/20 rounded-lg p-6">
+        <div class="flex items-center space-x-3 mb-4">
+          <div class="p-2 bg-kong-accent-blue/20 rounded-lg">
+            <Lock class="w-6 h-6 text-kong-accent-blue" />
           </div>
-          <div class="w-1 h-8 bg-kong-border/50"></div>
-          <div class="text-center">
-            <div class="text-2xl font-bold text-kong-accent-green">{formatUsd(totalUsdValue)}</div>
-            <div class="text-xs text-kong-text-secondary uppercase tracking-wide">Total Value</div>
+          <div>
+            <h3 class="text-base font-medium text-kong-text-primary">LP Pools</h3>
+            <p class="text-sm text-kong-text-secondary">Locked positions</p>
           </div>
         </div>
+        <div class="text-3xl font-bold text-kong-accent-blue">
+          {lpPositions.length}
+        </div>
+        <p class="text-sm text-kong-text-secondary mt-1">
+          {hasMultiplePositions ? 'Different pools' : 'Single pool'}
+        </p>
+      </div>
+      
+      <!-- Total Value -->
+      <div class="bg-gradient-to-br from-kong-accent-orange/10 to-kong-accent-orange/5 border border-kong-accent-orange/20 rounded-lg p-6">
+        <div class="flex items-center space-x-3 mb-4">
+          <div class="p-2 bg-kong-accent-orange/20 rounded-lg">
+            <svg class="w-6 h-6 text-kong-accent-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-base font-medium text-kong-text-primary">Total Value</h3>
+            <p class="text-sm text-kong-text-secondary">USD locked forever</p>
+          </div>
+        </div>
+        <div class="text-3xl font-bold text-kong-accent-orange">
+          {formatUsd(totalUsdValue)}
+        </div>
+        <p class="text-sm text-kong-text-secondary mt-1">
+          Permanently secured
+        </p>
       </div>
     </div>
   </div>
   
   <!-- Locked Positions -->
-  <div class="kong-panel space-y-4">
-    <h3 class="text-lg font-semibold text-kong-text-primary flex items-center">
+  <div class="{integrated ? 'space-y-4 border-t border-kong-border/20 pt-6' : 'kong-panel space-y-4'}">
+    <h4 class="text-{integrated ? 'base' : 'lg'} font-semibold text-kong-text-primary flex items-center">
       <Lock class="w-5 h-5 mr-2 text-kong-accent-orange" />
-      Locked Position
-    </h3>
+      Locked LP Positions ({lpPositions.length})
+    </h4>
     
-    <div class="bg-kong-bg-secondary/50 border border-kong-border/50 rounded-lg p-4">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-4">
-          <div class="w-12 h-12 bg-kong-accent-green/20 rounded-full flex items-center justify-center">
-            <Lock class="w-6 h-6 text-kong-accent-green" />
+    {#if lpPositions.length > 0}
+      <div class="space-y-3">
+        {#each lpPositions as position}
+          <LPPositionCard 
+            {position} 
+            percentOfTotal={(position.usd_balance / totalUsdValue) * 100}
+          />
+        {/each}
+      </div>
+    {:else}
+      <div class="bg-kong-bg-secondary/50 border border-kong-border/50 rounded-lg p-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-4">
+            <div class="w-12 h-12 bg-kong-accent-green/20 rounded-full flex items-center justify-center">
+              <Lock class="w-6 h-6 text-kong-accent-green" />
+            </div>
+            <div>
+              <div class="font-semibold text-kong-text-primary">LP Tokens Locked</div>
+              <div class="text-sm text-kong-text-secondary">Permanently locked in canister</div>
+              <div class="text-xs text-kong-text-secondary">Canister: {$userLockStore.canisterId ? truncateAddress($userLockStore.canisterId.toString()) : ''}</div>
+            </div>
           </div>
-          <div>
-            <div class="font-semibold text-kong-text-primary">LP Tokens Locked</div>
-            <div class="text-sm text-kong-text-secondary">Permanently locked in canister</div>
-            <div class="text-xs text-kong-text-secondary">Canister: {$userLockStore.canisterId ? truncateAddress($userLockStore.canisterId.toString()) : ''}</div>
+          
+          <div class="text-right">
+            <div class="text-lg font-bold text-kong-text-primary">{formatUsd(totalUsdValue)}</div>
+            <div class="text-sm text-kong-accent-green">{totalVotingPower} voting power</div>
           </div>
-        </div>
-        
-        <div class="text-right">
-          <div class="text-lg font-bold text-kong-text-primary">{formatUsd(totalUsdValue)}</div>
-          <div class="text-sm text-kong-accent-green">{totalVotingPower} voting power</div>
         </div>
       </div>
-    </div>
+    {/if}
     
     <p class="text-xs text-kong-text-secondary text-center">
       LP tokens are permanently locked and can never be withdrawn
@@ -171,10 +224,10 @@
   </div>
   
   <!-- Action Buttons -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div class="{integrated ? 'border-t border-kong-border/20 pt-6' : ''} grid grid-cols-1 md:grid-cols-2 gap-4">
     <button 
       on:click={openDAOPad}
-      class="kong-panel hover:bg-kong-accent-green/5 border-kong-accent-green/30 hover:border-kong-accent-green/50 transition-all duration-200 cursor-pointer group"
+      class="{integrated ? 'bg-kong-bg-secondary/30 hover:bg-kong-accent-green/5 border border-kong-border/30 hover:border-kong-accent-green/50 rounded-lg' : 'kong-panel hover:bg-kong-accent-green/5 border-kong-accent-green/30 hover:border-kong-accent-green/50'} transition-all duration-200 cursor-pointer group"
     >
       <div class="flex items-center justify-between p-2">
         <div class="flex items-center space-x-3">
@@ -192,7 +245,7 @@
     
     <button 
       on:click={openKongSwap}
-      class="kong-panel hover:bg-kong-accent-blue/5 border-kong-accent-blue/30 hover:border-kong-accent-blue/50 transition-all duration-200 cursor-pointer group"
+      class="{integrated ? 'bg-kong-bg-secondary/30 hover:bg-kong-accent-blue/5 border border-kong-border/30 hover:border-kong-accent-blue/50 rounded-lg' : 'kong-panel hover:bg-kong-accent-blue/5 border-kong-accent-blue/30 hover:border-kong-accent-blue/50'} transition-all duration-200 cursor-pointer group"
     >
       <div class="flex items-center justify-between p-2">
         <div class="flex items-center space-x-3">
@@ -209,7 +262,7 @@
     </button>
   </div>
   
-</section>
+</div>
 
 <!-- Details Modal -->
 {#if showDetailsModal}

@@ -8,11 +8,11 @@ pub mod revshare;
 // Re-export the main functions that should be exposed as canister methods
 pub use update::{create_lock_canister, complete_my_canister_setup};
 pub use query::{
-    get_my_lock_canister, get_all_lock_canisters, get_voting_power, 
+    get_my_lock_canister, get_all_lock_canisters,
     get_detailed_canister_status, get_total_positions_count,
-    get_total_value_locked, get_all_voting_powers
+    get_analytics_overview
 };
-pub use types::DetailedCanisterStatus;
+pub use types::{DetailedCanisterStatus, AnalyticsOverview};
 
 // Required imports for export_candid macro
 use candid::{Principal, Nat};

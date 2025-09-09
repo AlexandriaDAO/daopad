@@ -5,6 +5,7 @@
   import { get } from 'svelte/store';
   import { authStore } from '../../stores/auth';
   
+  export let integrated = false;
   let isRegistering = false;
   let registrationError = '';
   
@@ -49,13 +50,13 @@
   }
 </script>
 
-<section class="max-w-lg mx-auto">
-  <div class="kong-panel bg-kong-accent-orange/10 border-kong-accent-orange/20 space-y-6">
+<div class="{integrated ? 'border-t border-kong-border/30 pt-6' : 'max-w-lg mx-auto'}">
+  <div class="{integrated ? 'bg-kong-accent-orange/10 border border-kong-accent-orange/20 rounded-lg p-4 space-y-6' : 'kong-panel bg-kong-accent-orange/10 border-kong-accent-orange/20 space-y-6'}">
     <div class="space-y-2">
-      <h2 class="text-xl font-bold text-kong-text-primary flex items-center space-x-2">
+      <h3 class="{integrated ? 'text-lg' : 'text-xl'} font-bold text-kong-text-primary flex items-center space-x-2">
         <AlertCircle class="w-6 h-6 text-kong-accent-orange" />
         <span>Setup Incomplete</span>
-      </h2>
+      </h3>
       <p class="text-sm text-kong-text-secondary">
         Your lock canister needs to complete setup before it can receive LP tokens.
       </p>
@@ -178,4 +179,4 @@
       {/if}
     </p>
   </div>
-</section>
+</div>

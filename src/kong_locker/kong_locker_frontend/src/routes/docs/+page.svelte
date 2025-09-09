@@ -2,10 +2,17 @@
   import { onMount } from 'svelte';
   import { HttpAgent, Actor } from '@dfinity/agent';
   import { Principal } from '@dfinity/principal';
-  import { Loader } from 'lucide-svelte';
+  import { Loader, Menu, X } from 'lucide-svelte';
   
   let activeSection = 'introduction';
   let copySuccess = '';
+  let mobileMenuOpen = false;
+  let expandedSections: { [key: string]: boolean } = {};
+  
+  function toggleExpanded(key: string) {
+    expandedSections[key] = !expandedSections[key];
+    expandedSections = { ...expandedSections };
+  }
   
   // API call states
   let apiResults: { [key: string]: any } = {};
@@ -13,20 +20,31 @@
   let apiErrors: { [key: string]: string } = {};
   let principalInput = '';
   
+  // LP Position Demo states
+  let lockCanisterInput = '';
+  let lpPositions: any[] = [];
+  let lpPositionsLoading = false;
+  let lpPositionsError = '';
+  
   // LP Locking Actor
   let lpLockingActor: any = null;
+  
+  // KongSwap Actor for LP position queries
+  let kongSwapActor: any = null;
   
   const sections = [
     { id: 'introduction', title: 'Introduction', icon: '📚' },
     { id: 'overview', title: 'API Overview', icon: '🔍' },
     { id: 'query-functions', title: 'Query Functions', icon: '🔎' },
     { id: 'update-functions', title: 'Update Functions', icon: '✏️' },
+    { id: 'kongswap-integration', title: 'KongSwap Direct Queries', icon: '🔗' },
+    { id: 'lp-position-demo', title: 'LP Position Breakdown Demo', icon: '🎮' },
     { id: 'types', title: 'Data Types', icon: '📊' },
     { id: 'examples', title: 'Integration Examples', icon: '💡' },
     { id: 'errors', title: 'Error Handling', icon: '⚠️' }
   ];
   
-  // IDL for LP Locking canister
+  // IDL for LP Locking canister (current interface)
   const lpLockingIdl = ({ IDL }: any) => {
     const DetailedCanisterStatus = IDL.Record({
       'canister_id': IDL.Principal,
@@ -37,32 +55,84 @@
       'module_hash': IDL.Opt(IDL.Vec(IDL.Nat8)),
     });
     
+    const AnalyticsOverview = IDL.Record({
+      'total_lock_canisters': IDL.Nat64,
+      'participants': IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Principal)),
+      'last_updated': IDL.Nat64,
+    });
+    
     return IDL.Service({
       // Query calls
       'get_total_positions_count': IDL.Func([], [IDL.Nat64], ['query']),
       'get_my_lock_canister': IDL.Func([], [IDL.Opt(IDL.Principal)], ['query']),
       'get_all_lock_canisters': IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Principal))], ['query']),
+      'get_analytics_overview': IDL.Func([], [AnalyticsOverview], ['query']),
       
-      // Update calls (because they make inter-canister calls)
-      'get_total_value_locked': IDL.Func([], [IDL.Variant({ 'Ok': IDL.Nat, 'Err': IDL.Text })], []),
-      'get_voting_power': IDL.Func([IDL.Principal], [IDL.Variant({ 'Ok': IDL.Nat, 'Err': IDL.Text })], []),
-      'get_all_voting_powers': IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Nat))], []),
+      // Update calls
       'get_detailed_canister_status': IDL.Func([], [IDL.Variant({ 'Ok': DetailedCanisterStatus, 'Err': IDL.Text })], []),
-      
-      // Not for interactive use
       'create_lock_canister': IDL.Func([], [IDL.Variant({ 'Ok': IDL.Principal, 'Err': IDL.Text })], []),
       'complete_my_canister_setup': IDL.Func([], [IDL.Variant({ 'Ok': IDL.Text, 'Err': IDL.Text })], []),
     });
   };
   
-  // Initialize the actor
+  // KongSwap IDL for LP position queries
+  const kongSwapIdl = ({ IDL }: any) => {
+    const LPReply = IDL.Record({
+      'name': IDL.Text,
+      'symbol': IDL.Text,
+      'lp_token_id': IDL.Nat64,
+      'balance': IDL.Float64,
+      'usd_balance': IDL.Float64,
+      'chain_0': IDL.Text,
+      'symbol_0': IDL.Text,
+      'address_0': IDL.Text,
+      'amount_0': IDL.Float64,
+      'usd_amount_0': IDL.Float64,
+      'chain_1': IDL.Text,
+      'symbol_1': IDL.Text,
+      'address_1': IDL.Text,
+      'amount_1': IDL.Float64,
+      'usd_amount_1': IDL.Float64,
+      'ts': IDL.Nat64,
+    });
+    
+    const UserBalancesReply = IDL.Variant({ 'LP': LPReply });
+    
+    return IDL.Service({
+      'user_balances': IDL.Func([IDL.Text], [IDL.Variant({
+        'Ok': IDL.Vec(UserBalancesReply),
+        'Err': IDL.Text
+      })], ['query']),
+    });
+  };
+  
+  // Initialize the actors
   onMount(async () => {
     const host = 'https://icp0.io';
     const agent = new HttpAgent({ host });
     
+    // Try to get authenticated identity, fallback to anonymous
+    try {
+      // Check if user is authenticated (this would be your auth logic)
+      const isAuthenticated = window.ic?.plug?.isConnected() || window.ic?.infinityWallet?.isConnected();
+      
+      if (isAuthenticated) {
+        console.log('Using authenticated calls for better results');
+      } else {
+        console.log('Using anonymous calls - some functions may return limited results');
+      }
+    } catch (error) {
+      console.log('Using anonymous calls');
+    }
+    
     lpLockingActor = Actor.createActor(lpLockingIdl, {
       agent,
       canisterId: 'eazgb-giaaa-aaaap-qqc2q-cai',
+    });
+    
+    kongSwapActor = Actor.createActor(kongSwapIdl, {
+      agent,
+      canisterId: '2ipq2-uqaaa-aaaar-qailq-cai',
     });
     
     // Intersection observer for active section highlighting
@@ -134,84 +204,30 @@
     }
   }
   
-  async function callGetVotingPower() {
-    const key = 'get_voting_power';
-    
-    if (!principalInput.trim()) {
-      apiErrors[key] = 'Please enter a principal';
-      return;
-    }
-    
+  async function callGetAnalyticsOverview() {
+    const key = 'get_analytics_overview';
     apiLoading[key] = true;
     apiErrors[key] = '';
     
     try {
-      const principal = Principal.fromText(principalInput.trim());
-      const result = await lpLockingActor.get_voting_power(principal);
-      
-      if ('Ok' in result) {
-        const cents = Number(result.Ok);
-        const usd = (cents / 100).toFixed(2);
-        apiResults[key] = {
-          cents: cents.toString(),
-          usd: `$${usd}`
-        };
-      } else {
-        apiResults[key] = { error: result.Err };
-      }
+      const result = await lpLockingActor.get_analytics_overview();
+      apiResults[key] = {
+        total_lock_canisters: result.total_lock_canisters.toString(),
+        participant_count: result.participants.length,
+        participants: result.participants.slice(0, 5).map((pair: any) => ({
+          user: pair[0].toText(),
+          canister: pair[1].toText()
+        })),
+        showing_first: Math.min(5, result.participants.length),
+        last_updated: new Date(Number(result.last_updated) / 1_000_000).toLocaleString()
+      };
     } catch (error: any) {
       apiErrors[key] = error.message || 'Failed to call API';
     } finally {
       apiLoading[key] = false;
     }
   }
-  
-  async function callGetAllVotingPowers() {
-    const key = 'get_all_voting_powers';
-    apiLoading[key] = true;
-    apiErrors[key] = '';
-    
-    try {
-      const result = await lpLockingActor.get_all_voting_powers();
-      apiResults[key] = result.map((pair: any) => ({
-        user: pair[0].toText(),
-        votingPower: {
-          cents: pair[1].toString(),
-          usd: `$${(Number(pair[1]) / 100).toFixed(2)}`
-        }
-      }));
-    } catch (error: any) {
-      apiErrors[key] = error.message || 'Failed to call API';
-    } finally {
-      apiLoading[key] = false;
-    }
-  }
-  
-  async function callGetTotalValueLocked() {
-    const key = 'get_total_value_locked';
-    apiLoading[key] = true;
-    apiErrors[key] = '';
-    
-    try {
-      const result = await lpLockingActor.get_total_value_locked();
-      
-      if ('Ok' in result) {
-        const cents = Number(result.Ok);
-        const usd = (cents / 100).toFixed(2);
-        apiResults[key] = {
-          cents: cents.toString(),
-          usd: `$${usd.toLocaleString()}`
-        };
-      } else {
-        apiResults[key] = { error: result.Err };
-      }
-    } catch (error: any) {
-      apiErrors[key] = error.message || 'Failed to call API';
-    } finally {
-      apiLoading[key] = false;
-    }
-  }
-  
+
   async function callGetDetailedCanisterStatus() {
     const key = 'get_detailed_canister_status';
     apiLoading[key] = true;
@@ -240,8 +256,61 @@
     }
   }
   
+  // LP Position Demo functions
+  async function getLPPositions() {
+    if (!lockCanisterInput.trim()) {
+      lpPositionsError = 'Please enter a lock canister Principal ID';
+      return;
+    }
+    
+    lpPositionsLoading = true;
+    lpPositionsError = '';
+    lpPositions = [];
+    
+    try {
+      const result = await kongSwapActor.user_balances(lockCanisterInput.trim());
+      
+      if ('Ok' in result) {
+        lpPositions = result.Ok.map((reply: any) => reply.LP);
+        if (lpPositions.length === 0) {
+          lpPositionsError = 'No LP positions found for this canister. It may not be registered on KongSwap yet.';
+        }
+      } else if (result.Err.includes("User not found")) {
+        lpPositionsError = 'Lock canister not found on KongSwap. It may not be registered yet or the Principal ID is incorrect.';
+      } else {
+        lpPositionsError = result.Err;
+      }
+    } catch (error: any) {
+      lpPositionsError = error.message || 'Failed to fetch LP positions';
+    } finally {
+      lpPositionsLoading = false;
+    }
+  }
+  
+  function formatTokenAmount(amount: number, symbol: string): string {
+    if (amount >= 1000000) {
+      return `${(amount / 1000000).toFixed(2)}M ${symbol}`;
+    } else if (amount >= 1000) {
+      return `${(amount / 1000).toFixed(2)}K ${symbol}`;
+    } else if (amount >= 1) {
+      return `${amount.toFixed(2)} ${symbol}`;
+    } else {
+      return `${amount.toFixed(6)} ${symbol}`;
+    }
+  }
+  
+  function calculateTotalUSDValue(positions: any[]): number {
+    return positions.reduce((sum, pos) => sum + pos.usd_balance, 0);
+  }
+  
+  function calculateVotingPower(positions: any[]): number {
+    const totalUSD = calculateTotalUSDValue(positions);
+    return Math.floor(totalUSD * 100); // Convert to cents
+  }
+  
   function scrollToSection(sectionId: string) {
     activeSection = sectionId;
+    mobileMenuOpen = false; // Close mobile menu when navigating
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -259,10 +328,48 @@
   }
 </script>
 
-<div class="flex gap-8">
-  <!-- Sidebar Navigation -->
-  <aside class="w-64 sticky top-8 h-fit">
-    <div class="bg-[#1a1b1f] rounded-2xl p-6 border border-gray-800">
+<!-- Mobile Navigation Toggle -->
+<div class="lg:hidden fixed top-4 left-4 z-50">
+  <button
+    on:click={() => mobileMenuOpen = !mobileMenuOpen}
+    class="bg-kong-bg-secondary border border-kong-border rounded-lg p-3 text-white hover:bg-kong-bg-tertiary transition-colors"
+  >
+    {#if mobileMenuOpen}
+      <X size={24} />
+    {:else}
+      <Menu size={24} />
+    {/if}
+  </button>
+</div>
+
+<!-- Mobile Navigation Overlay -->
+{#if mobileMenuOpen}
+  <div class="lg:hidden fixed inset-0 z-40 bg-black/80" role="button" tabindex="0" on:click={() => mobileMenuOpen = false} on:keydown={(e) => e.key === 'Escape' && (mobileMenuOpen = false)}></div>
+  <aside class="lg:hidden fixed top-0 left-0 w-80 h-full bg-kong-bg-secondary border-r border-kong-border z-40 transform transition-transform duration-300">
+    <div class="p-6 pt-20">
+      <h2 class="text-xl font-bold text-white mb-6">Documentation</h2>
+      <nav class="space-y-2">
+        {#each sections as section}
+          <button
+            on:click={() => scrollToSection(section.id)}
+            class="w-full text-left px-4 py-3 rounded-lg transition-all duration-200 flex items-center gap-3
+                   {activeSection === section.id 
+                     ? 'bg-blue-600/20 text-blue-400 border-l-2 border-blue-400' 
+                     : 'text-gray-400 hover:text-white hover:bg-gray-800/50'}"
+          >
+            <span class="text-lg">{section.icon}</span>
+            <span class="text-sm">{section.title}</span>
+          </button>
+        {/each}
+      </nav>
+    </div>
+  </aside>
+{/if}
+
+<div class="flex flex-col lg:flex-row gap-4 lg:gap-8">
+  <!-- Desktop Sidebar Navigation -->
+  <aside class="hidden lg:block w-64 sticky top-8 h-fit">
+    <div class="bg-kong-bg-secondary rounded-2xl p-6 border border-kong-border">
       <h2 class="text-xl font-bold text-white mb-6">Documentation</h2>
       <nav class="space-y-2">
         {#each sections as section}
@@ -282,7 +389,7 @@
   </aside>
 
   <!-- Main Documentation Content -->
-  <main class="flex-1 max-w-4xl">
+  <main class="flex-1 max-w-full lg:max-w-4xl">
     <!-- Back Button -->
     <div class="mb-4">
       <a 
@@ -297,41 +404,55 @@
     </div>
     
     <!-- Header -->
-    <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 mb-8">
-      <h1 class="text-4xl font-bold text-white mb-2">Kong Locker API Documentation</h1>
-      <p class="text-blue-100">Interactive guide for Kong Locker's canister backend</p>
-      <div class="mt-4 flex gap-4">
-        <span class="bg-white/20 px-3 py-1 rounded-full text-sm text-white">
+    <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-4 sm:p-6 lg:p-8 mb-6 lg:mb-8">
+      <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">Kong Locker API Documentation</h1>
+      <div class="mt-4 flex flex-col sm:flex-row gap-2 sm:gap-4">
+        <span class="bg-white/20 px-3 py-1 rounded-full text-xs sm:text-sm text-white">
           Canister ID: eazgb-giaaa-aaaap-qqc2q-cai
         </span>
-        <span class="bg-white/20 px-3 py-1 rounded-full text-sm text-white">
-          Network: IC Mainnet
-        </span>
       </div>
-      <div class="mt-4 bg-white/10 rounded-lg p-3">
-        <p class="text-sm text-blue-100">
-          ✨ <strong>Interactive:</strong> Click "Try it now" buttons to execute API calls directly from this documentation!
-        </p>
+      
+      <!-- Authentication Notice -->
+      <div class="mt-4 bg-yellow-900/30 border border-yellow-800/50 rounded-lg p-3">
+        <div class="flex items-start gap-2">
+          <span class="text-yellow-400 text-sm">⚠️</span>
+          <div class="text-yellow-200 text-sm">
+            <strong>Authentication Notice:</strong> This documentation uses anonymous calls, so some functions may return limited results. 
+            For full functionality (like <code class="bg-black/30 px-1 rounded">get_detailed_canister_status</code>), 
+            connect your wallet in the main app.
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Introduction Section -->
-    <section id="introduction" class="mb-12 bg-[#1a1b1f] rounded-2xl p-8 border border-gray-800">
-      <h2 class="text-3xl font-bold text-white mb-6">📚 Introduction</h2>
+    <section id="introduction" class="mb-12 bg-kong-bg-secondary rounded-2xl p-8 border border-kong-border">
+      <h2 class="text-3xl font-bold text-white mb-6">📚 Trustless & Secure</h2>
       <div class="prose prose-invert max-w-none">
-        <p class="text-gray-300 leading-relaxed mb-4">
-          Kong Locker provides a trustless, permanent liquidity locking service for KongSwap LP tokens. 
-          This interactive API documentation allows you to test and explore the Kong Locker canister methods directly.
+        <p class="text-gray-300 leading-relaxed mb-6">
+          Kong Locker provides permanent liquidity locking through <strong>blackholed canisters</strong> - making it mathematically impossible for anyone, including developers, to access locked tokens.
         </p>
-        <div class="bg-blue-900/20 border border-blue-800 rounded-lg p-4 mb-4">
-          <h3 class="text-lg font-semibold text-blue-400 mb-2">Key Features</h3>
-          <ul class="list-disc list-inside text-gray-300 space-y-1">
-            <li>Permanent, irreversible LP token locking</li>
-            <li>Individual blackholed canisters for each user</li>
-            <li>Automatic voting power calculation from locked positions</li>
-            <li>Integration with KongSwap for real-time valuations</li>
-            <li><strong>Interactive API testing</strong> - Try methods directly from this page!</li>
-          </ul>
+        
+        <div class="bg-green-900/20 border border-green-800 rounded-lg p-6 mb-6">
+          <h3 class="text-lg font-semibold text-green-400 mb-4 flex items-center gap-2">
+            🔒 Zero Trust Required
+          </h3>
+          <div class="space-y-3 text-gray-300">
+            <p><strong>Blackholed Canisters:</strong> Each user gets their own canister that is immediately "blackholed" (all controllers removed), making it completely autonomous and unchangeable.</p>
+            <p><strong>No Backend Dependencies:</strong> Once created, your lock canister operates independently. Even if Kong Locker service disappears, your tokens remain safely locked and queryable.</p>
+            <p><strong>Immutable Code:</strong> Lock canisters cannot be upgraded, modified, or controlled by anyone - not even the original developers.</p>
+            <p><strong>Transparent Operations:</strong> All code is open-source and verifiable on the Internet Computer blockchain.</p>
+          </div>
+        </div>
+        
+        <div class="bg-blue-900/20 border border-blue-800 rounded-lg p-4">
+          <h3 class="text-lg font-semibold text-blue-400 mb-2">How It Works</h3>
+          <ol class="list-decimal list-inside text-gray-300 space-y-1 text-sm">
+            <li>Pay 2 ICP to create your personal lock canister</li>
+            <li>Canister is funded, registered on KongSwap, then blackholed</li>
+            <li>Send LP tokens to your canister - they're locked forever</li>
+            <li>Query your positions directly from KongSwap using your canister ID</li>
+          </ol>
         </div>
       </div>
     </section>
@@ -339,6 +460,19 @@
     <!-- API Overview Section -->
     <section id="overview" class="mb-12 bg-[#1a1b1f] rounded-2xl p-8 border border-gray-800">
       <h2 class="text-3xl font-bold text-white mb-6">🔍 API Overview</h2>
+      
+      <div class="bg-blue-900/20 border border-blue-800 rounded-lg p-4 mb-6">
+        <h3 class="text-lg font-semibold text-blue-400 mb-2">🔄 API Migration Update</h3>
+        <p class="text-blue-200 text-sm mb-2">
+          <strong>Breaking Change:</strong> Voting power and value locked queries have been moved to direct KongSwap integration for better performance.
+        </p>
+        <ul class="list-disc list-inside text-blue-200 text-sm space-y-1">
+          <li><code>get_voting_power</code>, <code>get_all_voting_powers</code>, and <code>get_total_value_locked</code> → Moved to frontend-side KongSwap queries</li>
+          <li>Query calls are now free and much faster</li>
+          <li>Full LP pool breakdown available (not just USD totals)</li>
+        </ul>
+      </div>
+      
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -369,22 +503,10 @@
               <td class="py-3 px-4">Count of unique lock positions</td>
             </tr>
             <tr class="border-b border-gray-800">
-              <td class="py-3 px-4 font-mono">get_voting_power</td>
-              <td class="py-3 px-4"><span class="bg-yellow-900/30 text-yellow-400 px-2 py-1 rounded text-xs">Update</span></td>
+              <td class="py-3 px-4 font-mono">get_analytics_overview</td>
+              <td class="py-3 px-4"><span class="bg-green-900/30 text-green-400 px-2 py-1 rounded text-xs">Query</span></td>
               <td class="py-3 px-4">✅ Yes</td>
-              <td class="py-3 px-4">Calculate user's voting power</td>
-            </tr>
-            <tr class="border-b border-gray-800">
-              <td class="py-3 px-4 font-mono">get_all_voting_powers</td>
-              <td class="py-3 px-4"><span class="bg-yellow-900/30 text-yellow-400 px-2 py-1 rounded text-xs">Update</span></td>
-              <td class="py-3 px-4">✅ Yes</td>
-              <td class="py-3 px-4">Get all users' voting powers</td>
-            </tr>
-            <tr class="border-b border-gray-800">
-              <td class="py-3 px-4 font-mono">get_total_value_locked</td>
-              <td class="py-3 px-4"><span class="bg-yellow-900/30 text-yellow-400 px-2 py-1 rounded text-xs">Update</span></td>
-              <td class="py-3 px-4">✅ Yes</td>
-              <td class="py-3 px-4">Total USD value locked</td>
+              <td class="py-3 px-4">Complete analytics data for dashboard</td>
             </tr>
             <tr class="border-b border-gray-800">
               <td class="py-3 px-4 font-mono">get_detailed_canister_status</td>
@@ -410,142 +532,294 @@
     </section>
 
     <!-- Query Functions Section -->
-    <section id="query-functions" class="mb-12 bg-[#1a1b1f] rounded-2xl p-8 border border-gray-800">
-      <h2 class="text-3xl font-bold text-white mb-6">🔎 Query Functions</h2>
+    <section id="query-functions" class="mb-12 bg-[#1a1b1f] rounded-2xl border border-gray-800">
+      <!-- Sticky Section Header -->
+      <div class="sticky top-0 z-10 bg-[#1a1b1f] rounded-t-2xl p-6 border-b border-gray-800">
+        <h2 class="text-3xl font-bold text-white flex items-center gap-3">
+          <span class="text-2xl">🔎</span>
+          <span>Query Functions</span>
+          <span class="text-sm font-normal text-gray-400 ml-auto">Fast, free canister queries</span>
+        </h2>
+      </div>
+      <div class="p-8 pt-6">
       
-      <!-- get_my_lock_canister -->
-      <div class="mb-8 bg-gray-900/50 rounded-lg p-6">
-        <h3 class="text-xl font-bold text-white mb-3">get_my_lock_canister</h3>
-        <p class="text-gray-400 mb-4">Returns the lock canister Principal for the calling user (anonymous in this case).</p>
-        
-        <div class="bg-black/50 rounded-lg p-4 mb-4">
-          <div class="flex justify-between items-center mb-2">
-            <span class="text-sm text-gray-500">Candid Interface</span>
+        <!-- get_my_lock_canister - Compact Card -->
+        <div class="mb-4 bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
+          <div class="flex items-center justify-between p-4 pb-3">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <h3 class="text-lg font-bold text-white">get_my_lock_canister</h3>
+                <span class="px-2 py-0.5 bg-blue-900/30 text-blue-300 text-xs rounded border border-blue-800">
+                  Kong Locker: eazgb-g...
+                </span>
+              </div>
+              <p class="text-gray-400 text-sm">Returns your lock canister Principal</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                on:click={callGetMyLockCanister}
+                disabled={apiLoading['get_my_lock_canister']}
+                class="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+              >
+                {#if apiLoading['get_my_lock_canister']}
+                  <Loader class="w-4 h-4 animate-spin" />
+                  <span>Calling...</span>
+                {:else}
+                  <span>Try Now</span>
+                {/if}
+              </button>
+            </div>
           </div>
-          <pre class="text-sm text-green-400 font-mono overflow-x-auto">get_my_lock_canister : () -> (opt principal) query;</pre>
-        </div>
-        
-        <!-- Interactive Section -->
-        <div class="bg-purple-900/20 border border-purple-800 rounded-lg p-4 mb-4">
-          <div class="flex justify-between items-center mb-3">
-            <h4 class="text-sm font-semibold text-purple-400">🎮 Try it now!</h4>
-            <button 
-              on:click={callGetMyLockCanister}
-              disabled={apiLoading['get_my_lock_canister']}
-              class="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-            >
-              {#if apiLoading['get_my_lock_canister']}
-                <Loader class="w-4 h-4 animate-spin" />
-                <span>Calling...</span>
-              {:else}
-                <span>Execute Call</span>
+          
+          <!-- Compact Interface Display -->
+          <div class="px-4 pb-3">
+            <div class="bg-black/40 rounded px-3 py-2 text-xs font-mono">
+              <span class="text-green-400">() -> (opt principal) query</span>
+            </div>
+          </div>
+          
+          <!-- Results Area -->
+          {#if apiResults['get_my_lock_canister'] || apiErrors['get_my_lock_canister']}
+            <div class="border-t border-gray-700 px-4 py-3 bg-black/20">
+              {#if apiResults['get_my_lock_canister']}
+                <div class="text-sm">
+                  <span class="text-green-400 text-xs">✅ Result:</span>
+                  <pre class="text-green-300 font-mono mt-1">{apiResults['get_my_lock_canister']}</pre>
+                </div>
               {/if}
-            </button>
-          </div>
-          
-          {#if apiResults['get_my_lock_canister']}
-            <div class="bg-black/50 rounded p-3 mt-3">
-              <p class="text-xs text-gray-400 mb-1">Result:</p>
-              <pre class="text-sm text-green-400 font-mono">{apiResults['get_my_lock_canister']}</pre>
-            </div>
-          {/if}
-          
-          {#if apiErrors['get_my_lock_canister']}
-            <div class="bg-red-900/20 rounded p-3 mt-3">
-              <p class="text-xs text-red-400">Error: {apiErrors['get_my_lock_canister']}</p>
+              
+              {#if apiErrors['get_my_lock_canister']}
+                <div class="text-sm">
+                  <span class="text-red-400 text-xs">❌ Error:</span>
+                  <span class="text-red-300 ml-2">{apiErrors['get_my_lock_canister']}</span>
+                </div>
+              {/if}
             </div>
           {/if}
         </div>
-      </div>
 
-      <!-- get_all_lock_canisters -->
-      <div class="mb-8 bg-gray-900/50 rounded-lg p-6">
-        <h3 class="text-xl font-bold text-white mb-3">get_all_lock_canisters</h3>
-        <p class="text-gray-400 mb-4">Returns all user-to-lock-canister mappings in the system.</p>
-        
-        <div class="bg-black/50 rounded-lg p-4 mb-4">
-          <div class="flex justify-between items-center mb-2">
-            <span class="text-sm text-gray-500">Candid Interface</span>
-          </div>
-          <pre class="text-sm text-green-400 font-mono overflow-x-auto">get_all_lock_canisters : () -> (vec record {`{ principal; principal }`}) query;</pre>
-        </div>
-        
-        <!-- Interactive Section -->
-        <div class="bg-purple-900/20 border border-purple-800 rounded-lg p-4 mb-4">
-          <div class="flex justify-between items-center mb-3">
-            <h4 class="text-sm font-semibold text-purple-400">🎮 Try it now!</h4>
-            <button 
-              on:click={callGetAllLockCanisters}
-              disabled={apiLoading['get_all_lock_canisters']}
-              class="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-            >
-              {#if apiLoading['get_all_lock_canisters']}
-                <Loader class="w-4 h-4 animate-spin" />
-                <span>Calling...</span>
-              {:else}
-                <span>Execute Call</span>
-              {/if}
-            </button>
+        <!-- get_all_lock_canisters - Compact Card -->
+        <div class="mb-4 bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
+          <div class="flex items-center justify-between p-4 pb-3">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <h3 class="text-lg font-bold text-white">get_all_lock_canisters</h3>
+                <span class="px-2 py-0.5 bg-blue-900/30 text-blue-300 text-xs rounded border border-blue-800">
+                  Kong Locker: eazgb-g...
+                </span>
+              </div>
+              <p class="text-gray-400 text-sm">Returns all user-to-lock-canister mappings</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                on:click={callGetAllLockCanisters}
+                disabled={apiLoading['get_all_lock_canisters']}
+                class="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+              >
+                {#if apiLoading['get_all_lock_canisters']}
+                  <Loader class="w-4 h-4 animate-spin" />
+                  <span>Calling...</span>
+                {:else}
+                  <span>Try Now</span>
+                {/if}
+              </button>
+            </div>
           </div>
           
-          {#if apiResults['get_all_lock_canisters']}
-            <div class="bg-black/50 rounded p-3 mt-3 max-h-64 overflow-y-auto">
-              <p class="text-xs text-gray-400 mb-1">Result ({apiResults['get_all_lock_canisters'].length} entries):</p>
-              <pre class="text-sm text-green-400 font-mono">{JSON.stringify(apiResults['get_all_lock_canisters'].slice(0, 5), null, 2)}</pre>
-              {#if apiResults['get_all_lock_canisters'].length > 5}
-                <p class="text-xs text-gray-500 mt-2">... and {apiResults['get_all_lock_canisters'].length - 5} more</p>
+          <!-- Compact Interface Display -->
+          <div class="px-4 pb-3">
+            <div class="bg-black/40 rounded px-3 py-2 text-xs font-mono">
+              <span class="text-green-400">() -> (vec record &#123; principal; principal &#125;) query</span>
+            </div>
+          </div>
+          
+          <!-- Results Area -->
+          {#if apiResults['get_all_lock_canisters'] || apiErrors['get_all_lock_canisters']}
+            <div class="border-t border-gray-700 px-4 py-3 bg-black/20">
+              {#if apiResults['get_all_lock_canisters']}
+                <div class="text-sm">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-green-400 text-xs">✅ Result ({apiResults['get_all_lock_canisters'].length} entries):</span>
+                    {#if apiResults['get_all_lock_canisters'].length > 3}
+                      <button 
+                        on:click={() => toggleExpanded('get_all_lock_canisters_full')}
+                        class="text-xs text-blue-400 hover:text-blue-300"
+                      >
+                        {expandedSections['get_all_lock_canisters_full'] ? '▲ Show Less' : '▼ Show All'}
+                      </button>
+                    {/if}
+                  </div>
+                  <pre class="text-green-300 font-mono text-xs max-h-32 overflow-y-auto">
+{JSON.stringify(
+  expandedSections['get_all_lock_canisters_full'] 
+    ? apiResults['get_all_lock_canisters'] 
+    : apiResults['get_all_lock_canisters'].slice(0, 3), 
+  null, 2
+)}</pre>
+                  {#if apiResults['get_all_lock_canisters'].length > 3 && !expandedSections['get_all_lock_canisters_full']}
+                    <p class="text-xs text-gray-500 mt-1">... and {apiResults['get_all_lock_canisters'].length - 3} more</p>
+                  {/if}
+                </div>
+              {/if}
+              
+              {#if apiErrors['get_all_lock_canisters']}
+                <div class="text-sm">
+                  <span class="text-red-400 text-xs">❌ Error:</span>
+                  <span class="text-red-300 ml-2">{apiErrors['get_all_lock_canisters']}</span>
+                </div>
               {/if}
             </div>
           {/if}
-          
-          {#if apiErrors['get_all_lock_canisters']}
-            <div class="bg-red-900/20 rounded p-3 mt-3">
-              <p class="text-xs text-red-400">Error: {apiErrors['get_all_lock_canisters']}</p>
-            </div>
-          {/if}
         </div>
-      </div>
 
-      <!-- get_total_positions_count -->
-      <div class="mb-8 bg-gray-900/50 rounded-lg p-6">
-        <h3 class="text-xl font-bold text-white mb-3">get_total_positions_count</h3>
-        <p class="text-gray-400 mb-4">Returns the total number of unique lock positions (users with lock canisters).</p>
-        
-        <div class="bg-black/50 rounded-lg p-4 mb-4">
-          <div class="flex justify-between items-center mb-2">
-            <span class="text-sm text-gray-500">Candid Interface</span>
-          </div>
-          <pre class="text-sm text-green-400 font-mono">get_total_positions_count : () -> (nat64) query;</pre>
-        </div>
-        
-        <!-- Interactive Section -->
-        <div class="bg-purple-900/20 border border-purple-800 rounded-lg p-4 mb-4">
-          <div class="flex justify-between items-center mb-3">
-            <h4 class="text-sm font-semibold text-purple-400">🎮 Try it now!</h4>
-            <button 
-              on:click={callGetTotalPositionsCount}
-              disabled={apiLoading['get_total_positions_count']}
-              class="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-            >
-              {#if apiLoading['get_total_positions_count']}
-                <Loader class="w-4 h-4 animate-spin" />
-                <span>Calling...</span>
-              {:else}
-                <span>Execute Call</span>
-              {/if}
-            </button>
+        <!-- get_total_positions_count - Compact Card -->
+        <div class="mb-4 bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
+          <div class="flex items-center justify-between p-4 pb-3">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <h3 class="text-lg font-bold text-white">get_total_positions_count</h3>
+                <span class="px-2 py-0.5 bg-blue-900/30 text-blue-300 text-xs rounded border border-blue-800">
+                  Kong Locker: eazgb-g...
+                </span>
+              </div>
+              <p class="text-gray-400 text-sm">Returns total number of unique lock positions</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                on:click={callGetTotalPositionsCount}
+                disabled={apiLoading['get_total_positions_count']}
+                class="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+              >
+                {#if apiLoading['get_total_positions_count']}
+                  <Loader class="w-4 h-4 animate-spin" />
+                  <span>Calling...</span>
+                {:else}
+                  <span>Try Now</span>
+                {/if}
+              </button>
+            </div>
           </div>
           
-          {#if apiResults['get_total_positions_count']}
-            <div class="bg-black/50 rounded p-3 mt-3">
-              <p class="text-xs text-gray-400 mb-1">Result:</p>
-              <pre class="text-sm text-green-400 font-mono">Total positions: {apiResults['get_total_positions_count']}</pre>
+          <!-- Compact Interface Display -->
+          <div class="px-4 pb-3">
+            <div class="bg-black/40 rounded px-3 py-2 text-xs font-mono">
+              <span class="text-green-400">() -> (nat64) query</span>
+            </div>
+          </div>
+          
+          <!-- Results Area -->
+          {#if apiResults['get_total_positions_count'] || apiErrors['get_total_positions_count']}
+            <div class="border-t border-gray-700 px-4 py-3 bg-black/20">
+              {#if apiResults['get_total_positions_count']}
+                <div class="text-sm">
+                  <span class="text-green-400 text-xs">✅ Result:</span>
+                  <span class="text-green-300 ml-2 font-mono">{apiResults['get_total_positions_count']} total positions</span>
+                </div>
+              {/if}
+              
+              {#if apiErrors['get_total_positions_count']}
+                <div class="text-sm">
+                  <span class="text-red-400 text-xs">❌ Error:</span>
+                  <span class="text-red-300 ml-2">{apiErrors['get_total_positions_count']}</span>
+                </div>
+              {/if}
             </div>
           {/if}
+        </div>
+
+        <!-- get_analytics_overview - Compact Card -->
+        <div class="mb-4 bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
+          <div class="flex items-center justify-between p-4 pb-3">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <h3 class="text-lg font-bold text-white">get_analytics_overview</h3>
+                <span class="px-2 py-0.5 bg-blue-900/30 text-blue-300 text-xs rounded border border-blue-800">
+                  Kong Locker: eazgb-g...
+                </span>
+              </div>
+              <p class="text-gray-400 text-sm">Complete analytics data for dashboards 💡</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                on:click={callGetAnalyticsOverview}
+                disabled={apiLoading['get_analytics_overview']}
+                class="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+              >
+                {#if apiLoading['get_analytics_overview']}
+                  <Loader class="w-4 h-4 animate-spin" />
+                  <span>Calling...</span>
+                {:else}
+                  <span>Try Now</span>
+                {/if}
+              </button>
+            </div>
+          </div>
           
-          {#if apiErrors['get_total_positions_count']}
-            <div class="bg-red-900/20 rounded p-3 mt-3">
-              <p class="text-xs text-red-400">Error: {apiErrors['get_total_positions_count']}</p>
+          <!-- Compact Interface Display -->
+          <div class="px-4 pb-3">
+            <div class="bg-black/40 rounded px-3 py-2 text-xs font-mono">
+              <span class="text-green-400">() -> (AnalyticsOverview) query</span>
+            </div>
+          </div>
+          
+          <!-- Results Area -->
+          {#if apiResults['get_analytics_overview'] || apiErrors['get_analytics_overview']}
+            <div class="border-t border-gray-700 px-4 py-3 bg-black/20">
+              {#if apiResults['get_analytics_overview']}
+                <div class="text-sm space-y-3">
+                  <span class="text-green-400 text-xs">✅ Analytics Overview:</span>
+                  
+                  <!-- Compact Summary Stats -->
+                  <div class="bg-green-900/20 border border-green-800 rounded p-3">
+                    <div class="grid grid-cols-3 gap-4 text-center text-sm">
+                      <div>
+                        <div class="text-lg font-bold text-white">{apiResults['get_analytics_overview'].total_lock_canisters}</div>
+                        <div class="text-xs text-gray-400">Total Canisters</div>
+                      </div>
+                      <div>
+                        <div class="text-lg font-bold text-green-400">{apiResults['get_analytics_overview'].participant_count}</div>
+                        <div class="text-xs text-gray-400">Participants</div>
+                      </div>
+                      <div>
+                        <div class="text-xs text-blue-400">{apiResults['get_analytics_overview'].last_updated}</div>
+                        <div class="text-xs text-gray-400">Last Updated</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Expandable Participants -->
+                  {#if apiResults['get_analytics_overview'].participants.length > 0}
+                    <div class="border-t border-gray-600 pt-2">
+                      <button 
+                        on:click={() => toggleExpanded('analytics_participants')}
+                        class="text-xs text-blue-400 hover:text-blue-300 mb-2"
+                      >
+                        {expandedSections['analytics_participants'] ? '▲ Hide' : '▼ Show'} Participants ({apiResults['get_analytics_overview'].showing_first})
+                      </button>
+                      {#if expandedSections['analytics_participants']}
+                        <div class="bg-blue-900/20 border border-blue-800 rounded p-2">
+                          <div class="space-y-1 font-mono text-xs">
+                            {#each apiResults['get_analytics_overview'].participants as participant}
+                              <div class="flex justify-between text-gray-300">
+                                <span>User: {participant.user.substring(0, 12)}...</span>
+                                <span class="text-gray-500">→</span>
+                                <span>Lock: {participant.canister.substring(0, 12)}...</span>
+                              </div>
+                            {/each}
+                          </div>
+                        </div>
+                      {/if}
+                    </div>
+                  {/if}
+                </div>
+              {/if}
+              
+              {#if apiErrors['get_analytics_overview']}
+                <div class="text-sm">
+                  <span class="text-red-400 text-xs">❌ Error:</span>
+                  <span class="text-red-300 ml-2">{apiErrors['get_analytics_overview']}</span>
+                </div>
+              {/if}
             </div>
           {/if}
         </div>
@@ -553,317 +827,677 @@
     </section>
 
     <!-- Update Functions Section -->
-    <section id="update-functions" class="mb-12 bg-[#1a1b1f] rounded-2xl p-8 border border-gray-800">
-      <h2 class="text-3xl font-bold text-white mb-6">✏️ Update Functions</h2>
+    <section id="update-functions" class="mb-12 bg-[#1a1b1f] rounded-2xl border border-gray-800">
+      <!-- Sticky Section Header -->
+      <div class="sticky top-0 z-10 bg-[#1a1b1f] rounded-t-2xl p-6 border-b border-gray-800">
+        <h2 class="text-3xl font-bold text-white flex items-center gap-3">
+          <span class="text-2xl">✏️</span>
+          <span>Update Functions</span>
+          <span class="text-sm font-normal text-gray-400 ml-auto">State-changing canister calls</span>
+        </h2>
+      </div>
+      <div class="p-8 pt-6">
       
-      <!-- get_voting_power -->
-      <div class="mb-8 bg-gray-900/50 rounded-lg p-6">
-        <h3 class="text-xl font-bold text-white mb-3">get_voting_power</h3>
-        <p class="text-gray-400 mb-4">Calculates voting power for a user based on their locked LP positions. Returns value in cents (USD * 100).</p>
-        
-        <div class="bg-orange-900/20 border border-orange-800 rounded-lg p-3 mb-4">
-          <p class="text-sm text-orange-400">⚠️ Note: This is an update call because it queries KongSwap via inter-canister call.</p>
-        </div>
-        
-        <div class="bg-black/50 rounded-lg p-4 mb-4">
-          <div class="flex justify-between items-center mb-2">
-            <span class="text-sm text-gray-500">Candid Interface</span>
+        <!-- get_detailed_canister_status - Compact Card -->
+        <div class="mb-4 bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
+          <div class="flex items-center justify-between p-4 pb-3">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <h3 class="text-lg font-bold text-white">get_detailed_canister_status</h3>
+                <span class="px-2 py-0.5 bg-yellow-900/30 text-yellow-300 text-xs rounded border border-yellow-800">
+                  Kong Locker: eazgb-g...
+                </span>
+              </div>
+              <p class="text-gray-400 text-sm">Detailed lock canister info (blackhole status, cycles, etc.)</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                on:click={callGetDetailedCanisterStatus}
+                disabled={apiLoading['get_detailed_canister_status']}
+                class="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+              >
+                {#if apiLoading['get_detailed_canister_status']}
+                  <Loader class="w-4 h-4 animate-spin" />
+                  <span>Calling...</span>
+                {:else}
+                  <span>Try Now</span>
+                {/if}
+              </button>
+              <button 
+                on:click={() => toggleExpanded('detailed_canister_type')}
+                class="text-xs text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400/30 rounded"
+              >
+                {expandedSections['detailed_canister_type'] ? 'Hide' : 'Show'} Type
+              </button>
+            </div>
           </div>
-          <pre class="text-sm text-green-400 font-mono overflow-x-auto">get_voting_power : (principal) -> (variant {`{ Ok : nat; Err : text }`});</pre>
+          
+          <!-- Type Definition (Expandable) -->
+          {#if expandedSections['detailed_canister_type']}
+            <div class="px-4 pb-3 border-b border-gray-700">
+              <div class="bg-black/40 rounded p-3 text-xs font-mono">
+                <span class="text-green-400">type DetailedCanisterStatus = &#123;</span>
+                <div class="ml-2 text-green-300">
+                  <div>canister_id: Principal;</div>
+                  <div>is_blackholed: bool;</div>
+                  <div>controller_count: nat32;</div>
+                  <div>cycle_balance: nat;</div>
+                  <div>memory_size: nat;</div>
+                  <div>module_hash: opt blob;</div>
+                </div>
+                <span class="text-green-400">&#125;</span>
+              </div>
+            </div>
+          {/if}
+          
+          <!-- Compact Interface Display -->
+          <div class="px-4 pb-3">
+            <div class="bg-black/40 rounded px-3 py-2 text-xs font-mono">
+              <span class="text-yellow-400">() -> (variant &#123; Ok : DetailedCanisterStatus; Err : text &#125;) [update]</span>
+            </div>
+          </div>
+          
+          <!-- Results Area -->
+          {#if apiResults['get_detailed_canister_status'] || apiErrors['get_detailed_canister_status']}
+            <div class="border-t border-gray-700 px-4 py-3 bg-black/20">
+              {#if apiResults['get_detailed_canister_status']}
+                <div class="text-sm">
+                  <span class="text-green-400 text-xs">✅ Canister Status:</span>
+                  <div class="grid grid-cols-2 gap-3 mt-2 text-xs">
+                    <div class="bg-gray-800/50 rounded p-2">
+                      <div class="text-gray-400">ID:</div>
+                      <div class="text-green-300 font-mono">{apiResults['get_detailed_canister_status'].canister_id}</div>
+                    </div>
+                    <div class="bg-gray-800/50 rounded p-2">
+                      <div class="text-gray-400">Blackholed:</div>
+                      <div class="{apiResults['get_detailed_canister_status'].is_blackholed ? 'text-green-400' : 'text-yellow-400'} font-bold">
+                        {apiResults['get_detailed_canister_status'].is_blackholed ? '✅ Yes' : '⚠️ No'}
+                      </div>
+                    </div>
+                    <div class="bg-gray-800/50 rounded p-2">
+                      <div class="text-gray-400">Controllers:</div>
+                      <div class="text-blue-300">{apiResults['get_detailed_canister_status'].controller_count}</div>
+                    </div>
+                    <div class="bg-gray-800/50 rounded p-2">
+                      <div class="text-gray-400">Memory:</div>
+                      <div class="text-blue-300">{apiResults['get_detailed_canister_status'].memory_size}</div>
+                    </div>
+                  </div>
+                </div>
+              {/if}
+              
+              {#if apiErrors['get_detailed_canister_status']}
+                <div class="text-sm">
+                  <span class="text-red-400 text-xs">❌ Error:</span>
+                  <span class="text-red-300 ml-2">{apiErrors['get_detailed_canister_status']}</span>
+                </div>
+              {/if}
+            </div>
+          {/if}
         </div>
+
+        <!-- create_lock_canister - Info Card (Non-interactive) -->
+        <div class="mb-4 bg-gray-900/50 rounded-lg border border-orange-700/50 overflow-hidden">
+          <div class="flex items-center justify-between p-4 pb-3">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <h3 class="text-lg font-bold text-white">create_lock_canister</h3>
+                <span class="px-2 py-0.5 bg-blue-900/30 text-blue-300 text-xs rounded border border-blue-800">
+                  Kong Locker: eazgb-g...
+                </span>
+              </div>
+              <p class="text-gray-400 text-sm">Creates permanent lock canister 🔒 Requires 2 ICP</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="px-3 py-1 bg-orange-900/30 text-orange-400 text-xs rounded-full border border-orange-800">
+                ⚠️ Payment Required
+              </span>
+            </div>
+          </div>
+          
+          <!-- Warning Messages (Collapsible) -->
+          <div class="px-4 pb-3">
+            <button 
+              on:click={() => toggleExpanded('create_canister_warnings')}
+              class="text-xs text-orange-400 hover:text-orange-300 mb-2"
+            >
+              {expandedSections['create_canister_warnings'] ? '▲ Hide' : '▼ Show'} Important Warnings
+            </button>
+            {#if expandedSections['create_canister_warnings']}
+              <div class="space-y-2">
+                <div class="bg-red-900/20 border border-red-800 rounded p-2 text-xs">
+                  <span class="text-red-400">🔒 PERMANENT:</span>
+                  <span class="text-red-200">LP tokens sent to lock canisters can NEVER be withdrawn</span>
+                </div>
+                <div class="bg-yellow-900/20 border border-yellow-800 rounded p-2 text-xs">
+                  <span class="text-yellow-400">⚠️ TESTING:</span>
+                  <span class="text-yellow-200">Not available for interactive testing - requires ICP payment</span>
+                </div>
+              </div>
+            {/if}
+          </div>
+          
+          <!-- Compact Interface Display -->
+          <div class="px-4 pb-3">
+            <div class="bg-black/40 rounded px-3 py-2 text-xs font-mono">
+              <span class="text-blue-400">() -> (variant &#123; Ok : principal; Err : text &#125;) [update]</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- complete_my_canister_setup - Info Card (Non-interactive) -->
+        <div class="mb-4 bg-gray-900/50 rounded-lg border border-yellow-700/50 overflow-hidden">
+          <div class="flex items-center justify-between p-4 pb-3">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <h3 class="text-lg font-bold text-white">complete_my_canister_setup</h3>
+                <span class="px-2 py-0.5 bg-blue-900/30 text-blue-300 text-xs rounded border border-blue-800">
+                  Kong Locker: eazgb-g...
+                </span>
+              </div>
+              <p class="text-gray-400 text-sm">Recovery function for partial setups 🔧</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="px-3 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded-full border border-yellow-800">
+                🔧 Recovery Only
+              </span>
+            </div>
+          </div>
+          
+          <!-- Usage Info (Collapsible) -->
+          <div class="px-4 pb-3">
+            <button 
+              on:click={() => toggleExpanded('setup_recovery_info')}
+              class="text-xs text-yellow-400 hover:text-yellow-300 mb-2"
+            >
+              {expandedSections['setup_recovery_info'] ? '▲ Hide' : '▼ Show'} When to Use
+            </button>
+            {#if expandedSections['setup_recovery_info']}
+              <div class="bg-yellow-900/20 border border-yellow-800 rounded p-2 text-xs text-yellow-200">
+                Use when canister creation partially failed. This completes: code installation, ICP funding, KongSwap registration, and blackholing.
+              </div>
+            {/if}
+          </div>
+          
+          <!-- Compact Interface Display -->
+          <div class="px-4 pb-3">
+            <div class="bg-black/40 rounded px-3 py-2 text-xs font-mono">
+              <span class="text-blue-400">() -> (variant &#123; Ok : text; Err : text &#125;) [update]</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- KongSwap Direct Integration Section -->
+    <section id="kongswap-integration" class="mb-12 bg-[#1a1b1f] rounded-2xl border border-gray-800">
+      <!-- Sticky Section Header -->
+      <div class="sticky top-0 z-10 bg-[#1a1b1f] rounded-t-2xl p-6 border-b border-gray-800">
+        <h2 class="text-3xl font-bold text-white flex items-center gap-3">
+          <span class="text-2xl">🔗</span>
+          <span>KongSwap Direct Queries</span>
+          <span class="text-sm font-normal text-gray-400 ml-auto">Frontend-side LP data queries</span>
+        </h2>
+      </div>
+      <div class="p-8 pt-6">
+      
+        <!-- Performance Benefits Summary -->
+        <div class="mb-6 bg-green-900/20 border border-green-800 rounded-lg">
+          <div class="p-4 pb-3">
+            <button 
+              on:click={() => toggleExpanded('performance_benefits')}
+              class="w-full text-left flex items-center justify-between"
+            >
+              <h3 class="text-lg font-semibold text-green-400">🚀 Performance Upgrade</h3>
+              <span class="text-green-400">{expandedSections['performance_benefits'] ? '▲' : '▼'}</span>
+            </button>
+            {#if expandedSections['performance_benefits']}
+              <div class="mt-3 pt-3 border-t border-green-800">
+                <p class="text-green-200 text-sm mb-3">Direct KongSwap queries from frontend provide:</p>
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                  <div class="bg-green-800/20 rounded p-2">
+                    <div class="text-green-300 font-medium">Free queries</div>
+                    <div class="text-green-200 text-xs">No cycle costs</div>
+                  </div>
+                  <div class="bg-green-800/20 rounded p-2">
+                    <div class="text-green-300 font-medium">Faster responses</div>
+                    <div class="text-green-200 text-xs">Parallel requests</div>
+                  </div>
+                  <div class="bg-green-800/20 rounded p-2">
+                    <div class="text-green-300 font-medium">Detailed breakdowns</div>
+                    <div class="text-green-200 text-xs">Full LP pool data</div>
+                  </div>
+                  <div class="bg-green-800/20 rounded p-2">
+                    <div class="text-green-300 font-medium">Real-time data</div>
+                    <div class="text-green-200 text-xs">No backend caching</div>
+                  </div>
+                </div>
+              </div>
+            {/if}
+          </div>
+        </div>
+      
+        <!-- Integration Architecture (Collapsible) -->
+        <div class="mb-6 bg-gray-900/50 rounded-lg border border-gray-700">
+          <div class="p-4 pb-3">
+            <button 
+              on:click={() => toggleExpanded('integration_architecture')}
+              class="w-full text-left flex items-center justify-between"
+            >
+              <h3 class="text-lg font-bold text-white">Integration Architecture</h3>
+              <span class="text-gray-400">{expandedSections['integration_architecture'] ? '▲' : '▼'}</span>
+            </button>
+            <p class="text-gray-400 text-sm mt-1">3-step pattern for LP data queries</p>
+            {#if expandedSections['integration_architecture']}
+              <div class="mt-4 pt-3 border-t border-gray-700">
+                <div class="bg-black/40 rounded p-3">
+                  <pre class="text-sm text-blue-400 font-mono overflow-x-auto">{`// Step 1: Get lock canister from Kong Locker
+const lockCanister = await kongLocker.get_my_lock_canister();
+
+// Step 2: Query KongSwap directly for LP positions
+const positions = await kongSwap.user_balances(lockCanister.toText());
+
+// Step 3: Calculate voting power client-side
+const votingPower = positions.reduce((sum, p) => sum + p.usd_balance * 100, 0);`}</pre>
+                </div>
+              </div>
+            {/if}
+          </div>
+        </div>
+      
+        <!-- KongSwap user_balances API - Compact Info Card -->
+        <div class="mb-4 bg-gray-900/50 rounded-lg border border-gray-700">
+          <div class="p-4">
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="text-lg font-bold text-white">KongSwap user_balances API</h3>
+              <span class="px-2 py-0.5 bg-purple-900/30 text-purple-300 text-xs rounded border border-purple-800">
+                KongSwap: 2ipq2-u...
+              </span>
+            </div>
+            <p class="text-gray-400 text-sm mb-3">Direct query to KongSwap for LP positions</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div class="bg-black/40 rounded p-3">
+                <div class="text-xs text-gray-500 mb-1">Candid Interface</div>
+                <div class="text-xs font-mono text-green-400">user_balances : (text) -> (variant &#123; Ok : vec UserBalancesReply; Err : text &#125;) query</div>
+              </div>
+              <div class="bg-black/40 rounded p-3">
+                <div class="text-xs text-gray-500 mb-1">KongSwap Canister ID</div>
+                <div class="text-xs font-mono text-purple-400">2ipq2-uqaaa-aaaar-qailq-cai</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      
+        <!-- Frontend Service Implementation (Collapsible) -->
+        <div class="mb-6 bg-gray-900/50 rounded-lg border border-gray-700">
+          <div class="p-4 pb-3">
+            <button 
+              on:click={() => toggleExpanded('frontend_service_impl')}
+              class="w-full text-left flex items-center justify-between"
+            >
+              <h3 class="text-lg font-bold text-white">Frontend Service Implementation</h3>
+              <span class="text-gray-400">{expandedSections['frontend_service_impl'] ? '▲' : '▼'}</span>
+            </button>
+            <p class="text-gray-400 text-sm mt-1">Ready-to-use TypeScript service</p>
+            {#if expandedSections['frontend_service_impl']}
+              <div class="mt-4 pt-3 border-t border-gray-700">
+                <div class="bg-black/40 rounded p-3 relative">
+                  <button 
+                    on:click={() => copyCode(`import { KongSwapDirectService } from './services/kongSwapDirect';
+
+const kongSwap = new KongSwapDirectService();
+
+// Get LP positions for a lock canister
+const positions = await kongSwap.getLPPositions(lockCanisterPrincipal);
+
+// Calculate voting power (USD * 100)
+const votingPower = kongSwap.calculateVotingPower(positions);
+
+// Get user's complete LP breakdown
+const breakdown = await kongSwap.getUserLPBreakdown(userPrincipal, kongLocker);`, 'kongswap-service')}
+                    class="absolute top-2 right-2 text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                  >
+                    {copySuccess === 'kongswap-service' ? '✅ Copied!' : '📋 Copy'}
+                  </button>
+                  <pre class="text-sm text-purple-400 font-mono overflow-x-auto pr-16">{`import { KongSwapDirectService } from './services/kongSwapDirect';
+
+const kongSwap = new KongSwapDirectService();
+
+// Get LP positions for a lock canister
+const positions = await kongSwap.getLPPositions(lockCanisterPrincipal);
+
+// Calculate voting power (USD * 100)
+const votingPower = kongSwap.calculateVotingPower(positions);
+
+// Get user's complete LP breakdown
+const breakdown = await kongSwap.getUserLPBreakdown(userPrincipal, kongLocker);`}</pre>
+                </div>
+              </div>
+            {/if}
+          </div>
+        </div>
+      
+        <!-- Available Methods (Collapsible) -->
+        <div class="mb-6 bg-gray-900/50 rounded-lg border border-gray-700">
+          <div class="p-4 pb-3">
+            <button 
+              on:click={() => toggleExpanded('available_methods')}
+              class="w-full text-left flex items-center justify-between"
+            >
+              <h3 class="text-lg font-bold text-white">Available Methods</h3>
+              <span class="text-gray-400">{expandedSections['available_methods'] ? '▲' : '▼'}</span>
+            </button>
+            <p class="text-gray-400 text-sm mt-1">5 methods for LP data management</p>
+            {#if expandedSections['available_methods']}
+              <div class="mt-4 pt-3 border-t border-gray-700">
+                <div class="overflow-x-auto">
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="border-b border-gray-700">
+                        <th class="text-left py-2 px-3 text-gray-400 text-xs">Method</th>
+                        <th class="text-left py-2 px-3 text-gray-400 text-xs">Purpose</th>
+                        <th class="text-left py-2 px-3 text-gray-400 text-xs">Returns</th>
+                      </tr>
+                    </thead>
+                    <tbody class="text-gray-300">
+                      <tr class="border-b border-gray-800">
+                        <td class="py-2 px-3 font-mono text-xs">getLPPositions(principal)</td>
+                        <td class="py-2 px-3 text-xs">Get detailed LP positions</td>
+                        <td class="py-2 px-3 text-xs">LPReply[]</td>
+                      </tr>
+                      <tr class="border-b border-gray-800">
+                        <td class="py-2 px-3 font-mono text-xs">calculateVotingPower(positions)</td>
+                        <td class="py-2 px-3 text-xs">Calculate voting power</td>
+                        <td class="py-2 px-3 text-xs">number (cents)</td>
+                      </tr>
+                      <tr class="border-b border-gray-800">
+                        <td class="py-2 px-3 font-mono text-xs">getAllVotingPowers(lockCanisters)</td>
+                        <td class="py-2 px-3 text-xs">Batch calculate all powers</td>
+                        <td class="py-2 px-3 text-xs">[Principal, number][]</td>
+                      </tr>
+                      <tr class="border-b border-gray-800">
+                        <td class="py-2 px-3 font-mono text-xs">getTotalValueLocked(lockCanisters)</td>
+                        <td class="py-2 px-3 text-xs">Calculate total USD value</td>
+                        <td class="py-2 px-3 text-xs">number (cents)</td>
+                      </tr>
+                      <tr class="border-b border-gray-800">
+                        <td class="py-2 px-3 font-mono text-xs">getUserLPBreakdown(user, kongLocker)</td>
+                        <td class="py-2 px-3 text-xs">Complete user analysis</td>
+                        <td class="py-2 px-3 text-xs">UserLPBreakdown</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            {/if}
+          </div>
+        </div>
+      
+        <!-- Migration Guide (Collapsible) -->
+        <div class="mb-6 bg-blue-900/20 border border-blue-800 rounded-lg">
+          <div class="p-4 pb-3">
+            <button 
+              on:click={() => toggleExpanded('migration_guide')}
+              class="w-full text-left flex items-center justify-between"
+            >
+              <h3 class="text-lg font-semibold text-blue-400">💡 Migration Guide</h3>
+              <span class="text-blue-400">{expandedSections['migration_guide'] ? '▲' : '▼'}</span>
+            </button>
+            <p class="text-blue-200 text-sm mt-1">From old backend calls to new direct queries</p>
+            {#if expandedSections['migration_guide']}
+              <div class="mt-4 pt-3 border-t border-blue-800">
+                <div class="bg-black/40 rounded p-3">
+                  <pre class="text-sm text-gray-300 font-mono overflow-x-auto">{`// OLD: Backend inter-canister calls (removed)
+const result = await kongLocker.get_voting_power(principal);
+const allPowers = await kongLocker.get_all_voting_powers();
+const totalLocked = await kongLocker.get_total_value_locked();
+
+// NEW: Direct KongSwap queries
+const kongSwap = new KongSwapDirectService();
+const lockCanister = await kongLocker.get_my_lock_canister();
+const positions = await kongSwap.getLPPositions(lockCanister[0]);
+const votingPower = kongSwap.calculateVotingPower(positions);
+
+// For all users
+const lockCanisters = await kongLocker.get_all_lock_canisters();
+const allPowers = await kongSwap.getAllVotingPowers(lockCanisters);
+const totalLocked = await kongSwap.getTotalValueLocked(lockCanisters.map(c => c[1]));`}</pre>
+                </div>
+              </div>
+            {/if}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LP Position Breakdown Demo Section -->
+    <section id="lp-position-demo" class="mb-12 bg-[#1a1b1f] rounded-2xl border border-gray-800">
+      <!-- Sticky Section Header -->
+      <div class="sticky top-0 z-10 bg-[#1a1b1f] rounded-t-2xl p-6 border-b border-gray-800">
+        <h2 class="text-3xl font-bold text-white flex items-center gap-3">
+          <span class="text-2xl">🎮</span>
+          <span>LP Position Breakdown Demo</span>
+          <span class="text-sm font-normal text-gray-400 ml-auto">Interactive implementation guide</span>
+        </h2>
+      </div>
+      <div class="p-8 pt-6">
+      
+        <!-- Implementation Guide Summary -->
+        <div class="mb-6 bg-gradient-to-r from-green-900/20 to-blue-900/20 border border-green-800/50 rounded-lg">
+          <div class="p-4 pb-3">
+            <button 
+              on:click={() => toggleExpanded('implementation_guide')}
+              class="w-full text-left flex items-center justify-between"
+            >
+              <h3 class="text-lg font-semibold text-green-400">🎯 Implementation Guide</h3>
+              <span class="text-green-400">{expandedSections['implementation_guide'] ? '▲' : '▼'}</span>
+            </button>
+            <p class="text-green-200 text-sm mt-1">4-step LP position breakdown implementation</p>
+            {#if expandedSections['implementation_guide']}
+              <div class="mt-4 pt-3 border-t border-green-800">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div class="bg-green-800/20 rounded p-3">
+                    <div class="text-green-300 font-medium mb-1">Step 1: Get Lock Canister</div>
+                    <div class="text-green-200 text-xs">Query Kong Locker backend for canister ID</div>
+                  </div>
+                  <div class="bg-blue-800/20 rounded p-3">
+                    <div class="text-blue-300 font-medium mb-1">Step 2: Query KongSwap</div>
+                    <div class="text-blue-200 text-xs">Get detailed LP positions directly</div>
+                  </div>
+                  <div class="bg-purple-800/20 rounded p-3">
+                    <div class="text-purple-300 font-medium mb-1">Step 3: Format Data</div>
+                    <div class="text-purple-200 text-xs">Display individual position details</div>
+                  </div>
+                  <div class="bg-orange-800/20 rounded p-3">
+                    <div class="text-orange-300 font-medium mb-1">Step 4: Calculate Totals</div>
+                    <div class="text-orange-200 text-xs">Voting power and USD values</div>
+                  </div>
+                </div>
+              </div>
+            {/if}
+          </div>
+        </div>
+      
+        <!-- Test LP Position Query -->
+        <div class="mb-6 bg-gray-900/50 rounded-lg border border-gray-700">
+          <div class="p-4">
+            <h3 class="text-lg font-bold text-white mb-2">Test LP Position Query</h3>
+            <p class="text-gray-400 text-sm mb-4">
+              Enter a lock canister Principal ID to see detailed LP positions via KongSwap's <code class="bg-black/50 px-1 py-0.5 rounded text-xs">user_balances</code>
+            </p>
+            
+            <!-- Implementation Pattern (Collapsible) -->
+            <div class="mb-4">
+              <button 
+                on:click={() => toggleExpanded('demo_implementation_pattern')}
+                class="text-sm text-blue-400 hover:text-blue-300 mb-2"
+              >
+                {expandedSections['demo_implementation_pattern'] ? '▲ Hide' : '▼ Show'} Implementation Pattern
+              </button>
+              {#if expandedSections['demo_implementation_pattern']}
+                <div class="bg-blue-900/20 border border-blue-800 rounded p-3">
+                  <div class="bg-black/40 rounded p-3">
+                    <pre class="text-xs text-blue-400 font-mono overflow-x-auto">{`// Step 1: Get user's lock canister from Kong Locker
+const lockCanister = await kongLocker.get_my_lock_canister();
+
+// Step 2: Query KongSwap directly for detailed positions  
+const result = await kongSwap.user_balances(lockCanister[0].toText());
+
+// Step 3: Extract LP position details
+const positions = result.Ok.map(reply => reply.LP);
+
+// Step 4: Display each position with full details
+positions.forEach(pos => {
+  console.log(\`Pool: \${pos.name}\`);
+  console.log(\`LP Tokens: \${pos.balance}\`);
+  console.log(\`USD Value: $\${pos.usd_balance}\`);
+  console.log(\`Tokens: \${pos.amount_0} \${pos.symbol_0} + \${pos.amount_1} \${pos.symbol_1}\`);
+});`}</pre>
+                  </div>
+                </div>
+              {/if}
+            </div>
         
-        <!-- Interactive Section -->
+        <!-- Interactive Test -->
         <div class="bg-purple-900/20 border border-purple-800 rounded-lg p-4 mb-4">
           <div class="mb-3">
             <h4 class="text-sm font-semibold text-purple-400 mb-2">🎮 Try it now!</h4>
             <div class="flex gap-2">
               <input
                 type="text"
-                bind:value={principalInput}
-                placeholder="Enter principal (e.g., 2vxsx-fae)"
+                bind:value={lockCanisterInput}
+                placeholder="Enter lock canister Principal ID (e.g., abc12-def34...)"
                 class="flex-1 px-3 py-2 bg-black/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 text-sm focus:outline-none focus:border-purple-500"
               />
               <button 
-                on:click={callGetVotingPower}
-                disabled={apiLoading['get_voting_power']}
+                on:click={getLPPositions}
+                disabled={lpPositionsLoading}
                 class="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
               >
-                {#if apiLoading['get_voting_power']}
+                {#if lpPositionsLoading}
                   <Loader class="w-4 h-4 animate-spin" />
-                  <span>Calling...</span>
+                  <span>Querying...</span>
                 {:else}
-                  <span>Execute Call</span>
+                  <span>Get Positions</span>
                 {/if}
               </button>
             </div>
           </div>
           
-          {#if apiResults['get_voting_power']}
-            <div class="bg-black/50 rounded p-3 mt-3">
-              <p class="text-xs text-gray-400 mb-1">Result:</p>
-              <pre class="text-sm text-green-400 font-mono">{JSON.stringify(apiResults['get_voting_power'], null, 2)}</pre>
-            </div>
-          {/if}
-          
-          {#if apiErrors['get_voting_power']}
+          {#if lpPositionsError}
             <div class="bg-red-900/20 rounded p-3 mt-3">
-              <p class="text-xs text-red-400">Error: {apiErrors['get_voting_power']}</p>
+              <p class="text-xs text-red-400">Error: {lpPositionsError}</p>
+            </div>
+          {/if}
+          
+          {#if lpPositions.length > 0}
+            <div class="mt-4 space-y-4">
+              <!-- Summary Stats -->
+              <div class="bg-green-900/20 border border-green-800 rounded-lg p-4">
+                <h4 class="text-sm font-semibold text-green-400 mb-2">📊 Summary</h4>
+                <div class="grid grid-cols-3 gap-4 text-sm">
+                  <div class="text-center">
+                    <div class="text-lg font-bold text-white">{lpPositions.length}</div>
+                    <div class="text-xs text-gray-400">LP Pools</div>
+                  </div>
+                  <div class="text-center">
+                    <div class="text-lg font-bold text-green-400">${calculateTotalUSDValue(lpPositions).toFixed(2)}</div>
+                    <div class="text-xs text-gray-400">Total Value</div>
+                  </div>
+                  <div class="text-center">
+                    <div class="text-lg font-bold text-blue-400">{calculateVotingPower(lpPositions).toLocaleString()}</div>
+                    <div class="text-xs text-gray-400">Voting Power</div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Individual Positions -->
+              <div class="space-y-3">
+                <h4 class="text-sm font-semibold text-white">🔒 Individual LP Positions</h4>
+                {#each lpPositions as position, index}
+                  <div class="bg-black/30 border border-gray-700 rounded-lg p-4">
+                    <div class="flex justify-between items-start mb-3">
+                      <div>
+                        <h5 class="font-semibold text-white">{position.name}</h5>
+                        <p class="text-sm text-gray-400">Pool: {position.symbol}</p>
+                      </div>
+                      <div class="text-right">
+                        <div class="text-lg font-bold text-green-400">${position.usd_balance.toFixed(2)}</div>
+                        <div class="text-xs text-gray-400">{((position.usd_balance / calculateTotalUSDValue(lpPositions)) * 100).toFixed(1)}% of total</div>
+                      </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                      <div class="bg-gray-800/50 rounded p-3">
+                        <div class="text-xs text-gray-400 mb-1">LP Tokens</div>
+                        <div class="font-semibold text-white">{formatTokenAmount(position.balance, 'LP')}</div>
+                      </div>
+                      <div class="bg-gray-800/50 rounded p-3">
+                        <div class="text-xs text-gray-400 mb-1">{position.symbol_0}</div>
+                        <div class="font-semibold text-blue-400">{formatTokenAmount(position.amount_0, position.symbol_0)}</div>
+                        <div class="text-xs text-gray-500">${position.usd_amount_0.toFixed(2)}</div>
+                      </div>
+                      <div class="bg-gray-800/50 rounded p-3">
+                        <div class="text-xs text-gray-400 mb-1">{position.symbol_1}</div>
+                        <div class="font-semibold text-orange-400">{formatTokenAmount(position.amount_1, position.symbol_1)}</div>
+                        <div class="text-xs text-gray-500">${position.usd_amount_1.toFixed(2)}</div>
+                      </div>
+                    </div>
+                    
+                    <div class="mt-3 pt-3 border-t border-gray-700">
+                      <div class="text-xs text-gray-400">
+                        Token ID: {position.lp_token_id.toString()} • 
+                        Last Updated: {new Date(Number(position.ts)).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+              
+              <!-- Implementation Code -->
+              <div class="bg-yellow-900/20 border border-yellow-800 rounded-lg p-4">
+                <h4 class="text-sm font-semibold text-yellow-400 mb-2">📋 Implementation Code</h4>
+                <div class="bg-black/50 rounded-lg p-3">
+                  <pre class="text-sm text-gray-300 font-mono overflow-x-auto">{`// This is what your app would do:
+
+// 1. Query KongSwap for this lock canister
+const result = await kongSwap.user_balances("${lockCanisterInput}");
+
+// 2. Extract positions 
+const positions = result.Ok.map(reply => reply.LP);
+// Found ${lpPositions.length} LP position${lpPositions.length === 1 ? '' : 's'}
+
+// 3. Calculate totals
+const totalUSD = positions.reduce((sum, pos) => sum + pos.usd_balance, 0);
+// Total: $${calculateTotalUSDValue(lpPositions).toFixed(2)}
+
+const votingPower = Math.floor(totalUSD * 100);
+// Voting Power: ${calculateVotingPower(lpPositions).toLocaleString()}
+
+// 4. Display each position
+positions.forEach((pos, i) => {
+  console.log(\`Position \${i + 1}: \${pos.name}\`);
+  console.log(\`  LP Tokens: \${pos.balance}\`);
+  console.log(\`  Value: $\${pos.usd_balance}\`);
+  console.log(\`  Composition: \${pos.amount_0} \${pos.symbol_0} + \${pos.amount_1} \${pos.symbol_1}\`);
+});`}</pre>
+                </div>
+              </div>
             </div>
           {/if}
         </div>
       </div>
-
-      <!-- get_all_voting_powers -->
-      <div class="mb-8 bg-gray-900/50 rounded-lg p-6">
-        <h3 class="text-xl font-bold text-white mb-3">get_all_voting_powers</h3>
-        <p class="text-gray-400 mb-4">Returns voting powers for all users with lock canisters.</p>
-        
-        <div class="bg-orange-900/20 border border-orange-800 rounded-lg p-3 mb-4">
-          <p class="text-sm text-orange-400">⚠️ This call may take a few seconds as it queries multiple canisters.</p>
-        </div>
-        
-        <div class="bg-black/50 rounded-lg p-4 mb-4">
-          <div class="flex justify-between items-center mb-2">
-            <span class="text-sm text-gray-500">Candid Interface</span>
-          </div>
-          <pre class="text-sm text-green-400 font-mono">get_all_voting_powers : () -> (vec record {`{ principal; nat }`});</pre>
-        </div>
-        
-        <!-- Interactive Section -->
-        <div class="bg-purple-900/20 border border-purple-800 rounded-lg p-4 mb-4">
-          <div class="flex justify-between items-center mb-3">
-            <h4 class="text-sm font-semibold text-purple-400">🎮 Try it now!</h4>
-            <button 
-              on:click={callGetAllVotingPowers}
-              disabled={apiLoading['get_all_voting_powers']}
-              class="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-            >
-              {#if apiLoading['get_all_voting_powers']}
-                <Loader class="w-4 h-4 animate-spin" />
-                <span>Calling...</span>
-              {:else}
-                <span>Execute Call</span>
-              {/if}
-            </button>
-          </div>
-          
-          {#if apiResults['get_all_voting_powers']}
-            <div class="bg-black/50 rounded p-3 mt-3 max-h-64 overflow-y-auto">
-              <p class="text-xs text-gray-400 mb-1">Result ({apiResults['get_all_voting_powers'].length} users):</p>
-              <pre class="text-sm text-green-400 font-mono">{JSON.stringify(apiResults['get_all_voting_powers'].slice(0, 5), null, 2)}</pre>
-              {#if apiResults['get_all_voting_powers'].length > 5}
-                <p class="text-xs text-gray-500 mt-2">... and {apiResults['get_all_voting_powers'].length - 5} more</p>
-              {/if}
-            </div>
-          {/if}
-          
-          {#if apiErrors['get_all_voting_powers']}
-            <div class="bg-red-900/20 rounded p-3 mt-3">
-              <p class="text-xs text-red-400">Error: {apiErrors['get_all_voting_powers']}</p>
-            </div>
-          {/if}
-        </div>
-      </div>
-
-      <!-- get_total_value_locked -->
-      <div class="mb-8 bg-gray-900/50 rounded-lg p-6">
-        <h3 class="text-xl font-bold text-white mb-3">get_total_value_locked</h3>
-        <p class="text-gray-400 mb-4">Calculates the total USD value locked across all lock canisters.</p>
-        
-        <div class="bg-orange-900/20 border border-orange-800 rounded-lg p-3 mb-4">
-          <p class="text-sm text-orange-400">⚠️ Makes multiple inter-canister calls - may take a few seconds.</p>
-        </div>
-        
-        <div class="bg-black/50 rounded-lg p-4 mb-4">
-          <div class="flex justify-between items-center mb-2">
-            <span class="text-sm text-gray-500">Candid Interface</span>
-          </div>
-          <pre class="text-sm text-green-400 font-mono">get_total_value_locked : () -> (variant {`{ Ok : nat; Err : text }`});</pre>
-        </div>
-        
-        <!-- Interactive Section -->
-        <div class="bg-purple-900/20 border border-purple-800 rounded-lg p-4 mb-4">
-          <div class="flex justify-between items-center mb-3">
-            <h4 class="text-sm font-semibold text-purple-400">🎮 Try it now!</h4>
-            <button 
-              on:click={callGetTotalValueLocked}
-              disabled={apiLoading['get_total_value_locked']}
-              class="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-            >
-              {#if apiLoading['get_total_value_locked']}
-                <Loader class="w-4 h-4 animate-spin" />
-                <span>Calling...</span>
-              {:else}
-                <span>Execute Call</span>
-              {/if}
-            </button>
-          </div>
-          
-          {#if apiResults['get_total_value_locked']}
-            <div class="bg-black/50 rounded p-3 mt-3">
-              <p class="text-xs text-gray-400 mb-1">Result:</p>
-              <pre class="text-sm text-green-400 font-mono">{JSON.stringify(apiResults['get_total_value_locked'], null, 2)}</pre>
-            </div>
-          {/if}
-          
-          {#if apiErrors['get_total_value_locked']}
-            <div class="bg-red-900/20 rounded p-3 mt-3">
-              <p class="text-xs text-red-400">Error: {apiErrors['get_total_value_locked']}</p>
-            </div>
-          {/if}
-        </div>
-      </div>
-
-      <!-- get_detailed_canister_status -->
-      <div class="mb-8 bg-gray-900/50 rounded-lg p-6">
-        <h3 class="text-xl font-bold text-white mb-3">get_detailed_canister_status</h3>
-        <p class="text-gray-400 mb-4">Returns detailed information about the caller's lock canister, including blackhole status and cycle balance.</p>
-        
-        <div class="bg-black/50 rounded-lg p-4 mb-4">
-          <div class="flex justify-between items-center mb-2">
-            <span class="text-sm text-gray-500">Response Type</span>
-          </div>
-          <pre class="text-sm text-green-400 font-mono overflow-x-auto">{`type DetailedCanisterStatus = {
-  canister_id: Principal;
-  is_blackholed: bool;
-  controller_count: nat32;
-  cycle_balance: nat;
-  memory_size: nat;
-  module_hash: opt blob;
-}`}</pre>
-        </div>
-        
-        <!-- Interactive Section -->
-        <div class="bg-purple-900/20 border border-purple-800 rounded-lg p-4 mb-4">
-          <div class="flex justify-between items-center mb-3">
-            <h4 class="text-sm font-semibold text-purple-400">🎮 Try it now!</h4>
-            <button 
-              on:click={callGetDetailedCanisterStatus}
-              disabled={apiLoading['get_detailed_canister_status']}
-              class="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-            >
-              {#if apiLoading['get_detailed_canister_status']}
-                <Loader class="w-4 h-4 animate-spin" />
-                <span>Calling...</span>
-              {:else}
-                <span>Execute Call</span>
-              {/if}
-            </button>
-          </div>
-          
-          {#if apiResults['get_detailed_canister_status']}
-            <div class="bg-black/50 rounded p-3 mt-3">
-              <p class="text-xs text-gray-400 mb-1">Result:</p>
-              <pre class="text-sm text-green-400 font-mono">{JSON.stringify(apiResults['get_detailed_canister_status'], null, 2)}</pre>
-            </div>
-          {/if}
-          
-          {#if apiErrors['get_detailed_canister_status']}
-            <div class="bg-red-900/20 rounded p-3 mt-3">
-              <p class="text-xs text-red-400">Error: {apiErrors['get_detailed_canister_status']}</p>
-            </div>
-          {/if}
-        </div>
-      </div>
-
-      <!-- create_lock_canister (non-interactive) -->
-      <div class="mb-8 bg-gray-900/50 rounded-lg p-6">
-        <h3 class="text-xl font-bold text-white mb-3">create_lock_canister</h3>
-        <p class="text-gray-400 mb-4">Creates a new lock canister for the caller. Requires 2 ICP approval.</p>
-        
-        <div class="bg-red-900/20 border border-red-800 rounded-lg p-3 mb-4">
-          <p class="text-sm text-red-400">🔒 Important: This creates a permanently locked canister. LP tokens sent to it can NEVER be withdrawn.</p>
-        </div>
-        
-        <div class="bg-yellow-900/20 border border-yellow-800 rounded-lg p-3 mb-4">
-          <p class="text-sm text-yellow-400">⚠️ This function is not available for interactive testing. It requires ICP payment and should be used through the main Kong Locker interface.</p>
-        </div>
-        
-        <div class="bg-black/50 rounded-lg p-4 mb-4">
-          <div class="flex justify-between items-center mb-2">
-            <span class="text-sm text-gray-500">Why not interactive?</span>
-          </div>
-          <ul class="text-sm text-gray-300 list-disc list-inside space-y-1">
-            <li>Requires 2 ICP payment approval</li>
-            <li>Creates permanent, irreversible locks</li>
-            <li>Each user can only have one lock canister</li>
-            <li>Best used through the authenticated UI for safety</li>
-          </ul>
-        </div>
-        
-        <div class="bg-black/50 rounded-lg p-4 mb-4">
-          <div class="flex justify-between items-center mb-2">
-            <span class="text-sm text-gray-500">Process Flow</span>
-          </div>
-          <pre class="text-sm text-purple-400 font-mono overflow-x-auto">{`1. Take 2 ICP payment (atomic)
-2. Create new canister
-3. Install lock code
-4. Fund with 1 ICP
-5. Register on KongSwap
-6. Blackhole canister (remove all controllers)
-7. Return canister Principal`}</pre>
-        </div>
-        
-        <div class="bg-black/50 rounded-lg p-4">
-          <div class="flex justify-between items-center mb-2">
-            <span class="text-sm text-gray-500">Integration Example</span>
-          </div>
-          <pre class="text-sm text-yellow-400 font-mono overflow-x-auto">{`// First, approve 2 ICP to the Kong Locker canister
-const icpLedger = await createActor(ICP_LEDGER_ID);
-await icpLedger.icrc2_approve({
-  spender: { owner: KONG_LOCKER_ID, subaccount: [] },
-  amount: 200_010_000n, // 2 ICP + fees
-  fee: [10_000n],
-  expires_at: [],
-  memo: [],
-  created_at_time: []
-});
-
-// Then create the lock canister
-const result = await kongLocker.create_lock_canister();
-if ('Ok' in result) {
-  console.log("Lock canister created:", result.Ok.toText());
-  // Now you can send LP tokens to this canister
-} else {
-  console.error("Failed:", result.Err);
-}`}</pre>
-        </div>
-      </div>
-
-      <!-- complete_my_canister_setup (non-interactive) -->
-      <div class="mb-8 bg-gray-900/50 rounded-lg p-6">
-        <h3 class="text-xl font-bold text-white mb-3">complete_my_canister_setup</h3>
-        <p class="text-gray-400 mb-4">Completes setup for a partially created canister. Useful for recovery from failed creation.</p>
-        
-        <div class="bg-yellow-900/20 border border-yellow-800 rounded-lg p-3 mb-4">
-          <p class="text-sm text-yellow-400">⚠️ This function is not available for interactive testing. It's designed for recovery scenarios and should be used through the main interface.</p>
-        </div>
-        
-        <div class="bg-black/50 rounded-lg p-4 mb-4">
-          <div class="flex justify-between items-center mb-2">
-            <span class="text-sm text-gray-500">What it checks and fixes</span>
-          </div>
-          <ul class="text-sm text-gray-300 list-disc list-inside space-y-1">
-            <li>Installs code if missing</li>
-            <li>Funds with 1 ICP if needed</li>
-            <li>Registers on KongSwap if not registered</li>
-            <li>Blackholes canister if still has controllers</li>
-          </ul>
-        </div>
-        
-        <div class="bg-black/50 rounded-lg p-4">
-          <div class="flex justify-between items-center mb-2">
-            <span class="text-sm text-gray-500">Example Response</span>
-          </div>
-          <pre class="text-sm text-blue-400 font-mono">{`// Success - actions taken
-variant { Ok = "Completed setup: funded with 1 ICP, registered with KongSwap, blackholed canister" }
-
-// Success - already configured
-variant { Ok = "Canister already fully configured" }
-
-// Error
-variant { Err = "No lock canister found. Use create_lock_canister() first." }`}</pre>
-        </div>
+      
+      <div class="bg-orange-900/20 border border-orange-800 rounded-lg p-4">
+        <h3 class="text-lg font-semibold text-orange-400 mb-2">⚠️ Important Notes for Implementation</h3>
+        <ul class="list-disc list-inside text-orange-200 text-sm space-y-1">
+          <li><strong>Error Handling:</strong> Always check for "User not found" errors - lock canisters need to be registered on KongSwap first</li>
+          <li><strong>Data Freshness:</strong> LP values and token amounts reflect real-time market prices from KongSwap</li>
+          <li><strong>Voting Power:</strong> Calculated as total USD value × 100 (to preserve 2 decimal places as integer)</li>
+          <li><strong>Performance:</strong> This is a direct query call - no cycles required, fast response times</li>
+          <li><strong>Integration:</strong> Combine with Kong Locker's <code>get_my_lock_canister()</code> for complete user experience</li>
+        </ul>
       </div>
     </section>
 
@@ -873,31 +1507,31 @@ variant { Err = "No lock canister found. Use create_lock_canister() first." }`}<
       
       <div class="mb-8 bg-gray-900/50 rounded-lg p-6">
         <h3 class="text-xl font-bold text-white mb-3">LPReply</h3>
-        <p class="text-gray-400 mb-4">Represents LP token position data from KongSwap.</p>
+        <p class="text-gray-400 mb-4">Represents LP token position data from KongSwap (used in direct queries).</p>
         
         <div class="bg-black/50 rounded-lg p-4 mb-4">
           <pre class="text-sm text-green-400 font-mono overflow-x-auto">{`type LPReply = {
-  name: text;           // "ICP/ckUSDT LP Token"
-  symbol: text;         // "ICP_ckUSDT"
-  lp_token_id: nat64;   // 1
-  balance: float64;     // 100.5
-  usd_balance: float64; // 2500.75
+  name: string;           // "ICP/ckUSDT LP Token"
+  symbol: string;         // "ICP_ckUSDT"
+  lp_token_id: bigint;    // LP token ID
+  balance: number;        // LP token balance
+  usd_balance: number;    // Total USD value
   
   // First token details
-  chain_0: text;        // "IC"
-  symbol_0: text;       // "ICP"
-  address_0: text;      // "ryjl3-tyaaa-aaaaa-aaaba-cai"
-  amount_0: float64;    // 50.25
-  usd_amount_0: float64; // 1250.50
+  chain_0: string;        // "IC"
+  symbol_0: string;       // "ICP"
+  address_0: string;      // "ryjl3-tyaaa-aaaaa-aaaba-cai"
+  amount_0: number;       // 50.25
+  usd_amount_0: number;   // 1250.50
   
   // Second token details
-  chain_1: text;        // "IC"
-  symbol_1: text;       // "ckUSDT"
-  address_1: text;      // "cngnf-vqaaa-aaaag-qcqfq-cai"
-  amount_1: float64;    // 1250.25
-  usd_amount_1: float64; // 1250.25
+  chain_1: string;        // "IC"
+  symbol_1: string;       // "ckUSDT"
+  address_1: string;      // Token canister
+  amount_1: number;       // Amount of second token
+  usd_amount_1: number;   // USD value of second token
   
-  ts: nat64;            // 1699564800000
+  ts: bigint;             // Timestamp
 }`}</pre>
         </div>
       </div>
@@ -928,11 +1562,272 @@ variant { Err = "No lock canister found. Use create_lock_canister() first." }`}<
 }`}</pre>
         </div>
       </div>
+      
+      <div class="mb-8 bg-gray-900/50 rounded-lg p-6">
+        <h3 class="text-xl font-bold text-white mb-3">AnalyticsOverview</h3>
+        <p class="text-gray-400 mb-4">Complete analytics data for building dashboards and exploring the platform.</p>
+        
+        <div class="bg-black/50 rounded-lg p-4">
+          <pre class="text-sm text-green-400 font-mono overflow-x-auto">{`type AnalyticsOverview = {
+  total_lock_canisters: nat64;                    // Total number of canisters
+  participants: vec record { principal; principal }; // (user, lock_canister) pairs
+  last_updated: nat64;                            // Timestamp in nanoseconds
+}`}</pre>
+        </div>
+        
+        <div class="bg-blue-900/20 border border-blue-800 rounded-lg p-3 mt-4">
+          <h4 class="text-sm font-semibold text-blue-400 mb-2">💡 Analytics Use Cases</h4>
+          <ul class="list-disc list-inside text-blue-200 text-sm space-y-1">
+            <li><strong>Dashboard foundation:</strong> Get all participants with a single fast query</li>
+            <li><strong>Scalable design:</strong> Efficient even with 100+ users</li>
+            <li><strong>Progressive disclosure:</strong> Show list immediately, load details on-demand</li>
+            <li><strong>Platform insights:</strong> Track growth and participation trends</li>
+          </ul>
+        </div>
+      </div>
     </section>
 
     <!-- Integration Examples Section -->
     <section id="examples" class="mb-12 bg-[#1a1b1f] rounded-2xl p-8 border border-gray-800">
       <h2 class="text-3xl font-bold text-white mb-6">💡 Integration Examples</h2>
+      
+      <div class="mb-8 bg-gray-900/50 rounded-lg p-6">
+        <h3 class="text-xl font-bold text-white mb-3">Complete Analytics Dashboard Implementation</h3>
+        <p class="text-gray-400 mb-4">Build a scalable analytics dashboard that efficiently handles 100+ users.</p>
+        
+        <div class="bg-black/50 rounded-lg p-4">
+          <pre class="text-sm text-yellow-400 font-mono overflow-x-auto">{`import { Principal } from '@dfinity/principal';
+import { createActor } from './actor';
+
+// Complete analytics dashboard implementation
+async function buildAnalyticsDashboard() {
+  const kongLocker = await createActor(KONG_LOCKER_ID);
+  const kongSwap = await createActor(KONG_SWAP_ID);
+  
+  // Step 1: Get complete overview with single fast query (≤500ms)
+  const overview = await kongLocker.get_analytics_overview();
+  console.log(\`Found \${overview.total_lock_canisters} lock canisters\`);
+  
+  // Step 2: Display participants list immediately
+  const participantList = overview.participants.map(([user, lockCanister]) => ({
+    userPrincipal: user,
+    lockCanister: lockCanister,
+    userDisplay: truncatePrincipal(user.toText()),
+    canisterDisplay: truncatePrincipal(lockCanister.toText()),
+    status: 'unknown' // Will be updated on-demand
+  }));
+  
+  // Step 3: Calculate basic system stats
+  const systemStats = {
+    totalParticipants: overview.participants.length,
+    lastUpdated: new Date(Number(overview.last_updated) / 1_000_000)
+  };
+  
+  // Step 4: Optional - Preload top 10 canisters for better UX
+  const topCanisters = overview.participants.slice(0, 10);
+  const preloadPromises = topCanisters.map(async ([user, canister]) => {
+    try {
+      const result = await kongSwap.user_balances(canister.toText());
+      if ('Ok' in result) {
+        const positions = result.Ok.map(reply => reply.LP);
+        const totalUSD = positions.reduce((sum, pos) => sum + pos.usd_balance, 0);
+        return { canister, totalUSD, positions };
+      }
+    } catch (error) {
+      console.debug('Preload failed for:', canister.toText());
+      return null;
+    }
+  });
+  
+  // Don't await preload - let it happen in background
+  Promise.allSettled(preloadPromises).then(results => {
+    console.log('Preloaded', results.filter(r => r.status === 'fulfilled').length, 'canisters');
+  });
+  
+  return { participantList, systemStats, overview };
+}
+
+// On-demand detail loading for specific canister
+async function loadCanisterDetails(lockCanisterId: Principal) {
+  const kongSwap = await createActor(KONG_SWAP_ID);
+  
+  try {
+    // Query KongSwap for this specific canister (≤2s)
+    const result = await kongSwap.user_balances(lockCanisterId.toText());
+    
+    if ('Err' in result) {
+      if (result.Err.includes("User not found")) {
+        return {
+          status: 'unregistered',
+          message: 'Lock canister not registered on KongSwap yet'
+        };
+      }
+      throw new Error(result.Err);
+    }
+    
+    const positions = result.Ok.map(reply => reply.LP);
+    
+    if (positions.length === 0) {
+      return {
+        status: 'empty',
+        message: 'No LP tokens locked yet'
+      };
+    }
+    
+    // Calculate metrics
+    const totalUSD = positions.reduce((sum, pos) => sum + pos.usd_balance, 0);
+    const votingPower = Math.floor(totalUSD * 100);
+    
+    return {
+      status: 'active',
+      positions,
+      summary: {
+        poolCount: positions.length,
+        totalUSD,
+        votingPower
+      }
+    };
+    
+  } catch (error) {
+    return {
+      status: 'error',
+      message: error.message
+    };
+  }
+}
+
+function truncatePrincipal(principal: string): string {
+  if (principal.length <= 20) return principal;
+  return \`\${principal.substring(0, 8)}...\${principal.substring(principal.length - 6)}\`;
+}`}</pre>
+        </div>
+      </div>
+      
+      <div class="mb-8 bg-gray-900/50 rounded-lg p-6">
+        <h3 class="text-xl font-bold text-white mb-3">LP Position Breakdown for User Dashboard</h3>
+        <p class="text-gray-400 mb-4">Complete example showing how to display detailed LP positions in your application.</p>
+        
+        <div class="bg-black/50 rounded-lg p-4">
+          <pre class="text-sm text-yellow-400 font-mono overflow-x-auto">{`import { Principal } from '@dfinity/principal';
+import { createActor } from './actor';
+
+// Complete LP position dashboard implementation
+async function displayUserLPDashboard(userPrincipal: Principal) {
+  const kongLocker = await createActor(KONG_LOCKER_ID);
+  const kongSwap = await createActor(KONG_SWAP_ID);
+  
+  try {
+    // Step 1: Get user's lock canister from Kong Locker
+    const lockCanisterResult = await kongLocker.get_my_lock_canister();
+    
+    if (!lockCanisterResult[0]) {
+      return { hasLockCanister: false, message: "No lock canister found" };
+    }
+    
+    const lockCanisterId = lockCanisterResult[0];
+    console.log("Lock canister:", lockCanisterId.toText());
+    
+    // Step 2: Query KongSwap directly for detailed LP positions
+    const balancesResult = await kongSwap.user_balances(lockCanisterId.toText());
+    
+    if ('Err' in balancesResult) {
+      if (balancesResult.Err.includes("User not found")) {
+        return { 
+          hasLockCanister: true, 
+          isRegistered: false,
+          message: "Lock canister not registered on KongSwap yet" 
+        };
+      }
+      throw new Error(balancesResult.Err);
+    }
+    
+    // Step 3: Extract and process LP positions
+    const lpPositions = balancesResult.Ok.map(reply => reply.LP);
+    
+    if (lpPositions.length === 0) {
+      return {
+        hasLockCanister: true,
+        isRegistered: true,
+        hasPositions: false,
+        message: "No LP tokens locked yet"
+      };
+    }
+    
+    // Step 4: Calculate totals and format data
+    const totalUSDValue = lpPositions.reduce((sum, pos) => sum + pos.usd_balance, 0);
+    const votingPower = Math.floor(totalUSDValue * 100);
+    
+    // Step 5: Format positions for display
+    const formattedPositions = lpPositions.map((position, index) => ({
+      id: position.lp_token_id.toString(),
+      poolName: position.name,
+      poolSymbol: position.symbol,
+      lpTokenBalance: position.balance,
+      usdValue: position.usd_balance,
+      percentOfTotal: (position.usd_balance / totalUSDValue) * 100,
+      underlyingTokens: [
+        {
+          symbol: position.symbol_0,
+          amount: position.amount_0,
+          usdValue: position.usd_amount_0
+        },
+        {
+          symbol: position.symbol_1, 
+          amount: position.amount_1,
+          usdValue: position.usd_amount_1
+        }
+      ],
+      lastUpdated: new Date(Number(position.ts))
+    }));
+    
+    return {
+      hasLockCanister: true,
+      isRegistered: true,
+      hasPositions: true,
+      lockCanisterId: lockCanisterId.toText(),
+      summary: {
+        totalPools: lpPositions.length,
+        totalUSDValue,
+        votingPower
+      },
+      positions: formattedPositions
+    };
+    
+  } catch (error) {
+    console.error('Failed to load LP dashboard:', error);
+    return { error: error.message };
+  }
+}
+
+// Usage in your React/Svelte/Vue component:
+async function loadDashboard() {
+  const dashboard = await displayUserLPDashboard(userPrincipal);
+  
+  if (dashboard.error) {
+    setError(dashboard.error);
+    return;
+  }
+  
+  if (!dashboard.hasLockCanister) {
+    showCreateCanisterButton();
+    return;
+  }
+  
+  if (!dashboard.isRegistered) {
+    showSetupRequiredMessage();
+    return;
+  }
+  
+  if (!dashboard.hasPositions) {
+    showAddLiquidityPrompt();
+    return;
+  }
+  
+  // Display the complete dashboard
+  setDashboardData(dashboard);
+}`}</pre>
+        </div>
+      </div>
       
       <div class="mb-8 bg-gray-900/50 rounded-lg p-6">
         <h3 class="text-xl font-bold text-white mb-3">Complete Lock Flow</h3>
@@ -941,11 +1836,12 @@ variant { Err = "No lock canister found. Use create_lock_canister() first." }`}<
         <div class="bg-black/50 rounded-lg p-4">
           <pre class="text-sm text-yellow-400 font-mono overflow-x-auto">{`import { Principal } from '@dfinity/principal';
 import { createActor } from './actor';
+import { KongSwapDirectService } from './services/kongSwapDirect';
 
 async function lockLPTokens(amount: bigint) {
   const kongLocker = await createActor(KONG_LOCKER_ID);
   const icpLedger = await createActor(ICP_LEDGER_ID);
-  const kongSwap = await createActor(KONG_SWAP_ID);
+  const kongSwap = new KongSwapDirectService();
   
   // Step 1: Check if user already has a lock canister
   const existingCanister = await kongLocker.get_my_lock_canister();
@@ -983,15 +1879,12 @@ async function lockLPTokens(amount: bigint) {
   // Step 4: Transfer LP tokens to lock canister
   await transferLPTokens(lockCanisterId, amount);
   
-  // Step 5: Verify lock
-  const votingPower = await kongLocker.get_voting_power(
-    await getIdentity().getPrincipal()
-  );
+  // Step 5: Verify lock using direct KongSwap query
+  const positions = await kongSwap.getLPPositions(lockCanisterId);
+  const votingPower = kongSwap.calculateVotingPower(positions);
   
-  if ('Ok' in votingPower) {
-    const usdValue = Number(votingPower.Ok) / 100;
-    console.log(\`Locked value: $\${usdValue.toFixed(2)}\`);
-  }
+  const usdValue = votingPower / 100;
+  console.log(\`Locked value: $\${usdValue.toFixed(2)}\`);
   
   return lockCanisterId;
 }`}</pre>
@@ -1000,14 +1893,20 @@ async function lockLPTokens(amount: bigint) {
       
       <div class="mb-8 bg-gray-900/50 rounded-lg p-6">
         <h3 class="text-xl font-bold text-white mb-3">Voting Power Dashboard</h3>
-        <p class="text-gray-400 mb-4">Example of displaying all users' voting powers.</p>
+        <p class="text-gray-400 mb-4">Example of displaying all users' voting powers using direct KongSwap queries.</p>
         
         <div class="bg-black/50 rounded-lg p-4">
-          <pre class="text-sm text-yellow-400 font-mono overflow-x-auto">{`async function displayVotingPowerLeaderboard() {
+          <pre class="text-sm text-yellow-400 font-mono overflow-x-auto">{`import { KongSwapDirectService } from './services/kongSwapDirect';
+
+async function displayVotingPowerLeaderboard() {
   const kongLocker = await createActor(KONG_LOCKER_ID);
+  const kongSwap = new KongSwapDirectService();
   
-  // Get all voting powers
-  const allPowers = await kongLocker.get_all_voting_powers();
+  // Get all lock canisters
+  const lockCanisters = await kongLocker.get_all_lock_canisters();
+  
+  // Get voting powers using direct KongSwap queries
+  const allPowers = await kongSwap.getAllVotingPowers(lockCanisters);
   
   // Sort by voting power (descending)
   const sorted = allPowers.sort((a, b) => {
@@ -1075,9 +1974,9 @@ async function lockLPTokens(amount: bigint) {
                 <td class="py-3 px-4">Call create_lock_canister() first</td>
               </tr>
               <tr class="border-b border-gray-800">
-                <td class="py-3 px-4 font-mono text-red-400">"User not found"</td>
+                <td class="py-3 px-4 font-mono text-red-400">"User not found" (KongSwap)</td>
                 <td class="py-3 px-4">Not registered on KongSwap</td>
-                <td class="py-3 px-4">Call complete_my_canister_setup()</td>
+                <td class="py-3 px-4">Call complete_my_canister_setup() or fund canister</td>
               </tr>
             </tbody>
           </table>
@@ -1089,30 +1988,35 @@ async function lockLPTokens(amount: bigint) {
         
         <div class="bg-black/50 rounded-lg p-4">
           <pre class="text-sm text-yellow-400 font-mono overflow-x-auto">{`// Always wrap calls in try-catch and handle Result variants
-async function safeGetVotingPower(principal: Principal) {
+async function safeGetVotingPower(lockCanisterPrincipal: Principal) {
   try {
-    const result = await kongLocker.get_voting_power(principal);
+    const kongSwap = new KongSwapDirectService();
+    const positions = await kongSwap.getLPPositions(lockCanisterPrincipal);
+    const votingPower = kongSwap.calculateVotingPower(positions);
+    
+    return { success: true, value: votingPower };
+  } catch (error: any) {
+    // Handle specific errors
+    if (error.message.includes("User not found")) {
+      return { success: false, error: "NOT_REGISTERED", message: error.message };
+    } else {
+      return { success: false, error: "UNKNOWN", message: error.message };
+    }
+  }
+}
+
+// Kong Locker backend errors
+async function safeGetCanisterStatus() {
+  try {
+    const result = await kongLocker.get_detailed_canister_status();
     
     if ('Ok' in result) {
-      return { success: true, value: result.Ok };
+      return { success: true, data: result.Ok };
     } else {
-      // Handle specific errors
-      if (result.Err.includes("No lock canister")) {
-        return { success: false, error: "NOT_FOUND", message: result.Err };
-      } else if (result.Err.includes("User not found")) {
-        return { success: false, error: "NOT_REGISTERED", message: result.Err };
-      } else {
-        return { success: false, error: "UNKNOWN", message: result.Err };
-      }
+      return { success: false, error: result.Err };
     }
-  } catch (error) {
-    // Network or other errors
-    console.error("Call failed:", error);
-    return { 
-      success: false, 
-      error: "NETWORK_ERROR", 
-      message: error.message 
-    };
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
 }`}</pre>
         </div>
@@ -1121,9 +2025,12 @@ async function safeGetVotingPower(principal: Principal) {
 
     <!-- Footer -->
     <div class="bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl p-6 text-center">
-      <p class="text-gray-400 mb-2">Kong Locker Interactive API Documentation v2.0</p>
+      <p class="text-gray-400 mb-2">Kong Locker Interactive API Documentation v2.1</p>
       <p class="text-sm text-gray-500">
-        Canister: <code class="bg-black/30 px-2 py-1 rounded">eazgb-giaaa-aaaap-qqc2q-cai</code>
+        Kong Locker: <code class="bg-black/30 px-2 py-1 rounded">eazgb-giaaa-aaaap-qqc2q-cai</code>
+      </p>
+      <p class="text-sm text-gray-500">
+        KongSwap: <code class="bg-black/30 px-2 py-1 rounded">2ipq2-uqaaa-aaaar-qailq-cai</code>
       </p>
       <p class="text-sm text-gray-500 mt-2">
         Need help? Visit <a href="https://kongswap.io" class="text-blue-400 hover:text-blue-300">KongSwap.io</a>

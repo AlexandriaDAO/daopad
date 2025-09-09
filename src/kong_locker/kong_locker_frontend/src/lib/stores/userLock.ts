@@ -3,6 +3,7 @@ import { Principal } from '@dfinity/principal';
 import { authStore } from './auth';
 import { lpLockingService, LPLockingService } from '../services/lpLocking';
 import { balanceStore, BalanceService } from '../services/balance';
+import { kongSwapService } from '../services/kongSwapDirect';
 
 // Required ICP amount for creating lock canister (2 ICP in e8s)
 const REQUIRED_ICP_E8S = 2n * 100_000_000n; // 2 ICP = 200,000,000 e8s
@@ -14,9 +15,29 @@ const LP_LOCKING_CANISTER_ID = 'eazgb-giaaa-aaaap-qqc2q-cai';
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1000; // 1 second
 
+export interface LPPosition {
+  name: string;           // "ALEX_ckUSDT LP Token"
+  symbol: string;         // "ALEX_ckUSDT"
+  lp_token_id: bigint;   // LP token ID
+  balance: number;        // LP token balance
+  usd_balance: number;    // Total USD value
+  chain_0: string;        // "IC"
+  symbol_0: string;       // "ALEX"
+  address_0: string;      // Token canister
+  amount_0: number;       // Amount of first token
+  usd_amount_0: number;   // USD value of first token
+  chain_1: string;        // "IC"
+  symbol_1: string;       // "ckUSDT"
+  address_1: string;      // Token canister
+  amount_1: number;       // Amount of second token
+  usd_amount_1: number;   // USD value of second token
+  ts: bigint;            // Timestamp
+}
+
 export interface UserLockState {
   canisterId: Principal | null;
   votingPower: number;
+  lpPositions: LPPosition[];
   isCreating: boolean;
   creationStep: string;
   error: string | null;
@@ -32,6 +53,7 @@ export interface UserLockState {
 const initialState: UserLockState = {
   canisterId: null,
   votingPower: 0,
+  lpPositions: [],
   isCreating: false,
   creationStep: '',
   error: null,
@@ -217,16 +239,32 @@ export class UserLockService {
           console.warn('Could not check ICP balance:', error);
         }
         
-        // Get voting power if registered
+        // Get LP positions and calculate voting power if registered
         let votingPower = 0;
+        let lpPositions: LPPosition[] = [];
         if (isRegistered) {
           try {
-            votingPower = await withRetry(
-              () => authenticatedLpService.fetchVotingPower(userPrincipal),
-              'fetch voting power'
+            // Fetch detailed LP positions from KongSwap directly
+            lpPositions = await withRetry(
+              () => kongSwapService.getLPPositions(canisterId),
+              'fetch LP positions'
             );
+            
+            // Calculate voting power from LP positions
+            votingPower = kongSwapService.calculateVotingPower(lpPositions);
+            
+            console.log(`Found ${lpPositions.length} LP positions, total voting power: ${votingPower}`);
           } catch (error) {
-            console.warn('Could not fetch voting power:', error);
+            console.warn('Could not fetch LP positions:', error);
+            // Fallback to old method if new method fails
+            try {
+              votingPower = await withRetry(
+                () => authenticatedLpService.fetchVotingPower(userPrincipal),
+                'fetch voting power (fallback)'
+              );
+            } catch (fallbackError) {
+              console.warn('Fallback voting power fetch also failed:', fallbackError);
+            }
           }
         }
         
@@ -239,6 +277,7 @@ export class UserLockService {
           ...state,
           canisterId,
           votingPower,
+          lpPositions,
           isLoading: false,
           isRegisteredOnKongSwap: isRegistered,
           isBlackholed,
@@ -257,6 +296,7 @@ export class UserLockService {
           ...state,
           canisterId: null,
           votingPower: 0,
+          lpPositions: [],
           isLoading: false,
         }));
       }
@@ -482,11 +522,51 @@ export class UserLockService {
 
   // Mock data methods for testing State D
   enableMockData(): void {
+    const mockPositions: LPPosition[] = [
+      {
+        name: "ALEX_ckUSDT LP Token",
+        symbol: "ALEX_ckUSDT",
+        lp_token_id: 1655n,
+        balance: 4.0,
+        usd_balance: 3.46,
+        chain_0: "IC",
+        symbol_0: "ALEX",
+        address_0: "xkbqi-2qaaa-aaaar-qahqq-cai",
+        amount_0: 9.59,
+        usd_amount_0: 1.74,
+        chain_1: "IC", 
+        symbol_1: "ckUSDT",
+        address_1: "cngnf-vqaaa-aaaag-qcqfq-cai",
+        amount_1: 1.72,
+        usd_amount_1: 1.72,
+        ts: BigInt(Date.now())
+      },
+      {
+        name: "ALEX_ICP LP Token",
+        symbol: "ALEX_ICP", 
+        lp_token_id: 1656n,
+        balance: 2.0,
+        usd_balance: 3.85,
+        chain_0: "IC",
+        symbol_0: "ALEX",
+        address_0: "xkbqi-2qaaa-aaaar-qahqq-cai",
+        amount_0: 10.61,
+        usd_amount_0: 1.93,
+        chain_1: "IC",
+        symbol_1: "ICP",
+        address_1: "ryjl3-tyaaa-aaaaa-aaaba-cai", 
+        amount_1: 0.390290,
+        usd_amount_1: 1.93,
+        ts: BigInt(Date.now())
+      }
+    ];
+    
     userLockStore.update(state => ({
       ...state,
       useMockData: true,
       canisterId: Principal.fromText('rdmx6-jaaaa-aaaah-qcaaa-cai'), // Mock canister ID
-      votingPower: 970, // Mock total voting power
+      votingPower: 731, // Mock total voting power (matching the demo)
+      lpPositions: mockPositions,
     }));
   }
 

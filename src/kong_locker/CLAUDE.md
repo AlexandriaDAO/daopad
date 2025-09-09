@@ -121,17 +121,20 @@ dfx canister --network ic call kong_locker create_lock_canister
 # Check your lock canister
 dfx canister --network ic call kong_locker get_my_lock_canister
 
-# Get voting power for a user
-dfx canister --network ic call kong_locker get_voting_power '(principal "USER_PRINCIPAL")'
-
 # Get all lock canisters
 dfx canister --network ic call kong_locker get_all_lock_canisters
+
+# Get total positions count
+dfx canister --network ic call kong_locker get_total_positions_count
 
 # Check canister status
 dfx canister --network ic call kong_locker get_detailed_canister_status
 
 # Get creator of a lock canister
 dfx canister --network ic call LOCK_CANISTER_ID get_creator
+
+# Query LP positions directly from KongSwap (not Kong Locker)
+dfx canister --network ic call 2ipq2-uqaaa-aaaar-qailq-cai user_balances '("LOCK_CANISTER_PRINCIPAL")'
 ```
 
 ## 🔐 Security Model
@@ -162,12 +165,44 @@ dfx canister --network ic call LOCK_CANISTER_ID get_creator
 - KongSwap API is trusted for balance queries
 - No admin functions or backdoors exist
 
+## 🏗️ Query Architecture
+
+Kong Locker follows a **lean architecture** where:
+1. **Backend only stores** user→lock canister mappings
+2. **LP balance data** is queried directly from KongSwap by the frontend
+3. **No inter-canister calls** for balance queries (removed for efficiency)
+
+### Frontend Integration Pattern
+
+```typescript
+// Step 1: Get lock canister from Kong Locker
+const lockCanister = await kongLocker.get_my_lock_canister();
+
+// Step 2: Query KongSwap directly for LP positions
+const positions = await kongSwap.user_balances(lockCanister.toText());
+
+// Step 3: Calculate voting power client-side
+const votingPower = positions.reduce((sum, p) => sum + p.usd_balance * 100, 0);
+```
+
+### Benefits of Direct Queries
+
+| Aspect | Old (Inter-canister) | New (Direct) |
+|--------|---------------------|-------------|
+| Query Type | Update calls | Query calls |
+| Cost | ~13M cycles per call | Free |
+| Speed | Sequential, 2-5s | Parallel, <500ms |
+| Data Detail | USD totals only | Full LP pool breakdown |
+| Backend Complexity | High | Low (simple storage) |
+
 ## 🔗 External Integrations
 
 ### KongSwap (2ipq2-uqaaa-aaaar-qailq-cai)
-- **user_balances**: Query LP token positions
+- **user_balances**: Query LP token positions (now called directly from frontend)
 - **swap**: Convert ICP to ALEX for registration
 - **Transfer**: Users send LP tokens to lock canisters
+
+**Note**: As of the latest refactor, Kong Locker no longer makes inter-canister calls to KongSwap for balance queries. The frontend queries KongSwap directly for better performance and detailed LP pool breakdowns.
 
 ### ICP Ledger (ryjl3-tyaaa-aaaaa-aaaba-cai)
 - **icrc2_transfer_from**: Take payment from users

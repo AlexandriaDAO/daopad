@@ -1,11 +1,13 @@
 <script lang="ts">
   import { userLockStore } from '../../stores/userLock';
+  
+  export let integrated = false;
 </script>
 
 <!-- Creating State (State B) - show progress -->
-<section class="max-w-lg mx-auto">
-  <div class="kong-panel space-y-4">
-    <h2 class="text-xl font-semibold text-kong-text-primary text-center">Creating Your Lock Canister...</h2>
+<div class="{integrated ? 'border-t border-kong-border/30 pt-6' : 'max-w-lg mx-auto'}">
+  <div class="{integrated ? 'space-y-4' : 'kong-panel space-y-4'}">
+    <h3 class="{integrated ? 'text-lg' : 'text-xl'} font-semibold text-kong-text-primary text-center">Creating Your Lock Canister...</h3>
     
     <div class="space-y-3">
       {#each [
@@ -62,4 +64,4 @@
       </p>
     </div>
   </div>
-</section>
+</div>

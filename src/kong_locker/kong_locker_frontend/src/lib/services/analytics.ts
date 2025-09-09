@@ -1,0 +1,274 @@
+import { HttpAgent, Actor } from '@dfinity/agent';
+import { Principal } from '@dfinity/principal';
+import { kongSwapService, type LPReply } from './kongSwapDirect';
+
+// Kong Locker canister ID
+const KONG_LOCKER_ID = 'eazgb-giaaa-aaaap-qqc2q-cai';
+
+// Types for analytics data
+export interface AnalyticsOverview {
+  total_lock_canisters: bigint;
+  participants: Array<[Principal, Principal]>; // [user, lock_canister]
+  last_updated: bigint;
+}
+
+export interface CanisterListItem {
+  userPrincipal: Principal;
+  lockCanister: Principal;
+  userDisplay: string;        // Truncated for display
+  canisterDisplay: string;    // Truncated for display
+  status: 'unknown' | 'loading' | 'active' | 'empty' | 'error';
+  lastQueried?: number;       // Timestamp when last checked
+  cachedPositions?: LPReply[];
+  cachedValue?: number;       // USD value
+  cachedVotingPower?: number;
+}
+
+export interface SystemStats {
+  totalCanisters: number;
+  totalParticipants: number;
+  estimatedTotalValue: number;
+  lastUpdated: Date;
+}
+
+// Cache management
+interface CacheEntry {
+  data: LPReply[];
+  timestamp: number;
+  votingPower: number;
+  totalUSD: number;
+}
+
+class AnalyticsCache {
+  private cache = new Map<string, CacheEntry>();
+  private readonly TTL = 10 * 60 * 1000; // 10 minutes
+
+  get(canisterId: string): CacheEntry | null {
+    const entry = this.cache.get(canisterId);
+    if (!entry) return null;
+    
+    if (Date.now() - entry.timestamp > this.TTL) {
+      this.cache.delete(canisterId);
+      return null;
+    }
+    
+    return entry;
+  }
+
+  set(canisterId: string, positions: LPReply[]): void {
+    const totalUSD = positions.reduce((sum, pos) => sum + pos.usd_balance, 0);
+    const votingPower = Math.floor(totalUSD * 100);
+    
+    this.cache.set(canisterId, {
+      data: positions,
+      timestamp: Date.now(),
+      votingPower,
+      totalUSD
+    });
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+
+  getStats(): { entries: number; totalSize: number } {
+    return {
+      entries: this.cache.size,
+      totalSize: Array.from(this.cache.values()).reduce((sum, entry) => 
+        sum + JSON.stringify(entry).length, 0
+      )
+    };
+  }
+}
+
+// Kong Locker IDL for analytics
+const kongLockerIdl = ({ IDL }: any) => {
+  const AnalyticsOverview = IDL.Record({
+    'total_lock_canisters': IDL.Nat64,
+    'participants': IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Principal)),
+    'last_updated': IDL.Nat64,
+  });
+
+  return IDL.Service({
+    'get_analytics_overview': IDL.Func([], [AnalyticsOverview], ['query']),
+  });
+};
+
+export class AnalyticsService {
+  private actor: any;
+  private cache = new AnalyticsCache();
+
+  constructor() {
+    const host = 'https://icp0.io';
+    const agent = new HttpAgent({ host });
+    
+    this.actor = Actor.createActor(kongLockerIdl, {
+      agent,
+      canisterId: KONG_LOCKER_ID,
+    });
+  }
+
+  // Get basic analytics overview (fast - single query)
+  async getAnalyticsOverview(): Promise<AnalyticsOverview> {
+    try {
+      const result = await this.actor.get_analytics_overview();
+      return result;
+    } catch (error) {
+      console.error('Failed to fetch analytics overview:', error);
+      throw error;
+    }
+  }
+
+  // Convert overview to display-friendly list
+  async getCanisterList(): Promise<CanisterListItem[]> {
+    const overview = await this.getAnalyticsOverview();
+    
+    return overview.participants.map(([user, lockCanister]) => {
+      const cached = this.cache.get(lockCanister.toText());
+      
+      return {
+        userPrincipal: user,
+        lockCanister: lockCanister,
+        userDisplay: this.truncatePrincipal(user.toText()),
+        canisterDisplay: this.truncatePrincipal(lockCanister.toText()),
+        status: cached ? 'active' : 'unknown',
+        lastQueried: cached?.timestamp,
+        cachedPositions: cached?.data,
+        cachedValue: cached?.totalUSD,
+        cachedVotingPower: cached?.votingPower
+      } as CanisterListItem;
+    });
+  }
+
+  // Get detailed breakdown for specific canister (slower - KongSwap query)
+  async getCanisterDetails(lockCanisterId: Principal): Promise<{
+    positions: LPReply[];
+    totalUSD: number;
+    votingPower: number;
+    summary: {
+      poolCount: number;
+      lastUpdated: Date;
+    }
+  }> {
+    // Check cache first
+    const cached = this.cache.get(lockCanisterId.toText());
+    if (cached) {
+      console.log('Using cached LP positions for:', lockCanisterId.toText());
+      return {
+        positions: cached.data,
+        totalUSD: cached.totalUSD,
+        votingPower: cached.votingPower,
+        summary: {
+          poolCount: cached.data.length,
+          lastUpdated: new Date(cached.timestamp)
+        }
+      };
+    }
+
+    // Query KongSwap for fresh data
+    try {
+      const positions = await kongSwapService.getLPPositions(lockCanisterId);
+      
+      // Cache the results
+      this.cache.set(lockCanisterId.toText(), positions);
+      
+      const totalUSD = positions.reduce((sum, pos) => sum + pos.usd_balance, 0);
+      const votingPower = kongSwapService.calculateVotingPower(positions);
+      
+      return {
+        positions,
+        totalUSD,
+        votingPower,
+        summary: {
+          poolCount: positions.length,
+          lastUpdated: new Date()
+        }
+      };
+    } catch (error) {
+      console.error('Failed to fetch canister details:', error);
+      throw error;
+    }
+  }
+
+  // Calculate system-wide statistics (batch load subset for efficiency)
+  async calculateSystemStats(limit: number = 20): Promise<SystemStats> {
+    const overview = await this.getAnalyticsOverview();
+    const totalCanisters = Number(overview.total_lock_canisters);
+    
+    // For system stats, only load a subset to get estimates
+    const sampleCanisters = overview.participants.slice(0, limit);
+    
+    let totalValue = 0;
+    let successfulQueries = 0;
+    
+    // Query subset in parallel with timeout
+    const queries = sampleCanisters.map(async ([user, canister]) => {
+      try {
+        const details = await this.getCanisterDetails(canister);
+        return details.totalUSD;
+      } catch {
+        return 0; // Failed queries don't contribute to estimate
+      }
+    });
+    
+    const results = await Promise.allSettled(queries);
+    
+    results.forEach((result) => {
+      if (result.status === 'fulfilled' && result.value > 0) {
+        totalValue += result.value;
+        successfulQueries++;
+      }
+    });
+    
+    // Extrapolate to full system if we have a good sample
+    const estimatedTotalValue = successfulQueries > 0 
+      ? (totalValue / successfulQueries) * totalCanisters 
+      : 0;
+    
+    return {
+      totalCanisters,
+      totalParticipants: totalCanisters, // 1:1 mapping currently
+      estimatedTotalValue,
+      lastUpdated: new Date(Number(overview.last_updated) / 1_000_000) // Convert nanoseconds to milliseconds
+    };
+  }
+
+  // Utility function to truncate principals for display
+  private truncatePrincipal(principal: string): string {
+    if (principal.length <= 20) return principal;
+    return `${principal.substring(0, 8)}...${principal.substring(principal.length - 6)}`;
+  }
+
+  // Batch preload popular canisters (optional optimization)
+  async preloadTopCanisters(limit: number = 10): Promise<void> {
+    try {
+      const overview = await this.getAnalyticsOverview();
+      const topCanisters = overview.participants.slice(0, limit);
+      
+      // Load in background, don't await all
+      topCanisters.forEach(async ([user, canister]) => {
+        try {
+          await this.getCanisterDetails(canister);
+          console.log('Preloaded:', canister.toText());
+        } catch (error) {
+          // Silent failure for background preloading
+          console.debug('Preload failed for:', canister.toText(), error);
+        }
+      });
+    } catch (error) {
+      console.warn('Failed to preload canisters:', error);
+    }
+  }
+
+  // Cache management
+  clearCache(): void {
+    this.cache.clear();
+  }
+
+  getCacheStats() {
+    return this.cache.getStats();
+  }
+}
+
+// Export singleton instance
+export const analyticsService = new AnalyticsService();

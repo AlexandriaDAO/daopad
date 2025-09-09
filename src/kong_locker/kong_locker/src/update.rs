@@ -9,7 +9,6 @@ use candid::{Principal, Nat, Encode};
 use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc2::transfer_from::{TransferFromArgs, TransferFromError};
 use icrc_ledger_types::icrc1::transfer::{TransferArg as TransferArgs, TransferError};
-use crate::types::UserBalancesReply;
 use crate::storage::{StorablePrincipal, USER_LOCK_CANISTERS, LOCK_CANISTER_WASM};
 
 /// Create and immediately blackhole a lock canister (with 2 ICP payment required)
@@ -226,8 +225,9 @@ pub async fn complete_my_canister_setup() -> Result<String, String> {
     }
     
     // Check 3: Is it registered with KongSwap?
+    // We only care about whether the user exists, not the actual balance data
     let kong_backend = Principal::from_text("2ipq2-uqaaa-aaaar-qailq-cai").unwrap();
-    let kong_check: Result<(Result<Vec<UserBalancesReply>, String>,), _> = ic_cdk::call(
+    let kong_check: Result<(Result<Vec<candid::Empty>, String>,), _> = ic_cdk::call(
         kong_backend,
         "user_balances",
         (canister_id.to_text(),)

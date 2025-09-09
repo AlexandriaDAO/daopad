@@ -2,7 +2,7 @@ use ic_cdk::{query, update};
 use candid::{Principal, Nat};
 use ic_cdk::api::management_canister::main::{canister_status, CanisterIdRecord};
 
-use crate::types::{UserBalancesReply, DetailedCanisterStatus};
+use crate::types::{DetailedCanisterStatus, AnalyticsOverview};
 use crate::storage::{StorablePrincipal, USER_LOCK_CANISTERS};
 
 /// Get user's lock canister
@@ -22,44 +22,6 @@ pub fn get_all_lock_canisters() -> Vec<(Principal, Principal)> {
             .map(|(user, canister)| (user.0, canister.0))
             .collect()
     })
-}
-
-/// Get voting power by querying KongSwap
-/// Note: This is marked as #[update] because it makes an inter-canister call,
-/// but logically it's a read-only query operation
-#[update]
-pub async fn get_voting_power(user: Principal) -> Result<Nat, String> {
-    let lock_canister = USER_LOCK_CANISTERS.with(|c| 
-        c.borrow().get(&StorablePrincipal(user)).map(|sp| sp.0)
-    ).ok_or("No lock canister found")?;
-    
-    // Query KongSwap for LP balance at lock canister principal
-    let kong_backend = Principal::from_text("2ipq2-uqaaa-aaaar-qailq-cai").unwrap();
-    
-    let result: Result<(Result<Vec<UserBalancesReply>, String>,), _> = ic_cdk::call(
-        kong_backend,
-        "user_balances",
-        (lock_canister.to_text(),)
-    ).await;
-    
-    match result {
-        Ok((Ok(balances),)) => {
-            // Sum LP balances USD value for voting power
-            let total_usd: f64 = balances.iter()
-                .map(|balance| match balance {
-                    UserBalancesReply::LP(lp) => lp.usd_balance,
-                })
-                .sum();
-            
-            // Convert USD to Nat (multiply by 100 to preserve 2 decimal places)
-            Ok(Nat::from((total_usd * 100.0) as u64))
-        },
-        Ok((Err(msg),)) if msg.contains("User not found") => {
-            // Not registered yet
-            Ok(Nat::from(0u64))
-        },
-        _ => Ok(Nat::from(0u64))
-    }
 }
 
 /// Get detailed status including cycles and blackhole verification
@@ -99,78 +61,16 @@ pub fn get_total_positions_count() -> u64 {
     USER_LOCK_CANISTERS.with(|c| c.borrow().len() as u64)
 }
 
-/// Get total value locked across all users
-/// Note: This makes multiple inter-canister calls so must be an update call
-#[update]
-pub async fn get_total_value_locked() -> Result<Nat, String> {
-    let kong_backend = Principal::from_text("2ipq2-uqaaa-aaaar-qailq-cai").unwrap();
-    let mut total_usd = 0.0;
+/// Get analytics overview for all lock canisters
+#[query]
+pub fn get_analytics_overview() -> AnalyticsOverview {
+    let participants = get_all_lock_canisters();
+    let total_count = participants.len() as u64;
+    let current_time = ic_cdk::api::time();
     
-    // Get all lock canisters
-    let lock_canisters = USER_LOCK_CANISTERS.with(|c| {
-        c.borrow().iter()
-            .map(|(_, canister)| canister.0)
-            .collect::<Vec<Principal>>()
-    });
-    
-    // Query each canister's balance
-    for canister in lock_canisters {
-        let result: Result<(Result<Vec<UserBalancesReply>, String>,), _> = ic_cdk::call(
-            kong_backend,
-            "user_balances",
-            (canister.to_text(),)
-        ).await;
-        
-        if let Ok((Ok(balances),)) = result {
-            let canister_usd: f64 = balances.iter()
-                .map(|balance| match balance {
-                    UserBalancesReply::LP(lp) => lp.usd_balance,
-                })
-                .sum();
-            total_usd += canister_usd;
-        }
+    AnalyticsOverview {
+        total_lock_canisters: total_count,
+        participants,
+        last_updated: current_time,
     }
-    
-    // Convert USD to Nat (multiply by 100 to preserve 2 decimal places)
-    Ok(Nat::from((total_usd * 100.0) as u64))
-}
-
-/// Get all voting powers for all users  
-/// Returns list of (user_principal, voting_power_in_cents)
-#[update]
-pub async fn get_all_voting_powers() -> Vec<(Principal, Nat)> {
-    let kong_backend = Principal::from_text("2ipq2-uqaaa-aaaar-qailq-cai").unwrap();
-    let mut results = Vec::new();
-    
-    // Get all user-canister pairs
-    let user_canisters = USER_LOCK_CANISTERS.with(|c| {
-        c.borrow().iter()
-            .map(|(user, canister)| (user.0, canister.0))
-            .collect::<Vec<(Principal, Principal)>>()
-    });
-    
-    // Query each canister's balance
-    for (user, canister) in user_canisters {
-        let result: Result<(Result<Vec<UserBalancesReply>, String>,), _> = ic_cdk::call(
-            kong_backend,
-            "user_balances",
-            (canister.to_text(),)
-        ).await;
-        
-        let voting_power = match result {
-            Ok((Ok(balances),)) => {
-                let total_usd: f64 = balances.iter()
-                    .map(|balance| match balance {
-                        UserBalancesReply::LP(lp) => lp.usd_balance,
-                    })
-                    .sum();
-                Nat::from((total_usd * 100.0) as u64)
-            },
-            _ => Nat::from(0u64)
-        };
-        
-        results.push((user, voting_power));
-    }
-    
-    results
 }
