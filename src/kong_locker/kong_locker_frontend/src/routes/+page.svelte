@@ -127,7 +127,7 @@
   </div>
 
   <!-- Unified Information Dashboard -->
-  <div class="max-w-7xl mx-auto">
+  <div class="max-w-7xl mx-auto px-4 pt-20">
     <div class="kong-panel space-y-6">
       <!-- Dashboard Header -->
       <div class="flex items-center justify-between border-b border-kong-border/30 pb-4">
@@ -150,13 +150,17 @@
         </button>
       </div>
       
-      <!-- Main Dashboard Grid -->
-      <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      <!-- Main Dashboard Content -->
+      <div class="space-y-6">
         
-        <!-- Global Statistics + User State -->
-        <div class="xl:col-span-9 space-y-6">
-          
-          <!-- Global Statistics Row -->
+        <!-- User Connection Info (when authenticated) -->
+        {#if $isAuthenticated}
+          <div class="bg-kong-bg-secondary/30 border border-kong-border/30 rounded-lg p-6">
+            <UserInfo />
+          </div>
+        {/if}
+        
+        <!-- Global Statistics Row -->
           <div>
             <h3 class="text-lg font-semibold text-kong-text-primary mb-4 flex items-center">
               <svg class="w-5 h-5 mr-2 text-kong-accent-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -222,10 +226,10 @@
                 </p>
               </div>
             {/if}
-          </div>
-          
-          <!-- User State Content -->
-          <div>
+        </div>
+        
+        <!-- User State Content -->
+        <div>
             {#if $userState === 'loading'}
               <!-- Loading state - integrated -->
               <div class="border-t border-kong-border/30 pt-6">
@@ -248,18 +252,7 @@
             {:else if $userState === 'needs-setup'}
               <StateE_NeedsSetup integrated={true} />
             {/if}
-          </div>
         </div>
-        
-        <!-- User Connection Info - Right Sidebar -->
-        {#if $isAuthenticated}
-          <div class="xl:col-span-3">
-            <div class="bg-kong-bg-secondary/30 border border-kong-border/30 rounded-lg p-6 h-fit">
-              <UserInfo />
-            </div>
-          </div>
-        {/if}
-        
       </div>
       
       <!-- Error Display -->
@@ -281,7 +274,7 @@
   
   <!-- User errors are now handled within the unified dashboard -->
   {#if $userLockStore.error}
-    <section class="max-w-7xl mx-auto">
+    <section class="max-w-7xl mx-auto px-4">
       <div class="bg-kong-error/10 border-kong-error/20 border rounded-lg p-4">
         <div class="flex items-center justify-between">
           <p class="text-sm text-kong-error">{$userLockStore.error}</p>
@@ -298,7 +291,7 @@
   
   <!-- Developer Debug Panel (only in development) -->
   {#if showDebugPanel && $isAuthenticated}
-    <section class="max-w-lg mx-auto mt-8">
+    <section class="max-w-lg mx-auto px-4 mt-8">
       <div class="kong-panel bg-kong-accent-orange/5 border-kong-accent-orange/20 space-y-4">
         <h3 class="text-sm font-semibold text-kong-accent-orange">🛠️ Developer Debug Panel</h3>
         <p class="text-xs text-kong-text-secondary">Testing controls (only visible in development)</p>

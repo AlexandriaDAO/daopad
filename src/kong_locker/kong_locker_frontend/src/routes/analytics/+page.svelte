@@ -4,6 +4,7 @@
   import { analyticsService, type CanisterListItem, type SystemStats } from '../../lib/services/analytics';
   import type { LPReply } from '../../lib/services/kongSwapDirect';
   import LPPositionCard from '../../lib/components/LPPositionCard.svelte';
+  import TokenBreakdown from '../../lib/components/TokenBreakdown.svelte';
 
   // State management
   let loading = true;
@@ -19,6 +20,13 @@
   let detailError = '';
   let detailPositions: LPReply[] = [];
   let detailSummary: any = null;
+  
+  // Token breakdown state
+  let tokenBreakdown = new Map<string, {
+    totalValue: number;
+    lpPools: Set<string>;
+    totalTokenAmount: number;
+  }>();
 
   // Load analytics data
   async function loadAnalytics() {
@@ -33,6 +41,11 @@
       // Load system stats (slower, with sample data)
       systemStats = await analyticsService.calculateSystemStats(20);
       console.log('System stats loaded:', systemStats);
+      
+      // Update token breakdown if available
+      if (systemStats.tokenBreakdown) {
+        tokenBreakdown = systemStats.tokenBreakdown;
+      }
       
       // Optional: Preload popular canisters in background
       analyticsService.preloadTopCanisters(10);
@@ -80,6 +93,9 @@
           cachedVotingPower: details.votingPower
         };
       }
+      
+      // Update token breakdown with fresh data from cache
+      tokenBreakdown = analyticsService.getTokenBreakdownFromCache();
     } catch (err) {
       console.error('Failed to load canister details:', err);
       detailError = err instanceof Error ? err.message : 'Failed to load position details';
@@ -212,6 +228,14 @@
           <div class="text-xs text-kong-text-secondary">Operational</div>
         </div>
       </div>
+    {/if}
+
+    <!-- Token Breakdown -->
+    {#if systemStats}
+      <TokenBreakdown 
+        tokenData={tokenBreakdown || new Map()} 
+        totalValue={systemStats.estimatedTotalValue || 0}
+      />
     {/if}
 
     <!-- Canister List -->

@@ -7,9 +7,9 @@ export default {
         // KongSwap Background Colors - Much better contrast for UI elements
         'kong-bg': {
           primary: 'rgb(13 17 28)',      // #0D111C - Dark background
-          secondary: 'rgb(35 42 58)',    // #232A3A - Much lighter for panels 
-          tertiary: 'rgb(45 52 68)',     // #2D3444 - Even lighter for cards
-          surface: 'rgb(55 62 78)',      // #373E4E - Lightest for inputs/surfaces
+          secondary: 'rgb(28 35 51)',    // #1C2333 - Darker blue-gray for main panels
+          tertiary: 'rgb(39 48 66)',     // #273042 - Medium contrast for inner cards
+          surface: 'rgb(51 62 84)',      // #333E54 - Good contrast for nested elements
         },
         
         // Text Colors - Exact KongSwap values

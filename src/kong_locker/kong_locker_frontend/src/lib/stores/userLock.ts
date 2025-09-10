@@ -176,8 +176,22 @@ export class UserLockService {
     try {
       // Get authenticated identity to make the call
       const authState = get(authStore);
-      if (!authState.identity) {
-        throw new Error('No authenticated identity available');
+      
+      // Verify authentication is still valid before using the identity
+      if (!authState.authClient) {
+        throw new Error('Auth client not initialized');
+      }
+      
+      const isAuthenticated = await authState.authClient.isAuthenticated();
+      if (!isAuthenticated || !authState.identity) {
+        // Clear stale auth state
+        authStore.update(state => ({
+          ...state,
+          isAuthenticated: false,
+          identity: null,
+          principal: null
+        }));
+        throw new Error('Authentication expired. Please log in again.');
       }
       
       // Create an authenticated lpLocking service for this user
@@ -314,10 +328,28 @@ export class UserLockService {
   async createLockCanister(): Promise<void> {
     // SAFETY CHECK: First verify user doesn't already have a canister
     const authState = get(authStore);
-    if (!authState.principal) {
+    
+    // Verify authentication is still valid
+    if (!authState.authClient) {
       userLockStore.update(state => ({
         ...state,
-        error: 'Please connect your wallet first',
+        error: 'Auth client not initialized',
+      }));
+      return;
+    }
+    
+    const isAuthenticated = await authState.authClient.isAuthenticated();
+    if (!isAuthenticated || !authState.principal) {
+      // Clear stale auth state
+      authStore.update(state => ({
+        ...state,
+        isAuthenticated: false,
+        identity: null,
+        principal: null
+      }));
+      userLockStore.update(state => ({
+        ...state,
+        error: 'Authentication expired. Please log in again.',
       }));
       return;
     }

@@ -29,6 +29,11 @@ export interface SystemStats {
   totalParticipants: number;
   estimatedTotalValue: number;
   lastUpdated: Date;
+  tokenBreakdown?: Map<string, {
+    totalValue: number;
+    lpPools: Set<string>;
+    totalTokenAmount: number;
+  }>;
 }
 
 // Cache management
@@ -78,6 +83,10 @@ class AnalyticsCache {
         sum + JSON.stringify(entry).length, 0
       )
     };
+  }
+  
+  getAllEntries(): Map<string, CacheEntry> {
+    return new Map(this.cache);
   }
 }
 
@@ -200,23 +209,66 @@ export class AnalyticsService {
     
     let totalValue = 0;
     let successfulQueries = 0;
+    const tokenBreakdown = new Map<string, {
+      totalValue: number;
+      lpPools: Set<string>;
+      totalTokenAmount: number;
+    }>();
     
     // Query subset in parallel with timeout
     const queries = sampleCanisters.map(async ([user, canister]) => {
       try {
         const details = await this.getCanisterDetails(canister);
-        return details.totalUSD;
+        return { 
+          totalUSD: details.totalUSD,
+          positions: details.positions 
+        };
       } catch {
-        return 0; // Failed queries don't contribute to estimate
+        return { totalUSD: 0, positions: [] }; // Failed queries don't contribute to estimate
       }
     });
     
     const results = await Promise.allSettled(queries);
     
     results.forEach((result) => {
-      if (result.status === 'fulfilled' && result.value > 0) {
-        totalValue += result.value;
+      if (result.status === 'fulfilled' && result.value.totalUSD > 0) {
+        totalValue += result.value.totalUSD;
         successfulQueries++;
+        
+        // Aggregate token data from positions
+        result.value.positions.forEach(position => {
+          // Process token 0
+          if (position.symbol_0) {
+            if (!tokenBreakdown.has(position.symbol_0)) {
+              tokenBreakdown.set(position.symbol_0, {
+                totalValue: 0,
+                lpPools: new Set(),
+                totalTokenAmount: 0
+              });
+            }
+            const token0Data = tokenBreakdown.get(position.symbol_0)!;
+            // Assume each token contributes half the USD value of the LP position
+            token0Data.totalValue += position.usd_balance / 2;
+            token0Data.lpPools.add(position.symbol);
+            token0Data.totalTokenAmount += position.amount_0;
+          }
+          
+          // Process token 1
+          if (position.symbol_1) {
+            if (!tokenBreakdown.has(position.symbol_1)) {
+              tokenBreakdown.set(position.symbol_1, {
+                totalValue: 0,
+                lpPools: new Set(),
+                totalTokenAmount: 0
+              });
+            }
+            const token1Data = tokenBreakdown.get(position.symbol_1)!;
+            // Assume each token contributes half the USD value of the LP position
+            token1Data.totalValue += position.usd_balance / 2;
+            token1Data.lpPools.add(position.symbol);
+            token1Data.totalTokenAmount += position.amount_1;
+          }
+        });
       }
     });
     
@@ -225,11 +277,21 @@ export class AnalyticsService {
       ? (totalValue / successfulQueries) * totalCanisters 
       : 0;
     
+    // Scale up token breakdown estimates
+    if (successfulQueries > 0) {
+      const scaleFactor = totalCanisters / successfulQueries;
+      tokenBreakdown.forEach(tokenData => {
+        tokenData.totalValue *= scaleFactor;
+        tokenData.totalTokenAmount *= scaleFactor;
+      });
+    }
+    
     return {
       totalCanisters,
       totalParticipants: totalCanisters, // 1:1 mapping currently
       estimatedTotalValue,
-      lastUpdated: new Date(Number(overview.last_updated) / 1_000_000) // Convert nanoseconds to milliseconds
+      lastUpdated: new Date(Number(overview.last_updated) / 1_000_000), // Convert nanoseconds to milliseconds
+      tokenBreakdown
     };
   }
 
@@ -258,6 +320,56 @@ export class AnalyticsService {
     } catch (error) {
       console.warn('Failed to preload canisters:', error);
     }
+  }
+
+  // Get token breakdown from currently cached data
+  getTokenBreakdownFromCache(): Map<string, {
+    totalValue: number;
+    lpPools: Set<string>;
+    totalTokenAmount: number;
+  }> {
+    const tokenBreakdown = new Map<string, {
+      totalValue: number;
+      lpPools: Set<string>;
+      totalTokenAmount: number;
+    }>();
+    
+    // Aggregate from all cached entries
+    this.cache.getAllEntries().forEach((entry) => {
+      entry.data.forEach(position => {
+        // Process token 0
+        if (position.symbol_0) {
+          if (!tokenBreakdown.has(position.symbol_0)) {
+            tokenBreakdown.set(position.symbol_0, {
+              totalValue: 0,
+              lpPools: new Set(),
+              totalTokenAmount: 0
+            });
+          }
+          const token0Data = tokenBreakdown.get(position.symbol_0)!;
+          token0Data.totalValue += position.usd_balance / 2;
+          token0Data.lpPools.add(position.symbol);
+          token0Data.totalTokenAmount += position.amount_0;
+        }
+        
+        // Process token 1
+        if (position.symbol_1) {
+          if (!tokenBreakdown.has(position.symbol_1)) {
+            tokenBreakdown.set(position.symbol_1, {
+              totalValue: 0,
+              lpPools: new Set(),
+              totalTokenAmount: 0
+            });
+          }
+          const token1Data = tokenBreakdown.get(position.symbol_1)!;
+          token1Data.totalValue += position.usd_balance / 2;
+          token1Data.lpPools.add(position.symbol);
+          token1Data.totalTokenAmount += position.amount_1;
+        }
+      });
+    });
+    
+    return tokenBreakdown;
   }
 
   // Cache management
