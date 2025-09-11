@@ -590,6 +590,24 @@ export class UserLockService {
         amount_1: 0.390290,
         usd_amount_1: 1.93,
         ts: BigInt(Date.now())
+      },
+      {
+        name: "BOB_ICP LP Token",
+        symbol: "BOB_ICP",
+        lp_token_id: 1662n,
+        balance: 0.786633,
+        usd_balance: 1.94,
+        chain_0: "IC",
+        symbol_0: "BOB",
+        address_0: "7pail-xaaaa-aaaas-aabmq-cai",
+        amount_0: 4.47,
+        usd_amount_0: 0.97,
+        chain_1: "IC",
+        symbol_1: "ICP",
+        address_1: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+        amount_1: 0.20,
+        usd_amount_1: 0.97,
+        ts: BigInt(Date.now())
       }
     ];
     
@@ -597,7 +615,7 @@ export class UserLockService {
       ...state,
       useMockData: true,
       canisterId: Principal.fromText('rdmx6-jaaaa-aaaah-qcaaa-cai'), // Mock canister ID
-      votingPower: 731, // Mock total voting power (matching the demo)
+      votingPower: 925, // Updated total voting power (731 + 194 for BOB)
       lpPositions: mockPositions,
     }));
   }

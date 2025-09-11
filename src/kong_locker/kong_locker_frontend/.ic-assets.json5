@@ -23,5 +23,35 @@
     "headers": {
       "Content-Type": "text/css"
     }
+  },
+  {
+    "match": "**/*.png",
+    "headers": {
+      "Content-Type": "image/png"
+    }
+  },
+  {
+    "match": "**/*.jpg",
+    "headers": {
+      "Content-Type": "image/jpeg"
+    }
+  },
+  {
+    "match": "**/*.jpeg", 
+    "headers": {
+      "Content-Type": "image/jpeg"
+    }
+  },
+  {
+    "match": "**/*.gif",
+    "headers": {
+      "Content-Type": "image/gif"
+    }
+  },
+  {
+    "match": "**/*.svg",
+    "headers": {
+      "Content-Type": "image/svg+xml"
+    }
   }
 ]

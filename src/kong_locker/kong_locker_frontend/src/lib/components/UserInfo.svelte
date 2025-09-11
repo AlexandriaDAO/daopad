@@ -70,10 +70,15 @@
       </div>
     </div>
     
-    <!-- Principal -->
+    <!-- Principal ID -->
     <div class="space-y-2">
       <div class="flex items-center justify-between">
-        <span class="text-sm font-medium text-kong-text-primary">Principal ID</span>
+        <div class="flex items-center space-x-2">
+          <span class="text-sm font-medium text-kong-text-primary">Principal ID</span>
+          <div class="bg-kong-accent-blue/20 px-2 py-1 rounded-full">
+            <span class="text-xs font-semibold text-kong-accent-blue">WALLET ADDRESS</span>
+          </div>
+        </div>
         <button 
           on:click={copyPrincipal}
           class="flex items-center space-x-1 px-2 py-1 text-sm text-kong-accent-green hover:bg-kong-accent-green/10 rounded-md transition-all duration-200"
@@ -88,9 +93,14 @@
           {/if}
         </button>
       </div>
-      <p class="text-sm font-mono text-kong-text-primary bg-kong-bg-tertiary/50 p-3 rounded-lg border">
-        {truncatePrincipal($principal.toString())}
-      </p>
+      <div class="bg-kong-bg-tertiary/50 p-3 rounded-lg border border-kong-border/50">
+        <p class="text-sm font-mono text-kong-text-primary mb-2">
+          {truncatePrincipal($principal.toString())}
+        </p>
+        <p class="text-xs text-kong-text-secondary">
+          <strong>For ICP only</strong> • Send LP tokens to your Lock Address instead
+        </p>
+      </div>
     </div>
     
     <!-- ICP Balance -->

@@ -8,6 +8,7 @@
   let copySuccess = '';
   let mobileMenuOpen = false;
   let expandedSections: { [key: string]: boolean } = {};
+  let developerSectionExpanded = false;
   
   function toggleExpanded(key: string) {
     expandedSections[key] = !expandedSections[key];
@@ -32,8 +33,13 @@
   // KongSwap Actor for LP position queries
   let kongSwapActor: any = null;
   
-  const sections = [
+  const userSections = [
     { id: 'introduction', title: 'Introduction', icon: '📚' },
+    { id: 'transfer-guide', title: 'LP Token Transfer Guide', icon: '🚀' },
+    { id: 'cross-site-verification', title: 'Cross-Site Identity & Integration', icon: '🔗' }
+  ];
+  
+  const developerSections = [
     { id: 'overview', title: 'API Overview', icon: '🔍' },
     { id: 'query-functions', title: 'Query Functions', icon: '🔎' },
     { id: 'update-functions', title: 'Update Functions', icon: '✏️' },
@@ -43,6 +49,8 @@
     { id: 'examples', title: 'Integration Examples', icon: '💡' },
     { id: 'errors', title: 'Error Handling', icon: '⚠️' }
   ];
+  
+  const sections = [...userSections, ...developerSections];
   
   // IDL for LP Locking canister (current interface)
   const lpLockingIdl = ({ IDL }: any) => {
@@ -348,19 +356,44 @@
   <aside class="lg:hidden fixed top-0 left-0 w-80 h-full bg-kong-bg-secondary border-r border-kong-border z-40 transform transition-transform duration-300">
     <div class="p-6 pt-20">
       <h2 class="text-xl font-bold text-white mb-6">Documentation</h2>
-      <nav class="space-y-2">
-        {#each sections as section}
-          <button
-            on:click={() => scrollToSection(section.id)}
-            class="w-full text-left px-4 py-3 rounded-lg transition-all duration-200 flex items-center gap-3
-                   {activeSection === section.id 
-                     ? 'bg-blue-600/20 text-blue-400 border-l-2 border-blue-400' 
-                     : 'text-gray-400 hover:text-white hover:bg-gray-800/50'}"
-          >
-            <span class="text-lg">{section.icon}</span>
-            <span class="text-sm">{section.title}</span>
-          </button>
-        {/each}
+      <nav class="space-y-4">
+        <!-- User Guide Section -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">User Guide</h3>
+          <div class="space-y-2">
+            {#each userSections as section}
+              <button
+                on:click={() => scrollToSection(section.id)}
+                class="w-full text-left px-4 py-3 rounded-lg transition-all duration-200 flex items-center gap-3
+                       {activeSection === section.id 
+                         ? 'bg-blue-600/20 text-blue-400 border-l-2 border-blue-400' 
+                         : 'text-gray-400 hover:text-white hover:bg-gray-800/50'}"
+              >
+                <span class="text-lg">{section.icon}</span>
+                <span class="text-sm">{section.title}</span>
+              </button>
+            {/each}
+          </div>
+        </div>
+        
+        <!-- Developer Integration Section -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Developer Integration</h3>
+          <div class="space-y-2">
+            {#each developerSections as section}
+              <button
+                on:click={() => scrollToSection(section.id)}
+                class="w-full text-left px-4 py-3 rounded-lg transition-all duration-200 flex items-center gap-3
+                       {activeSection === section.id 
+                         ? 'bg-blue-600/20 text-blue-400 border-l-2 border-blue-400' 
+                         : 'text-gray-400 hover:text-white hover:bg-gray-800/50'}"
+              >
+                <span class="text-lg">{section.icon}</span>
+                <span class="text-sm">{section.title}</span>
+              </button>
+            {/each}
+          </div>
+        </div>
       </nav>
     </div>
   </aside>
@@ -371,19 +404,44 @@
   <aside class="hidden lg:block w-64 sticky top-8 h-fit">
     <div class="bg-kong-bg-secondary rounded-2xl p-6 border border-kong-border">
       <h2 class="text-xl font-bold text-white mb-6">Documentation</h2>
-      <nav class="space-y-2">
-        {#each sections as section}
-          <button
-            on:click={() => scrollToSection(section.id)}
-            class="w-full text-left px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2
-                   {activeSection === section.id 
-                     ? 'bg-blue-600/20 text-blue-400 border-l-2 border-blue-400' 
-                     : 'text-gray-400 hover:text-white hover:bg-gray-800/50'}"
-          >
-            <span>{section.icon}</span>
-            <span class="text-sm">{section.title}</span>
-          </button>
-        {/each}
+      <nav class="space-y-4">
+        <!-- User Guide Section -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">User Guide</h3>
+          <div class="space-y-2">
+            {#each userSections as section}
+              <button
+                on:click={() => scrollToSection(section.id)}
+                class="w-full text-left px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2
+                       {activeSection === section.id 
+                         ? 'bg-blue-600/20 text-blue-400 border-l-2 border-blue-400' 
+                         : 'text-gray-400 hover:text-white hover:bg-gray-800/50'}"
+              >
+                <span>{section.icon}</span>
+                <span class="text-sm">{section.title}</span>
+              </button>
+            {/each}
+          </div>
+        </div>
+        
+        <!-- Developer Integration Section -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Developer Integration</h3>
+          <div class="space-y-2">
+            {#each developerSections as section}
+              <button
+                on:click={() => scrollToSection(section.id)}
+                class="w-full text-left px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2
+                       {activeSection === section.id 
+                         ? 'bg-blue-600/20 text-blue-400 border-l-2 border-blue-400' 
+                         : 'text-gray-400 hover:text-white hover:bg-gray-800/50'}"
+              >
+                <span>{section.icon}</span>
+                <span class="text-sm">{section.title}</span>
+              </button>
+            {/each}
+          </div>
+        </div>
       </nav>
     </div>
   </aside>
@@ -448,7 +506,7 @@
         <div class="bg-blue-900/20 border border-blue-800 rounded-lg p-4">
           <h3 class="text-lg font-semibold text-blue-400 mb-2">How It Works</h3>
           <ol class="list-decimal list-inside text-gray-300 space-y-1 text-sm">
-            <li>Pay 2 ICP to create your personal lock canister</li>
+            <li>Pay 2 ICP to create your personal lock canister (1 ICP buys ALEX in the canister which is burned forever, 1 ICP goes to ALEX stakers to offset canister creation costs)</li>
             <li>Canister is funded, registered on KongSwap, then blackholed</li>
             <li>Send LP tokens to your canister - they're locked forever</li>
             <li>Query your positions directly from KongSwap using your canister ID</li>
@@ -457,6 +515,289 @@
       </div>
     </section>
 
+    <!-- LP Token Transfer Guide Section -->
+    <section id="transfer-guide" class="mb-12 bg-kong-bg-secondary rounded-2xl p-8 border border-kong-border">
+      <h2 class="text-3xl font-bold text-white mb-6">🚀 How to Transfer LP Tokens</h2>
+      
+      <!-- Address Guide -->
+      <div class="bg-kong-accent-blue/10 border border-kong-accent-blue/30 rounded-lg p-6 mb-8">
+        <div class="flex items-start space-x-3">
+          <div class="text-2xl">💡</div>
+          <div>
+            <h3 class="text-xl font-bold text-kong-accent-blue mb-3">Understanding Your Addresses</h3>
+            <div class="space-y-3 text-gray-300">
+              <p>Kong Locker shows you two different addresses:</p>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div class="bg-kong-accent-blue/20 p-4 rounded-lg border border-kong-accent-blue/30">
+                  <h4 class="font-bold text-kong-accent-blue mb-2">Principal ID (Wallet Address)</h4>
+                  <p class="text-sm">For ICP transactions only</p>
+                </div>
+                <div class="bg-kong-accent-green/20 p-4 rounded-lg border border-kong-accent-green/30">
+                  <h4 class="font-bold text-kong-accent-green mb-2">Lock Address (Canister Address)</h4>
+                  <p class="text-sm">For LP token transfers</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step by Step Guide with Integrated Instructions -->
+      <div class="space-y-6">
+        <h3 class="text-2xl font-bold text-white mb-4">Step-by-Step Transfer Process</h3>
+        
+        <!-- Step 1 -->
+        <div class="bg-kong-accent-blue/10 border border-kong-accent-blue/30 rounded-lg p-6">
+          <div class="flex items-center space-x-3 mb-4">
+            <div class="w-10 h-10 bg-kong-accent-blue rounded-full flex items-center justify-center text-white font-bold text-lg">1</div>
+            <h4 class="text-xl font-bold text-kong-accent-blue">Create Lock Canister</h4>
+          </div>
+          <p class="text-gray-300 mb-4">Connect your wallet and create your lock canister for 2 ICP. This gives you a permanent lock address.</p>
+          <div class="bg-kong-accent-blue/20 p-4 rounded border border-kong-accent-blue/30">
+            <p class="text-sm text-gray-300">
+              <strong>What happens:</strong> You pay 2 ICP (1 ICP for KongSwap registration, 1 ICP for canister operation). 
+              The system creates your personal lock canister and immediately makes it autonomous (no controllers).
+            </p>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="bg-kong-accent-green/10 border border-kong-accent-green/30 rounded-lg p-6">
+          <div class="flex items-center space-x-3 mb-4">
+            <div class="w-10 h-10 bg-kong-accent-green rounded-full flex items-center justify-center text-white font-bold text-lg">2</div>
+            <h4 class="text-xl font-bold text-kong-accent-green">Copy Your Lock Address</h4>
+          </div>
+          <p class="text-gray-300 mb-4">Copy your Lock Address (NOT your Principal ID) from the Kong Locker dashboard.</p>
+          <div class="bg-kong-accent-green/20 p-4 rounded border border-kong-accent-green/30 mb-4">
+            <p class="text-sm text-gray-300">
+              <strong>Important:</strong> Your dashboard shows two addresses side by side. 
+              Copy the one labeled "Lock Address" with the green "FOR LP TOKENS" badge.
+            </p>
+          </div>
+          
+          <!-- Address Type Guide -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-kong-accent-blue/20 p-3 rounded border border-kong-accent-blue/30">
+              <h5 class="font-bold text-kong-accent-blue text-sm mb-2">Principal ID (Wallet)</h5>
+              <p class="text-xs text-gray-400">Your wallet address - for ICP transactions only</p>
+            </div>
+            <div class="bg-kong-accent-green/20 p-3 rounded border border-kong-accent-green/30">
+              <h5 class="font-bold text-kong-accent-green text-sm mb-2">Lock Address (Canister)</h5>
+              <p class="text-xs text-gray-400">Your lock canister - for LP token transfers</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3 with Visual Guide -->
+        <div class="bg-kong-accent-orange/10 border border-kong-accent-orange/30 rounded-lg p-6">
+          <div class="flex items-center space-x-3 mb-4">
+            <div class="w-10 h-10 bg-kong-accent-orange rounded-full flex items-center justify-center text-white font-bold text-lg">3</div>
+            <h4 class="text-xl font-bold text-kong-accent-orange">Transfer on KongSwap</h4>
+          </div>
+          <p class="text-gray-300 mb-6">Go to KongSwap, select your LP tokens, and transfer them to your Lock Address.</p>
+          
+          <!-- KongSwap Interface Guide -->
+          <div class="bg-gray-900/50 rounded-lg p-6 border border-gray-700">
+            <h5 class="text-lg font-bold text-white mb-4">KongSwap Transfer Interface</h5>
+            
+            <!-- Image Container -->
+            <div class="bg-black rounded-lg p-4 border-2 border-kong-accent-green/50 mb-6">
+              <img 
+                src="/kongswap_lp_transfer.png" 
+                alt="KongSwap LP Token Transfer Interface showing how to send LP tokens to lock address" 
+                class="w-full rounded-lg shadow-lg"
+                loading="lazy"
+              />
+            </div>
+            
+            <!-- Key Instructions -->
+            <div class="space-y-3">
+              <h6 class="text-base font-bold text-kong-accent-green">Key Steps in KongSwap:</h6>
+              <ul class="space-y-2 text-sm text-gray-300">
+                <li class="flex items-start space-x-3">
+                  <span class="text-kong-accent-green font-bold">1.</span>
+                  <span><strong>Select LP Token Pair:</strong> Choose your LP tokens (e.g., ALEX/ckUSDT)</span>
+                </li>
+                <li class="flex items-start space-x-3">
+                  <span class="text-kong-accent-green font-bold">2.</span>
+                  <span><strong>Enter Amount:</strong> Use the number input or percentage buttons (25%, 50%, 75%, MAX)</span>
+                </li>
+                <li class="flex items-start space-x-3">
+                  <span class="text-kong-accent-green font-bold">3.</span>
+                  <span><strong>Paste Lock Address:</strong> In "Recipient Address" field, paste your Lock Address (the long canister ID)</span>
+                </li>
+                <li class="flex items-start space-x-3">
+                  <span class="text-kong-accent-green font-bold">4.</span>
+                  <span><strong>Click "Transfer LP Tokens":</strong> Confirm the transaction to permanently lock your tokens</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Results -->
+        <div class="bg-kong-accent-green/10 border border-kong-accent-green/30 rounded-lg p-6">
+          <h4 class="text-xl font-bold text-kong-accent-green mb-3">🎉 After Transfer</h4>
+          <p class="text-gray-300 mb-4">
+            Once transferred, your LP tokens are <strong>permanently locked</strong> and you immediately gain voting power.
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-kong-accent-green/20 p-4 rounded border border-kong-accent-green/30 text-center">
+              <div class="text-2xl mb-2">🔒</div>
+              <p class="text-sm font-semibold text-kong-accent-green">Tokens Locked Forever</p>
+              <p class="text-xs text-gray-400">No unlock mechanism exists</p>
+            </div>
+            <div class="bg-kong-accent-green/20 p-4 rounded border border-kong-accent-green/30 text-center">
+              <div class="text-2xl mb-2">📊</div>
+              <p class="text-sm font-semibold text-kong-accent-green">Voting Power Active</p>
+              <p class="text-xs text-gray-400">Based on USD value</p>
+            </div>
+            <div class="bg-kong-accent-green/20 p-4 rounded border border-kong-accent-green/30 text-center">
+              <div class="text-2xl mb-2">🛡️</div>
+              <p class="text-sm font-semibold text-kong-accent-green">Fully Autonomous</p>
+              <p class="text-xs text-gray-400">Blackholed canister</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cross-Site Identity Verification & Integration Section -->
+    <section id="cross-site-verification" class="mb-12 bg-kong-bg-secondary rounded-2xl p-8 border border-kong-border">
+      <h2 class="text-3xl font-bold text-white mb-6">🔗 Cross-Site Identity & Integration</h2>
+      
+      <!-- Identity Challenge Problem -->
+      <div class="mb-8">
+        <div class="bg-amber-900/20 border border-amber-600 rounded-lg p-6 mb-6">
+          <h3 class="text-xl font-semibold text-amber-400 mb-3">⚠️ Cross-Site Identity Challenge</h3>
+          <p class="text-amber-200 mb-4">
+            On the Internet Computer, the same private key generates different principals on different websites due to security isolation. 
+            This creates a challenge: <strong>users cannot directly prove they own locked liquidity on your site if they have a different principal.</strong>
+          </p>
+          <p class="text-amber-200">
+            For example, if Alice locks LP tokens on KongLocker.org with principal <code class="bg-black/30 px-2 py-1 rounded text-xs">abc123...</code>, 
+            she would have a completely different principal <code class="bg-black/30 px-2 py-1 rounded text-xs">xyz789...</code> on your website.
+          </p>
+        </div>
+      </div>
+
+      <!-- Solution: Alexandria Verification -->
+      <div class="mb-8">
+        <h3 class="text-2xl font-bold text-white mb-4">✅ Solution: Alexandria Social Verification</h3>
+        
+        <div class="bg-blue-900/20 border border-blue-600 rounded-lg p-6 mb-4">
+          <h4 class="text-lg font-semibold text-blue-400 mb-3">How to Verify Lock Ownership</h4>
+          <ol class="list-decimal list-inside text-blue-200 space-y-2">
+            <li>User claims to own a specific lock canister on your site</li>
+            <li>You generate a unique challenge code (e.g., random string or timestamp)</li>
+            <li>Ask the user to post this challenge on <strong>Alexandria.app</strong> - a public social media platform</li>
+            <li>Since Alexandria uses the same authentication origin as KongLocker, the user will have the same principal on both sites</li>
+            <li>Verify the challenge post was made by the lock canister's creator principal</li>
+            <li>✅ Verified ownership proven!</li>
+          </ol>
+        </div>
+
+        <div class="bg-green-900/20 border border-green-600 rounded-lg p-4">
+          <h4 class="text-lg font-semibold text-green-400 mb-2">Why Alexandria Works</h4>
+          <p class="text-green-200 text-sm">
+            <strong>Alexandria.app</strong> uses the same authentication origin as KongLocker.org, meaning users have 
+            identical principals on both sites. This creates a trustless bridge for identity verification.
+          </p>
+        </div>
+      </div>
+
+      <!-- Primary Use Case: DAOPad -->
+      <div class="mb-8">
+        <h3 class="text-2xl font-bold text-white mb-4">🏛️ Primary Integration: DAOPad Governance</h3>
+        
+        <div class="bg-purple-900/20 border border-purple-600 rounded-lg p-6">
+          <h4 class="text-lg font-semibold text-purple-400 mb-3">DAOPad.org - DAO Creation Platform</h4>
+          <p class="text-purple-200 mb-4">
+            The primary purpose of Kong Locker is to provide <strong>proof of liquidity commitment</strong> for governance rights on DAOPad.org:
+          </p>
+          <ul class="list-disc list-inside text-purple-200 space-y-2 ml-4">
+            <li><strong>Create DAOs</strong> with voting power based on locked LP tokens</li>
+            <li><strong>Treasury Management</strong> through verifiable liquidity commitments</li>
+            <li><strong>Same Authentication</strong> - DAOPad uses identical principals as KongLocker and Alexandria</li>
+            <li><strong>Seamless Integration</strong> - No identity verification needed between Kong Locker ↔ DAOPad</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ICP Withdrawal Instructions -->
+      <div class="mb-8">
+        <h3 class="text-2xl font-bold text-white mb-4">💰 ICP Management & Withdrawal</h3>
+        
+        <div class="bg-orange-900/20 border border-orange-600 rounded-lg p-6">
+          <h4 class="text-lg font-semibold text-orange-400 mb-3">⚠️ Excess ICP Cannot Be Withdrawn Here</h4>
+          <p class="text-orange-200 mb-4">
+            If you sent more than 2 ICP to create your lock canister, the excess ICP remains in your account but 
+            <strong>cannot be withdrawn from KongLocker.org</strong>.
+          </p>
+          
+          <div class="bg-black/30 border border-orange-500 rounded-lg p-4 mt-4">
+            <h5 class="text-orange-300 font-semibold mb-2">To withdraw excess ICP:</h5>
+            <ol class="list-decimal list-inside text-orange-200 space-y-1 text-sm">
+              <li>Go to <strong>LBRY.app</strong> (the core authentication site)</li>
+              <li>Log in with the same wallet you used here</li>
+              <li>Your ICP balance will be identical (same database origin)</li>
+              <li>Use LBRY.app's withdrawal functionality to send ICP to external wallets</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <!-- Integration Summary -->
+      <div class="bg-gray-900/50 rounded-lg p-6">
+        <h3 class="text-xl font-bold text-white mb-3">🔗 Authentication Origin Ecosystem</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-blue-900/20 border border-blue-600 rounded-lg p-4">
+            <h4 class="text-blue-400 font-semibold">KongLocker.org</h4>
+            <p class="text-blue-200 text-xs mt-1">Lock LP tokens, same principals as other sites</p>
+          </div>
+          <div class="bg-green-900/20 border border-green-600 rounded-lg p-4">
+            <h4 class="text-green-400 font-semibold">Alexandria.app</h4>
+            <p class="text-green-200 text-xs mt-1">Social verification platform, same principals</p>
+          </div>
+          <div class="bg-purple-900/20 border border-purple-600 rounded-lg p-4">
+            <h4 class="text-purple-400 font-semibold">DAOPad.org</h4>
+            <p class="text-purple-200 text-xs mt-1">DAO governance, same principals</p>
+          </div>
+        </div>
+        <div class="mt-4 bg-yellow-900/20 border border-yellow-600 rounded-lg p-4">
+          <h4 class="text-yellow-400 font-semibold">LBRY.app</h4>
+          <p class="text-yellow-200 text-xs mt-1">Core site for ICP withdrawals and advanced features</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Developer Integration Section Header -->
+    <div class="mb-6">
+      <div class="border-t border-gray-700 my-8"></div>
+      <button
+        on:click={() => developerSectionExpanded = !developerSectionExpanded}
+        class="w-full bg-gray-900/50 hover:bg-gray-800/50 border border-gray-700 rounded-2xl p-6 transition-all duration-200 group"
+      >
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <span class="text-2xl">🔧</span>
+            <div class="text-left">
+              <h2 class="text-2xl font-bold text-white">Developer Integration</h2>
+              <p class="text-gray-400 text-sm mt-1">
+                API documentation, code examples, and integration guides for developers
+              </p>
+            </div>
+          </div>
+          <div class="text-gray-400 group-hover:text-white transition-colors">
+            <span class="text-xl transform transition-transform duration-200 {developerSectionExpanded ? 'rotate-180' : ''}">
+              ▼
+            </span>
+          </div>
+        </div>
+      </button>
+    </div>
+
+    {#if developerSectionExpanded}
     <!-- API Overview Section -->
     <section id="overview" class="mb-12 bg-[#1a1b1f] rounded-2xl p-8 border border-gray-800">
       <h2 class="text-3xl font-bold text-white mb-6">🔍 API Overview</h2>
@@ -1499,6 +1840,8 @@ positions.forEach((pos, i) => {
           <li><strong>Integration:</strong> Combine with Kong Locker's <code>get_my_lock_canister()</code> for complete user experience</li>
         </ul>
       </div>
+        </div>
+      </div>
     </section>
 
     <!-- Data Types Section -->
@@ -2022,6 +2365,7 @@ async function safeGetCanisterStatus() {
         </div>
       </div>
     </section>
+    {/if}
 
     <!-- Footer -->
     <div class="bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl p-6 text-center">

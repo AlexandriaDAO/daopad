@@ -60,62 +60,9 @@
 
 <div class="{integrated ? 'border-t border-kong-border/30 pt-6 space-y-6' : 'max-w-4xl mx-auto space-y-4'}">
   
-  <!-- User Liquidity Overview -->
+  <!-- LP Positions Details -->
   <div class="{integrated ? 'space-y-4' : 'kong-panel space-y-4'}">
-    <div class="flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <div class="p-2 bg-kong-accent-green/20 rounded-full">
-          <Lock class="w-6 h-6 text-kong-accent-green" />
-        </div>
-        <div>
-          <h3 class="{integrated ? 'text-lg' : 'text-xl'} font-semibold text-kong-text-primary">
-            {integrated ? 'Your Locked Liquidity' : 'Your Locked Liquidity'}
-          </h3>
-          <div class="flex items-center space-x-2">
-            <div class="flex items-center space-x-1">
-              <div class="w-2 h-2 bg-kong-accent-green rounded-full animate-pulse"></div>
-              <span class="text-sm text-kong-accent-green font-medium">🔒 Permanently Locked</span>
-            </div>
-            <div class="w-1 h-1 bg-kong-text-secondary rounded-full"></div>
-            <span class="text-sm text-kong-text-secondary">✓ Active</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Lock Address -->
-    <div class="bg-kong-bg-secondary/50 border border-kong-border/50 rounded-lg p-4">
-      <div class="flex items-center justify-between mb-2">
-        <span class="text-sm font-medium text-kong-text-primary">Lock Address</span>
-        <div class="flex items-center space-x-2">
-          <button 
-            on:click={copyAddress}
-            class="flex items-center space-x-1 px-2 py-1 text-xs text-kong-accent-green hover:bg-kong-accent-green/10 rounded-md transition-all duration-200"
-          >
-            {#if copySuccess}
-              <Check class="w-3 h-3" />
-              <span>Copied!</span>
-            {:else}
-              <Copy class="w-3 h-3" />
-              <span>Copy</span>
-            {/if}
-          </button>
-          <button 
-            on:click={() => showDetailsModal = true}
-            class="flex items-center space-x-1 px-2 py-1 text-xs text-kong-accent-blue hover:bg-kong-accent-blue/10 rounded-md transition-all duration-200"
-          >
-            <Eye class="w-3 h-3" />
-            <span>Details</span>
-          </button>
-        </div>
-      </div>
-      
-      {#if $userLockStore.canisterId}
-        <p class="text-sm font-mono text-kong-text-primary bg-kong-bg-tertiary/50 p-2 rounded border">
-          {truncateAddress($userLockStore.canisterId.toString())}
-        </p>
-      {/if}
-    </div>
+    <!-- Address info is now shown in the CombinedAddressInfo component above -->
     
     <!-- Your Voting Power Dashboard -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">

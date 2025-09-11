@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { Lock, Copy, Eye, Check } from 'lucide-svelte';
+  import { Lock, Copy, Eye, Check, User } from 'lucide-svelte';
   import { userLockStore } from '../../stores/userLock';
+  import { principal } from '../../stores/auth';
   
   export let integrated = false;
   
   let copySuccess = false;
+  let copyPrincipalSuccess = false;
   let showDetailsModal = false;
   
   // Use real canister details from store
@@ -32,9 +34,28 @@
     }
   }
   
+  async function copyPrincipal() {
+    if ($principal) {
+      try {
+        await navigator.clipboard.writeText($principal.toString());
+        copyPrincipalSuccess = true;
+        setTimeout(() => {
+          copyPrincipalSuccess = false;
+        }, 2000);
+      } catch (error) {
+        console.error('Failed to copy principal:', error);
+      }
+    }
+  }
+  
   function truncateAddress(address: string): string {
     if (address.length <= 25) return address;
     return `${address.substring(0, 12)}...${address.substring(address.length - 8)}`;
+  }
+  
+  function truncatePrincipal(principalStr: string): string {
+    if (principalStr.length <= 20) return principalStr;
+    return `${principalStr.substring(0, 10)}...${principalStr.substring(principalStr.length - 10)}`;
   }
   
   function formatCycles(cycles: number): string {
@@ -42,80 +63,14 @@
   }
 </script>
 
-<div class="{integrated ? 'border-t border-kong-border/30 pt-6 space-y-6' : 'max-w-2xl mx-auto'}">
-  
-  <!-- Main Dashboard -->
-  <div class="{integrated ? 'space-y-6' : 'kong-panel space-y-6'}">
-    <div class="flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <div class="p-2 bg-kong-accent-green/20 rounded-full">
-          <Lock class="w-6 h-6 text-kong-accent-green" />
-        </div>
-        <div>
-          <h3 class="{integrated ? 'text-lg' : 'text-xl'} font-semibold text-kong-text-primary">
-            {integrated ? 'Your Lock Canister' : 'Your Lock Canister'}
-          </h3>
-          <div class="flex items-center space-x-2">
-            <div class="flex items-center space-x-1">
-              <div class="w-2 h-2 bg-kong-accent-green rounded-full animate-pulse"></div>
-              <span class="text-sm text-kong-accent-green font-medium">🔒 Permanently Blackholed</span>
-            </div>
-            <div class="w-1 h-1 bg-kong-text-secondary rounded-full"></div>
-            <span class="text-sm text-kong-text-secondary">✓ Active</span>
-          </div>
-        </div>
-      </div>
+<div class="{integrated ? 'border-t border-kong-border/30 pt-6' : 'max-w-2xl mx-auto'}">
+  <!-- Address info is now shown in the CombinedAddressInfo component above -->
+  {#if !integrated}
+    <div class="kong-panel text-center space-y-4">
+      <h3 class="text-xl font-semibold text-kong-text-primary">Lock Canister Ready</h3>
+      <p class="text-kong-text-secondary">Your lock canister is active and ready to receive LP tokens.</p>
     </div>
-    
-    <!-- Canister Address -->
-    <div class="bg-kong-bg-secondary/50 border border-kong-border/50 rounded-lg p-4">
-      <div class="flex items-center justify-between mb-2">
-        <span class="text-sm font-medium text-kong-text-primary">Lock Address</span>
-        <div class="flex items-center space-x-2">
-          <button 
-            on:click={copyAddress}
-            class="flex items-center space-x-1 px-2 py-1 text-xs text-kong-accent-green hover:bg-kong-accent-green/10 rounded-md transition-all duration-200"
-          >
-            {#if copySuccess}
-              <Check class="w-3 h-3" />
-              <span>Copied!</span>
-            {:else}
-              <Copy class="w-3 h-3" />
-              <span>Copy</span>
-            {/if}
-          </button>
-          <button 
-            on:click={() => showDetailsModal = true}
-            class="flex items-center space-x-1 px-2 py-1 text-xs text-kong-accent-blue hover:bg-kong-accent-blue/10 rounded-md transition-all duration-200"
-          >
-            <Eye class="w-3 h-3" />
-            <span>View Details</span>
-          </button>
-        </div>
-      </div>
-      
-      {#if $userLockStore.canisterId}
-        <p class="text-sm font-mono text-kong-text-primary bg-kong-bg-tertiary/50 p-2 rounded border">
-          {truncateAddress($userLockStore.canisterId.toString())}
-        </p>
-      {:else}
-        <div class="w-6 h-6 border-2 border-kong-accent-blue/30 border-t-kong-accent-blue rounded-full animate-spin"></div>
-      {/if}
-    </div>
-    
-    <!-- Voting Power Display -->
-    <div class="text-center py-4">
-      <div class="space-y-2">
-        <h3 class="text-lg font-semibold text-kong-text-primary">Voting Power</h3>
-        <div class="text-4xl font-bold kong-gradient-text">
-          {$userLockStore.votingPower}
-        </div>
-        <p class="text-sm text-kong-text-secondary">
-          {$userLockStore.votingPower === 0 ? 'No LP tokens locked yet' : 'Based on locked LP token value'}
-        </p>
-      </div>
-    </div>
-  </div>
+  {/if}
 </div>
 
 <!-- Details Modal -->

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { TrendingUp, Coins, DollarSign } from 'lucide-svelte';
+  import { getTokenColors, generateTokenIcon } from '../utils/colorGenerator';
   
   export let tokenData: Map<string, {
     totalValue: number;
@@ -8,25 +9,22 @@
   }> = new Map();
   export let totalValue: number = 0;
   
-  // Convert map to sorted array for display
+  // Convert map to sorted array for display - completely dynamic
   $: sortedTokens = tokenData && tokenData.size > 0 
     ? Array.from(tokenData.entries())
         .map(([symbol, data]) => ({
           symbol,
           ...data,
-          percentage: totalValue > 0 ? (data.totalValue / totalValue) * 100 : 0
+          percentage: totalValue > 0 ? (data.totalValue / totalValue) * 100 : 0,
+          dynamicColors: getTokenColors(symbol),
+          dynamicIcon: generateTokenIcon(symbol)
         }))
         .sort((a, b) => b.totalValue - a.totalValue)
         .filter(token => token.totalValue > 0)
     : [];
   
-  // Featured tokens to highlight
-  const featuredTokens = ['ALEX', 'ZERO', 'ICP', 'ckUSDT', 'ckBTC'];
-  
-  // Check if token is featured
-  function isFeatured(symbol: string): boolean {
-    return featuredTokens.includes(symbol);
-  }
+  // Dynamic featured tokens based purely on value - top 5 automatically
+  $: featuredTokens = sortedTokens.slice(0, 5);
   
   // Format large numbers
   function formatNumber(num: number): string {
@@ -36,30 +34,6 @@
       return `${(num / 1000).toFixed(1)}K`;
     }
     return num.toFixed(2);
-  }
-  
-  // Get color for token
-  function getTokenColor(symbol: string): string {
-    const colors: Record<string, string> = {
-      'ALEX': 'text-purple-400',
-      'ZERO': 'text-blue-400',
-      'ICP': 'text-pink-400',
-      'ckUSDT': 'text-green-400',
-      'ckBTC': 'text-orange-400',
-    };
-    return colors[symbol] || 'text-kong-text-secondary';
-  }
-  
-  // Get background color for token
-  function getTokenBgColor(symbol: string): string {
-    const colors: Record<string, string> = {
-      'ALEX': 'bg-purple-900/20',
-      'ZERO': 'bg-blue-900/20',
-      'ICP': 'bg-pink-900/20',
-      'ckUSDT': 'bg-green-900/20',
-      'ckBTC': 'bg-orange-900/20',
-    };
-    return colors[symbol] || 'bg-kong-bg-secondary/50';
   }
 </script>
 
@@ -78,16 +52,30 @@
     <div class="text-center py-8">
       <div class="text-kong-text-secondary">No token data available yet</div>
       <div class="text-xs text-kong-text-secondary mt-1">
-        Check individual lock canisters to load token data
+        Token data will appear automatically when lock canisters are loaded
       </div>
     </div>
   {:else}
-    <!-- Featured Tokens Grid -->
+    <!-- Featured Tokens Grid - Top 5 by value automatically -->
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-      {#each sortedTokens.filter(t => isFeatured(t.symbol)).slice(0, 5) as token}
-        <div class="{getTokenBgColor(token.symbol)} border border-kong-border/50 rounded-lg p-3">
+      {#each featuredTokens as token}
+        <div 
+          class="border rounded-lg p-3 transition-all duration-200 hover:shadow-md"
+          style="
+            background: {token.dynamicColors.background};
+            border-color: {token.dynamicColors.border};
+          "
+        >
           <div class="flex items-center justify-between mb-2">
-            <span class="font-semibold {getTokenColor(token.symbol)}">{token.symbol}</span>
+            <div class="flex items-center space-x-1">
+              <span class="text-sm">{token.dynamicIcon}</span>
+              <span 
+                class="font-semibold text-sm"
+                style="color: {token.dynamicColors.primary}"
+              >
+                {token.symbol}
+              </span>
+            </div>
             <span class="text-xs text-kong-text-secondary">{token.percentage.toFixed(1)}%</span>
           </div>
           <div class="text-xl font-bold text-kong-text-primary">
@@ -100,9 +88,9 @@
       {/each}
     </div>
     
-    <!-- Detailed Token List -->
+    <!-- All Tokens Table - Completely Dynamic -->
     <div class="space-y-2">
-      <h4 class="text-sm font-medium text-kong-text-secondary">All Tokens</h4>
+      <h4 class="text-sm font-medium text-kong-text-secondary">All Tokens ({sortedTokens.length})</h4>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -111,16 +99,22 @@
               <th class="text-right py-2 px-3 text-kong-text-secondary font-medium">Value Locked</th>
               <th class="text-right py-2 px-3 text-kong-text-secondary font-medium">% of Total</th>
               <th class="text-right py-2 px-3 text-kong-text-secondary font-medium">LP Pools</th>
-              <th class="text-left py-2 px-3 text-kong-text-secondary font-medium">Visual</th>
+              <th class="text-left py-2 px-3 text-kong-text-secondary font-medium">Distribution</th>
             </tr>
           </thead>
           <tbody>
             {#each sortedTokens as token}
               <tr class="border-b border-kong-border/30 hover:bg-kong-bg-secondary/30 transition-colors">
                 <td class="py-2 px-3">
-                  <span class="font-medium {isFeatured(token.symbol) ? getTokenColor(token.symbol) : 'text-kong-text-primary'}">
-                    {token.symbol}
-                  </span>
+                  <div class="flex items-center space-x-2">
+                    <span class="text-sm">{token.dynamicIcon}</span>
+                    <span 
+                      class="font-medium"
+                      style="color: {token.dynamicColors.primary}"
+                    >
+                      {token.symbol}
+                    </span>
+                  </div>
                 </td>
                 <td class="text-right py-2 px-3">
                   <span class="font-semibold text-kong-accent-green">
@@ -136,8 +130,11 @@
                 <td class="py-2 px-3">
                   <div class="w-full bg-kong-bg-secondary rounded-full h-2 overflow-hidden">
                     <div 
-                      class="h-full bg-gradient-to-r from-kong-accent-blue to-kong-accent-purple transition-all duration-300"
-                      style="width: {Math.min(token.percentage, 100)}%"
+                      class="h-full transition-all duration-300"
+                      style="
+                        width: {Math.min(token.percentage, 100)}%;
+                        background: {token.dynamicColors.primary};
+                      "
                     ></div>
                   </div>
                 </td>
@@ -176,11 +173,13 @@
         </div>
         <div>
           <div class="text-xs text-kong-text-secondary">Top Token</div>
-          <div class="text-lg font-bold text-kong-text-primary">
-            {sortedTokens[0]?.symbol || 'N/A'}
+          <div class="text-lg font-bold text-kong-text-primary flex items-center space-x-1">
+            <span>{sortedTokens[0]?.dynamicIcon || '🪙'}</span>
+            <span>{sortedTokens[0]?.symbol || 'N/A'}</span>
           </div>
         </div>
       </div>
     </div>
   {/if}
 </div>
+

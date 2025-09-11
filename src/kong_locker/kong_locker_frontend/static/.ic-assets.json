@@ -10,5 +10,26 @@
       "Content-Type": "text/plain"
     },
     "ignore": false
+  },
+  {
+    "match": "*.png",
+    "headers": {
+      "Content-Type": "image/png",
+      "Cache-Control": "public, max-age=31536000"
+    }
+  },
+  {
+    "match": "*.jpg",
+    "headers": {
+      "Content-Type": "image/jpeg",
+      "Cache-Control": "public, max-age=31536000"
+    }
+  },
+  {
+    "match": "*.jpeg", 
+    "headers": {
+      "Content-Type": "image/jpeg",
+      "Cache-Control": "public, max-age=31536000"
+    }
   }
 ]
