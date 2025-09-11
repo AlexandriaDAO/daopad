@@ -59,168 +59,120 @@
   }
 </script>
 
-<div class="bg-kong-bg-secondary/30 border border-kong-border/30 rounded-lg p-6">
-  <div class="flex items-center justify-between mb-6">
-    <h3 class="text-xl font-semibold text-kong-text-primary">Your Addresses</h3>
-  </div>
-  
-  <!-- Side by Side Address Layout -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+<!-- Side by Side Address Layout - Now fits on mobile/splitscreen -->
+<div class="grid grid-cols-2 gap-2 md:gap-4">
     
-    <!-- Wallet Connection -->
-    <div class="bg-kong-accent-blue/10 border border-kong-accent-blue/30 rounded-lg p-3 md:p-4">
-      <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center space-x-3">
-          <div class="p-2 bg-kong-accent-blue/20 rounded-lg">
-            <User class="w-5 h-5 text-kong-accent-blue" />
-          </div>
-          <div>
-            <h4 class="text-sm md:text-base font-medium text-kong-text-primary">Wallet Connection</h4>
-            <div class="flex items-center space-x-2">
-              <div class="flex items-center space-x-1">
-                <div class="w-2 h-2 bg-kong-accent-green rounded-full animate-pulse"></div>
-                <span class="text-xs md:text-sm text-kong-accent-green">Connected</span>
-              </div>
-              <div class="w-1 h-1 bg-kong-text-secondary rounded-full"></div>
-              <span class="text-xs md:text-sm text-kong-text-secondary">✓ Active</span>
-            </div>
-          </div>
+    <!-- Wallet Connection - Compact -->
+    <div class="bg-kong-accent-blue/10 border border-kong-accent-blue/30 rounded-lg p-2 md:p-3">
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center space-x-2">
+          <User class="w-4 h-4 text-kong-accent-blue" />
+          <h4 class="text-xs md:text-sm font-medium text-kong-text-primary">Wallet</h4>
         </div>
-        
-        <!-- Principal ID Badge and ICP Balance moved to header -->
-        <div class="text-right">
-          <div class="flex items-center justify-end space-x-2 mb-1">
-            <div class="bg-kong-accent-blue/20 px-2 py-1 rounded-full">
-              <span class="text-xs font-semibold text-kong-accent-blue">WALLET ADDRESS</span>
-            </div>
-          </div>
-          <div class="text-right">
-            <div class="text-xs text-kong-text-primary font-medium mb-1">ICP Balance</div>
-            {#if $balanceStore.isLoading}
-              <div class="flex items-center justify-end space-x-1">
-                <div class="w-3 h-3 border-2 border-kong-accent-green/30 border-t-kong-accent-green rounded-full animate-spin"></div>
-                <span class="text-xs text-kong-text-secondary">Loading...</span>
-              </div>
-            {:else if $balanceStore.error}
-              <div class="text-xs text-kong-error">Failed to load</div>
-            {:else}
-              <div class="text-sm font-bold text-kong-text-primary">
-                {formatIcpBalance($balanceStore.icpBalance)}
-              </div>
-            {/if}
-          </div>
+        <div class="flex items-center space-x-1 text-xs">
+          <div class="w-1.5 h-1.5 bg-kong-accent-green rounded-full animate-pulse"></div>
+          <span class="text-kong-accent-green">Active</span>
         </div>
       </div>
       
-      <!-- Principal ID -->
-      <div class="space-y-2">
-        <span class="text-sm font-medium text-kong-text-primary">Principal ID</span>
-        
+      <!-- ICP Balance -->
+      <div class="mb-2">
+        <div class="text-xs text-kong-text-secondary">ICP Balance</div>
+        {#if $balanceStore.isLoading}
+          <div class="text-xs text-kong-text-secondary">Loading...</div>
+        {:else if $balanceStore.error}
+          <div class="text-xs text-kong-error">Error</div>
+        {:else}
+          <div class="text-sm font-bold text-kong-text-primary">
+            {formatIcpBalance($balanceStore.icpBalance)}
+          </div>
+        {/if}
+      </div>
+      
+      <!-- Principal ID - Compact -->
+      <div>
+        <div class="text-xs text-kong-text-secondary mb-1">Principal ID</div>
         {#if $principal}
-          <div class="bg-kong-bg-tertiary/50 p-2 md:p-3 rounded border border-kong-border/50 mb-2 relative">
-            <p class="text-xs md:text-sm font-mono text-kong-text-primary break-all leading-relaxed pr-16">
-              {$principal.toString()}
+          <div class="bg-kong-bg-tertiary/50 p-1.5 rounded border border-kong-border/50 relative group">
+            <p class="text-xs font-mono text-kong-text-primary break-all leading-tight pr-6">
+              {$principal.toString().substring(0, 20)}...
             </p>
-            <!-- Embedded copy button -->
             <button 
               on:click={copyPrincipal}
-              class="absolute top-2 right-2 flex items-center space-x-1 px-2 py-1 text-xs text-kong-accent-green hover:bg-kong-accent-green/10 rounded-md transition-all duration-200"
+              class="absolute top-1 right-1 p-1 text-kong-accent-green hover:bg-kong-accent-green/10 rounded transition-all"
+              title="Copy full principal"
             >
               {#if copyPrincipalSuccess}
                 <Check class="w-3 h-3" />
-                <span class="hidden sm:inline">Copied!</span>
               {:else}
                 <Copy class="w-3 h-3" />
-                <span class="hidden sm:inline">Copy</span>
               {/if}
             </button>
           </div>
-          <p class="text-xs text-kong-text-secondary">
-            <strong>For ICP only</strong> • Send LP tokens to your Lock Address instead
+          <p class="text-xs text-kong-text-secondary mt-1">
+            For ICP only
           </p>
         {/if}
       </div>
     </div>
 
-    <!-- Your Locked Liquidity -->
-    <div class="bg-kong-accent-green/10 border border-kong-accent-green/30 rounded-lg p-3 md:p-4">
-      <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center space-x-3">
-          <div class="p-2 bg-kong-accent-green/20 rounded-lg">
-            <Lock class="w-5 h-5 text-kong-accent-green" />
-          </div>
-          <div>
-            <h4 class="text-sm md:text-base font-medium text-kong-text-primary">Your Locked Liquidity</h4>
-            <div class="flex items-center space-x-2">
-              <div class="flex items-center space-x-1">
-                <div class="w-2 h-2 bg-kong-accent-green rounded-full animate-pulse"></div>
-                <span class="text-xs md:text-sm text-kong-accent-green">🔒 Permanently Locked</span>
-              </div>
-              <div class="w-1 h-1 bg-kong-text-secondary rounded-full"></div>
-              <span class="text-xs md:text-sm text-kong-text-secondary">✓ Active</span>
-            </div>
-          </div>
+    <!-- Your Locked Liquidity - Compact -->
+    <div class="bg-kong-accent-green/10 border border-kong-accent-green/30 rounded-lg p-2 md:p-3">
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center space-x-2">
+          <Lock class="w-4 h-4 text-kong-accent-green" />
+          <h4 class="text-xs md:text-sm font-medium text-kong-text-primary">LP Lock</h4>
         </div>
-        
-        <!-- Lock Address Badge and Voting Power moved to header -->
-        <div class="text-right">
-          <div class="flex items-center justify-end space-x-2 mb-1">
-            <div class="bg-kong-accent-green/20 px-2 py-1 rounded-full">
-              <span class="text-xs font-semibold text-kong-accent-green">FOR LP TOKENS</span>
-            </div>
-          </div>
-          <div class="text-right">
-            <div class="text-xs text-kong-text-primary font-medium mb-1">Voting Power</div>
-            <div class="text-lg font-bold kong-gradient-text">
-              {($userLockStore.votingPower || 0).toLocaleString()}
-            </div>
-          </div>
+        <div class="flex items-center space-x-1 text-xs">
+          <div class="w-1.5 h-1.5 bg-kong-accent-green rounded-full animate-pulse"></div>
+          <span class="text-kong-accent-green">Locked</span>
         </div>
       </div>
       
-      <!-- Lock Address -->
-      <div class="space-y-2">
-        <div class="flex items-center justify-between">
-          <span class="text-sm font-medium text-kong-text-primary">Lock Address</span>
-          <div class="flex items-center space-x-1 md:space-x-2">
+      <!-- Voting Power -->
+      <div class="mb-2">
+        <div class="text-xs text-kong-text-secondary">Voting Power</div>
+        <div class="text-sm font-bold kong-gradient-text">
+          {($userLockStore.votingPower || 0).toLocaleString()}
+        </div>
+      </div>
+      
+      <!-- Lock Address - Compact -->
+      <div>
+        <div class="text-xs text-kong-text-secondary mb-1">Lock Address</div>
+        {#if $userLockStore.canisterId}
+          <div class="bg-kong-bg-tertiary/50 p-1.5 rounded border border-kong-accent-green/30 relative group">
+            <p class="text-xs font-mono text-kong-text-primary break-all leading-tight pr-6">
+              {$userLockStore.canisterId.toString().substring(0, 20)}...
+            </p>
             <button 
               on:click={copyLockAddress}
-              class="flex items-center space-x-1 px-2 py-1 text-xs text-white bg-kong-accent-green hover:bg-kong-accent-green/80 rounded-md transition-all duration-200 font-medium"
+              class="absolute top-1 right-1 p-1 text-kong-accent-green hover:bg-kong-accent-green/10 rounded transition-all"
+              title="Copy lock address"
             >
               {#if copyLockSuccess}
                 <Check class="w-3 h-3" />
-                <span class="hidden sm:inline">Copied!</span>
               {:else}
                 <Copy class="w-3 h-3" />
-                <span class="hidden sm:inline">Copy</span>
               {/if}
             </button>
+          </div>
+          <div class="flex items-center justify-between mt-1">
+            <a href="/docs#transfer-guide" class="text-xs text-kong-accent-green hover:underline">Guide →</a>
             <button 
               on:click={() => showDetailsModal = true}
-              class="flex items-center space-x-1 px-2 py-1 text-xs text-kong-accent-blue hover:bg-kong-accent-blue/10 rounded-md transition-all duration-200"
+              class="text-xs text-kong-accent-blue hover:underline"
             >
-              <Eye class="w-3 h-3" />
-              <span class="hidden sm:inline">Details</span>
+              Details
             </button>
           </div>
-        </div>
-        
-        {#if $userLockStore.canisterId}
-          <div class="bg-kong-bg-tertiary/50 p-2 md:p-3 rounded border border-kong-accent-green/30 mb-2">
-            <p class="text-xs md:text-sm font-mono text-kong-text-primary break-all leading-relaxed">
-              {$userLockStore.canisterId.toString()}
-            </p>
-          </div>
-          <p class="text-xs text-kong-text-secondary">
-            <a href="/docs#transfer-guide" class="text-kong-accent-green hover:underline">Transfer guide →</a> • 
-            {$userLockStore.votingPower === 0 ? 'No LP tokens locked yet' : 'Based on locked LP token value'}
-          </p>
         {:else}
-          <div class="text-sm text-kong-text-secondary">No lock canister yet</div>
+          <div class="text-xs text-kong-text-secondary">No lock canister yet</div>
         {/if}
       </div>
     </div>
-  </div>
 </div>
 
 <!-- Details Modal -->

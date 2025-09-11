@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Loader, Eye, BarChart3, Users, DollarSign, Activity, RefreshCw, TrendingUp, Lock, Layers, ChevronDown, ChevronUp, Copy, Check } from 'lucide-svelte';
+  import { Loader, Eye, BarChart3, Users, DollarSign, Activity, RefreshCw, TrendingUp, Lock, Layers, ChevronDown, ChevronUp, Copy, Check, Coins } from 'lucide-svelte';
   import { authService, authStore, isAuthenticated, isAuthLoading, principal } from '../lib/stores/auth';
   import { userLockService, userState, userLockStore } from '../lib/stores/userLock';
   import { lpLockingService, lockingStatsStore, formatUsd, formatCount } from '../lib/services/lpLocking';
@@ -37,6 +37,7 @@
   
   // View state
   let showCanisterTable = true;
+  let showTokenBreakdown = true;
   let showGlow = false;
   let initialLoadComplete = false;
   let refreshing = false;
@@ -299,7 +300,7 @@
       {/if}
       
       <!-- Unified Platform Overview Grid -->
-      <div class="space-y-4">
+      <div class="bg-gray-900/30 border border-gray-800/40 rounded-xl p-6 space-y-4">
         <h3 class="text-lg font-semibold text-kong-text-primary flex items-center">
           <BarChart3 class="w-5 h-5 mr-2 text-kong-accent-blue" />
           Platform Overview
@@ -434,7 +435,7 @@
       
       <!-- User LP Positions Table (when user has liquidity) -->
       {#if $userState === 'has-liquidity' && userLpPositions.length > 0}
-        <div class="space-y-4 border-t border-kong-border/30 pt-6">
+        <div class="bg-gray-900/30 border border-gray-800/40 rounded-xl p-6 space-y-4 mt-6">
           <div class="flex items-center justify-between">
             <h4 class="text-lg font-semibold text-kong-text-primary flex items-center">
               <Lock class="w-5 h-5 mr-2 text-kong-accent-orange" />
@@ -526,7 +527,7 @@
       {/if}
       
       <!-- Analytics Section -->
-      <div class="space-y-6 border-t border-kong-border/30 pt-6">
+      <div class="space-y-6 mt-6">
         {#if analyticsLoading}
           <div class="flex items-center justify-center py-8">
             <div class="flex items-center space-x-3">
@@ -541,16 +542,43 @@
         {:else}
           <!-- Token Breakdown -->
           {#if systemStats && tokenBreakdown.size > 0}
-            <TokenBreakdown 
-              tokenData={tokenBreakdown} 
-              totalValue={systemStats.estimatedTotalValue || 0}
-            />
+            <div class="bg-gray-900/30 border border-gray-800/40 rounded-xl p-6 space-y-4">
+              <div class="flex items-center justify-between">
+                <h4 class="text-lg font-semibold text-kong-text-primary flex items-center">
+                  <Coins class="w-5 h-5 mr-2 text-kong-accent-purple" />
+                  Token Distribution ({tokenBreakdown.size} tokens)
+                </h4>
+                <button
+                  on:click={() => showTokenBreakdown = !showTokenBreakdown}
+                  class="flex items-center gap-1 px-3 py-1 text-xs text-kong-text-secondary hover:text-kong-text-primary transition-colors"
+                >
+                  {showTokenBreakdown ? 'Hide' : 'Show'} Details
+                  {#if showTokenBreakdown}
+                    <ChevronUp class="w-3 h-3" />
+                  {:else}
+                    <ChevronDown class="w-3 h-3" />
+                  {/if}
+                </button>
+              </div>
+              
+              {#if showTokenBreakdown}
+                <TokenBreakdown 
+                  tokenData={tokenBreakdown} 
+                  totalValue={systemStats.estimatedTotalValue || 0}
+                />
+              {:else}
+                <div class="text-sm text-kong-text-secondary">
+                  Total value locked across {tokenBreakdown.size} different tokens. Click "Show Details" to see breakdown.
+                </div>
+              {/if}
+            </div>
           {/if}
           
           <!-- Canister List Table -->
-          <div class="space-y-4">
+          <div class="bg-gray-900/30 border border-gray-800/40 rounded-xl p-6 space-y-4">
             <div class="flex items-center justify-between">
               <h4 class="text-lg font-semibold text-kong-text-primary flex items-center">
+                <Users class="w-5 h-5 mr-2 text-kong-accent-blue" />
                 All Lock Canisters ({canisterList.length})
               </h4>
               <button
@@ -639,6 +667,12 @@
                     {/each}
                   </tbody>
                 </table>
+              </div>
+            {/if}
+            
+            {#if !showCanisterTable && canisterList.length > 0}
+              <div class="text-sm text-kong-text-secondary">
+                {canisterList.length} lock canisters created by users. Click "Show Table" to see details.
               </div>
             {/if}
             
