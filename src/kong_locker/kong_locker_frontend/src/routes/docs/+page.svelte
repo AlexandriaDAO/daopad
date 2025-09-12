@@ -675,33 +675,48 @@
             This creates a challenge: <strong>users cannot directly prove they own locked liquidity on your site if they have a different principal.</strong>
           </p>
           <p class="text-amber-200">
-            For example, if Alice locks LP tokens on KongLocker.org with principal <code class="bg-black/30 px-2 py-1 rounded text-xs">abc123...</code>, 
+            For example, if Alice locks LP tokens on KongLocker.com with principal <code class="bg-black/30 px-2 py-1 rounded text-xs">abc123...</code>, 
             she would have a completely different principal <code class="bg-black/30 px-2 py-1 rounded text-xs">xyz789...</code> on your website.
           </p>
         </div>
       </div>
 
-      <!-- Solution: Alexandria Verification -->
+      <!-- Solution: NFT Verification -->
       <div class="mb-8">
-        <h3 class="text-2xl font-bold text-white mb-4">✅ Solution: Alexandria Social Verification</h3>
+        <h3 class="text-2xl font-bold text-white mb-4">✅ Solution: NFT Screenshot Verification</h3>
         
         <div class="bg-blue-900/20 border border-blue-600 rounded-lg p-6 mb-4">
-          <h4 class="text-lg font-semibold text-blue-400 mb-3">How to Verify Lock Ownership</h4>
+          <h4 class="text-lg font-semibold text-blue-400 mb-3">Method 1: Screenshot NFT (Simplest)</h4>
           <ol class="list-decimal list-inside text-blue-200 space-y-2">
-            <li>User claims to own a specific lock canister on your site</li>
-            <li>You generate a unique challenge code (e.g., random string or timestamp)</li>
-            <li>Ask the user to post this challenge on <strong>Alexandria.app</strong> - a public social media platform</li>
-            <li>Since Alexandria uses the same authentication origin as KongLocker, the user will have the same principal on both sites</li>
-            <li>Verify the challenge post was made by the lock canister's creator principal</li>
-            <li>✅ Verified ownership proven!</li>
+            <li>User takes a screenshot of their locked canister on KongLocker.com</li>
+            <li>User uploads the screenshot as an NFT on <strong>lbry.app</strong></li>
+            <li>The NFT metadata shows it was created by their principal</li>
+            <li>Verify the NFT creator matches the lock canister's creator principal</li>
+            <li>✅ Ownership verified (sufficient for most use cases)</li>
+          </ol>
+          <p class="text-blue-300 text-sm mt-3 italic">
+            Note: While screenshots can be spoofed, this method provides reasonable verification for most applications.
+          </p>
+        </div>
+
+        <div class="bg-green-900/20 border border-green-600 rounded-lg p-6 mb-4">
+          <h4 class="text-lg font-semibold text-green-400 mb-3">Method 2: Challenge Code NFT (More Secure)</h4>
+          <ol class="list-decimal list-inside text-green-200 space-y-2">
+            <li>Your site generates a unique challenge code</li>
+            <li>User uploads this challenge code as an NFT on <strong>lbry.app</strong></li>
+            <li>Since lbry.app uses the same authentication origin as KongLocker, principals match</li>
+            <li>Verify the NFT was created by the lock canister's creator principal</li>
+            <li>Confirm the NFT contains your challenge code</li>
+            <li>✅ Cryptographically verified ownership!</li>
           </ol>
         </div>
 
-        <div class="bg-green-900/20 border border-green-600 rounded-lg p-4">
-          <h4 class="text-lg font-semibold text-green-400 mb-2">Why Alexandria Works</h4>
-          <p class="text-green-200 text-sm">
-            <strong>Alexandria.app</strong> uses the same authentication origin as KongLocker.org, meaning users have 
-            identical principals on both sites. This creates a trustless bridge for identity verification.
+        <div class="bg-yellow-900/20 border border-yellow-600 rounded-lg p-4">
+          <h4 class="text-lg font-semibold text-yellow-400 mb-2">Why This Works</h4>
+          <p class="text-yellow-200 text-sm">
+            <strong>lbry.app</strong> uses the same authentication origin as KongLocker.com, meaning users have 
+            identical principals on both sites. NFTs created on lbry.app provide an immutable, verifiable record
+            of ownership that can be checked across different IC applications.
           </p>
         </div>
       </div>
@@ -732,7 +747,7 @@
           <h4 class="text-lg font-semibold text-orange-400 mb-3">⚠️ Excess ICP Cannot Be Withdrawn Here</h4>
           <p class="text-orange-200 mb-4">
             If you sent more than 2 ICP to create your lock canister, the excess ICP remains in your account but 
-            <strong>cannot be withdrawn from KongLocker.org</strong>.
+            <strong>cannot be withdrawn from KongLocker.com</strong>.
           </p>
           
           <div class="bg-black/30 border border-orange-500 rounded-lg p-4 mt-4">
@@ -752,11 +767,11 @@
         <h3 class="text-xl font-bold text-white mb-3">🔗 Authentication Origin Ecosystem</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="bg-blue-900/20 border border-blue-600 rounded-lg p-4">
-            <h4 class="text-blue-400 font-semibold">KongLocker.org</h4>
+            <h4 class="text-blue-400 font-semibold">KongLocker.com</h4>
             <p class="text-blue-200 text-xs mt-1">Lock LP tokens, same principals as other sites</p>
           </div>
           <div class="bg-green-900/20 border border-green-600 rounded-lg p-4">
-            <h4 class="text-green-400 font-semibold">Alexandria.app</h4>
+            <h4 class="text-green-400 font-semibold">lbry.app</h4>
             <p class="text-green-200 text-xs mt-1">Social verification platform, same principals</p>
           </div>
           <div class="bg-purple-900/20 border border-purple-600 rounded-lg p-4">

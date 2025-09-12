@@ -1,203 +1,277 @@
-# DAOPad - CLAUDE.md
+# CLAUDE.md - DAOPad Development Guide
 
-**Context**: You are working on DAOPad, a DAO governance framework that transforms Orbit Station into a decentralized treasury management system.
+## 🎯 IMPORTANT: New Workflow as of December 2024
 
-## 🎯 Project Mission
+**This is now the PRIMARY working directory.** All active development happens in DAOPad. Kong Locker is feature-complete and should only be accessed for read-only operations to understand voting power allocation.
 
-Transform Orbit Station from a centralized multi-sig wallet into a DAO-governed treasury where Alexandria's $ALEX token holders vote on all administrative decisions.
+### Key Changes:
+1. **Focus**: All development work is now on DAOPad (governance and voting)
+2. **Kong Locker**: READ-ONLY - Used only to understand locked liquidity voting power
+3. **Deployment**: Use `./deploy.sh` from THIS directory (`src/daopad/`), NOT the root
+4. **Documentation**: This CLAUDE.md is now the main guide (root CLAUDE.md removed)
 
-## 🏛️ Architecture
+### Workflow Summary:
+```bash
+# You are here: src/daopad/
+pwd  # Should show: /path/to/project/src/daopad/
 
-### Core Components
+# Deploy DAOPad changes (use local deploy script)
+./deploy.sh --network ic              # Deploy everything
+./deploy.sh --network ic --backend-only   # Backend only
+./deploy.sh --network ic --frontend-only  # Frontend only
+
+# Need Kong Locker info? (READ-ONLY)
+# Navigate to: ../kong_locker/CLAUDE.md for API details
+# But DO NOT modify Kong Locker code
+```
+
+## 📁 Repository Structure
 
 ```
+project_root/
+├── deploy.sh            # LEGACY - Archived, DO NOT USE
+├── src/
+│   ├── daopad/         # YOU ARE HERE - Primary development
+│   │   ├── CLAUDE.md   # This file - Main documentation
+│   │   ├── deploy.sh   # USE THIS for deployments
+│   │   ├── daopad_backend/
+│   │   ├── daopad_frontend/
+│   │   └── orbit_station/
+│   │
+│   └── kong_locker/    # READ-ONLY - Reference only
+│       ├── CLAUDE.md   # Kong Locker details (for reference)
+│       ├── deploy.sh   # Kong Locker deploy (rarely used)
+│       ├── kong_locker/
+│       └── kong_locker_frontend/
+```
+
+## 🔗 Understanding the Integration
+
+### Voting Power Flow
+```mermaid
+graph LR
+    A[User locks LP tokens] -->|Kong Locker| B[Lock Canister Created]
+    B -->|Provides Principal| C[User Registers in DAOPad]
+    C -->|Queries Kong Locker| D[Gets Voting Power]
+    D -->|Uses Power| E[Votes on Proposals]
+    E -->|Executes| F[Orbit Station Treasury]
+```
+
+### When You Need Kong Locker Information:
+- **Understanding voting power**: Read `../kong_locker/CLAUDE.md`
+- **API endpoints**: See Kong Locker's query methods
+- **Lock canister structure**: Reference the architecture docs
+- **But remember**: DO NOT modify Kong Locker code
+
+### Kong Locker Key Concepts (Reference Only):
+- Users lock LP tokens permanently in individual canisters
+- Each user gets one lock canister (blackholed, immutable)
+- Voting power = USD value of locked LP tokens × 100
+- Query with: `dfx canister --network ic call kong_locker get_all_voting_powers`
+
+## 🏛️ DAOPad Architecture (Active Development)
+
+### Core Components
+```
 daopad/
-├── daopad_backend/       # Rust canister - governance logic & Orbit integration
+├── daopad_backend/       # Rust canister - governance logic
 │   ├── src/
-│   │   ├── lib.rs       # Main canister entry point
-│   │   ├── alexandria_dao.rs  # Orbit Station integration module
+│   │   ├── lib.rs       # Main entry point
+│   │   ├── alexandria_dao.rs  # Orbit Station integration
 │   │   └── types.rs     # Type definitions
-│   └── daopad_backend.did  # Candid interface (auto-generated)
+│   └── daopad_backend.did  # Auto-generated candid
 │
 ├── daopad_frontend/      # React app - voting interface
 │   ├── src/
-│   │   ├── App.jsx      # Main application component
+│   │   ├── App.jsx      # Main application
 │   │   └── components/  # UI components
-│   └── dist/            # Build output (DO NOT EDIT)
+│   └── dist/            # Build output
 │
-└── orbit_station/        # Orbit Station candid definitions
-    └── orbit_station.did # Interface for cross-canister calls
+└── orbit_station/        # Orbit Station interfaces
+    └── orbit_station.did # For cross-canister calls
 ```
 
-## 🔑 Key Concepts
+### Development Workflow
 
-### What is Orbit Station?
-- A trustless multi-custody canister for managing digital assets
-- Currently uses human admins (centralized problem)
-- Our solution: DAOPad backend becomes THE admin
-
-### Governance Flow
-1. User registers with LP Locker principal (proof of locked liquidity)
-2. Registration grants voting power based on locked amount
-3. Proposals created in Orbit Station
-4. Users vote through DAOPad frontend
-5. DAOPad backend executes approved proposals on Orbit Station
-
-### Alexandria DAO Integration
-- **Token**: $ALEX (governance token)
-- **Station ID**: `fec7w-zyaaa-aaaaa-qaffq-cai`
-- **Current Phase**: Testing on mainnet with test Orbit Station
-
-## ⚠️ Critical Limitations
-
-### Query Method Restriction
-```rust
-// ❌ THIS DOESN'T WORK - Queries can't call queries
-#[query]
-async fn get_orbit_data() -> Result<Data> {
-    orbit_station.list_requests().await // FAILS!
-}
-
-// ✅ THIS WORKS - Update methods can call anything
-#[update]
-async fn execute_orbit_action() -> Result<()> {
-    orbit_station.execute_request().await // Works!
-}
-```
-
-**Impact**: Frontend must call Orbit Station directly for read operations.
-
-### Known Errors & Solutions
-
-| Error | Cause | Solution |
-|-------|-------|----------|
-| `ic0_call_new` error | Query calling query | Use update method or direct frontend call |
-| Decoding errors | Orbit uses inline records | Match exact candid types from orbit_station.did |
-| Principal mismatch | Backend not registered | Register backend principal in Orbit Station |
-
-## 🛠️ Development Workflow
-
-### Backend Changes
+#### Backend Changes
 ```bash
 # 1. Make Rust changes
+cd daopad_backend
 vim src/lib.rs
 
-# 2. Build
+# 2. Build (from project root)
+cd ../..  # Back to project root
 cargo build --target wasm32-unknown-unknown --release -p daopad_backend --locked
 
-# 3. CRITICAL: Regenerate candid
-candid-extractor target/wasm32-unknown-unknown/release/daopad_backend.wasm > daopad_backend.did
+# 3. Extract candid
+candid-extractor target/wasm32-unknown-unknown/release/daopad_backend.wasm > src/daopad/daopad_backend/daopad_backend.did
 
-# 4. Ask user to deploy
-echo "Please run: ./deploy.sh --network ic --backend-only"
+# 4. Deploy (from src/daopad/)
+cd src/daopad
+./deploy.sh --network ic --backend-only
 ```
 
-### Frontend Changes
+#### Frontend Changes
 ```bash
-# 1. Development server (talks to mainnet)
+# 1. Development server
 cd daopad_frontend
 npm install
-npm run dev  # Opens at localhost:3000
+npm run dev  # localhost:3000
 
-# 2. After changes, ask user to deploy
-echo "Please run: ./deploy.sh --network ic --frontend-only"
+# 2. Deploy
+cd ..  # Back to src/daopad/
+./deploy.sh --network ic --frontend-only
 ```
 
-## 📝 Entry Points
+## 🔑 Key Integration Points
 
-### Backend Methods
-```rust
-// Registration & Voting
-register_with_lp_principal(principal: Principal) -> Result<()>
-cast_vote(proposal_id: u64, vote: Vote) -> Result<()>
-get_voting_power(user: Principal) -> Result<u64>
-
-// Orbit Integration (admin operations)
-execute_approved_proposal(proposal_id: u64) -> Result<()>
-get_alexandria_config() -> Result<Config>
-
-// Cache management
-get_cache_status() -> Result<CacheStatus>
-refresh_cache() -> Result<()>
-```
-
-### Frontend Routes
-- `/` - Dashboard with proposals list
-- `/register` - LP principal registration
-- `/proposal/:id` - Individual proposal voting
-- `/governance` - Voting statistics
-
-## 🔗 Integration Points
-
-### With Kong Locker
+### With Kong Locker (READ-ONLY)
 ```rust
 // Users provide their Kong Locker principal as proof
 register_with_lp_principal(kong_locker_principal: Principal) {
-    // Verify principal owns locked LP tokens
-    // Grant voting power based on locked amount
+    // DAOPad verifies this principal owns a lock canister
+    // Queries Kong Locker for voting power calculation
+    // Grants governance rights based on locked amount
+}
+
+// Getting voting power (reference only)
+get_voting_power(user: Principal) -> u64 {
+    // Internally queries Kong Locker's data
+    // Returns USD value * 100 of locked LP tokens
 }
 ```
 
-### With Orbit Station
+### With Orbit Station (ACTIVE DEVELOPMENT)
 ```rust
-// DAOPad backend acts as Orbit admin
+// DAOPad backend acts as the DAO admin for Orbit Station
 impl OrbitAdmin for DaoPadBackend {
     // Execute treasury operations after DAO approval
     async fn execute_request(request_id: u64) -> Result<()>
 }
 ```
 
-## 🚨 Testing Checklist
+## ⚠️ Critical Limitations
 
-When modifying DAOPad:
-- [ ] Verify registration with LP principal works
-- [ ] Test voting mechanism
-- [ ] Ensure Orbit integration doesn't use query-to-query calls
-- [ ] Check frontend correctly displays Orbit proposals
-- [ ] Validate vote tallying logic
-- [ ] Test proposal execution threshold
-
-## 📊 State Management
-
-### Backend State
+### Query Method Restriction (IC Platform Limitation)
 ```rust
-struct DaoPadState {
-    registered_users: HashMap<Principal, VotingPower>,
-    proposals: HashMap<u64, Proposal>,
-    votes: HashMap<(Principal, u64), Vote>,
-    orbit_station_id: Principal,
-    governance_config: GovernanceConfig,
+// ❌ DOESN'T WORK - Query methods can't call other queries
+#[query]
+async fn get_orbit_data() -> Result<Data> {
+    orbit_station.list_requests().await // FAILS!
+}
+
+// ✅ WORKS - Update methods can call anything
+#[update]
+async fn execute_orbit_action() -> Result<()> {
+    orbit_station.execute_request().await // Works!
 }
 ```
 
-### Frontend State (React)
-```javascript
-const AppState = {
-    user: { principal, votingPower, isRegistered },
-    proposals: [...],
-    votes: { [proposalId]: userVote },
-    orbitConnection: { status, lastSync }
-}
+## 📝 Active Development Areas
+
+### Current Focus
+- [ ] Proposal creation interface
+- [ ] Vote tallying mechanisms
+- [ ] Orbit Station integration
+- [ ] Treasury management UI
+- [ ] Governance analytics dashboard
+
+### Backend Methods (Actively Developed)
+```rust
+// User Management
+register_with_lp_principal(principal: Principal) -> Result<()>
+get_voting_power(user: Principal) -> Result<u64>
+get_user_status(user: Principal) -> Result<UserStatus>
+
+// Voting System
+create_proposal(proposal: ProposalInput) -> Result<u64>
+cast_vote(proposal_id: u64, vote: Vote) -> Result<()>
+execute_proposal(proposal_id: u64) -> Result<()>
+
+// Orbit Integration
+sync_with_orbit_station() -> Result<()>
+get_treasury_status() -> Result<TreasuryStatus>
 ```
+
+## 🚀 Deployment
+
+### Identity Management
+```bash
+# For deployments, Claude uses:
+dfx identity use daopad  # No password required
+
+# User's identity (password-protected):
+dfx identity use alex    # Manual password entry
+```
+
+### Deployment Commands (from src/daopad/)
+```bash
+# Full deployment
+./deploy.sh --network ic
+
+# Backend only
+./deploy.sh --network ic --backend-only
+
+# Frontend only  
+./deploy.sh --network ic --frontend-only
+
+# Fresh deployment (local only)
+./deploy.sh --fresh
+```
+
+## 📦 Canister IDs
+
+| Component | Canister ID | URL |
+|-----------|-------------|-----|
+| DAOPad Backend | `lwsav-iiaaa-aaaap-qp2qq-cai` | - |
+| DAOPad Frontend | `l7rlj-6aaaa-aaaaa-qaffq-cai` | https://l7rlj-6aaaa-aaaaa-qaffq-cai.icp0.io |
+| Orbit Station | `fec7w-zyaaa-aaaaa-qaffq-cai` | External |
+| Kong Locker | `eazgb-giaaa-aaaap-qqc2q-cai` | Reference only |
 
 ## 🔴 Common Issues
 
-1. **"Backend not authorized"**: Backend principal needs registration in Orbit Station
-2. **"Invalid candid decode"**: Regenerate candid after ANY Rust changes
-3. **"Proposal not found"**: Cache might be stale, call refresh_cache()
-4. **Frontend shows old data**: Browser cache issue, hard refresh (Ctrl+Shift+R)
+| Issue | Solution |
+|-------|----------|
+| "Backend not authorized" | Register backend principal in Orbit Station |
+| "Invalid candid decode" | Run candid-extractor after Rust changes |
+| "Query calling query" | Use update method or direct frontend call |
+| Need Kong Locker data | Read `../kong_locker/CLAUDE.md` for API info |
+| Wrong deploy script | Use `./deploy.sh` from THIS directory |
 
-## 📚 Resources
+## 📚 Quick Reference
 
-- [Orbit Documentation](https://docs.orbitchain.io)
-- [Alexandria DAO Specs](internal)
-- [IC Query Limitations](https://forum.dfinity.org/t/query-calls/1234)
+### Testing Commands
+```bash
+# DAOPad operations
+dfx canister --network ic call daopad_backend get_backend_principal
+dfx canister --network ic call daopad_backend get_cache_status
+dfx canister --network ic call daopad_backend get_alexandria_proposals
+
+# Kong Locker queries (READ-ONLY reference)
+dfx canister --network ic call kong_locker get_all_voting_powers
+dfx canister --network ic call kong_locker get_total_value_locked
+```
 
 ## For Claude Code
 
-When working on DAOPad:
-1. **Focus on governance logic** - This is a DAO tool, not a wallet
-2. **Respect query limitations** - Never attempt query-to-query calls
-3. **Maintain separation** - Kong Locker handles LP tokens, DAOPad handles governance
-4. **Test on mainnet** - No local testing, deploy directly to IC
-5. **Update candid** - ALWAYS after Rust changes
+### Primary Rules:
+1. **Work in DAOPad** - This is the active development area
+2. **Kong Locker is READ-ONLY** - Never modify, only reference for voting power logic
+3. **Use local deploy.sh** - Always deploy from `src/daopad/` directory
+4. **Extract candid** - After every Rust change
+5. **Test on mainnet** - No local testing, deploy directly to IC
+
+### When You Need Kong Locker Info:
+- Navigate to `../kong_locker/CLAUDE.md`
+- Read the API documentation
+- Understand the voting power calculation
+- Return to DAOPad for implementation
+
+### Workflow Checklist:
+- [ ] Currently in `src/daopad/` directory
+- [ ] Using `./deploy.sh` (not root deploy.sh)
+- [ ] Kong Locker treated as read-only reference
+- [ ] Candid extracted after Rust changes
+- [ ] Focusing on governance/voting features
+
+Remember: DAOPad is where the action is. Kong Locker is history - important to understand, but not to change.

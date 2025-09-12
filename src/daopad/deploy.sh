@@ -1,34 +1,13 @@
 #!/bin/bash
-
-# ============================================================================
-# LEGACY DEPLOYMENT SCRIPT - ARCHIVED FOR REFERENCE
-# ============================================================================
-# This unified deployment script was used when DAOPad and Kong Locker were
-# deployed together. Now that these projects are being developed and deployed
-# independently, we have separate deployment scripts in each project directory:
-#
-# - DAOPad deployment: src/daopad/deploy.sh
-# - Kong Locker deployment: src/kong_locker/deploy.sh
-#
-# Each project now has its own deployment script with the same functionality
-# (--network ic, --backend-only, --frontend-only flags) but focused only on
-# that specific project's components.
-#
-# This script is kept for historical reference and understanding the original
-# deployment architecture.
-# ============================================================================
-
-exit 0  # Prevent accidental execution
-
-: <<'ORIGINAL_SCRIPT'
-#!/bin/bash
-# Unified deployment script for DAOPad
+# DAOPad-specific deployment script
 # Usage: ./deploy.sh [--network ic] [--fresh] [--backend-only|--frontend-only]
 
 set -e
 
-# Get the directory where this script is located
+# Get the directory where this script is located (src/daopad)
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Get the root directory (two levels up from src/daopad)
+ROOT_DIR="$( cd "$SCRIPT_DIR/../.." && pwd )"
 
 # Parse arguments
 NETWORK="local"
@@ -90,21 +69,21 @@ echo "================================================"
 echo "Network: $NETWORK"
 echo "Target: $DEPLOY_TARGET"
 echo "Fresh deploy: $FRESH_DEPLOY"
+echo "Working from: $ROOT_DIR"
 
 if [ "$NETWORK" == "ic" ]; then
     echo ""
-    echo "Mainnet Canister IDs (from canister_ids.json):"
-    if [ -f "canister_ids.json" ]; then
-        BACKEND_ID=$(jq -r '.daopad_backend.ic // empty' canister_ids.json)
-        FRONTEND_ID=$(jq -r '.daopad_frontend.ic // empty' canister_ids.json)
-        [ -n "$BACKEND_ID" ] && echo "  Backend:  $BACKEND_ID"
-        [ -n "$FRONTEND_ID" ] && echo "  Frontend: $FRONTEND_ID"
-    fi
+    echo "Mainnet Canister IDs:"
+    echo "  Backend:  lwsav-iiaaa-aaaap-qp2qq-cai"
+    echo "  Frontend: l7rlj-6aaaa-aaaaa-qaffq-cai"
     echo "  Alexandria Station: $ALEXANDRIA_STATION_ID"
 fi
 
 echo "================================================"
 echo ""
+
+# Change to root directory for all operations
+cd "$ROOT_DIR"
 
 # Check network connection
 if [ "$NETWORK" == "local" ]; then
@@ -135,13 +114,12 @@ if [ "$FRESH_DEPLOY" = true ] && [ "$NETWORK" == "local" ]; then
     fi
 fi
 
-# Deploy backend (includes kong_locker)
+# Deploy backend
 if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
     echo ""
-    echo "Building backend canisters..."
+    echo "Building DAOPad backend..."
     
     # Build DAOPad backend
-    echo "Building daopad_backend..."
     if ! cargo build --target wasm32-unknown-unknown --release -p daopad_backend --locked; then
         echo "❌ DAOPad backend build failed!"
         exit 1
@@ -157,26 +135,6 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
         echo "Please install with: cargo install candid-extractor"
         exit 1
     fi
-    
-    # Build LP Locking canister
-    echo "Building kong_locker..."
-    if ! cargo build --target wasm32-unknown-unknown --release -p kong_locker --locked; then
-        echo "❌ LP Locking build failed!"
-        exit 1
-    fi
-    
-    # Extract candid interface for kong_locker
-    echo "Extracting Candid interface for kong_locker..."
-    if command -v candid-extractor &> /dev/null; then
-        candid-extractor target/wasm32-unknown-unknown/release/kong_locker.wasm > src/kong_locker/kong_locker/kong_locker.did
-        echo "✓ Candid interface extracted"
-    else
-        echo "❌ ERROR: candid-extractor not found!"
-        echo "Please install with: cargo install candid-extractor"
-        exit 1
-    fi
-    
-    # No Rust build needed for kong_locker_frontend - it's a frontend asset canister
     
     # Deploy DAOPad backend
     echo "Deploying daopad_backend..."
@@ -200,40 +158,17 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
             exit 1
         fi
     fi
-    
-    # Deploy LP Locking canister with specified ID
-    echo "Deploying kong_locker..."
-    if [ "$NETWORK" == "ic" ]; then
-        # Deploy to mainnet with specified ID
-        echo "Deploying kong_locker to mainnet..."
-        if dfx deploy --network ic kong_locker --specified-id eazgb-giaaa-aaaap-qqc2q-cai; then
-            echo "✓ LP Locking deployed successfully"
-        else
-            echo "❌ LP Locking deployment failed!"
-            exit 1
-        fi
-    else
-        # For local deployment, also use specified ID
-        if dfx deploy kong_locker --specified-id eazgb-giaaa-aaaap-qqc2q-cai; then
-            echo "✓ LP Locking deployed successfully (local with specified ID)"
-        else
-            echo "❌ LP Locking deployment failed!"
-            exit 1
-        fi
-    fi
-    
-    # kong_locker_frontend is now deployed as a frontend asset canister, not here
 fi
 
 # Deploy frontend
 if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "frontend" ]; then
     echo ""
-    echo "Building frontend..."
+    echo "Building DAOPad frontend..."
     cd src/daopad/daopad_frontend
     
     if ! npm install; then
         echo "❌ npm install failed!"
-        cd ../..
+        cd "$ROOT_DIR"
         exit 1
     fi
     
@@ -243,18 +178,18 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "frontend" ]; then
     
     if ! npm run build; then
         echo "❌ Frontend build failed!"
-        cd ../..
+        cd "$ROOT_DIR"
         exit 1
     fi
     
-    cd ../..
+    cd "$ROOT_DIR"
     
-    echo "Deploying frontend..."
+    echo "Deploying DAOPad frontend..."
     if [ "$NETWORK" == "ic" ]; then
         # Deploy to mainnet using standard dfx deploy
         echo "Deploying frontend to mainnet..."
         if dfx deploy --network ic daopad_frontend; then
-            FRONTEND_ID=$(dfx canister --network ic id daopad_frontend 2>/dev/null || echo "unknown")
+            FRONTEND_ID=$(dfx canister --network ic id daopad_frontend 2>/dev/null || echo "l7rlj-6aaaa-aaaaa-qaffq-cai")
             echo "✓ Frontend deployed successfully"
             echo "   Frontend URL: https://$FRONTEND_ID.icp0.io/"
             FRONTEND_DEPLOYED=true
@@ -284,77 +219,29 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "frontend" ]; then
             exit 1
         fi
     fi
-    
-    # Build and Deploy LP Lock Frontend (React app for LP locking)
-    echo ""
-    echo "Building LP Lock Frontend..."
-    # Make sure we're in the right directory first
-    cd "$SCRIPT_DIR"
-    cd src/kong_locker/kong_locker_frontend
-    
-    if ! npm install; then
-        echo "❌ npm install failed for LP Lock Frontend!"
-        cd ../..
-        exit 1
-    fi
-    
-    if ! npm run build; then
-        echo "❌ LP Lock Frontend build failed!"
-        cd ../..
-        exit 1
-    fi
-    
-    cd ../..
-    
-    echo "Deploying LP Lock Frontend..."
-    if [ "$NETWORK" == "ic" ]; then
-        echo "Deploying LP Lock Frontend to mainnet..."
-        if dfx deploy --network ic kong_locker_frontend --specified-id c6w56-taaaa-aaaai-atlma-cai; then
-            LP_LOCK_FRONTEND_ID=$(dfx canister --network ic id kong_locker_frontend 2>/dev/null || echo "c6w56-taaaa-aaaai-atlma-cai")
-            echo "✓ LP Lock Frontend deployed successfully"
-            echo "   LP Lock Frontend URL: https://$LP_LOCK_FRONTEND_ID.icp0.io/"
-            LP_LOCK_FRONTEND_DEPLOYED=true
-        else
-            echo "❌ LP Lock Frontend deployment failed!"
-            exit 1
-        fi
-    else
-        if dfx deploy kong_locker_frontend --specified-id c6w56-taaaa-aaaai-atlma-cai; then
-            echo "✓ LP Lock Frontend deployed successfully (local)"
-            LP_LOCK_FRONTEND_DEPLOYED=true
-        else
-            echo "❌ LP Lock Frontend deployment failed!"
-            exit 1
-        fi
-    fi
 fi
 
 # Display deployment summary
 echo ""
 echo "================================================"
-echo "Deployment Summary"
+echo "DAOPad Deployment Summary"
 echo "================================================"
 
 if [ "$NETWORK" == "ic" ]; then
     echo ""
     echo "Mainnet Status:"
     if [ "$BACKEND_DEPLOYED" == true ]; then
-        BACKEND_ID=$(dfx canister --network ic id daopad_backend 2>/dev/null || echo "unknown")
+        BACKEND_ID=$(dfx canister --network ic id daopad_backend 2>/dev/null || echo "lwsav-iiaaa-aaaap-qp2qq-cai")
         echo "  ✓ Backend:  $BACKEND_ID"
     elif [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
         echo "  ❌ Backend:  Deployment failed"
     fi
     
     if [ "$FRONTEND_DEPLOYED" == true ]; then
-        FRONTEND_ID=$(dfx canister --network ic id daopad_frontend 2>/dev/null || echo "unknown")
+        FRONTEND_ID=$(dfx canister --network ic id daopad_frontend 2>/dev/null || echo "l7rlj-6aaaa-aaaaa-qaffq-cai")
         echo "  ✓ Frontend: https://$FRONTEND_ID.icp0.io/"
     elif [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "frontend" ]; then
         echo "  ❌ Frontend: Deployment failed"
-    fi
-    
-    if [ "$LP_LOCK_FRONTEND_DEPLOYED" == true ]; then
-        LP_LOCK_FRONTEND_ID=$(dfx canister --network ic id kong_locker_frontend 2>/dev/null || echo "c6w56-taaaa-aaaai-atlma-cai")
-        echo "  ✓ LP Lock Frontend: https://$LP_LOCK_FRONTEND_ID.icp0.io/"
     fi
     
     if [ "$BACKEND_DEPLOYED" == true ]; then
@@ -402,8 +289,7 @@ if [ "$BACKEND_DEPLOYED" == false ] && [ "$FRONTEND_DEPLOYED" == false ]; then
 elif [ "$BACKEND_DEPLOYED" == false ] || [ "$FRONTEND_DEPLOYED" == false ]; then
     echo "⚠️  Some components failed to deploy. Please check the warnings above."
 else
-    echo "✅ All requested components deployed successfully!"
+    echo "✅ All requested DAOPad components deployed successfully!"
 fi
 
 echo "================================================"
-ORIGINAL_SCRIPT
