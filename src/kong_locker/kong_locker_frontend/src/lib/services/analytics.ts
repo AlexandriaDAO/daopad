@@ -51,12 +51,12 @@ class AnalyticsCache {
   get(canisterId: string): CacheEntry | null {
     const entry = this.cache.get(canisterId);
     if (!entry) return null;
-    
+
     if (Date.now() - entry.timestamp > this.TTL) {
       this.cache.delete(canisterId);
       return null;
     }
-    
+
     return entry;
   }
 
@@ -237,7 +237,7 @@ export class AnalyticsService {
         
         // Aggregate token data from positions
         result.value.positions.forEach(position => {
-          // Process token 0
+          // Process token 0 - use actual USD value from KongSwap
           if (position.symbol_0) {
             if (!tokenBreakdown.has(position.symbol_0)) {
               tokenBreakdown.set(position.symbol_0, {
@@ -247,13 +247,13 @@ export class AnalyticsService {
               });
             }
             const token0Data = tokenBreakdown.get(position.symbol_0)!;
-            // Assume each token contributes half the USD value of the LP position
-            token0Data.totalValue += position.usd_balance / 2;
+            // Use the actual USD amount for token 0 from KongSwap
+            token0Data.totalValue += position.usd_amount_0 || 0;
             token0Data.lpPools.add(position.symbol);
             token0Data.totalTokenAmount += position.amount_0;
           }
-          
-          // Process token 1
+
+          // Process token 1 - use actual USD value from KongSwap
           if (position.symbol_1) {
             if (!tokenBreakdown.has(position.symbol_1)) {
               tokenBreakdown.set(position.symbol_1, {
@@ -263,8 +263,8 @@ export class AnalyticsService {
               });
             }
             const token1Data = tokenBreakdown.get(position.symbol_1)!;
-            // Assume each token contributes half the USD value of the LP position
-            token1Data.totalValue += position.usd_balance / 2;
+            // Use the actual USD amount for token 1 from KongSwap
+            token1Data.totalValue += position.usd_amount_1 || 0;
             token1Data.lpPools.add(position.symbol);
             token1Data.totalTokenAmount += position.amount_1;
           }
@@ -273,10 +273,10 @@ export class AnalyticsService {
     });
     
     // Extrapolate to full system if we have a good sample
-    const estimatedTotalValue = successfulQueries > 0 
-      ? (totalValue / successfulQueries) * totalCanisters 
+    const estimatedTotalValue = successfulQueries > 0
+      ? (totalValue / successfulQueries) * totalCanisters
       : 0;
-    
+
     // Scale up token breakdown estimates
     if (successfulQueries > 0) {
       const scaleFactor = totalCanisters / successfulQueries;
@@ -337,7 +337,7 @@ export class AnalyticsService {
     // Aggregate from all cached entries
     this.cache.getAllEntries().forEach((entry) => {
       entry.data.forEach(position => {
-        // Process token 0
+        // Process token 0 - use actual USD value from KongSwap
         if (position.symbol_0) {
           if (!tokenBreakdown.has(position.symbol_0)) {
             tokenBreakdown.set(position.symbol_0, {
@@ -347,12 +347,13 @@ export class AnalyticsService {
             });
           }
           const token0Data = tokenBreakdown.get(position.symbol_0)!;
-          token0Data.totalValue += position.usd_balance / 2;
+          // Use the actual USD amount for token 0 from KongSwap
+          token0Data.totalValue += position.usd_amount_0 || 0;
           token0Data.lpPools.add(position.symbol);
           token0Data.totalTokenAmount += position.amount_0;
         }
-        
-        // Process token 1
+
+        // Process token 1 - use actual USD value from KongSwap
         if (position.symbol_1) {
           if (!tokenBreakdown.has(position.symbol_1)) {
             tokenBreakdown.set(position.symbol_1, {
@@ -362,7 +363,8 @@ export class AnalyticsService {
             });
           }
           const token1Data = tokenBreakdown.get(position.symbol_1)!;
-          token1Data.totalValue += position.usd_balance / 2;
+          // Use the actual USD amount for token 1 from KongSwap
+          token1Data.totalValue += position.usd_amount_1 || 0;
           token1Data.lpPools.add(position.symbol);
           token1Data.totalTokenAmount += position.amount_1;
         }

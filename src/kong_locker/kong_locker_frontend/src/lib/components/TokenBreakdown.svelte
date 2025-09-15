@@ -10,16 +10,17 @@
   export let totalValue: number = 0;
   
   // Convert map to sorted array for display - completely dynamic
-  $: sortedTokens = tokenData && tokenData.size > 0 
+  $: sortedTokens = tokenData && tokenData.size > 0
     ? Array.from(tokenData.entries())
         .map(([symbol, data]) => ({
           symbol,
           ...data,
           percentage: totalValue > 0 ? (data.totalValue / totalValue) * 100 : 0,
           dynamicColors: getTokenColors(symbol),
-          dynamicIcon: generateTokenIcon(symbol)
+          dynamicIcon: generateTokenIcon(symbol),
+          tvlContribution: data.totalValue * 2 // TVL is double the token value since each token is paired
         }))
-        .sort((a, b) => b.totalValue - a.totalValue)
+        .sort((a, b) => b.tvlContribution - a.tvlContribution) // Sort by TVL contribution
         .filter(token => token.totalValue > 0)
     : [];
   
@@ -49,7 +50,8 @@
           <thead>
             <tr class="border-b border-kong-border/50">
               <th class="text-left py-2 px-3 text-kong-text-secondary font-medium">Token</th>
-              <th class="text-right py-2 px-3 text-kong-text-secondary font-medium">Value Locked</th>
+              <th class="text-right py-2 px-3 text-kong-text-secondary font-medium">TVL Contribution</th>
+              <th class="text-right py-2 px-3 text-kong-text-secondary font-medium">Token Value</th>
               <th class="text-right py-2 px-3 text-kong-text-secondary font-medium">% of Total</th>
               <th class="text-right py-2 px-3 text-kong-text-secondary font-medium">LP Pools</th>
               <th class="text-left py-2 px-3 text-kong-text-secondary font-medium">Distribution</th>
@@ -61,7 +63,7 @@
                 <td class="py-2 px-3">
                   <div class="flex items-center space-x-2">
                     <span class="text-sm">{token.dynamicIcon}</span>
-                    <span 
+                    <span
                       class="font-medium"
                       style="color: {token.dynamicColors.primary}"
                     >
@@ -71,6 +73,11 @@
                 </td>
                 <td class="text-right py-2 px-3">
                   <span class="font-semibold text-kong-accent-green">
+                    ${formatNumber(token.tvlContribution)}
+                  </span>
+                </td>
+                <td class="text-right py-2 px-3">
+                  <span class="text-kong-text-secondary">
                     ${formatNumber(token.totalValue)}
                   </span>
                 </td>
@@ -82,7 +89,7 @@
                 </td>
                 <td class="py-2 px-3">
                   <div class="w-full bg-kong-bg-secondary rounded-full h-2 overflow-hidden">
-                    <div 
+                    <div
                       class="h-full transition-all duration-300"
                       style="
                         width: {Math.min(token.percentage, 100)}%;

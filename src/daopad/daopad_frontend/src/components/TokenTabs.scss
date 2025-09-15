@@ -1,0 +1,243 @@
+.token-tabs {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+
+  .loading-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4rem 2rem;
+    text-align: center;
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #007bff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 1.5rem;
+    }
+
+    p {
+      color: #666;
+      font-size: 1.1rem;
+      margin: 0;
+    }
+  }
+
+  .error-section, .empty-state {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+    padding: 2rem;
+
+    .error-message, .empty-state {
+      text-align: center;
+      max-width: 500px;
+
+      h3 {
+        color: #dc3545;
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+      }
+
+      p {
+        color: #666;
+        margin-bottom: 2rem;
+        line-height: 1.6;
+      }
+
+      .error-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .retry-button, .external-button {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+
+        &.retry-button {
+          background: #6c757d;
+          color: white;
+
+          &:hover {
+            background: #545b62;
+          }
+        }
+
+        &.external-button {
+          background: #007bff;
+          color: white;
+
+          &:hover {
+            background: #0056b3;
+          }
+
+          &.primary {
+            background: #28a745;
+
+            &:hover {
+              background: #1e7e34;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .tabs-header {
+    text-align: center;
+    margin-bottom: 2rem;
+
+    h2 {
+      color: #2c3e50;
+      margin-bottom: 0.5rem;
+      font-size: 2rem;
+      font-weight: 600;
+    }
+
+    p {
+      color: #666;
+      font-size: 1.1rem;
+      margin: 0;
+      line-height: 1.5;
+    }
+  }
+
+  .tabs-navigation {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 0;
+    overflow-x: auto;
+
+    .tab-button {
+      background: transparent;
+      border: none;
+      padding: 1rem 1.5rem;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+      min-width: 140px;
+
+      &:hover {
+        background: #f8f9fa;
+        border-bottom-color: #dee2e6;
+      }
+
+      &.active {
+        border-bottom-color: #007bff;
+        background: #f8f9fa;
+
+        .tab-content {
+          .token-symbol {
+            color: #007bff;
+            font-weight: 700;
+          }
+        }
+      }
+
+      .tab-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+
+        .token-symbol {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: #2c3e50;
+          transition: color 0.3s ease;
+        }
+
+        .token-chain {
+          font-size: 0.85rem;
+          color: #6c757d;
+          font-style: italic;
+        }
+
+        .voting-power {
+          font-size: 0.8rem;
+          background: #e3f2fd;
+          color: #1565c0;
+          padding: 0.2rem 0.5rem;
+          border-radius: 12px;
+          font-weight: 600;
+        }
+      }
+    }
+  }
+
+  .tab-content {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    min-height: 500px;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  @media (max-width: 768px) {
+    padding: 1rem;
+
+    .tabs-header {
+      h2 {
+        font-size: 1.5rem;
+      }
+
+      p {
+        font-size: 1rem;
+      }
+    }
+
+    .tabs-navigation {
+      .tab-button {
+        padding: 0.75rem 1rem;
+        min-width: 120px;
+
+        .tab-content {
+          .token-symbol {
+            font-size: 1rem;
+          }
+
+          .voting-power {
+            font-size: 0.75rem;
+          }
+        }
+      }
+    }
+
+    .error-section, .empty-state {
+      min-height: 300px;
+      padding: 1rem;
+
+      .error-actions {
+        flex-direction: column;
+        align-items: center;
+
+        .retry-button, .external-button {
+          width: 100%;
+          max-width: 250px;
+        }
+      }
+    }
+  }
+}

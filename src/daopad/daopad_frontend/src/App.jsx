@@ -5,31 +5,26 @@ import { useLogout } from './hooks/useLogout';
 import { setAuthSuccess, clearAuth, setAuthLoading, setAuthInitialized } from './features/auth/authSlice';
 import { fetchBalances } from './state/balance/balanceThunks';
 import { clearBalances } from './state/balance/balanceSlice';
-import { 
-  setLpPrincipal, 
-  clearDaoState,
-  setSelectedDao 
+import {
+  setKongLockerCanister,
+  clearDaoState
 } from './features/dao/daoSlice';
 import { DAOPadBackendService } from './services/daopadBackend';
 
 // Components
-import LpPrincipalSetup from './components/LpPrincipalSetup';
-import DaoDashboard from './components/DaoDashboard';
-import DaoProposals from './components/DaoProposals';
-import TokenStationAdmin from './components/TokenStationAdmin';
+import KongLockerSetup from './components/KongLockerSetup';
+import TokenTabs from './components/TokenTabs';
 
 import './App.scss';
 
 function App() {
-  const [activeStep, setActiveStep] = useState(null);
   const [copyFeedback, setCopyFeedback] = useState(false);
-  const [currentView, setCurrentView] = useState('home'); // 'home', 'daos', 'proposals', 'admin'
-  const [isCheckingLpPrincipal, setIsCheckingLpPrincipal] = useState(false);
-  
+  const [isCheckingKongLocker, setIsCheckingKongLocker] = useState(false);
+
   const dispatch = useDispatch();
   const { principal, isAuthenticated } = useSelector(state => state.auth);
   const { icpBalance, isLoading: balanceLoading } = useSelector(state => state.balance);
-  const { lpPrincipal, selectedDao } = useSelector(state => state.dao);
+  const { kongLockerCanister } = useSelector(state => state.dao);
   const { login, identity } = useIdentity();
   const logout = useLogout();
 
@@ -40,7 +35,7 @@ function App() {
       dispatch(setAuthSuccess(principalText));
       // Fetch balances when authenticated
       dispatch(fetchBalances(identity));
-      checkLpPrincipal();
+      checkKongLockerCanister();
     } else {
       dispatch(clearAuth());
       dispatch(clearBalances());
@@ -49,21 +44,23 @@ function App() {
     dispatch(setAuthInitialized(true));
   }, [identity, dispatch]);
 
-  const checkLpPrincipal = async () => {
+  const checkKongLockerCanister = async () => {
     if (!identity) return;
-    
-    setIsCheckingLpPrincipal(true);
+
+    setIsCheckingKongLocker(true);
     try {
       const daopadService = new DAOPadBackendService(identity);
-      const result = await daopadService.getMyLpPrincipal();
-      
+      const result = await daopadService.getMyKongLockerCanister();
+
       if (result.success && result.data) {
-        dispatch(setLpPrincipal(result.data));
+        // Convert Principal object to string
+        const canisterString = typeof result.data === 'string' ? result.data : result.data.toString();
+        dispatch(setKongLockerCanister(canisterString));
       }
     } catch (err) {
-      console.error('Error checking LP principal:', err);
+      console.error('Error checking Kong Locker canister:', err);
     } finally {
-      setIsCheckingLpPrincipal(false);
+      setIsCheckingKongLocker(false);
     }
   };
 
@@ -83,7 +80,6 @@ function App() {
     dispatch(clearAuth());
     dispatch(clearBalances());
     dispatch(clearDaoState());
-    setCurrentView('home');
   };
 
   const copyPrincipal = async () => {
@@ -96,60 +92,23 @@ function App() {
     }
   };
 
-  const handleLpPrincipalComplete = () => {
-    setCurrentView('daos');
+  const handleKongLockerComplete = () => {
+    // Kong Locker setup completed, component will automatically refresh
   };
 
-  const handleSelectDao = (dao) => {
-    dispatch(setSelectedDao(dao));
-    setCurrentView('proposals');
-  };
-
-  // Determine if we should show LP Principal setup
-  const shouldShowLpSetup = isAuthenticated && !lpPrincipal && !isCheckingLpPrincipal && currentView === 'daos';
+  // Determine if we should show Kong Locker setup
+  const shouldShowKongLockerSetup = isAuthenticated && !kongLockerCanister && !isCheckingKongLocker;
 
   return (
     <div className="app">
       <header>
         <div className="header-content">
-          <div>
+          <div className="branding">
             <h1>DAOPad</h1>
-            <p className="project-info">Decentralized DAO Platform</p>
-            <p className="subtitle">Turn any ICRC1 token into a legally compliant DAO</p>
-            <p className="subtitle-secondary">Control treasury, canisters, and real bank accounts through DAO voting</p>
-            <div className="view-toggle">
-              <button 
-                className={`view-btn ${currentView === 'home' ? 'active' : ''}`}
-                onClick={() => setCurrentView('home')}
-              >
-                Home
-              </button>
-              {isAuthenticated && (
-                <>
-                  <button 
-                    className={`view-btn ${currentView === 'daos' ? 'active' : ''}`}
-                    onClick={() => setCurrentView('daos')}
-                  >
-                    My DAOs
-                  </button>
-                  {selectedDao && (
-                    <button 
-                      className={`view-btn ${currentView === 'proposals' ? 'active' : ''}`}
-                      onClick={() => setCurrentView('proposals')}
-                    >
-                      Proposals
-                    </button>
-                  )}
-                  <button 
-                    className={`view-btn ${currentView === 'admin' ? 'active' : ''}`}
-                    onClick={() => setCurrentView('admin')}
-                  >
-                    Admin
-                  </button>
-                </>
-              )}
-            </div>
+            <p className="tagline">Token Governance Platform</p>
+            <p className="subtitle">Create treasuries and vote with your locked liquidity</p>
           </div>
+
           <div className="auth-section">
             {isAuthenticated ? (
               <div className="auth-info">
@@ -159,8 +118,8 @@ function App() {
                   ) : (
                     <>
                       <span className="balance">ICP: {icpBalance}</span>
-                      <button 
-                        onClick={() => dispatch(fetchBalances(identity))} 
+                      <button
+                        onClick={() => dispatch(fetchBalances(identity))}
                         className="refresh-button"
                         title="Refresh balance"
                       >
@@ -171,7 +130,7 @@ function App() {
                 </div>
                 <div className="principal-container">
                   <span className="principal">{principal.slice(0, 5)}...{principal.slice(-4)}</span>
-                  <button 
+                  <button
                     onClick={copyPrincipal}
                     className="copy-button"
                     title="Copy principal"
@@ -179,9 +138,9 @@ function App() {
                     {copyFeedback ? '✓' : '⧉'}
                   </button>
                 </div>
-                {lpPrincipal && (
-                  <div className="lp-principal-indicator" title={`LP: ${lpPrincipal}`}>
-                    <span className="lp-badge">LP ✓</span>
+                {kongLockerCanister && (
+                  <div className="kong-locker-indicator" title={`Kong Locker: ${kongLockerCanister}`}>
+                    <span className="kong-locker-badge">🔒 Connected</span>
                   </div>
                 )}
                 <button onClick={handleLogout} className="auth-button logout">
@@ -197,174 +156,57 @@ function App() {
         </div>
       </header>
 
-      {currentView === 'home' ? (
-        <>
-          <section className="innovation-banner">
-            <div className="banner-content">
-              <strong>Multi-DAO Support:</strong> One LP principal, multiple DAOs!
-              <br />
-              Lock liquidity once, participate in all token DAOs based on your positions.
+      <main>
+        {isAuthenticated ? (
+          shouldShowKongLockerSetup ? (
+            <div className="setup-container">
+              <KongLockerSetup
+                identity={identity}
+                onComplete={handleKongLockerComplete}
+              />
             </div>
-          </section>
-
-          <section className="paths-section">
-            <div className="path-card">
-              <h3>Join DAOs</h3>
-              <ul>
-                <li>Lock liquidity on KongSwap</li>
-                <li>Set your LP principal once</li>
-                <li>Auto-detect available DAOs</li>
-                <li>Join multiple DAOs instantly</li>
-              </ul>
-              <button 
-                className="path-button primary"
-                onClick={() => isAuthenticated ? setCurrentView('daos') : handleLogin()}
-              >
-                {isAuthenticated ? 'View DAOs' : 'Connect Wallet'}
-              </button>
-            </div>
-            <div className="path-card">
-              <h3>Create a DAO</h3>
-              <ul>
-                <li>Deploy Orbit Station</li>
-                <li>Link token to station</li>
-                <li>LP holders auto-join</li>
-                <li>Start governance</li>
-              </ul>
-              <a href="https://lbry.fun" target="_blank" rel="noopener noreferrer" className="path-button secondary">
-                Launch Your DAO →
-              </a>
-            </div>
-          </section>
-
-          <section className="how-it-works">
-            <h2>How Multi-DAO Works</h2>
-            <div className="flow-cards">
-              <div className={`flow-card ${activeStep === 1 ? 'active' : ''}`} onClick={() => setActiveStep(activeStep === 1 ? null : 1)}>
-                <div className="flow-header">
-                  <span className="flow-icon">1</span>
-                  <h3>Lock Liquidity</h3>
-                </div>
-                {activeStep === 1 && (
-                  <div className="flow-content">
-                    <ul>
-                      <li>Visit konglocker.org to lock LP tokens</li>
-                      <li>Receive a unique LP principal</li>
-                      <li>This represents ALL your locked positions</li>
-                      <li>One principal works for all DAOs</li>
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              <div className={`flow-card ${activeStep === 2 ? 'active' : ''}`} onClick={() => setActiveStep(activeStep === 2 ? null : 2)}>
-                <div className="flow-header">
-                  <span className="flow-icon">2</span>
-                  <h3>Set LP Principal</h3>
-                </div>
-                {activeStep === 2 && (
-                  <div className="flow-content">
-                    <ul>
-                      <li>Enter your LP principal in DAOPad</li>
-                      <li>System auto-detects your token positions</li>
-                      <li>Shows all available DAOs</li>
-                      <li>Set once, use everywhere</li>
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              <div className={`flow-card ${activeStep === 3 ? 'active' : ''}`} onClick={() => setActiveStep(activeStep === 3 ? null : 3)}>
-                <div className="flow-header">
-                  <span className="flow-icon">3</span>
-                  <h3>Join & Participate</h3>
-                </div>
-                {activeStep === 3 && (
-                  <div className="flow-content">
-                    <ul>
-                      <li>Join any DAO where you have locked tokens</li>
-                      <li>Vote on proposals</li>
-                      <li>Create new proposals</li>
-                      <li>Manage treasury across multiple DAOs</li>
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-
-          <section className="faq">
-            <h3>Questions?</h3>
-            <details>
-              <summary>What's new in Multi-DAO?</summary>
-              <p>
-                DAOPad now supports multiple DAOs! Lock liquidity for any token on KongSwap,
-                and automatically join that token's DAO. One LP principal gives you access to
-                all DAOs based on your locked positions.
-              </p>
-            </details>
-            <details>
-              <summary>How do I join multiple DAOs?</summary>
-              <p>
-                Lock liquidity for different tokens on konglocker.org. Set your LP principal
-                once in DAOPad. The system auto-detects all your positions and shows available
-                DAOs. Join any or all of them with one click!
-              </p>
-            </details>
-          </section>
-        </>
-      ) : currentView === 'daos' ? (
-        isAuthenticated ? (
-          shouldShowLpSetup ? (
-            <LpPrincipalSetup 
-              identity={identity}
-              onComplete={handleLpPrincipalComplete}
-            />
           ) : (
-            <DaoDashboard 
+            <TokenTabs
               identity={identity}
-              onSelectDao={handleSelectDao}
             />
           )
         ) : (
-          <div className="auth-required">
-            <h3>Authentication Required</h3>
-            <p>Please connect your wallet to view DAOs.</p>
-            <button onClick={handleLogin} className="auth-button">
-              Connect with Internet Identity
-            </button>
+          <div className="welcome-section">
+            <div className="welcome-content">
+              <h2>Welcome to DAOPad</h2>
+              <p>
+                Create and manage token treasuries using your locked liquidity as voting power.
+                Connect your Kong Locker to get started with governance.
+              </p>
+              <div className="features">
+                <div className="feature">
+                  <div className="feature-icon">🔒</div>
+                  <h3>Lock LP Tokens</h3>
+                  <p>Permanently lock your LP tokens in Kong Locker to gain voting power</p>
+                </div>
+                <div className="feature">
+                  <div className="feature-icon">🏛️</div>
+                  <h3>Create Treasuries</h3>
+                  <p>Deploy Orbit Station treasuries for your tokens with governance controls</p>
+                </div>
+                <div className="feature">
+                  <div className="feature-icon">🗳️</div>
+                  <h3>Vote & Govern</h3>
+                  <p>Use your locked value as voting power to control treasury operations</p>
+                </div>
+              </div>
+              <button onClick={handleLogin} className="cta-button">
+                Get Started
+              </button>
+            </div>
           </div>
-        )
-      ) : currentView === 'proposals' ? (
-        isAuthenticated && selectedDao ? (
-          <DaoProposals 
-            identity={identity}
-            dao={selectedDao}
-          />
-        ) : (
-          <div className="no-dao-selected">
-            <h3>No DAO Selected</h3>
-            <p>Please select a DAO from the dashboard to view proposals.</p>
-            <button onClick={() => setCurrentView('daos')} className="nav-button">
-              Go to DAOs
-            </button>
-          </div>
-        )
-      ) : currentView === 'admin' ? (
-        isAuthenticated ? (
-          <TokenStationAdmin identity={identity} />
-        ) : (
-          <div className="auth-required">
-            <h3>Authentication Required</h3>
-            <p>Admin functions require authentication.</p>
-          </div>
-        )
-      ) : null}
+        )}
+      </main>
 
       <footer>
         <p>
-          Built by <a href="https://lbry.fun" target="_blank" rel="noopener noreferrer">Alexandria</a> · 
-          <a href="https://github.com/AlexandriaDAO/daopad" target="_blank" rel="noopener noreferrer">GitHub</a> · 
+          Built by <a href="https://lbry.fun" target="_blank" rel="noopener noreferrer">Alexandria</a> ·
+          <a href="https://github.com/AlexandriaDAO/daopad" target="_blank" rel="noopener noreferrer">GitHub</a> ·
           <a href="https://x.com/alexandria_lbry" target="_blank" rel="noopener noreferrer">Twitter</a>
         </p>
       </footer>

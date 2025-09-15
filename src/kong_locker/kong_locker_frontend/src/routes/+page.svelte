@@ -58,7 +58,7 @@
     } catch (error) {
       console.error('Failed to initialize auth:', error);
     }
-    
+
     // Load statistics and analytics in parallel
     try {
       await Promise.all([
@@ -68,7 +68,7 @@
     } catch (error) {
       console.error('Failed to load initial data:', error);
     }
-    
+
     // Enable glow animation
     setTimeout(() => {
       showGlow = true;
@@ -88,20 +88,20 @@
   }
   
   // Load analytics data
-  async function loadAnalytics() {
-    if (canisterList.length > 0) return; // Already loaded
-    
+  async function loadAnalytics(forceReload = false) {
+    if (!forceReload && canisterList.length > 0) return; // Already loaded
+
     analyticsLoading = true;
     analyticsError = '';
-    
+
     try {
       canisterList = await analyticsService.getCanisterList();
       systemStats = await analyticsService.calculateSystemStats(20);
-      
+
       if (systemStats?.tokenBreakdown) {
         tokenBreakdown = systemStats.tokenBreakdown;
       }
-      
+
       // Preload popular canisters in background
       analyticsService.preloadTopCanisters(10);
     } catch (err) {
@@ -115,15 +115,15 @@
   // Refresh all data
   async function refreshAllData() {
     refreshing = true;
-    
+
     // Clear caches
     analyticsService.clearCache();
-    
-    // Reload data in parallel
+
+    // Reload data in parallel with force reload
     try {
       await Promise.all([
         lpLockingService.fetchStats(),
-        loadAnalytics()
+        loadAnalytics(true) // Force reload analytics
       ]);
     } catch (error) {
       console.error('Failed to refresh data:', error);

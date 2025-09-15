@@ -26,2527 +26,339 @@ body {
 }
 
 .app {
-  max-width: 850px;
+  max-width: 1200px;
   margin: 2rem auto;
   padding: 3rem;
   background: white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
   border: 1px solid $border-gray;
+  min-height: calc(100vh - 4rem);
 }
 
 header {
   margin-bottom: 2.5rem;
   padding-bottom: 1.5rem;
   border-bottom: 2px solid $ink-black;
-  
+
   .header-content {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     gap: 2rem;
   }
-  
-  h1 {
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: 1.75rem;
-    font-weight: 700;
-    margin-bottom: 0.25rem;
-    letter-spacing: -0.5px;
+
+  .branding {
+    flex: 1;
+
+    h1 {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+      letter-spacing: -0.5px;
+    }
+
+    .tagline {
+      font-size: 0.625rem;
+      color: $text-secondary;
+      text-transform: uppercase;
+      margin-bottom: 0.125rem;
+      letter-spacing: 1px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .subtitle {
+      color: $text-secondary;
+      font-size: 0.875rem;
+      font-style: italic;
+      margin-bottom: 0.25rem;
+    }
   }
-  
-  .project-info {
-    font-size: 0.625rem;
-    color: $text-secondary;
-    text-transform: uppercase;
-    margin-bottom: 0.125rem;
-    letter-spacing: 1px;
-    font-family: 'Courier New', monospace;
-  }
-  
-  .subtitle {
-    color: $text-secondary;
-    font-size: 0.875rem;
-    font-style: italic;
-    margin-bottom: 0.25rem;
-  }
-  
-  .subtitle-secondary {
-    color: $text-secondary;
-    font-size: 0.75rem;
-    font-style: normal;
-    margin-bottom: 0.5rem;
-  }
-  
+
   .auth-section {
     .auth-info {
       display: flex;
       align-items: center;
       gap: 0.75rem;
-      
+
       .balance-info {
         display: flex;
         gap: 0.75rem;
         font-size: 0.6875rem;
         align-items: center;
-        
+
         .balance {
           color: $ink-black;
           font-weight: 500;
         }
-        
+
         .loading {
           color: $text-secondary;
           font-style: italic;
         }
-        
+
         .refresh-button {
           background: none;
-          border: 1px solid $border-gray;
-          color: $text-secondary;
+          border: none;
           cursor: pointer;
-          padding: 0.125rem 0.25rem;
-          font-size: 0.875rem;
-          line-height: 1;
-          
+          color: $text-secondary;
+          font-size: 0.75rem;
+          padding: 0.125rem;
+
           &:hover {
             color: $accent-color;
-            border-color: $accent-color;
           }
         }
       }
-      
+
       .principal-container {
         display: flex;
         align-items: center;
         gap: 0.25rem;
-        background: $document-gray;
-        border: 1px solid $border-gray;
-        padding: 0.125rem 0.25rem 0.125rem 0.5rem;
-        
+
         .principal {
           font-family: 'Courier New', monospace;
-          font-size: 0.75rem;
+          font-size: 0.6875rem;
           color: $text-secondary;
+          background: $document-gray;
+          padding: 0.125rem 0.25rem;
+          border-radius: 2px;
         }
-        
+
         .copy-button {
           background: none;
           border: none;
-          color: $text-secondary;
           cursor: pointer;
-          padding: 0.125rem 0.25rem;
-          font-size: 0.875rem;
-          line-height: 1;
-          transition: color 0.2s ease;
-          
+          color: $text-secondary;
+          font-size: 0.6875rem;
+          padding: 0.125rem;
+
           &:hover {
             color: $accent-color;
           }
         }
       }
-      
-      .lp-principal-indicator {
-        background: #e8f5e9;
-        border: 1px solid #4caf50;
-        padding: 0.25rem 0.5rem;
-        margin: 0 0.5rem;
-        
-        .lp-badge {
-          color: #2e7d32;
-          font-size: 0.75rem;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
+
+      .kong-locker-indicator {
+        .kong-locker-badge {
+          font-size: 0.6875rem;
+          color: $text-secondary;
+          background: $document-gray;
+          padding: 0.125rem 0.375rem;
+          border-radius: 2px;
+          font-family: 'Courier New', monospace;
         }
       }
     }
-    
+
     .auth-button {
-      background: $accent-color;
+      font-size: 0.75rem;
+      background: $ink-black;
       color: white;
       border: 1px solid $ink-black;
-      padding: 0.375rem 0.75rem;
-      font-size: 0.75rem;
-      font-weight: 500;
+      padding: 0.5rem 1rem;
       cursor: pointer;
+      border-radius: 2px;
+      font-family: inherit;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: white;
+        color: $ink-black;
+      }
+
       &.logout {
         background: $text-secondary;
         border-color: $text-secondary;
-        
+
         &:hover {
-          background: $text-secondary;
-        }
-      }
-      
-      &:hover {
-        background: $ink-black;
-      }
-    }
-  }
-}
-
-.intro {
-  margin-bottom: 2rem;
-  font-size: 0.875rem;
-  color: $ink-black;
-  padding: 1rem;
-  background: $document-gray;
-  border: 1px solid $border-gray;
-  font-style: italic;
-}
-
-// Steps
-.steps {
-  margin-bottom: 2.5rem;
-}
-
-.step {
-  border: 1px solid $border-gray;
-  margin-bottom: 0.75rem;
-  background: white;
-  
-  &.active {
-    background: white;
-    border-color: $ink-black;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  }
-}
-
-.step-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  cursor: pointer;
-  user-select: none;
-  
-  &:hover {
-    background: $document-gray;
-  }
-  
-  .step-number {
-    flex-shrink: 0;
-    width: 32px;
-    height: 32px;
-    background: $ink-black;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-family: 'Courier New', monospace;
-    border: 2px solid $ink-black;
-    border-radius: 2px;
-  }
-  
-  h2 {
-    flex: 1;
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: 1.125rem;
-    font-weight: 400;
-    margin: 0;
-  }
-  
-  .step-status {
-    font-size: 0.75rem;
-    color: $text-secondary;
-    font-family: 'Courier New', monospace;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-}
-
-.step-content {
-  padding: 0 1rem 1rem 4rem;
-  
-  p {
-    margin-bottom: 0.75rem;
-    font-size: 0.875rem;
-  }
-  
-  ul {
-    margin: 0.75rem 0 1rem 1.25rem;
-    color: $ink-black;
-    font-size: 0.875rem;
-  }
-  
-  li {
-    margin-bottom: 0.375rem;
-  }
-}
-
-.action-link {
-  display: inline-block;
-  padding: 0.375rem 0.875rem;
-  background: $accent-color;
-  color: white;
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border: 1px solid $ink-black;
-  
-  &:hover {
-    background: $ink-black;
-  }
-}
-
-// Innovation Banner
-.innovation-banner {
-  margin-bottom: 2rem;
-  
-  .banner-content {
-    padding: 1.25rem;
-    background: $document-gray;
-    border: 2px solid $accent-color;
-    border-radius: 2px;
-    font-size: 0.875rem;
-    line-height: 1.6;
-    
-    strong {
-      color: $accent-color;
-      text-transform: uppercase;
-      font-size: 0.75rem;
-      letter-spacing: 0.5px;
-    }
-  }
-}
-
-// Paths Section
-.paths-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  margin-bottom: 2.5rem;
-  
-  .path-card {
-    padding: 1.25rem;
-    border: 1px solid $border-gray;
-    background: white;
-    
-    &:hover {
-      border-color: $ink-black;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    
-    h3 {
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 1.125rem;
-      margin-bottom: 1rem;
-      font-weight: 400;
-    }
-    
-    ul {
-      list-style: none;
-      padding: 0;
-      margin: 0 0 1.25rem 0;
-      font-size: 0.875rem;
-      
-      li {
-        padding: 0.25rem 0;
-        padding-left: 1.25rem;
-        position: relative;
-        
-        &:before {
-          content: "→";
-          position: absolute;
-          left: 0;
+          background: white;
           color: $text-secondary;
         }
       }
     }
-    
-    .path-button {
-      display: inline-block;
-      width: 100%;
-      text-align: center;
-      padding: 0.5rem 1rem;
-      font-size: 0.75rem;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      text-decoration: none;
-      cursor: pointer;
-      border: 1px solid;
-      
-      &.primary {
-        background: $accent-color;
-        color: white;
-        border-color: $accent-color;
-        
-        &:hover {
-          background: $ink-black;
-        }
-      }
-      
-      &.secondary {
-        background: white;
-        color: $accent-color;
-        border-color: $accent-color;
-        
-        &:hover {
-          background: $document-gray;
-        }
-      }
-    }
   }
 }
 
-// How It Works Flow
-.how-it-works {
-  margin-bottom: 2.5rem;
-  
-  h2 {
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: 1.375rem;
-    margin-bottom: 1.5rem;
-    font-weight: 400;
+main {
+  flex: 1;
+
+  .setup-container {
+    margin: 0;
+    padding: 0;
   }
-  
-  .flow-cards {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-  
-  .flow-card {
-    border: 1px solid $border-gray;
-    background: white;
-    cursor: pointer;
-    transition: all 0.2s;
-    
-    &:hover {
-      border-color: $text-secondary;
-    }
-    
-    &.active {
-      border-color: $ink-black;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    
-    .flow-header {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 1rem;
-      
-      .flow-icon {
-        font-size: 1rem;
+
+  .welcome-section {
+    text-align: center;
+    padding: 2rem 0;
+
+    .welcome-content {
+      h2 {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 1.5rem;
         font-weight: 700;
-        width: 2rem;
-        height: 2rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: $ink-black;
-        color: white;
-        font-family: 'Courier New', monospace;
-      }
-      
-      h3 {
-        font-family: Georgia, 'Times New Roman', serif;
-        font-size: 1.125rem;
-        margin: 0;
-        font-weight: 400;
-      }
-    }
-    
-    .flow-content {
-      padding: 0 1rem 1rem 4rem;
-      
-      ul {
-        list-style: disc;
-        margin: 0 0 0 1.25rem;
-        font-size: 0.875rem;
-        
-        li {
-          margin-bottom: 0.375rem;
-        }
-      }
-    }
-  }
-}
-
-// Removed Use Cases section
-
-.requirements {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin: 0.75rem 0;
-  padding: 0.75rem;
-  background: $document-gray;
-  border: 1px solid $border-gray;
-  font-size: 0.875rem;
-}
-
-.requirement {
-  strong {
-    display: inline-block;
-    min-width: 80px;
-    font-family: 'Courier New', monospace;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-  }
-}
-
-.note {
-  margin-top: 0.75rem;
-  color: $text-secondary;
-  font-size: 0.8125rem;
-  font-style: italic;
-}
-
-// FAQ
-.faq {
-  margin-bottom: 2rem;
-  
-  h3 {
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: 1.25rem;
-    margin-bottom: 1rem;
-    font-weight: 400;
-  }
-  
-  details {
-    margin-bottom: 0.5rem;
-    border: 1px solid $border-gray;
-    background: white;
-    
-    summary {
-      padding: 0.75rem;
-      cursor: pointer;
-      font-weight: 500;
-      background: $document-gray;
-      border-bottom: 1px solid $border-gray;
-      font-size: 0.875rem;
-      
-      &:hover {
-        background: color.adjust($document-gray, $lightness: -2%);
-      }
-    }
-    
-    &[open] summary {
-      border-bottom: 1px solid $ink-black;
-    }
-    
-    p {
-      padding: 0.75rem;
-      color: $ink-black;
-      background: white;
-      margin: 0;
-      font-size: 0.8125rem;
-      line-height: 1.5;
-    }
-  }
-}
-
-// Tab Navigation
-.tab-navigation {
-  display: flex;
-  gap: 0;
-  margin: -3rem -3rem 2rem -3rem;
-  border-bottom: 2px solid $ink-black;
-  background: $document-gray;
-  
-  .tab {
-    flex: 1;
-    padding: 0.75rem 1rem;
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
-    color: $text-secondary;
-    cursor: pointer;
-    font-size: 0.875rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    transition: all 0.2s ease;
-    position: relative;
-    margin-bottom: -2px;
-    
-    &:hover {
-      background: white;
-      color: $ink-black;
-    }
-    
-    &.active {
-      background: white;
-      color: $ink-black;
-      border-bottom: 2px solid white;
-    }
-  }
-}
-
-// Tab Content
-.tab-content {
-  h2 {
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-    font-weight: 400;
-  }
-  
-  p {
-    color: $text-secondary;
-    font-size: 0.875rem;
-    line-height: 1.6;
-  }
-}
-
-// DAOs Tab
-.daos-tab {
-  h2 {
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: 1.5rem;
-    margin-bottom: 1.5rem;
-    font-weight: 400;
-  }
-  
-  > p {
-    color: $text-secondary;
-    font-style: italic;
-    margin-bottom: 1rem;
-    font-size: 0.875rem;
-  }
-  
-  .orbit-stations-section {
-    margin-top: 2rem;
-    padding-top: 2rem;
-    border-top: 1px solid $border-gray;
-    
-    h3 {
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 1.25rem;
-      margin-bottom: 1rem;
-      font-weight: 400;
-    }
-    
-    .auth-message {
-      color: $text-secondary;
-      font-style: italic;
-      font-size: 0.875rem;
-    }
-  }
-  
-  .stations-list {
-    display: grid;
-    gap: 1rem;
-    margin-bottom: 2rem;
-  }
-  
-  .station-card {
-    background: white;
-    border: 1px solid $border-gray;
-    border-radius: 2px;
-    padding: 1.5rem;
-    
-    .station-header {
-      margin-bottom: 1rem;
-      
-      h4 {
-        font-family: Georgia, 'Times New Roman', serif;
-        font-size: 1.125rem;
-        margin: 0 0 0.5rem 0;
-        font-weight: 400;
-      }
-      
-      .station-id {
-        font-family: 'Courier New', monospace;
-        font-size: 0.75rem;
-        color: $text-secondary;
-      }
-    }
-    
-    .station-actions {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 1rem;
-      
-      .expand-btn,
-      .view-orbit-btn {
-        padding: 0.5rem 1rem;
-        font-size: 0.875rem;
-        border: 1px solid $ink-black;
-        background: white;
-        color: $ink-black;
-        text-decoration: none;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        
-        &:hover:not(:disabled) {
-          background: $ink-black;
-          color: white;
-        }
-        
-        &:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-      }
-      
-      .view-orbit-btn {
-        display: inline-flex;
-        align-items: center;
-      }
-    }
-    
-    .operator-form {
-      background: $document-gray;
-      padding: 1rem;
-      border-radius: 2px;
-      margin-top: 1rem;
-      
-      p {
-        margin: 0 0 1rem 0;
-        font-size: 0.875rem;
-      }
-      
-      input {
-        width: 100%;
-        padding: 0.75rem;
         margin-bottom: 1rem;
-        border: 1px solid $border-gray;
-        font-family: 'Courier New', monospace;
+        letter-spacing: -0.5px;
+      }
+
+      > p {
+        color: $text-secondary;
         font-size: 0.875rem;
-        
-        &:focus {
-          outline: none;
-          border-color: $ink-black;
-        }
-        
-        &:disabled {
-          background: $border-gray;
-          cursor: not-allowed;
+        font-style: italic;
+        margin-bottom: 2rem;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+        line-height: 1.6;
+      }
+
+      .features {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+
+        .feature {
+          background: $document-gray;
+          padding: 1.5rem;
+          border: 1px solid $border-gray;
+
+          .feature-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
+          }
+
+          h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          p {
+            font-size: 0.75rem;
+            color: $text-secondary;
+            line-height: 1.5;
+          }
         }
       }
-      
-      button {
-        width: 100%;
-        padding: 0.75rem;
+
+      .cta-button {
+        font-size: 0.75rem;
         background: $ink-black;
         color: white;
-        border: none;
-        font-size: 0.875rem;
+        border: 1px solid $ink-black;
+        padding: 0.75rem 1.5rem;
         cursor: pointer;
-        transition: opacity 0.2s ease;
-        
-        &:hover:not(:disabled) {
-          opacity: 0.85;
-        }
-        
-        &:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-      }
-    }
-  }
-  
-  .refresh-btn {
-    padding: 0.75rem 1.5rem;
-    background: white;
-    border: 1px solid $ink-black;
-    color: $ink-black;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    
-    &:hover {
-      background: $ink-black;
-      color: white;
-    }
-  }
-  
-  .station-card {
-    background: white;
-    border: 1px solid $border-gray;
-    padding: 1.5rem;
-    transition: all 0.2s ease;
-    
-    &:hover {
-      border-color: $ink-black;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    
-    h3 {
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 1.125rem;
-      margin: 0 0 0.5rem 0;
-      color: $ink-black;
-      font-weight: 400;
-    }
-    
-    .station-id {
-      margin: 0.5rem 0 1rem 0;
-      
-      span {
-        font-size: 0.75rem;
-        color: $text-secondary;
+        border-radius: 2px;
+        font-family: inherit;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-      }
-      
-      code {
-        display: inline-block;
-        background: $document-gray;
-        padding: 0.25rem 0.5rem;
-        margin-left: 0.5rem;
-        font-family: 'Courier New', monospace;
-        font-size: 0.75rem;
-        color: $ink-black;
-        border: 1px solid $border-gray;
-      }
-    }
-    
-    .add-operator-btn {
-      background: $accent-color;
-      color: white;
-      border: 1px solid $ink-black;
-      padding: 0.375rem 0.875rem;
-      font-weight: 500;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      
-      &:hover:not(:disabled) {
-        background: $ink-black;
-      }
-      
-      &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-    }
-    
-    .operator-form {
-      margin-top: 1rem;
-      
-      input {
-        width: 100%;
-        padding: 0.5rem;
-        margin-bottom: 0.5rem;
-        border: 1px solid $border-gray;
-        background: white;
-        font-size: 0.8125rem;
-        font-family: 'Courier New', monospace;
-        
-        &:focus {
-          outline: none;
-          border-color: $ink-black;
-        }
-        
-        &:disabled {
-          background: $document-gray;
-          cursor: not-allowed;
-        }
-      }
-      
-      .form-buttons {
-        display: flex;
-        gap: 0.5rem;
-        
-        .submit-btn {
-          background: #4CAF50;
-          color: white;
-          border: 1px solid color.adjust(#4CAF50, $lightness: -10%);
-          padding: 0.375rem 0.875rem;
-          font-weight: 500;
-          font-size: 0.75rem;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          
-          &:hover:not(:disabled) {
-            background: color.adjust(#4CAF50, $lightness: -10%);
-          }
-          
-          &:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-          }
-        }
-        
-        .cancel-btn {
-          background: $text-secondary;
-          color: white;
-          border: 1px solid $text-secondary;
-          padding: 0.375rem 0.875rem;
-          font-weight: 500;
-          font-size: 0.75rem;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          
-          &:hover:not(:disabled) {
-            background: $text-secondary;
-          }
-          
-          &:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-          }
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: white;
+          color: $ink-black;
         }
       }
     }
   }
-  
-  .help-section {
-    background: $document-gray;
-    border: 1px solid $border-gray;
-    padding: 1.5rem;
-    
-    h3 {
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 1rem;
-      margin: 0 0 0.75rem 0;
-      font-weight: 400;
-    }
-    
-    ol {
-      margin: 0;
-      padding-left: 1.25rem;
-      color: $text-secondary;
-      font-size: 0.8125rem;
-      
-      li {
-        margin: 0.375rem 0;
-        line-height: 1.5;
-      }
-    }
-    
+}
+
+footer {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid $border-gray;
+  text-align: center;
+
+  p {
+    font-size: 0.6875rem;
+    color: $text-secondary;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.5px;
+
     a {
       color: $accent-color;
       text-decoration: none;
-      
+      margin: 0 0.25rem;
+
       &:hover {
         text-decoration: underline;
       }
     }
   }
-  
-  .error {
-    color: #D32F2F;
-    margin: 1rem 0;
-    font-style: italic;
-    font-size: 0.875rem;
-  }
 }
 
-// Proposals Tab
-.proposals-tab {
-  h2 {
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: 1.5rem;
-    margin-bottom: 1.5rem;
-    font-weight: 400;
-  }
-
-  .create-proposal-section {
-    background: $document-gray;
-    border: 1px solid $border-gray;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-
-    h3 {
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 1.125rem;
-      margin: 0 0 1rem 0;
-      font-weight: 400;
-    }
-
-    .proposal-form {
-      display: flex;
-      gap: 0.75rem;
-
-      input {
-        flex: 1;
-        background: white;
-        border: 1px solid $border-gray;
-        color: $ink-black;
-        padding: 0.5rem 0.75rem;
-        font-size: 0.875rem;
-        font-family: inherit;
-
-        &::placeholder {
-          color: $text-secondary;
-          font-style: italic;
-        }
-
-        &:focus {
-          outline: none;
-          border-color: $ink-black;
-        }
-      }
-
-      button {
-        background: $accent-color;
-        color: white;
-        border: 1px solid $ink-black;
-        padding: 0.5rem 1rem;
-        cursor: pointer;
-        font-weight: 500;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        transition: all 0.2s ease;
-
-        &:hover:not(:disabled) {
-          background: $ink-black;
-        }
-
-        &:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-      }
-    }
-  }
-
-  .stake-notice {
-    background: color.adjust(#FF9800, $lightness: 40%);
-    border: 1px solid #FF9800;
-    padding: 1rem;
-    margin-bottom: 1.5rem;
-
-    p {
-      color: color.adjust(#FF9800, $lightness: -10%);
-      margin: 0;
-      font-size: 0.875rem;
-      font-weight: 500;
-    }
-  }
-
-  .proposals-list {
-    h3 {
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 1.25rem;
-      margin: 0 0 1rem 0;
-      font-weight: 400;
-    }
-
-    > p {
-      color: $text-secondary;
-      font-style: italic;
-      font-size: 0.875rem;
-    }
-  }
-
-  .proposals-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1rem;
-  }
-
-  .proposal-card {
-    background: white;
-    border: 1px solid $border-gray;
-    padding: 1.5rem;
-    transition: all 0.2s ease;
-
-    &:hover {
-      border-color: $ink-black;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-
-    .proposal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 1rem;
-      gap: 1rem;
-
-      h4 {
-        font-family: Georgia, 'Times New Roman', serif;
-        font-size: 1.125rem;
-        margin: 0;
-        font-weight: 400;
-        color: $ink-black;
-      }
-
-      .status-badge {
-        color: white;
-        padding: 0.25rem 0.5rem;
-        font-size: 0.625rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        white-space: nowrap;
-      }
-    }
-
-    .proposal-details {
-      p {
-        margin: 0.375rem 0;
-        color: $text-secondary;
-        font-size: 0.8125rem;
-        line-height: 1.5;
-
-        strong {
-          color: $ink-black;
-          font-weight: 500;
-          text-transform: uppercase;
-          font-size: 0.75rem;
-          letter-spacing: 0.5px;
-        }
-
-        code {
-          background: $document-gray;
-          padding: 0.125rem 0.375rem;
-          font-family: 'Courier New', monospace;
-          font-size: 0.75rem;
-          color: $ink-black;
-          border: 1px solid $border-gray;
-        }
-      }
-    }
-
-    .proposal-actions {
-      margin-top: 1rem;
-      padding-top: 1rem;
-      border-top: 1px solid $border-gray;
-
-      .accept-button {
-        width: 100%;
-        background: #4CAF50;
-        color: white;
-        border: 1px solid color.adjust(#4CAF50, $lightness: -10%);
-        padding: 0.5rem;
-        cursor: pointer;
-        font-weight: 500;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        transition: all 0.2s ease;
-
-        &:hover:not(:disabled) {
-          background: color.adjust(#4CAF50, $lightness: -10%);
-        }
-
-        &:disabled {
-          background: color.adjust(#4CAF50, $lightness: 30%);
-          border-color: color.adjust(#4CAF50, $lightness: 20%);
-          cursor: not-allowed;
-        }
-      }
-
-      .view-station-link {
-        display: inline-block;
-        width: 100%;
-        text-align: center;
-        background: $accent-color;
-        color: white;
-        text-decoration: none;
-        padding: 0.5rem;
-        font-weight: 500;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border: 1px solid $ink-black;
-        transition: all 0.2s ease;
-
-        &:hover {
-          background: $ink-black;
-        }
-      }
-
-      small {
-        display: block;
-        margin-top: 0.5rem;
-        color: $text-secondary;
-        text-align: center;
-        font-size: 0.75rem;
-        font-style: italic;
-      }
-    }
-    
-    .voting-section {
-      margin-top: 1rem;
-      
-      .voting-progress {
-        margin-bottom: 1.5rem;
-        
-        .progress-bar-container {
-          width: 100%;
-          height: 24px;
-          background: $document-gray;
-          border: 1px solid $border-gray;
-          position: relative;
-          overflow: hidden;
-          
-          .progress-bar {
-            height: 100%;
-            background: #4CAF50;
-            transition: width 0.3s ease;
-            position: relative;
-            
-            &::after {
-              content: '';
-              position: absolute;
-              top: 0;
-              left: 0;
-              right: 0;
-              bottom: 0;
-              background: linear-gradient(
-                90deg,
-                rgba(255,255,255,0) 0%,
-                rgba(255,255,255,0.1) 50%,
-                rgba(255,255,255,0) 100%
-              );
-              animation: shimmer 2s infinite;
-            }
-          }
-        }
-        
-        .progress-text {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-top: 0.5rem;
-          font-size: 0.875rem;
-          
-          span:first-child {
-            font-weight: 600;
-            color: $ink-black;
-          }
-        }
-      }
-      
-      @keyframes shimmer {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(100%); }
-      }
-      
-      .proposal-actions {
-        padding-top: 1rem;
-        border-top: 1px solid $border-gray;
-        
-        h4 {
-          font-family: Georgia, 'Times New Roman', serif;
-          font-size: 1rem;
-          margin: 0 0 0.75rem 0;
-          font-weight: 400;
-          text-align: center;
-        }
-        
-        .vote-buttons {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 0.75rem;
-        }
-        
-        .vote-button {
-          padding: 0.5rem;
-          cursor: pointer;
-          font-weight: 500;
-          font-size: 0.75rem;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          transition: all 0.2s ease;
-          border: 1px solid;
-          
-          &.accept-button {
-            background: #4CAF50;
-            color: white;
-            border-color: color.adjust(#4CAF50, $lightness: -10%);
-            
-            &:hover:not(:disabled) {
-              background: color.adjust(#4CAF50, $lightness: -10%);
-            }
-            
-            &:disabled {
-              background: color.adjust(#4CAF50, $lightness: 30%);
-              border-color: color.adjust(#4CAF50, $lightness: 20%);
-              cursor: not-allowed;
-            }
-          }
-          
-          &.reject-button {
-            background: #f44336;
-            color: white;
-            border-color: color.adjust(#f44336, $lightness: -10%);
-            
-            &:hover:not(:disabled) {
-              background: color.adjust(#f44336, $lightness: -10%);
-            }
-            
-            &:disabled {
-              background: color.adjust(#f44336, $lightness: 30%);
-              border-color: color.adjust(#f44336, $lightness: 20%);
-              cursor: not-allowed;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  .error {
-    color: #D32F2F;
-    margin: 1rem 0;
-    font-style: italic;
-    font-size: 0.875rem;
-  }
-
-  button {
-    font-family: inherit;
-  }
-}
-
-// Footer
-footer {
-  padding-top: 1.5rem;
-  border-top: 1px solid $border-gray;
-  text-align: center;
-  color: $text-secondary;
-  font-size: 0.75rem;
-  
-  a {
-    color: $accent-color;
-    text-decoration: none;
-    margin: 0 0.375rem;
-    
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-}
-
-// Alexandria Proposals Component
-.alexandria-proposals {
-  .error-message {
-    background: #fef5f5;
-    border: 1px solid #f5c2c7;
-    border-radius: 4px;
-    padding: 1.5rem;
-    margin: 1.5rem 0;
-    color: #842029;
-    
-    h3 {
-      margin: 0 0 0.75rem 0;
-      font-size: 1.125rem;
-      color: #842029;
-    }
-    
-    p {
-      margin: 0.5rem 0;
-    }
-    
-    .info-text {
-      margin-top: 1rem;
-      font-weight: 500;
-    }
-    
-    .info-list {
-      margin: 0.75rem 0 0 1.5rem;
-      padding: 0;
-      
-      li {
-        margin: 0.5rem 0;
-        line-height: 1.5;
-      }
-    }
-  }
-  
-  .auth-notice {
-    text-align: center;
-    padding: 2rem;
-    background: $document-gray;
-    border: 1px solid $border-gray;
-    margin: 1rem 0;
-    
-    p {
-      color: $text-secondary;
-      font-style: italic;
-    }
-  }
-}
-
-@media (max-width: 600px) {
+// Responsive
+@media (max-width: 768px) {
   .app {
-    padding: 1.5rem;
-    margin: 0;
-    box-shadow: none;
-    border-left: none;
-    border-right: none;
+    margin: 1rem;
+    padding: 2rem;
+    max-width: none;
   }
-  
-  .tab-navigation {
-    margin: -1.5rem -1.5rem 1.5rem -1.5rem;
-    overflow-x: auto;
-    
-    .tab {
-      font-size: 0.75rem;
-      padding: 0.625rem 0.75rem;
-      white-space: nowrap;
-    }
-  }
-  
+
   header {
     .header-content {
       flex-direction: column;
-      align-items: stretch;
-    }
-    
-    .auth-section {
-      margin-top: 1rem;
-      
-      .auth-button {
-        width: 100%;
-        text-align: center;
-      }
-      
-      .auth-info {
-        flex-direction: column;
-        align-items: stretch;
-        
-        .principal {
-          text-align: center;
-        }
-        
-        .auth-button {
-          width: 100%;
-        }
-      }
-    }
-  }
-  
-  .step-header {
-    padding: 0.75rem;
-    
-    h2 {
-      font-size: 1rem;
-    }
-    
-    .step-status {
-      display: none;
-    }
-  }
-  
-  .step-content {
-    padding-left: 0.75rem;
-  }
-  
-  // Compact pool cards on mobile
-  .pools-grid {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
-  
-  .pool-card-compact {
-    padding: 0.875rem;
-    
-    .token-display {
-      .token-logos {
-        height: 36px;
-        
-        .token-logo,
-        .token-logo-placeholder {
-          width: 32px;
-          height: 32px;
-        }
-      }
-    }
-  }
-}
-
-// Pool Dashboard Styles
-.pools-dashboard {
-  .pools-header {
-    margin-bottom: 2rem;
-    position: relative;
-    
-    h2 {
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 1.5rem;
-      margin-bottom: 0.5rem;
-      font-weight: 400;
-    }
-    
-    > p {
-      color: $text-secondary;
-      font-style: italic;
-      font-size: 0.875rem;
-      margin-bottom: 0;
-    }
-    
-    .refresh-button {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      background: white;
-      border: 1px solid $border-gray;
-      color: $ink-black;
-      cursor: pointer;
-      padding: 0.5rem 1rem;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      transition: all 0.2s ease;
-      
-      &:hover {
-        border-color: $ink-black;
-        background: $document-gray;
-      }
-    }
-  }
-  
-  .pools-loading,
-  .pools-error {
-    text-align: center;
-    padding: 3rem 0;
-    
-    .paper-content {
-      background: $document-gray;
-      border: 1px solid $border-gray;
-      padding: 2rem;
-      
-      p {
-        margin: 0 0 1rem 0;
-        color: $text-secondary;
-        font-style: italic;
-      }
-      
-      .error-message {
-        color: #D32F2F;
-      }
-    }
-  }
-  
-  .pools-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 1rem;
-    
-    .no-pools {
-      grid-column: 1 / -1;
-      text-align: center;
-      padding: 3rem;
-      color: $text-secondary;
-      font-style: italic;
-    }
-  }
-}
-
-.paper-button {
-  font-family: inherit;
-}
-
-// Compact Pool Card Styles
-.pool-card-compact {
-  position: relative;
-  background: white;
-  border: 1px solid $border-gray;
-  border-radius: 8px;
-  padding: 1rem;
-  transition: all 0.2s ease;
-  cursor: pointer;
-  
-  &:hover {
-    border-color: $ink-black;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    transform: translateY(-2px);
-  }
-  
-  // Pool ID
-  .pool-id {
-    position: absolute;
-    top: 0.5rem;
-    left: 0.5rem;
-    font-size: 0.625rem;
-    font-weight: 600;
-    color: $text-secondary;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  
-  // Status badge
-  .status-badge {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.5rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-radius: 4px;
-    
-    &.status-live {
-      background: rgba(76, 175, 80, 0.1);
-      color: #2E7D32;
-      border: 1px solid rgba(76, 175, 80, 0.3);
-    }
-    
-    &.status-pending {
-      background: rgba(255, 152, 0, 0.1);
-      color: #E65100;
-      border: 1px solid rgba(255, 152, 0, 0.3);
-    }
-    
-    &.status-failed {
-      background: rgba(244, 67, 54, 0.1);
-      color: #C62828;
-      border: 1px solid rgba(244, 67, 54, 0.3);
-    }
-  }
-  
-  // Token display
-  .token-display {
-    text-align: center;
-    margin-bottom: 1rem;
-    
-    .token-logos {
-      position: relative;
-      height: 40px;
-      margin-bottom: 0.5rem;
-      display: flex;
-      justify-content: center;
       align-items: center;
-      
-      .token-logo,
-      .token-logo-placeholder {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        border: 2px solid white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        
-        &.primary {
-          position: relative;
-          z-index: 2;
-        }
-        
-        &.secondary {
-          position: absolute;
-          left: 50%;
-          margin-left: -8px;
-          z-index: 1;
-        }
-      }
-      
-      .token-logo {
-        object-fit: cover;
-      }
-      
-      .token-logo-placeholder {
-        background: linear-gradient(135deg, $document-gray 0%, $border-gray 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        font-size: 0.875rem;
-        color: $text-secondary;
-      }
-    }
-    
-    .token-symbols {
-      font-size: 0.875rem;
-      font-weight: 600;
-      color: $ink-black;
-      
-      .separator {
-        color: $text-secondary;
-        margin: 0 0.25rem;
-      }
-    }
-  }
-  
-  // Compact metrics
-  .pool-metrics-compact {
-    display: flex;
-    justify-content: space-around;
-    padding: 0.75rem 0;
-    margin-bottom: 0.75rem;
-    border-top: 1px solid $border-gray;
-    border-bottom: 1px solid $border-gray;
-    
-    .metric-item {
       text-align: center;
-      
-      .value {
-        display: block;
-        font-size: 1rem;
-        font-weight: 600;
-        color: $ink-black;
-        margin-bottom: 0.125rem;
-      }
-      
-      .label {
-        display: block;
-        font-size: 0.5rem;
-        color: $text-secondary;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-    }
-  }
-  
-  // Countdown
-  .countdown-compact {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.25rem;
-    margin-bottom: 0.75rem;
-    font-size: 0.75rem;
-    color: $accent-color;
-    
-    .countdown-icon {
-      font-size: 0.875rem;
-    }
-  }
-  
-  // Voting section
-  .voting-section {
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid $border-gray;
-    
-    .loading-state {
-      text-align: center;
-      color: $text-secondary;
-      font-size: 0.75rem;
-      font-style: italic;
-    }
-    
-    .dao-created-badge {
-      text-align: center;
-      color: #4CAF50;
-      font-weight: 600;
-      font-size: 0.875rem;
-    }
-    
-    .vote-progress {
-      margin-bottom: 0.5rem;
-      
-      .progress-bar {
-        height: 20px;
-        background: $document-gray;
-        border: 1px solid $border-gray;
-        border-radius: 10px;
-        overflow: hidden;
-        position: relative;
-        
-        .progress-fill {
-          height: 100%;
-          background: linear-gradient(90deg, #4CAF50 0%, #45a049 100%);
-          transition: width 0.5s ease;
-        }
-      }
-      
-      .progress-text {
-        display: block;
-        text-align: center;
-        margin-top: 0.25rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: $ink-black;
-      }
-    }
-    
-    .vote-button {
-      width: 100%;
-      padding: 0.5rem;
-      background: $ink-black;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      
-      &:hover:not(:disabled) {
-        background: color.adjust($ink-black, $lightness: 10%);
-      }
-      
-      &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-    }
-  }
-  
-  // Status messages
-  .status-message {
-    margin-top: 0.5rem;
-    padding: 0.5rem;
-    text-align: center;
-    font-size: 0.75rem;
-    font-style: italic;
-    border-radius: 4px;
-    
-    &.pending {
-      background: rgba(255, 152, 0, 0.1);
-      color: #E65100;
-      border: 1px solid rgba(255, 152, 0, 0.3);
-    }
-    
-    &.failed {
-      background: rgba(244, 67, 54, 0.1);
-      color: #C62828;
-      border: 1px solid rgba(244, 67, 54, 0.3);
-    }
-  }
-}
+      gap: 1.5rem;
 
-// Details Modal
-.pool-details-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-  
-  .modal-content {
-    background: white;
-    border: 1px solid $border-gray;
-    border-radius: 8px;
-    max-width: 600px;
-    width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
-    position: relative;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-    
-    .close-btn {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      background: none;
-      border: none;
-      font-size: 1.5rem;
-      color: $text-secondary;
-      cursor: pointer;
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 4px;
-      transition: all 0.2s ease;
-      
-      &:hover {
-        background: $document-gray;
-        color: $ink-black;
-      }
-    }
-    
-    h3 {
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 1.5rem;
-      margin: 0 0 1.5rem 0;
-      padding: 1.5rem 1.5rem 0;
-      font-weight: 400;
-    }
-    
-    .details-section {
-      padding: 0 1.5rem 1.5rem;
-      
-      &:not(:last-child) {
-        border-bottom: 1px solid $border-gray;
-        margin-bottom: 1.5rem;
-      }
-      
-      h4 {
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: $text-secondary;
-        margin: 0 0 1rem 0;
-        font-weight: 600;
-      }
-      
-      .detail-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.5rem;
-        
-        span:first-child {
-          color: $text-secondary;
-          font-size: 0.875rem;
+      .branding {
+        h1 {
+          font-size: 1.5rem;
         }
-        
-        span:last-child {
-          color: $ink-black;
-          font-weight: 500;
-          font-size: 0.875rem;
+
+        .tagline {
+          font-size: 0.5625rem;
         }
-      }
-      
-      .canister-row {
-        margin-bottom: 0.75rem;
-        
-        > span {
-          display: block;
-          color: $text-secondary;
+
+        .subtitle {
           font-size: 0.75rem;
-          margin-bottom: 0.25rem;
         }
-        
-        .canister-value {
-          display: flex;
-          align-items: center;
+      }
+
+      .auth-section {
+        .auth-info {
+          flex-wrap: wrap;
+          justify-content: center;
           gap: 0.5rem;
-          
-          code {
-            flex: 1;
-            background: $document-gray;
-            padding: 0.5rem;
-            border: 1px solid $border-gray;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.75rem;
-            word-break: break-all;
-          }
-          
-          button {
-            background: none;
-            border: 1px solid $border-gray;
-            padding: 0.375rem 0.5rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.875rem;
-            transition: all 0.2s ease;
-            
-            &:hover {
-              background: $document-gray;
-              border-color: $ink-black;
-            }
-          }
-        }
-      }
-      
-      .station-info {
-        margin-top: 0.75rem;
-        padding: 0.75rem;
-        background: color.adjust($accent-color, $lightness: 45%);
-        border: 1px solid color.adjust($accent-color, $lightness: 30%);
-        border-radius: 4px;
-        
-        p {
-          margin: 0;
-          color: color.adjust($accent-color, $lightness: -20%);
-          font-size: 0.8125rem;
-          font-weight: 500;
-          text-align: center;
-        }
-      }
-    }
-    
-    // Modal action buttons
-    .modal-actions {
-      padding: 1.5rem;
-      border-top: 1px solid $border-gray;
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-      
-      .action-button {
-        flex: 1;
-        min-width: 140px;
-        padding: 0.75rem 1rem;
-        font-size: 0.875rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        text-align: center;
-        text-decoration: none;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        
-        &.primary {
-          background: $accent-color;
-          color: white;
-          
-          &:hover {
-            background: $ink-black;
-          }
-        }
-        
-        &.secondary {
-          background: white;
-          color: $ink-black;
-          border: 1px solid $border-gray;
-          
-          &:hover {
-            background: $document-gray;
-            border-color: $ink-black;
-          }
-        }
-        
-        &.success {
-          background: #4CAF50;
-          color: white;
-          
-          &:hover {
-            background: color.adjust(#4CAF50, $lightness: -10%);
-          }
-        }
-      }
-    }
-    
-    .operator-section {
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid $border-gray;
-      
-      .operator-form {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 12px;
-        
-        .operator-input {
-          flex: 1;
-          padding: 10px 12px;
-          border: 1px solid $border-gray;
-          border-radius: 4px;
-          font-size: 14px;
-          font-family: inherit;
-          
-          &:focus {
-            outline: none;
-            border-color: $accent-color;
-          }
-          
-          &:disabled {
-            background: $document-gray;
-            cursor: not-allowed;
-          }
-        }
-      }
-      
-      .operator-help {
-        font-size: 13px;
-        color: #666;
-        margin-top: 8px;
-      }
-    }
-  }
-}
-// View toggle styles
-.view-toggle {
-  margin-top: 1rem;
-  display: flex;
-  gap: 0.5rem;
 
-  .view-btn {
-    padding: 0.5rem 1rem;
-    background: transparent;
-    border: 1px solid $border-gray;
-    color: $text-secondary;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-family: 'Courier New', monospace;
-    font-size: 0.875rem;
-
-    &:hover {
-      background: $document-gray;
-      color: $ink-black;
-    }
-
-    &.active {
-      background: $ink-black;
-      color: white;
-      border-color: $ink-black;
-    }
-  }
-}
-
-// Alexandria Proposals styles  
-.alexandria-proposals {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem 1rem;
-
-  .proposals-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-    padding-bottom: 1rem;
-    border-bottom: 2px solid $ink-black;
-
-    h2 {
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 2rem;
-      margin: 0;
-    }
-
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-
-      .btn-refresh {
-        padding: 0.5rem 1rem;
-        background: $ink-black;
-        color: white;
-        border: 2px solid $ink-black;
-        cursor: pointer;
-        font-family: 'Courier New', monospace;
-        font-size: 0.875rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        transition: all 0.2s;
-
-        &:hover:not(:disabled) {
-          background: white;
-          color: $ink-black;
-        }
-
-        &:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-      }
-
-      .auto-refresh-toggle {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.875rem;
-        color: $text-secondary;
-
-        input[type="checkbox"] {
-          cursor: pointer;
-        }
-      }
-    }
-  }
-
-  .cache-status {
-    padding: 0.5rem 1rem;
-    background: $document-gray;
-    border-left: 3px solid $ink-black;
-    font-size: 0.875rem;
-    color: $text-secondary;
-    margin-bottom: 1rem;
-    font-family: 'Courier New', monospace;
-  }
-
-  .proposals-filters {
-    display: flex;
-    gap: 1rem;
-    padding: 1rem;
-    background: white;
-    border: 1px solid $border-gray;
-    margin-bottom: 2rem;
-    flex-wrap: wrap;
-    align-items: flex-end;
-
-    .filter-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-      flex: 1;
-      min-width: 150px;
-
-      label {
-        font-size: 0.75rem;
-        color: $text-secondary;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-family: 'Courier New', monospace;
-      }
-
-      select, input {
-        padding: 0.5rem;
-        border: 1px solid $border-gray;
-        background: white;
-        font-size: 0.875rem;
-        font-family: 'Courier New', monospace;
-
-        &:focus {
-          outline: none;
-          border-color: $ink-black;
-        }
-      }
-    }
-
-    .filter-actions {
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-
-      button {
-        padding: 0.5rem 1rem;
-        font-size: 0.875rem;
-        font-family: 'Courier New', monospace;
-        cursor: pointer;
-        transition: all 0.2s;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-
-        &.btn-apply {
-          background: $ink-black;
-          color: white;
-          border: 2px solid $ink-black;
-
-          &:hover {
-            background: white;
-            color: $ink-black;
-          }
-        }
-
-        &.btn-clear {
-          background: white;
-          color: $ink-black;
-          border: 2px solid $border-gray;
-
-          &:hover {
-            border-color: $ink-black;
-            background: $document-gray;
+          .principal-container .principal {
+            font-size: 0.5625rem;
           }
         }
       }
     }
   }
 
-  .error-message {
-    padding: 1rem;
-    background: #fee;
-    border: 1px solid #fcc;
-    color: #c00;
-    margin-bottom: 1rem;
-    font-size: 0.875rem;
-  }
+  main {
+    .welcome-section {
+      padding: 1rem 0;
 
-  .loading-container {
-    text-align: center;
-    padding: 3rem;
-    color: $text-secondary;
-
-    .spinner {
-      width: 40px;
-      height: 40px;
-      margin: 0 auto 1rem;
-      border: 3px solid $border-gray;
-      border-top-color: $ink-black;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-
-    p {
-      font-size: 0.875rem;
-      margin: 0;
-    }
-  }
-
-  .proposals-list {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .no-proposals {
-    text-align: center;
-    padding: 3rem;
-    background: $document-gray;
-    border: 1px dashed $border-gray;
-
-    p {
-      margin: 0;
-      &:first-child {
-        font-size: 1.125rem;
-        margin-bottom: 0.5rem;
-      }
-    }
-
-    .text-muted {
-      color: $text-secondary;
-      font-size: 0.875rem;
-    }
-  }
-}
-
-// Proposal Card styles
-.proposal-card {
-  background: white;
-  border: 1px solid $border-gray;
-  padding: 1rem;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    border-color: $ink-black;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  .proposal-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1rem;
-
-    .proposal-title {
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 1.125rem;
-      margin: 0;
-      flex: 1;
-      line-height: 1.4;
-    }
-
-    .proposal-status {
-      padding: 0.25rem 0.75rem;
-      color: white;
-      font-size: 0.75rem;
-      font-family: 'Courier New', monospace;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border-radius: 2px;
-      flex-shrink: 0;
-      margin-left: 1rem;
-    }
-  }
-
-  .proposal-card-body {
-    .proposal-info {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 0.5rem;
-      font-size: 0.875rem;
-
-      .info-label {
-        color: $text-secondary;
-        font-family: 'Courier New', monospace;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-size: 0.75rem;
-      }
-
-      .info-value {
-        color: $ink-black;
-        font-family: 'Courier New', monospace;
-      }
-    }
-
-    .proposal-approval {
-      margin-top: 1rem;
-      padding-top: 1rem;
-      border-top: 1px solid $border-gray;
-
-      .approval-header {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 0.5rem;
-      }
-
-      .approval-progress {
-        height: 8px;
-        background: $document-gray;
-        border: 1px solid $border-gray;
-        position: relative;
-        overflow: hidden;
-
-        .approval-progress-bar {
-          height: 100%;
-          background: #10b981;
-          transition: width 0.3s ease;
-        }
-      }
-    }
-  }
-}
-
-// Proposal Details Modal styles
-.proposal-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 2rem;
-}
-
-.proposal-modal {
-  background: white;
-  max-width: 800px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  border: 2px solid $ink-black;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.5rem;
-    border-bottom: 2px solid $ink-black;
-    background: $document-gray;
-
-    h2 {
-      margin: 0;
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 1.5rem;
-    }
-
-    .modal-close {
-      background: none;
-      border: none;
-      font-size: 2rem;
-      cursor: pointer;
-      color: $ink-black;
-      line-height: 1;
-      padding: 0;
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      &:hover {
-        background: $ink-black;
-        color: white;
-      }
-    }
-  }
-
-  .modal-body {
-    padding: 1.5rem;
-
-    .detail-section {
-      margin-bottom: 2rem;
-
-      h3 {
-        font-family: Georgia, 'Times New Roman', serif;
-        font-size: 1.25rem;
-        margin: 0 0 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 1px solid $border-gray;
-      }
-
-      h4 {
-        font-family: 'Courier New', monospace;
-        font-size: 0.875rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin: 1rem 0 0.5rem;
-        color: $text-secondary;
-      }
-    }
-
-    .detail-row {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 0.75rem;
-      font-size: 0.875rem;
-
-      .detail-label {
-        color: $text-secondary;
-        font-family: 'Courier New', monospace;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-size: 0.75rem;
-        min-width: 120px;
-      }
-
-      .detail-value {
-        color: $ink-black;
-        font-family: 'Courier New', monospace;
-        flex: 1;
-        word-break: break-all;
-      }
-    }
-
-    .approval-list {
-      margin-top: 1rem;
-
-      .approval-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.5rem;
-        background: $document-gray;
-        border: 1px solid $border-gray;
-        margin-bottom: 0.5rem;
-        font-size: 0.875rem;
-        font-family: 'Courier New', monospace;
-
-        &.rejection {
-          border-left: 3px solid #ef4444;
+      .welcome-content {
+        h2 {
+          font-size: 1.25rem;
         }
 
-        .approval-user {
-          color: $ink-black;
+        > p {
           font-size: 0.75rem;
+          margin-bottom: 1.5rem;
         }
 
-        .approval-date {
-          color: $text-secondary;
-          font-size: 0.75rem;
+        .features {
+          grid-template-columns: 1fr;
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+
+          .feature {
+            padding: 1rem;
+          }
         }
       }
     }
-
-    .no-approvals {
-      color: $text-secondary;
-      font-style: italic;
-      font-size: 0.875rem;
-    }
-
-    .operation-details {
-      background: $document-gray;
-      border: 1px solid $border-gray;
-      padding: 1rem;
-      font-family: 'Courier New', monospace;
-      font-size: 0.75rem;
-      overflow-x: auto;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
   }
-
-  .modal-footer {
-    padding: 1rem 1.5rem;
-    border-top: 1px solid $border-gray;
-    text-align: right;
-
-    .btn-close-modal {
-      padding: 0.5rem 1.5rem;
-      background: $ink-black;
-      color: white;
-      border: 2px solid $ink-black;
-      cursor: pointer;
-      font-family: 'Courier New', monospace;
-      font-size: 0.875rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      transition: all 0.2s;
-
-      &:hover {
-        background: white;
-        color: $ink-black;
-      }
-    }
-  }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }

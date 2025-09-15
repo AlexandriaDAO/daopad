@@ -1,51 +1,38 @@
-type LPBalancesReply = record {
-  ts : nat64;
-  usd_balance : float64;
-  balance : float64;
+type CreateOrbitStationRequest = record { name : text };
+type CreateTokenStationRequest = record {
   name : text;
-  amount_0 : float64;
-  amount_1 : float64;
-  address_0 : text;
-  address_1 : text;
-  symbol_0 : text;
-  symbol_1 : text;
-  usd_amount_0 : float64;
-  usd_amount_1 : float64;
-  chain_0 : text;
-  chain_1 : text;
-  symbol : text;
-  lp_token_id : nat64;
+  token_canister_id : principal;
 };
-type RegistrationInfo = record {
-  request_id : text;
-  user_name : text;
-  token_canister : principal;
-  timestamp : nat64;
+type OrbitStationInfo = record {
+  owner : principal;
+  name : text;
+  created_at : nat64;
+  upgrader_id : principal;
+  station_id : principal;
 };
-type Result = variant { Ok : text; Err : text };
-type Result_1 = variant { Ok : vec TokenDAOStatus; Err : text };
-type Result_2 = variant { Ok : vec LPBalancesReply; Err : text };
-type TokenDAOStatus = record {
-  token_canister : principal;
-  station_canister : opt principal;
-  is_registered : bool;
+type OrbitStationResponse = record {
+  name : text;
+  upgrader_id : principal;
+  station_id : principal;
 };
+type Result = variant { Ok : OrbitStationResponse; Err : text };
+type Result_1 = variant { Ok : text; Err : text };
+type Result_2 = variant { Ok : vec TokenInfo; Err : text };
+type TokenInfo = record { chain : text; canister_id : text; symbol : text };
 service : () -> {
-  check_registration_for_token : (principal) -> (opt RegistrationInfo) query;
-  dao_approve_request : (principal, text, opt text) -> (Result);
-  dao_reject_request : (principal, text, opt text) -> (Result);
-  detect_available_daos : () -> (Result_1);
-  get_my_dao_registrations : () -> (
-      vec record { principal; RegistrationInfo },
-    ) query;
-  get_my_lp_positions : () -> (Result_2);
-  get_my_lp_principal : () -> (opt text) query;
-  get_station_for_token : (principal) -> (opt principal) query;
+  create_orbit_station : (CreateOrbitStationRequest) -> (Result);
+  create_token_orbit_station : (CreateTokenStationRequest) -> (Result);
+  delete_orbit_station : () -> (Result_1);
+  get_backend_principal : () -> (principal) query;
+  get_kong_locker_factory_principal : () -> (principal) query;
+  get_my_kong_locker_canister : () -> (opt principal) query;
+  get_my_locked_tokens : () -> (Result_2);
+  get_my_orbit_station : () -> (opt OrbitStationInfo) query;
   health_check : () -> (text) query;
-  link_token_to_station : (principal, principal) -> (Result);
-  list_all_registrations : () -> (vec record { text; RegistrationInfo }) query;
-  list_token_stations : () -> (vec record { principal; principal }) query;
-  register_with_token_dao : (principal) -> (Result);
-  set_lp_principal : (text) -> (Result);
-  unlink_token_from_station : (principal) -> (Result);
+  list_all_kong_locker_registrations : () -> (
+      vec record { principal; principal },
+    ) query;
+  list_all_orbit_stations : () -> (vec OrbitStationInfo) query;
+  register_with_kong_locker : (principal) -> (Result_1);
+  unregister_kong_locker : () -> (Result_1);
 }

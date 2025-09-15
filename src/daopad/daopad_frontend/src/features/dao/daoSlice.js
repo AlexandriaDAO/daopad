@@ -1,93 +1,67 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  // LP Principal (global for user)
-  lpPrincipal: null,
-  lpPrincipalLoading: false,
-  lpPrincipalError: null,
+  // Kong Locker Canister (global for user)
+  kongLockerCanister: null,
+  kongLockerLoading: false,
+  kongLockerError: null,
   
-  // Available DAOs from LP positions
-  availableDaos: [],
-  availableDaosLoading: false,
-  availableDaosError: null,
+  // LP Positions and Voting Power
+  lpPositions: [],
+  lpPositionsLoading: false,
+  lpPositionsError: null,
+  votingPower: 0,
   
-  // User's registered DAOs
-  registeredDaos: [],
-  registeredDaosLoading: false,
-  
-  // Currently selected DAO
-  selectedDao: null,
-  
-  // Token-Station mappings
-  tokenStations: [],
-  tokenStationsLoading: false,
+  // System Stats
+  systemStats: null,
+  systemStatsLoading: false,
 };
 
 const daoSlice = createSlice({
   name: 'dao',
   initialState,
   reducers: {
-    // LP Principal actions
-    setLpPrincipal: (state, action) => {
-      state.lpPrincipal = action.payload;
-      state.lpPrincipalError = null;
+    // Kong Locker Canister actions
+    setKongLockerCanister: (state, action) => {
+      // Ensure we store as string, not Principal object
+      const canister = action.payload;
+      state.kongLockerCanister = typeof canister === 'string' ? canister : canister?.toString() || null;
+      state.kongLockerError = null;
     },
-    setLpPrincipalLoading: (state, action) => {
-      state.lpPrincipalLoading = action.payload;
+    setKongLockerLoading: (state, action) => {
+      state.kongLockerLoading = action.payload;
     },
-    setLpPrincipalError: (state, action) => {
-      state.lpPrincipalError = action.payload;
-      state.lpPrincipalLoading = false;
-    },
-    
-    // Available DAOs actions
-    setAvailableDaos: (state, action) => {
-      state.availableDaos = action.payload;
-      state.availableDaosError = null;
-    },
-    setAvailableDaosLoading: (state, action) => {
-      state.availableDaosLoading = action.payload;
-    },
-    setAvailableDaosError: (state, action) => {
-      state.availableDaosError = action.payload;
-      state.availableDaosLoading = false;
+    setKongLockerError: (state, action) => {
+      state.kongLockerError = action.payload;
+      state.kongLockerLoading = false;
     },
     
-    // Registered DAOs actions
-    setRegisteredDaos: (state, action) => {
-      state.registeredDaos = action.payload;
+    // LP Positions actions
+    setLpPositions: (state, action) => {
+      state.lpPositions = action.payload;
+      state.lpPositionsError = null;
+      // Calculate voting power automatically
+      state.votingPower = action.payload.reduce((sum, position) => {
+        return sum + (position.usd_balance || 0);
+      }, 0) * 100;
     },
-    setRegisteredDaosLoading: (state, action) => {
-      state.registeredDaosLoading = action.payload;
+    setLpPositionsLoading: (state, action) => {
+      state.lpPositionsLoading = action.payload;
     },
-    addRegisteredDao: (state, action) => {
-      const dao = action.payload;
-      if (!state.registeredDaos.find(d => d[0] === dao[0])) {
-        state.registeredDaos.push(dao);
-      }
+    setLpPositionsError: (state, action) => {
+      state.lpPositionsError = action.payload;
+      state.lpPositionsLoading = false;
+    },
+    setVotingPower: (state, action) => {
+      state.votingPower = action.payload;
     },
     
-    // Selected DAO actions
-    setSelectedDao: (state, action) => {
-      state.selectedDao = action.payload;
+    // System Stats actions
+    setSystemStats: (state, action) => {
+      state.systemStats = action.payload;
     },
-    
-    // Token-Station mappings
-    setTokenStations: (state, action) => {
-      state.tokenStations = action.payload;
-    },
-    setTokenStationsLoading: (state, action) => {
-      state.tokenStationsLoading = action.payload;
-    },
-    addTokenStation: (state, action) => {
-      const { token, station } = action.payload;
-      if (!state.tokenStations.find(ts => ts[0] === token)) {
-        state.tokenStations.push([token, station]);
-      }
-    },
-    removeTokenStation: (state, action) => {
-      const token = action.payload;
-      state.tokenStations = state.tokenStations.filter(ts => ts[0] !== token);
+    setSystemStatsLoading: (state, action) => {
+      state.systemStatsLoading = action.payload;
     },
     
     // Clear all DAO state (on logout)
@@ -98,20 +72,15 @@ const daoSlice = createSlice({
 });
 
 export const {
-  setLpPrincipal,
-  setLpPrincipalLoading,
-  setLpPrincipalError,
-  setAvailableDaos,
-  setAvailableDaosLoading,
-  setAvailableDaosError,
-  setRegisteredDaos,
-  setRegisteredDaosLoading,
-  addRegisteredDao,
-  setSelectedDao,
-  setTokenStations,
-  setTokenStationsLoading,
-  addTokenStation,
-  removeTokenStation,
+  setKongLockerCanister,
+  setKongLockerLoading,
+  setKongLockerError,
+  setLpPositions,
+  setLpPositionsLoading,
+  setLpPositionsError,
+  setVotingPower,
+  setSystemStats,
+  setSystemStatsLoading,
   clearDaoState,
 } = daoSlice.actions;
 
