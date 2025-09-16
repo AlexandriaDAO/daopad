@@ -148,8 +148,7 @@ const TokenTabs = ({ identity }) => {
   return (
     <div className="token-tabs">
       <div className="tabs-header">
-        <h2>Your Token Governance</h2>
-        <p>Each tab represents a token from your locked LP positions. Create Orbit Stations to manage treasuries.</p>
+        <h2>Token Governance</h2>
       </div>
 
       <div className="tabs-navigation">

@@ -20,9 +20,10 @@ pwd  # Should show: /path/to/project/src/daopad/
 ./deploy.sh --network ic --backend-only   # Backend only
 ./deploy.sh --network ic --frontend-only  # Frontend only
 
-# Need Kong Locker info? (READ-ONLY)
-# Navigate to: ../kong_locker/CLAUDE.md for API details
-# But DO NOT modify Kong Locker code
+# Need reference info? (ALL READ-ONLY)
+# Kong Locker: ../kong_locker/CLAUDE.md
+# Orbit Station: ../../orbit-reference/ (Dfinity's official repo)
+# Never modify reference code
 ```
 
 ## 📁 Repository Structure
@@ -30,6 +31,10 @@ pwd  # Should show: /path/to/project/src/daopad/
 ```
 project_root/
 ├── deploy.sh            # LEGACY - Archived, DO NOT USE
+├── orbit-reference/     # READ-ONLY - Dfinity Orbit source (reference only)
+│   ├── apps/station/    # Station frontend code (for reference)
+│   ├── core/station/    # Station backend code (for reference)
+│   └── ...             # Full Orbit codebase (DO NOT MODIFY)
 ├── src/
 │   ├── daopad/         # YOU ARE HERE - Primary development
 │   │   ├── CLAUDE.md   # This file - Main documentation
@@ -57,11 +62,12 @@ graph LR
     E -->|Executes| F[Orbit Station Treasury]
 ```
 
-### When You Need Kong Locker Information:
-- **Understanding voting power**: Read `../kong_locker/CLAUDE.md`
-- **API endpoints**: See Kong Locker's query methods
-- **Lock canister structure**: Reference the architecture docs
-- **But remember**: DO NOT modify Kong Locker code
+### When You Need Reference Information:
+- **Kong Locker voting power**: Read `../kong_locker/CLAUDE.md`
+- **Orbit Station architecture**: Read `../../orbit-reference/` files
+- **Treasury management patterns**: See `orbit-reference/apps/station/`
+- **Station backend logic**: See `orbit-reference/core/station/`
+- **But remember**: NEVER modify reference code - it's READ-ONLY
 
 ### Kong Locker Key Concepts (Reference Only):
 - Users lock LP tokens permanently in individual canisters
@@ -256,22 +262,40 @@ dfx canister --network ic call kong_locker get_total_value_locked
 
 ### Primary Rules:
 1. **Work in DAOPad** - This is the active development area
-2. **Kong Locker is READ-ONLY** - Never modify, only reference for voting power logic
+2. **Reference repositories are READ-ONLY** - Never modify Kong Locker or Orbit reference code
 3. **Use local deploy.sh** - Always deploy from `src/daopad/` directory
 4. **Extract candid** - After every Rust change
 5. **Test on mainnet** - No local testing, deploy directly to IC
 
-### When You Need Kong Locker Info:
+### Reference Repository Usage:
+
+#### Kong Locker Reference (../kong_locker/):
 - Navigate to `../kong_locker/CLAUDE.md`
-- Read the API documentation
-- Understand the voting power calculation
-- Return to DAOPad for implementation
+- Understand voting power calculation
+- Reference API documentation
+- **Never modify Kong Locker code**
+
+#### Orbit Reference (../../orbit-reference/):
+- **🚨 CRITICAL**: This is Dfinity's official Orbit repository - READ-ONLY
+- Use for understanding Station architecture: `orbit-reference/core/station/`
+- Study frontend patterns: `orbit-reference/apps/station/`
+- Reference treasury management: `orbit-reference/core/station/src/services/`
+- Check API interfaces: `orbit-reference/core/station/api/`
+- **🚨 NEVER MODIFY - This is not our code, it's reference material only**
 
 ### Workflow Checklist:
 - [ ] Currently in `src/daopad/` directory
 - [ ] Using `./deploy.sh` (not root deploy.sh)
-- [ ] Kong Locker treated as read-only reference
+- [ ] All reference repositories treated as read-only
 - [ ] Candid extracted after Rust changes
 - [ ] Focusing on governance/voting features
+- [ ] Using Orbit patterns without copying code directly
 
-Remember: DAOPad is where the action is. Kong Locker is history - important to understand, but not to change.
+### When You Need Reference Information:
+1. **Voting Power Logic**: Read Kong Locker reference
+2. **Station Architecture**: Study `orbit-reference/core/station/src/`
+3. **Treasury Patterns**: Check `orbit-reference/apps/station/src/`
+4. **API Design**: Reference `orbit-reference/core/station/api/`
+5. **Frontend Structure**: Study `orbit-reference/apps/station/frontend/`
+
+Remember: DAOPad is where we build. References are where we learn. Never modify reference code.

@@ -139,9 +139,9 @@ const TokenTabContent = ({ token, identity, votingPower, lpPositions, onRefresh 
         </div>
       </div>
 
-      <div className="content-grid">
-        <div className="voting-details-card">
-          <h4>Voting Power Details</h4>
+      <div className="content-sections">
+        <div className="section">
+          <h4>Voting Power</h4>
           <div className="detail-rows">
             <div className="detail-row">
               <label>Total USD Value:</label>
@@ -175,14 +175,14 @@ const TokenTabContent = ({ token, identity, votingPower, lpPositions, onRefresh 
           )}
         </div>
 
-        <div className="orbit-station-card">
-          <h4>Orbit Station Treasury</h4>
+        <div className="section">
+          <h4>Treasury Status</h4>
 
           {orbitStation ? (
             <div className="station-exists">
               <div className="station-status">
                 <div className="status-indicator active">✓ Active</div>
-                <div className="station-name">{orbitStation.name}</div>
+                <div className="station-name">{orbitStation.name || 'Unnamed Station'}</div>
               </div>
 
               <div className="station-details">
@@ -196,7 +196,7 @@ const TokenTabContent = ({ token, identity, votingPower, lpPositions, onRefresh 
                 </div>
                 <div className="detail-row">
                   <label>Created:</label>
-                  <span>{new Date(Number(orbitStation.created_at) / 1000000).toLocaleDateString()}</span>
+                  <span className="value">{new Date(Number(orbitStation.created_at) / 1000000).toLocaleDateString()}</span>
                 </div>
               </div>
 
@@ -207,34 +207,27 @@ const TokenTabContent = ({ token, identity, votingPower, lpPositions, onRefresh 
                   onClick={() => window.open(`https://${orbitStation.station_id}.icp0.io`, '_blank')}
                   className="action-button primary"
                 >
-                  Open Treasury →
+                  Open Treasury
                 </button>
                 <button
                   onClick={handleDeleteStation}
                   disabled={creating}
                   className="action-button danger"
                 >
-                  {creating ? 'Deleting...' : 'Delete Station'}
+                  {creating ? 'Deleting...' : 'Delete'}
                 </button>
-              </div>
-
-              <div className="info-note">
-                <p>
-                  <strong>Treasury Management:</strong> Use the Orbit Station interface to manage
-                  treasury operations, bank accounts, and governance decisions for {token.symbol}.
-                </p>
               </div>
             </div>
           ) : (
             <div className="station-creation">
               <div className="creation-status">
                 <div className="status-indicator inactive">○ No Station</div>
-                <p>Create an Orbit Station treasury to manage {token.symbol} governance.</p>
+                <p>Create treasury for {token.symbol} governance.</p>
               </div>
 
               <div className="creation-form">
                 <div className="form-group">
-                  <label htmlFor="station-name">Treasury Name:</label>
+                  <label htmlFor="station-name">Name:</label>
                   <input
                     id="station-name"
                     type="text"
@@ -253,19 +246,8 @@ const TokenTabContent = ({ token, identity, votingPower, lpPositions, onRefresh 
                   disabled={creating || !stationName.trim()}
                   className="action-button primary create-button"
                 >
-                  {creating ? 'Creating Treasury...' : `Create ${token.symbol} Treasury`}
+                  {creating ? 'Creating...' : `Create Treasury`}
                 </button>
-              </div>
-
-              <div className="creation-info">
-                <h5>What you'll get:</h5>
-                <ul>
-                  <li>Dedicated treasury management interface</li>
-                  <li>Real bank account integration</li>
-                  <li>Governance voting system</li>
-                  <li>Canister upgrade controls</li>
-                  <li>Multi-signature operations</li>
-                </ul>
               </div>
             </div>
           )}
