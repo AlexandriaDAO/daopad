@@ -159,8 +159,8 @@
           cachedVotingPower: details.votingPower
         };
       }
-      
-      tokenBreakdown = analyticsService.getTokenBreakdownFromCache();
+
+      // Don't update token breakdown from cache - keep consistent with system stats
     } catch (err) {
       console.error('Failed to load canister details:', err);
       detailError = err instanceof Error ? err.message : 'Failed to load position details';

@@ -23,3 +23,6 @@ dist/
 
 # environment variables
 .env
+
+# reference repositories (read-only, not part of this project)
+orbit-reference/

@@ -22,7 +22,7 @@ pwd  # Should show: /path/to/project/src/daopad/
 
 # Need reference info? (ALL READ-ONLY)
 # Kong Locker: ../kong_locker/CLAUDE.md
-# Orbit Station: ../../orbit-reference/ (Dfinity's official repo)
+# Orbit Station: ./orbit-reference/ (Dfinity's official repo)
 # Never modify reference code
 ```
 
@@ -31,17 +31,17 @@ pwd  # Should show: /path/to/project/src/daopad/
 ```
 project_root/
 ├── deploy.sh            # LEGACY - Archived, DO NOT USE
-├── orbit-reference/     # READ-ONLY - Dfinity Orbit source (reference only)
-│   ├── apps/station/    # Station frontend code (for reference)
-│   ├── core/station/    # Station backend code (for reference)
-│   └── ...             # Full Orbit codebase (DO NOT MODIFY)
 ├── src/
 │   ├── daopad/         # YOU ARE HERE - Primary development
 │   │   ├── CLAUDE.md   # This file - Main documentation
 │   │   ├── deploy.sh   # USE THIS for deployments
 │   │   ├── daopad_backend/
 │   │   ├── daopad_frontend/
-│   │   └── orbit_station/
+│   │   ├── orbit_station/
+│   │   └── orbit-reference/  # READ-ONLY - Dfinity Orbit source (reference only)
+│   │       ├── apps/station/  # Station frontend code (for reference)
+│   │       ├── core/station/  # Station backend code (for reference)
+│   │       └── ...           # Full Orbit codebase (DO NOT MODIFY)
 │   │
 │   └── kong_locker/    # READ-ONLY - Reference only
 │       ├── CLAUDE.md   # Kong Locker details (for reference)
@@ -64,7 +64,7 @@ graph LR
 
 ### When You Need Reference Information:
 - **Kong Locker voting power**: Read `../kong_locker/CLAUDE.md`
-- **Orbit Station architecture**: Read `../../orbit-reference/` files
+- **Orbit Station architecture**: Read `./orbit-reference/` files
 - **Treasury management patterns**: See `orbit-reference/apps/station/`
 - **Station backend logic**: See `orbit-reference/core/station/`
 - **But remember**: NEVER modify reference code - it's READ-ONLY
@@ -275,7 +275,7 @@ dfx canister --network ic call kong_locker get_total_value_locked
 - Reference API documentation
 - **Never modify Kong Locker code**
 
-#### Orbit Reference (../../orbit-reference/):
+#### Orbit Reference (./orbit-reference/):
 - **🚨 CRITICAL**: This is Dfinity's official Orbit repository - READ-ONLY
 - Use for understanding Station architecture: `orbit-reference/core/station/`
 - Study frontend patterns: `orbit-reference/apps/station/`

@@ -39,7 +39,7 @@ const TokenTabs = ({ identity }) => {
         return;
       }
 
-      setTokens(lockedTokens);
+      // Don't set tokens yet - wait until we have voting powers
 
       // Get user's Kong Locker canister
       const canisterResult = await daopadService.getMyKongLockerCanister();
@@ -79,6 +79,18 @@ const TokenTabs = ({ identity }) => {
         });
 
         setTokenVotingPowers(votingPowers);
+
+        // Sort tokens by voting power (highest first)
+        const sortedTokens = [...lockedTokens].sort((a, b) => {
+          const powerA = votingPowers[a.canister_id] || 0;
+          const powerB = votingPowers[b.canister_id] || 0;
+          return powerB - powerA;
+        });
+
+        setTokens(sortedTokens);
+      } else {
+        // If we couldn't get voting powers, just set tokens as is
+        setTokens(lockedTokens);
       }
 
     } catch (err) {
@@ -171,7 +183,7 @@ const TokenTabs = ({ identity }) => {
         ))}
       </div>
 
-      <div className="tab-content">
+      <div className="tab-panel">
         {tokens[activeTab] && (
           <TokenTabContent
             token={tokens[activeTab]}

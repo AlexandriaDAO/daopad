@@ -199,14 +199,14 @@ export class AnalyticsService {
     }
   }
 
-  // Calculate system-wide statistics (batch load subset for efficiency)
+  // Calculate system-wide statistics (load all canisters for accuracy)
   async calculateSystemStats(limit: number = 20): Promise<SystemStats> {
     const overview = await this.getAnalyticsOverview();
     const totalCanisters = Number(overview.total_lock_canisters);
-    
-    // For system stats, only load a subset to get estimates
-    const sampleCanisters = overview.participants.slice(0, limit);
-    
+
+    // Load ALL canisters for accurate data (no more extrapolation)
+    const allCanisters = overview.participants;
+
     let totalValue = 0;
     let successfulQueries = 0;
     const tokenBreakdown = new Map<string, {
@@ -214,27 +214,29 @@ export class AnalyticsService {
       lpPools: Set<string>;
       totalTokenAmount: number;
     }>();
-    
-    // Query subset in parallel with timeout
-    const queries = sampleCanisters.map(async ([user, canister]) => {
+
+    // Query ALL canisters in parallel
+    const queries = allCanisters.map(async ([user, canister]) => {
       try {
         const details = await this.getCanisterDetails(canister);
-        return { 
+        return {
           totalUSD: details.totalUSD,
-          positions: details.positions 
+          positions: details.positions
         };
       } catch {
-        return { totalUSD: 0, positions: [] }; // Failed queries don't contribute to estimate
+        return { totalUSD: 0, positions: [] }; // Failed queries don't contribute
       }
     });
-    
+
     const results = await Promise.allSettled(queries);
-    
+
     results.forEach((result) => {
-      if (result.status === 'fulfilled' && result.value.totalUSD > 0) {
+      if (result.status === 'fulfilled') {
         totalValue += result.value.totalUSD;
-        successfulQueries++;
-        
+        if (result.value.totalUSD > 0) {
+          successfulQueries++;
+        }
+
         // Aggregate token data from positions
         result.value.positions.forEach(position => {
           // Process token 0 - use actual USD value from KongSwap
@@ -271,25 +273,14 @@ export class AnalyticsService {
         });
       }
     });
-    
-    // Extrapolate to full system if we have a good sample
-    const estimatedTotalValue = successfulQueries > 0
-      ? (totalValue / successfulQueries) * totalCanisters
-      : 0;
 
-    // Scale up token breakdown estimates
-    if (successfulQueries > 0) {
-      const scaleFactor = totalCanisters / successfulQueries;
-      tokenBreakdown.forEach(tokenData => {
-        tokenData.totalValue *= scaleFactor;
-        tokenData.totalTokenAmount *= scaleFactor;
-      });
-    }
-    
+    // No extrapolation - use actual total value
+    const actualTotalValue = totalValue;
+
     return {
       totalCanisters,
       totalParticipants: totalCanisters, // 1:1 mapping currently
-      estimatedTotalValue,
+      estimatedTotalValue: actualTotalValue,
       lastUpdated: new Date(Number(overview.last_updated) / 1_000_000), // Convert nanoseconds to milliseconds
       tokenBreakdown
     };

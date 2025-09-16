@@ -88,43 +88,68 @@
   }
 
   .tabs-header {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 
     h2 {
       font-family: Georgia, 'Times New Roman', serif;
       color: #000000;
       margin: 0;
-      font-size: 1.25rem;
+      font-size: 1.5rem;
       font-weight: 700;
       letter-spacing: -0.5px;
     }
   }
 
   .tabs-navigation {
+    display: flex;
+    gap: 0.25rem;
     border-bottom: 1px solid #E5E5E4;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0;
+    position: relative;
 
     .tab-button {
-      background: transparent;
-      border: none;
-      padding: 0.75rem 1rem;
+      position: relative;
+      background: #F5F5F4;
+      border: 1px solid #E5E5E4;
+      border-bottom: none;
+      padding: 0.75rem 1.25rem;
       cursor: pointer;
-      border-bottom: 2px solid transparent;
       font-family: inherit;
       transition: all 0.2s ease;
+      margin-bottom: -1px;
+      border-radius: 4px 4px 0 0;
 
-      &:hover {
-        background: #F5F5F4;
+      &:hover:not(.active) {
+        background: #FAFAFA;
+        border-color: #D4D4D4;
+        transform: translateY(-1px);
       }
 
       &.active {
-        border-bottom-color: #000000;
-        background: #F5F5F4;
+        background: white;
+        border-color: #E5E5E4;
+        z-index: 1;
+
+        &::after {
+          content: '';
+          position: absolute;
+          bottom: -1px;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: white;
+        }
 
         .tab-content {
           .token-symbol {
             color: #000000;
             font-weight: 700;
+          }
+
+          .voting-power {
+            background: #000000;
+            color: white;
+            border-color: #000000;
           }
         }
       }
@@ -137,14 +162,15 @@
         .token-symbol {
           font-size: 0.875rem;
           font-weight: 600;
-          color: #000000;
+          color: #525252;
           text-transform: uppercase;
           letter-spacing: 0.5px;
+          transition: color 0.2s ease;
         }
 
         .token-chain {
           font-size: 0.75rem;
-          color: #525252;
+          color: #737373;
           font-family: 'Courier New', monospace;
         }
 
@@ -152,19 +178,25 @@
           font-size: 0.6875rem;
           background: #F5F5F4;
           color: #525252;
-          padding: 0.125rem 0.375rem;
+          padding: 0.25rem 0.5rem;
+          border-radius: 3px;
           border: 1px solid #E5E5E4;
-          font-weight: 500;
+          font-weight: 600;
           font-family: 'Courier New', monospace;
+          transition: all 0.2s ease;
+          margin-left: 0.25rem;
         }
       }
     }
   }
 
-  .tab-content {
+  .tab-panel {
     background: white;
     border: 1px solid #E5E5E4;
+    border-top: 1px solid #E5E5E4;
     min-height: 400px;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
   }
 
   @keyframes spin {
@@ -186,17 +218,29 @@
     }
 
     .tabs-navigation {
+      overflow-x: auto;
+      gap: 0.125rem;
+
       .tab-button {
-        padding: 0.75rem 1rem;
-        min-width: 120px;
+        padding: 0.625rem 0.875rem;
+        min-width: 100px;
+        flex-shrink: 0;
 
         .tab-content {
+          flex-direction: column;
+          gap: 0.25rem;
+
           .token-symbol {
-            font-size: 1rem;
+            font-size: 0.875rem;
+          }
+
+          .token-chain {
+            font-size: 0.6875rem;
           }
 
           .voting-power {
-            font-size: 0.75rem;
+            font-size: 0.625rem;
+            padding: 0.125rem 0.375rem;
           }
         }
       }
