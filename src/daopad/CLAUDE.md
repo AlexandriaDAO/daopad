@@ -93,8 +93,12 @@ daopad/
 │   │   └── components/  # UI components
 │   └── dist/            # Build output
 │
-└── orbit_station/        # Orbit Station interfaces
-    └── orbit_station.did # For cross-canister calls
+├── orbit_station/        # Orbit Station interface (KEEP THIS!)
+│   └── orbit_station.did # Candid interface for cross-canister calls to Orbit
+│                        # This defines the API contract between DAOPad and Orbit Station
+│                        # Required for backend to interact with treasury operations
+│
+└── orbit-reference/      # Full Orbit source code (reference only, DO NOT MODIFY)
 ```
 
 ### Development Workflow

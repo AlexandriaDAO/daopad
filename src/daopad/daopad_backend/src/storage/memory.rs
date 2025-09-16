@@ -7,7 +7,7 @@ use std::cell::RefCell;
 pub type Memory = VirtualMemory<DefaultMemoryImpl>;
 
 pub const KONG_LOCKER_PRINCIPALS_MEM_ID: MemoryId = MemoryId::new(0);
-pub const ORBIT_STATIONS_MEM_ID: MemoryId = MemoryId::new(1);
+pub const ORBIT_STATIONS_MEM_ID: MemoryId = MemoryId::new(2); // Changed from 1 to 2 to get fresh storage
 
 pub const KONG_LOCKER_FACTORY: &str = "eazgb-giaaa-aaaap-qqc2q-cai";
 

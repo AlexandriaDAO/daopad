@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Principal } from '@dfinity/principal';
 import { DAOPadBackendService } from '../services/daopadBackend';
-import './TokenTabContent.scss';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const TokenTabContent = ({ token, identity, votingPower, lpPositions, onRefresh }) => {
   const [orbitStation, setOrbitStation] = useState(null);
@@ -9,22 +14,48 @@ const TokenTabContent = ({ token, identity, votingPower, lpPositions, onRefresh 
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [stationName, setStationName] = useState('');
+  const [userVotingPower, setUserVotingPower] = useState(null);
+  const [loadingVP, setLoadingVP] = useState(false);
+  const [joiningAsMember, setJoiningAsMember] = useState(false);
+  const [memberName, setMemberName] = useState('');
+  const [showJoinForm, setShowJoinForm] = useState(false);
 
   useEffect(() => {
     loadOrbitStationStatus();
+    loadVotingPower();
     setStationName(`${token.symbol} Treasury`);
   }, [token]);
 
+  const loadVotingPower = async () => {
+    if (!identity || !token) return;
+
+    setLoadingVP(true);
+    try {
+      const daopadService = new DAOPadBackendService(identity);
+      const tokenPrincipal = Principal.fromText(token.canister_id);
+      const result = await daopadService.getMyVotingPowerForToken(tokenPrincipal);
+      if (result.success) {
+        setUserVotingPower(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to load voting power:', err);
+    } finally {
+      setLoadingVP(false);
+    }
+  };
+
   const loadOrbitStationStatus = async () => {
-    if (!identity) return;
+    if (!identity || !token) return;
 
     setLoading(true);
     setError('');
 
     try {
       const daopadService = new DAOPadBackendService(identity);
-      const result = await daopadService.getMyOrbitStation();
+      const tokenPrincipal = Principal.fromText(token.canister_id);
 
+      // Check if there's a station for this token
+      const result = await daopadService.getOrbitStationForToken(tokenPrincipal);
       if (result.success && result.data) {
         setOrbitStation(result.data);
       } else {
@@ -41,6 +72,12 @@ const TokenTabContent = ({ token, identity, votingPower, lpPositions, onRefresh 
   const handleCreateStation = async () => {
     if (!stationName.trim()) {
       setError('Please enter a station name');
+      return;
+    }
+
+    // Check voting power on frontend
+    if (userVotingPower !== null && userVotingPower < 10000) {
+      setError(`Insufficient voting power. You have ${userVotingPower.toLocaleString()} VP but need at least 10,000 VP.`);
       return;
     }
 
@@ -68,31 +105,37 @@ const TokenTabContent = ({ token, identity, votingPower, lpPositions, onRefresh 
     }
   };
 
-  const handleDeleteStation = async () => {
-    if (!confirm('Are you sure you want to delete your Orbit Station? This action cannot be undone.')) {
+  const handleJoinAsMember = async () => {
+    if (!memberName.trim()) {
+      setError('Please enter your display name');
       return;
     }
 
-    setCreating(true);
+    if (userVotingPower < 100) {
+      setError(`Insufficient voting power. You have ${userVotingPower} VP but need at least 100 VP to join.`);
+      return;
+    }
+
+    setJoiningAsMember(true);
     setError('');
 
     try {
       const daopadService = new DAOPadBackendService(identity);
-      const result = await daopadService.deleteOrbitStation();
+      const tokenPrincipal = Principal.fromText(token.canister_id);
+      const result = await daopadService.joinOrbitStation(tokenPrincipal, memberName.trim());
 
       if (result.success) {
-        setOrbitStation(null);
-        if (onRefresh) {
-          onRefresh();
-        }
+        setShowJoinForm(false);
+        setMemberName('');
+        alert('Successfully submitted request to join as a member!');
       } else {
-        setError(result.error || 'Failed to delete Orbit Station');
+        setError(result.error || 'Failed to join as member');
       }
     } catch (err) {
-      console.error('Error deleting station:', err);
-      setError(err.message || 'An error occurred while deleting the station');
+      console.error('Error joining as member:', err);
+      setError(err.message || 'An error occurred while joining');
     } finally {
-      setCreating(false);
+      setJoiningAsMember(false);
     }
   };
 
@@ -106,153 +149,257 @@ const TokenTabContent = ({ token, identity, votingPower, lpPositions, onRefresh 
   };
 
   const totalUsdValue = lpPositions.reduce((sum, pos) => {
-    let tokenValue = 0;
-    if (pos.address_0 === token.canister_id) {
-      tokenValue += pos.usd_amount_0 || 0;
-    }
-    if (pos.address_1 === token.canister_id) {
-      tokenValue += pos.usd_amount_1 || 0;
-    }
-    return sum + tokenValue;
+    // Use the total USD balance of the entire LP position
+    return sum + (pos.usd_balance || 0);
   }, 0);
 
   if (loading) {
     return (
-      <div className="token-tab-content loading">
-        <div className="spinner"></div>
-        <p>Loading {token.symbol} information...</p>
+      <div className="space-y-4">
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-48 w-full" />
       </div>
     );
   }
 
   return (
-    <div className="token-tab-content">
-      <div className="token-header">
-        <div className="token-info">
-          <h3>{token.symbol}</h3>
-          <span className="token-chain">{token.chain}</span>
-          <code className="token-canister">{token.canister_id}</code>
-        </div>
-        <div className="voting-power-display">
-          <div className="power-number">{votingPower.toLocaleString()}</div>
-          <div className="power-label">Voting Power</div>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-start">
+            <div className="space-y-2">
+              <CardTitle className="text-2xl">{token.symbol}</CardTitle>
+              <Badge variant="outline">{token.chain}</Badge>
+              <code className="block text-xs bg-muted p-2 rounded font-mono">{token.canister_id}</code>
+            </div>
+            <div className="text-right">
+              <div className="text-3xl font-bold font-mono">{votingPower.toLocaleString()}</div>
+              <div className="text-sm text-muted-foreground font-mono">Voting Power</div>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
 
-      <div className="content-sections">
-        <div className="section">
-          <h4>Voting Power</h4>
-          <div className="detail-rows">
-            <div className="detail-row">
-              <label>Total USD Value:</label>
-              <span className="value">{formatUsdValue(totalUsdValue)}</span>
+      <Card>
+        <CardHeader>
+          <CardTitle>Voting Power</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <Label className="text-muted-foreground">Total USD Value</Label>
+              <div className="font-mono font-bold">{formatUsdValue(totalUsdValue)}</div>
             </div>
-            <div className="detail-row">
-              <label>Voting Power:</label>
-              <span className="value">{votingPower.toLocaleString()} VP</span>
+            <div className="space-y-1">
+              <Label className="text-muted-foreground">Voting Power</Label>
+              <div className="font-mono font-bold">{votingPower.toLocaleString()} VP</div>
             </div>
-            <div className="detail-row">
-              <label>LP Positions:</label>
-              <span className="value">{lpPositions.length} position{lpPositions.length !== 1 ? 's' : ''}</span>
+            <div className="space-y-1">
+              <Label className="text-muted-foreground">LP Positions</Label>
+              <div className="font-mono font-bold">{lpPositions.length} position{lpPositions.length !== 1 ? 's' : ''}</div>
             </div>
           </div>
 
           {lpPositions.length > 0 && (
-            <div className="lp-positions">
-              <h5>Your LP Positions</h5>
-              {lpPositions.map((pos, index) => (
-                <div key={index} className="lp-position">
-                  <div className="position-name">{pos.name}</div>
-                  <div className="position-details">
-                    <span>{pos.symbol_0}/{pos.symbol_1}</span>
-                    <span className="position-value">
-                      {formatUsdValue(pos.usd_balance || 0)}
-                    </span>
-                  </div>
-                </div>
-              ))}
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Your LP Positions</Label>
+              <div className="space-y-2">
+                {lpPositions.map((pos, index) => (
+                  <Card key={index}>
+                    <CardContent className="pt-3">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="font-semibold">{pos.name}</div>
+                          <div className="text-sm text-muted-foreground">{pos.symbol_0}/{pos.symbol_1}</div>
+                        </div>
+                        <Badge variant="secondary">
+                          {formatUsdValue(pos.usd_balance || 0)}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
-        </div>
+        </CardContent>
+      </Card>
 
-        <div className="section">
-          <h4>Treasury Status</h4>
-
+      <Card>
+        <CardHeader>
+          <CardTitle>Treasury Status</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
           {orbitStation ? (
-            <div className="station-exists">
-              <div className="station-status">
-                <div className="status-indicator active">✓ Active</div>
-                <div className="station-name">{orbitStation.name || 'Unnamed Station'}</div>
-              </div>
-
-              <div className="station-details">
-                <div className="detail-row">
-                  <label>Station ID:</label>
-                  <code className="canister-id">{orbitStation.station_id.toString()}</code>
-                </div>
-                <div className="detail-row">
-                  <label>Upgrader ID:</label>
-                  <code className="canister-id">{orbitStation.upgrader_id.toString()}</code>
-                </div>
-                <div className="detail-row">
-                  <label>Created:</label>
-                  <span className="value">{new Date(Number(orbitStation.created_at) / 1000000).toLocaleDateString()}</span>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="default">✓ Active</Badge>
+                  <span className="font-semibold">{orbitStation.name || 'Unnamed Station'}</span>
                 </div>
               </div>
 
-              {error && <div className="error-message">{error}</div>}
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground">Station ID</Label>
+                  <code className="block text-xs bg-muted p-2 rounded font-mono">
+                    {orbitStation.station_id.toString()}
+                  </code>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground">Upgrader ID</Label>
+                  <code className="block text-xs bg-muted p-2 rounded font-mono">
+                    {orbitStation.upgrader_id.toString()}
+                  </code>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground">Created</Label>
+                  <div className="font-mono text-sm">
+                    {new Date(Number(orbitStation.created_at) / 1000000).toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
 
-              <div className="station-actions">
-                <button
+              {error && (
+                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                  <p className="text-destructive text-sm">{error}</p>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Button
                   onClick={() => window.open(`https://${orbitStation.station_id}.icp0.io`, '_blank')}
-                  className="action-button primary"
                 >
                   Open Treasury
-                </button>
-                <button
-                  onClick={handleDeleteStation}
-                  disabled={creating}
-                  className="action-button danger"
-                >
-                  {creating ? 'Deleting...' : 'Delete'}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="station-creation">
-              <div className="creation-status">
-                <div className="status-indicator inactive">○ No Station</div>
-                <p>Create treasury for {token.symbol} governance.</p>
+                </Button>
+                {!showJoinForm && userVotingPower >= 100 && (
+                  <Button
+                    onClick={() => setShowJoinForm(true)}
+                    variant="outline"
+                  >
+                    Join as Member
+                  </Button>
+                )}
               </div>
 
-              <div className="creation-form">
-                <div className="form-group">
-                  <label htmlFor="station-name">Name:</label>
-                  <input
+              {showJoinForm && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Join {orbitStation.name} as Member</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      You have {userVotingPower?.toLocaleString()} VP for {token.symbol}.
+                      Minimum 100 VP required.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="member-name">Display Name</Label>
+                      <Input
+                        id="member-name"
+                        type="text"
+                        value={memberName}
+                        onChange={(e) => setMemberName(e.target.value)}
+                        placeholder="Your name"
+                        maxLength={50}
+                        disabled={joiningAsMember}
+                      />
+                    </div>
+                    {error && (
+                      <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                        <p className="text-destructive text-sm">{error}</p>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleJoinAsMember}
+                        disabled={joiningAsMember || !memberName.trim()}
+                        className="flex-1"
+                      >
+                        {joiningAsMember ? 'Joining...' : 'Submit Request'}
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setShowJoinForm(false);
+                          setMemberName('');
+                          setError('');
+                        }}
+                        disabled={joiningAsMember}
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">○ No Station</Badge>
+                </div>
+                <p className="text-muted-foreground">Create treasury for {token.symbol} governance.</p>
+              </div>
+
+              <Card>
+                <CardContent className="pt-4">
+                  {loadingVP ? (
+                    <p className="text-muted-foreground">Loading voting power...</p>
+                  ) : userVotingPower !== null ? (
+                    <div className="space-y-2">
+                      <div className={userVotingPower >= 10000 ? 'text-green-600' : 'text-red-600'}>
+                        Your voting power: <strong>{userVotingPower.toLocaleString()} VP</strong>
+                      </div>
+                      {userVotingPower < 10000 && (
+                        <Badge variant="destructive">
+                          Need {(10000 - userVotingPower).toLocaleString()} more VP
+                        </Badge>
+                      )}
+                    </div>
+                  ) : null}
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Minimum 10,000 VP required to create an Orbit Station
+                  </p>
+                </CardContent>
+              </Card>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="station-name">Name</Label>
+                  <Input
                     id="station-name"
                     type="text"
                     value={stationName}
                     onChange={(e) => setStationName(e.target.value)}
                     placeholder={`${token.symbol} Treasury`}
-                    className="name-input"
                     maxLength={50}
+                    disabled={creating || (userVotingPower !== null && userVotingPower < 10000)}
                   />
                 </div>
 
-                {error && <div className="error-message">{error}</div>}
+                {error && (
+                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                    <p className="text-destructive text-sm">{error}</p>
+                  </div>
+                )}
 
-                <button
+                <Button
                   onClick={handleCreateStation}
-                  disabled={creating || !stationName.trim()}
-                  className="action-button primary create-button"
+                  disabled={creating || !stationName.trim() || (userVotingPower !== null && userVotingPower < 10000)}
+                  className="w-full"
+                  size="lg"
+                  title={userVotingPower !== null && userVotingPower < 10000 ? 'Insufficient voting power' : ''}
                 >
-                  {creating ? 'Creating...' : `Create Treasury`}
-                </button>
+                  {creating ? 'Creating...' : 'Create Treasury'}
+                </Button>
               </div>
             </div>
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

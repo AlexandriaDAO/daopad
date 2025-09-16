@@ -6,7 +6,11 @@ import { LPLockingService } from '../services/lpLockingService';
 import { DAOPadBackendService } from '../services/daopadBackend';
 import ProposalCard from './ProposalCard';
 import ProposalDetailsModal from './ProposalDetailsModal';
-import './DaoProposals.scss';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const DaoProposals = ({ identity, dao }) => {
   const [proposals, setProposals] = useState([]);
@@ -208,91 +212,114 @@ const DaoProposals = ({ identity, dao }) => {
 
   if (!dao) {
     return (
-      <div className="dao-proposals">
-        <div className="no-dao-selected">
-          <h3>No DAO Selected</h3>
-          <p>Please select a DAO from the dashboard to view its proposals.</p>
-        </div>
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <h3 className="text-xl font-semibold mb-2">No DAO Selected</h3>
+            <p className="text-muted-foreground">Please select a DAO from the dashboard to view its proposals.</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="dao-proposals">
-      <div className="proposals-header">
-        <div className="dao-info">
-          <h2>{getTokenName()} DAO Proposals</h2>
-          <div className="dao-details">
-            <span className="token-id">Token: {dao.token_canister.toString()}</span>
+    <div className="space-y-6">
+      <div className="flex justify-between items-start flex-wrap gap-4">
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold">{getTokenName()} DAO Proposals</h2>
+          <div className="flex gap-2 flex-wrap">
+            <Badge variant="outline" className="font-mono text-xs">
+              Token: {dao.token_canister.toString()}
+            </Badge>
             {dao.station_canister[0] && (
-              <span className="station-id">Station: {dao.station_canister[0].toString()}</span>
+              <Badge variant="outline" className="font-mono text-xs">
+                Station: {dao.station_canister[0].toString()}
+              </Badge>
             )}
           </div>
         </div>
-        
-        <div className="filter-controls">
-          <select
+
+        <div className="flex items-center gap-2">
+          <Select
             value={filter.status || ''}
-            onChange={(e) => setFilter({ ...filter, status: e.target.value || null })}
-            className="filter-select"
+            onValueChange={(value) => setFilter({ ...filter, status: value || null })}
           >
-            <option value="">All Status</option>
-            <option value="Created">Created</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
-            <option value="Completed">Completed</option>
-            <option value="Failed">Failed</option>
-          </select>
-          
-          <button onClick={() => fetchProposals()} className="refresh-button">
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Status</SelectItem>
+              <SelectItem value="Created">Created</SelectItem>
+              <SelectItem value="Approved">Approved</SelectItem>
+              <SelectItem value="Rejected">Rejected</SelectItem>
+              <SelectItem value="Completed">Completed</SelectItem>
+              <SelectItem value="Failed">Failed</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button variant="outline" onClick={() => fetchProposals()}>
             ↻ Refresh
-          </button>
+          </Button>
         </div>
       </div>
 
-      {/* LP Positions Section */}
       {lpPositions.length > 0 && (
-        <div className="lp-positions-section">
-          <h3>Your Locked LP Positions</h3>
-          <div className="lp-positions-grid">
-            {lpPositions.map((position, index) => (
-              <div key={index} className="lp-position-card">
-                <div className="position-header">
-                  <span className="pool-pair">{position.symbol_0}/{position.symbol_1}</span>
-                  <span className="usd-value">${position.usd_balance.toFixed(2)}</span>
-                </div>
-                <div className="position-details">
-                  <div className="token-amounts">
-                    <span>{position.symbol_0}: {position.amount_0.toFixed(4)}</span>
-                    <span>{position.symbol_1}: {position.amount_1.toFixed(4)}</span>
-                  </div>
-                  <div className="lp-balance">
-                    <span>LP Balance: {position.balance.toFixed(6)}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="positions-summary">
-            <strong>Total LP Value: ${lpPositions.reduce((sum, p) => sum + p.usd_balance, 0).toFixed(2)}</strong>
-          </div>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Locked LP Positions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+              {lpPositions.map((position, index) => (
+                <Card key={index}>
+                  <CardContent className="pt-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="font-semibold">{position.symbol_0}/{position.symbol_1}</span>
+                      <Badge variant="secondary">${position.usd_balance.toFixed(2)}</Badge>
+                    </div>
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      <div className="font-mono">{position.symbol_0}: {position.amount_0.toFixed(4)}</div>
+                      <div className="font-mono">{position.symbol_1}: {position.amount_1.toFixed(4)}</div>
+                      <div className="font-mono">LP Balance: {position.balance.toFixed(6)}</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <div className="text-center pt-4 border-t">
+              <Badge variant="default" className="text-sm">
+                Total LP Value: ${lpPositions.reduce((sum, p) => sum + p.usd_balance, 0).toFixed(2)}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {loading ? (
-        <div className="loading">Loading proposals...</div>
+        <div className="space-y-4">
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+        </div>
       ) : error ? (
-        <div className="error">
-          <p>{error}</p>
-          <button onClick={() => fetchProposals()}>Try Again</button>
-        </div>
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <p className="text-destructive mb-4">{error}</p>
+            <Button onClick={() => fetchProposals()} variant="outline">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
       ) : proposals.length === 0 ? (
-        <div className="no-proposals">
-          <h3>No Proposals Yet</h3>
-          <p>This DAO doesn't have any proposals at the moment.</p>
-        </div>
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <h3 className="text-xl font-semibold mb-2">No Proposals Yet</h3>
+            <p className="text-muted-foreground">This DAO doesn't have any proposals at the moment.</p>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="proposals-grid">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {proposals.map((proposal) => (
             <ProposalCard
               key={proposal.id}

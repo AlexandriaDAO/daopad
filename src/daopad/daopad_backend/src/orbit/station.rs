@@ -1,16 +1,14 @@
 use candid::{Principal, Encode};
 use crate::types::{
-    OrbitStationInfo, OrbitStationResponse, SystemInit, SystemUpgraderInput,
+    OrbitStationResponse, SystemInit, SystemUpgraderInput,
     InitialConfig, WithAllDefaults, InitUserInput, UserIdentityInput, UserStatus, SystemInstall
 };
-use crate::storage::state::ORBIT_STATIONS;
-use crate::types::{StorablePrincipal, StorableOrbitStation};
 use crate::orbit::management::{create_canister, deposit_cycles, install_canister};
 
 const STATION_WASM: &[u8] = include_bytes!("../../wasms/station.wasm.gz");
 const UPGRADER_WASM: &[u8] = include_bytes!("../../wasms/upgrader.wasm.gz");
 
-pub async fn create_orbit_station_internal(name: String, owner: Principal) -> Result<OrbitStationResponse, String> {
+pub async fn create_orbit_station_internal(name: String, _token_canister_id: Principal) -> Result<OrbitStationResponse, String> {
     const INITIAL_UPGRADER_CYCLES: u128 = 1_000_000_000_000; // 1T cycles
     const INITIAL_STATION_CYCLES: u128 = 1_000_000_000_000;  // 1T cycles
 
@@ -51,20 +49,8 @@ pub async fn create_orbit_station_internal(name: String, owner: Principal) -> Re
     ).await
     .map_err(|e| format!("Failed to install station: {:?}", e))?;
 
-    let station_info = OrbitStationInfo {
-        station_id,
-        upgrader_id: station_id,
-        name: name.clone(),
-        owner: owner,
-        created_at: ic_cdk::api::time(),
-    };
-
-    ORBIT_STATIONS.with(|stations| {
-        stations.borrow_mut().insert(
-            StorablePrincipal(owner),
-            StorableOrbitStation(station_info)
-        );
-    });
+    // Station info storage is now handled by the calling function
+    // to properly associate it with a token if needed
 
     Ok(OrbitStationResponse {
         station_id,

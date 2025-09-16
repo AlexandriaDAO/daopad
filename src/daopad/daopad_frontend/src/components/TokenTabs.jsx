@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { DAOPadBackendService } from '../services/daopadBackend';
 import { KongLockerService } from '../services/kongLockerService';
 import TokenTabContent from './TokenTabContent';
-import './TokenTabs.scss';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
 
 const TokenTabs = ({ identity }) => {
   const [tokens, setTokens] = useState([]);
@@ -63,16 +68,9 @@ const TokenTabs = ({ identity }) => {
             pos.address_0 === token.canister_id || pos.address_1 === token.canister_id
           );
 
+          // Use the total USD value of the entire LP position (both sides combined)
           const totalUsdValue = tokenPositions.reduce((sum, pos) => {
-            // Calculate the USD value for this specific token in the position
-            let tokenValue = 0;
-            if (pos.address_0 === token.canister_id) {
-              tokenValue += pos.usd_amount_0 || 0;
-            }
-            if (pos.address_1 === token.canister_id) {
-              tokenValue += pos.usd_amount_1 || 0;
-            }
-            return sum + tokenValue;
+            return sum + (pos.usd_balance || 0);
           }, 0);
 
           votingPowers[token.canister_id] = Math.floor(totalUsdValue * 100);
@@ -103,87 +101,114 @@ const TokenTabs = ({ identity }) => {
 
   if (loading) {
     return (
-      <div className="token-tabs">
-        <div className="loading-section">
-          <div className="spinner"></div>
-          <p>Loading your locked tokens...</p>
-        </div>
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="token-tabs">
-        <div className="error-section">
-          <div className="error-message">
-            <h3>Unable to Load Tokens</h3>
-            <p>{error}</p>
-            <div className="error-actions">
-              <button onClick={loadTokensAndPowers} className="retry-button">
-                Try Again
-              </button>
+      <Card>
+        <CardHeader>
+          <CardTitle>Unable to Load Tokens</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground">{error}</p>
+          <div className="flex gap-2">
+            <Button onClick={loadTokensAndPowers} variant="outline">
+              Try Again
+            </Button>
+            <Button asChild>
               <a
                 href="https://konglocker.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="external-button"
               >
                 Go to Kong Locker
               </a>
-            </div>
+            </Button>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     );
   }
 
   if (tokens.length === 0) {
     return (
-      <div className="token-tabs">
-        <div className="empty-state">
-          <h3>No Locked Tokens Found</h3>
-          <p>You need to lock some LP tokens in Kong Locker to use DAOPad governance features.</p>
-          <a
-            href="https://konglocker.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="external-button primary"
-          >
-            Go to Kong Locker →
-          </a>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>No Locked Tokens Found</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground">
+            You need to lock some LP tokens in Kong Locker to use DAOPad governance features.
+          </p>
+          <Button asChild>
+            <a
+              href="https://konglocker.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Go to Kong Locker →
+            </a>
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="token-tabs">
-      <div className="tabs-header">
-        <h2>Token Governance</h2>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-3xl font-bold">Token Governance</h2>
       </div>
 
-      <div className="tabs-navigation">
-        {tokens.map((token, index) => (
-          <button
-            key={token.canister_id}
-            className={`tab-button ${activeTab === index ? 'active' : ''}`}
-            onClick={() => setActiveTab(index)}
-          >
-            <div className="tab-content">
-              <span className="token-symbol">{token.symbol}</span>
-              <span className="token-chain">({token.chain})</span>
-              {tokenVotingPowers[token.canister_id] !== undefined && (
-                <span className="voting-power">
-                  {tokenVotingPowers[token.canister_id].toLocaleString()} VP
-                </span>
-              )}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            <div className="flex-1">
+              <Label htmlFor="token-select" className="text-sm font-medium mb-2 block">
+                Select Token:
+              </Label>
+              <Select
+                value={activeTab.toString()}
+                onValueChange={(value) => setActiveTab(Number(value))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {tokens.map((token, index) => (
+                    <SelectItem key={token.canister_id} value={index.toString()}>
+                      {token.symbol} ({token.chain}) - {(tokenVotingPowers[token.canister_id] || 0).toLocaleString()} VP
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </button>
-        ))}
-      </div>
 
-      <div className="tab-panel">
+            {tokens[activeTab] && (
+              <div className="flex items-center gap-4">
+                <div className="flex gap-2">
+                  <Badge variant="default">{tokens[activeTab].symbol}</Badge>
+                  <Badge variant="outline">{tokens[activeTab].chain}</Badge>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground">Voting Power</div>
+                  <div className="text-xl font-bold font-mono">
+                    {(tokenVotingPowers[tokens[activeTab].canister_id] || 0).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div>
         {tokens[activeTab] && (
           <TokenTabContent
             token={tokens[activeTab]}

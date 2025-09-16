@@ -20,7 +20,7 @@ const idlFactory = ({ IDL }) => {
     'station_id': IDL.Principal,
     'upgrader_id': IDL.Principal,
     'name': IDL.Text,
-    'owner': IDL.Principal,
+    'token_canister_id': IDL.Principal,
     'created_at': IDL.Nat64,
   });
 
@@ -45,19 +45,21 @@ const idlFactory = ({ IDL }) => {
     'Err': IDL.Text,
   });
 
+
   return IDL.Service({
     // Kong Locker Integration
     'register_with_kong_locker': IDL.Func([IDL.Principal], [Result], []),
     'get_my_kong_locker_canister': IDL.Func([], [IDL.Opt(IDL.Principal)], ['query']),
+    'get_my_voting_power_for_token': IDL.Func([IDL.Principal], [IDL.Variant({ 'Ok': IDL.Nat64, 'Err': IDL.Text })], []),
     'unregister_kong_locker': IDL.Func([], [Result], []),
     'list_all_kong_locker_registrations': IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Principal))], ['query']),
 
     // Orbit Station Methods
     'create_token_orbit_station': IDL.Func([CreateTokenStationRequest], [OrbitStationResult], []),
     'get_my_locked_tokens': IDL.Func([], [TokenResult], []),
-    'get_my_orbit_station': IDL.Func([], [IDL.Opt(OrbitStationInfo)], ['query']),
+    'get_orbit_station_for_token': IDL.Func([IDL.Principal], [IDL.Opt(OrbitStationInfo)], ['query']),
     'list_all_orbit_stations': IDL.Func([], [IDL.Vec(OrbitStationInfo)], ['query']),
-    'delete_orbit_station': IDL.Func([], [Result], []),
+    'join_orbit_station': IDL.Func([IDL.Principal, IDL.Text], [Result], []),
 
     // Utility Functions
     'get_backend_principal': IDL.Func([], [IDL.Principal], ['query']),
@@ -213,13 +215,13 @@ export class DAOPadBackendService {
     }
   }
 
-  async getMyOrbitStation() {
+  async getOrbitStationForToken(tokenCanisterId) {
     try {
       const actor = await this.getActor();
-      const result = await actor.get_my_orbit_station();
+      const result = await actor.get_orbit_station_for_token(tokenCanisterId);
       return { success: true, data: result[0] || null };
     } catch (error) {
-      console.error('Failed to get orbit station:', error);
+      console.error('Failed to get any orbit station for token:', error);
       return { success: false, error: error.message };
     }
   }
@@ -235,17 +237,32 @@ export class DAOPadBackendService {
     }
   }
 
-  async deleteOrbitStation() {
+  async getMyVotingPowerForToken(tokenCanisterId) {
     try {
       const actor = await this.getActor();
-      const result = await actor.delete_orbit_station();
+      const result = await actor.get_my_voting_power_for_token(tokenCanisterId);
+      if ('Ok' in result) {
+        return { success: true, data: Number(result.Ok) };
+      } else {
+        return { success: false, error: result.Err };
+      }
+    } catch (error) {
+      console.error('Failed to get voting power for token:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async joinOrbitStation(tokenCanisterId, displayName) {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.join_orbit_station(tokenCanisterId, displayName);
       if ('Ok' in result) {
         return { success: true, data: result.Ok };
       } else {
         return { success: false, error: result.Err };
       }
     } catch (error) {
-      console.error('Failed to delete orbit station:', error);
+      console.error('Failed to join orbit station:', error);
       return { success: false, error: error.message };
     }
   }

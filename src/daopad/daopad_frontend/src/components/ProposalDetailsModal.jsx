@@ -1,4 +1,9 @@
 import React from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 
 const formatDate = (timestamp) => {
   if (!timestamp) return 'N/A';
@@ -32,108 +37,133 @@ const getStatusColor = (status) => {
 };
 
 const ProposalDetailsModal = ({ proposal, onClose }) => {
-  const handleOverlayClick = (e) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
   return (
-    <div className="proposal-modal-overlay" onClick={handleOverlayClick}>
-      <div className="proposal-modal">
-        <div className="modal-header">
-          <h2>Proposal Details</h2>
-          <button className="modal-close" onClick={onClose}>×</button>
-        </div>
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Proposal Details</DialogTitle>
+        </DialogHeader>
 
-        <div className="modal-body">
-          <div className="detail-section">
-            <h3>General Information</h3>
-            
-            <div className="detail-row">
-              <span className="detail-label">ID:</span>
-              <span className="detail-value">{proposal.id}</span>
-            </div>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>General Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">ID</Label>
+                  <div className="font-mono text-sm break-all">{proposal.id}</div>
+                </div>
 
-            <div className="detail-row">
-              <span className="detail-label">Title:</span>
-              <span className="detail-value">{proposal.title || 'Untitled'}</span>
-            </div>
+                <div>
+                  <Label className="text-muted-foreground">Title</Label>
+                  <div>{proposal.title || 'Untitled'}</div>
+                </div>
 
-            {proposal.summary && (
-              <div className="detail-row">
-                <span className="detail-label">Summary:</span>
-                <span className="detail-value">{proposal.summary}</span>
-              </div>
-            )}
+                <div>
+                  <Label className="text-muted-foreground">Status</Label>
+                  <Badge
+                    variant="outline"
+                    style={{ backgroundColor: getStatusColor(proposal.status), color: 'white' }}
+                  >
+                    {getStatusText(proposal.status)}
+                  </Badge>
+                </div>
 
-            <div className="detail-row">
-              <span className="detail-label">Status:</span>
-              <span 
-                className="proposal-status"
-                style={{ backgroundColor: getStatusColor(proposal.status) }}
-              >
-                {getStatusText(proposal.status)}
-              </span>
-            </div>
+                <div>
+                  <Label className="text-muted-foreground">Requested by</Label>
+                  <div className="font-mono text-sm break-all">{proposal.requested_by}</div>
+                </div>
 
-            <div className="detail-row">
-              <span className="detail-label">Requested by:</span>
-              <span className="detail-value">{proposal.requested_by}</span>
-            </div>
+                <div>
+                  <Label className="text-muted-foreground">Created</Label>
+                  <div className="font-mono text-sm">{formatDate(proposal.created_at)}</div>
+                </div>
 
-            <div className="detail-row">
-              <span className="detail-label">Created:</span>
-              <span className="detail-value">{formatDate(proposal.created_at)}</span>
-            </div>
-
-            {proposal.expiration_dt && (
-              <div className="detail-row">
-                <span className="detail-label">Expires:</span>
-                <span className="detail-value">{formatDate(proposal.expiration_dt)}</span>
-              </div>
-            )}
-          </div>
-
-          <div className="detail-section">
-            <h3>Approval Status</h3>
-            
-            {proposal.approvals && proposal.approvals.length > 0 ? (
-              <div className="approval-list">
-                <h4>Approval Decisions ({proposal.approvals.length})</h4>
-                {proposal.approvals.map((approval, index) => (
-                  <div key={index} className={`approval-item ${approval.status?.Rejected ? 'rejection' : ''}`}>
-                    <span className="approval-user">{approval.approver_id?.substring(0, 8)}...</span>
-                    <span className="approval-status">
-                      {approval.status?.Approved ? 'Approved' : 'Rejected'}
-                    </span>
-                    <span className="approval-date">{formatDate(approval.decided_at)}</span>
-                    {approval.status_reason && (
-                      <span className="approval-reason">{approval.status_reason}</span>
-                    )}
+                {proposal.expiration_dt && (
+                  <div>
+                    <Label className="text-muted-foreground">Expires</Label>
+                    <div className="font-mono text-sm">{formatDate(proposal.expiration_dt)}</div>
                   </div>
-                ))}
+                )}
               </div>
-            ) : (
-              <p className="no-approvals">No approval decisions yet</p>
-            )}
-          </div>
+
+              {proposal.summary && (
+                <div>
+                  <Label className="text-muted-foreground">Summary</Label>
+                  <div className="mt-1">{proposal.summary}</div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Approval Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {proposal.approvals && proposal.approvals.length > 0 ? (
+                <div className="space-y-3">
+                  <div className="text-sm font-medium">
+                    Approval Decisions ({proposal.approvals.length})
+                  </div>
+                  <div className="space-y-2">
+                    {proposal.approvals.map((approval, index) => (
+                      <Card key={index}>
+                        <CardContent className="pt-4">
+                          <div className="flex justify-between items-start gap-4">
+                            <div className="space-y-1">
+                              <div className="font-mono text-xs text-muted-foreground">
+                                {approval.approver_id?.substring(0, 8)}...
+                              </div>
+                              <Badge variant={approval.status?.Approved ? 'default' : 'destructive'}>
+                                {approval.status?.Approved ? 'Approved' : 'Rejected'}
+                              </Badge>
+                            </div>
+                            <div className="text-right space-y-1">
+                              <div className="font-mono text-xs text-muted-foreground">
+                                {formatDate(approval.decided_at)}
+                              </div>
+                              {approval.status_reason && (
+                                <div className="text-xs text-muted-foreground max-w-xs">
+                                  {approval.status_reason}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">No approval decisions yet</p>
+              )}
+            </CardContent>
+          </Card>
 
           {proposal.operation && (
-            <div className="detail-section">
-              <h3>Operation Details</h3>
-              <pre className="operation-details">
-                {JSON.stringify(proposal.operation, null, 2)}
-              </pre>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Operation Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <pre className="text-xs bg-muted p-4 rounded-md overflow-x-auto">
+                  {JSON.stringify(proposal.operation, null, 2)}
+                </pre>
+              </CardContent>
+            </Card>
           )}
         </div>
 
-        <div className="modal-footer">
-          <button className="btn-close-modal" onClick={onClose}>Close</button>
+        <div className="flex justify-end pt-4">
+          <Button onClick={onClose} variant="outline">
+            Close
+          </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

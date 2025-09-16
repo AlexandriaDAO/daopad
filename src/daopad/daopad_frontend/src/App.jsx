@@ -14,8 +14,8 @@ import { DAOPadBackendService } from './services/daopadBackend';
 // Components
 import KongLockerSetup from './components/KongLockerSetup';
 import TokenTabs from './components/TokenTabs';
-
-import './App.scss';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 function App() {
   const [copyFeedback, setCopyFeedback] = useState(false);
@@ -100,66 +100,68 @@ function App() {
   const shouldShowKongLockerSetup = isAuthenticated && !kongLockerCanister && !isCheckingKongLocker;
 
   return (
-    <div className="app">
-      <header>
-        <div className="header-content">
-          <div className="branding">
-            <h1>DAOPad</h1>
-            <p className="tagline">Token Governance Platform</p>
-            <p className="subtitle">Create treasuries and vote with your locked liquidity</p>
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="border-b">
+        <div className="container mx-auto px-4 py-6 flex justify-between items-center">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold">DAOPad</h1>
+            <p className="text-muted-foreground">Token Governance Platform</p>
+            <p className="text-sm text-muted-foreground">Create treasuries and vote with your locked liquidity</p>
           </div>
 
-          <div className="auth-section">
+          <div className="flex items-center gap-4">
             {isAuthenticated ? (
-              <div className="auth-info">
-                <div className="balance-info">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
                   {balanceLoading ? (
-                    <span className="loading">Loading balance...</span>
+                    <span className="text-sm text-muted-foreground">Loading balance...</span>
                   ) : (
                     <>
-                      <span className="balance">ICP: {icpBalance}</span>
-                      <button
+                      <span className="text-sm font-mono">ICP: {icpBalance}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => dispatch(fetchBalances(identity))}
-                        className="refresh-button"
                         title="Refresh balance"
                       >
                         ↻
-                      </button>
+                      </Button>
                     </>
                   )}
                 </div>
-                <div className="principal-container">
-                  <span className="principal">{principal.slice(0, 5)}...{principal.slice(-4)}</span>
-                  <button
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-mono">{principal.slice(0, 5)}...{principal.slice(-4)}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={copyPrincipal}
-                    className="copy-button"
                     title="Copy principal"
                   >
                     {copyFeedback ? '✓' : '⧉'}
-                  </button>
+                  </Button>
                 </div>
                 {kongLockerCanister && (
-                  <div className="kong-locker-indicator" title={`Kong Locker: ${kongLockerCanister}`}>
-                    <span className="kong-locker-badge">🔒 Connected</span>
-                  </div>
+                  <Badge variant="secondary" title={`Kong Locker: ${kongLockerCanister}`}>
+                    🔒 Connected
+                  </Badge>
                 )}
-                <button onClick={handleLogout} className="auth-button logout">
+                <Button variant="outline" onClick={handleLogout}>
                   Logout
-                </button>
+                </Button>
               </div>
             ) : (
-              <button onClick={handleLogin} className="auth-button login">
+              <Button onClick={handleLogin}>
                 Connect with Internet Identity
-              </button>
+              </Button>
             )}
           </div>
         </div>
       </header>
 
-      <main>
+      <main className="container mx-auto px-4 py-8">
         {isAuthenticated ? (
           shouldShowKongLockerSetup ? (
-            <div className="setup-container">
+            <div className="max-w-2xl mx-auto">
               <KongLockerSetup
                 identity={identity}
                 onComplete={handleKongLockerComplete}
@@ -171,44 +173,46 @@ function App() {
             />
           )
         ) : (
-          <div className="welcome-section">
-            <div className="welcome-content">
-              <h2>Welcome to DAOPad</h2>
-              <p>
+          <div className="max-w-4xl mx-auto text-center space-y-12">
+            <div className="space-y-4">
+              <h2 className="text-4xl font-bold">Welcome to DAOPad</h2>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                 Create and manage token treasuries using your locked liquidity as voting power.
                 Connect your Kong Locker to get started with governance.
               </p>
-              <div className="features">
-                <div className="feature">
-                  <div className="feature-icon">🔒</div>
-                  <h3>Lock LP Tokens</h3>
-                  <p>Permanently lock your LP tokens in Kong Locker to gain voting power</p>
-                </div>
-                <div className="feature">
-                  <div className="feature-icon">🏛️</div>
-                  <h3>Create Treasuries</h3>
-                  <p>Deploy Orbit Station treasuries for your tokens with governance controls</p>
-                </div>
-                <div className="feature">
-                  <div className="feature-icon">🗳️</div>
-                  <h3>Vote & Govern</h3>
-                  <p>Use your locked value as voting power to control treasury operations</p>
-                </div>
-              </div>
-              <button onClick={handleLogin} className="cta-button">
-                Get Started
-              </button>
             </div>
+            <div className="grid md:grid-cols-3 gap-8">
+              <div className="space-y-4">
+                <div className="text-6xl">🔒</div>
+                <h3 className="text-xl font-semibold">Lock LP Tokens</h3>
+                <p className="text-muted-foreground">Permanently lock your LP tokens in Kong Locker to gain voting power</p>
+              </div>
+              <div className="space-y-4">
+                <div className="text-6xl">🏛️</div>
+                <h3 className="text-xl font-semibold">Create Treasuries</h3>
+                <p className="text-muted-foreground">Deploy Orbit Station treasuries for your tokens with governance controls</p>
+              </div>
+              <div className="space-y-4">
+                <div className="text-6xl">🗳️</div>
+                <h3 className="text-xl font-semibold">Vote & Govern</h3>
+                <p className="text-muted-foreground">Use your locked value as voting power to control treasury operations</p>
+              </div>
+            </div>
+            <Button size="lg" onClick={handleLogin}>
+              Get Started
+            </Button>
           </div>
         )}
       </main>
 
-      <footer>
-        <p>
-          Built by <a href="https://lbry.fun" target="_blank" rel="noopener noreferrer">Alexandria</a> ·
-          <a href="https://github.com/AlexandriaDAO/daopad" target="_blank" rel="noopener noreferrer">GitHub</a> ·
-          <a href="https://x.com/alexandria_lbry" target="_blank" rel="noopener noreferrer">Twitter</a>
-        </p>
+      <footer className="border-t mt-16">
+        <div className="container mx-auto px-4 py-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            Built by <a href="https://lbry.fun" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Alexandria</a> ·
+            <a href="https://github.com/AlexandriaDAO/daopad" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">GitHub</a> ·
+            <a href="https://x.com/alexandria_lbry" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Twitter</a>
+          </p>
+        </div>
       </footer>
     </div>
   );

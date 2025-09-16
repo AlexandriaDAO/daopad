@@ -1,7 +1,6 @@
 use candid::Principal;
 use ic_stable_structures::{Storable, storable::Bound};
 use std::borrow::Cow;
-use crate::types::OrbitStationInfo;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct StorablePrincipal(pub Principal);
@@ -21,20 +20,4 @@ impl Storable for StorablePrincipal {
     };
 }
 
-#[derive(Clone, Debug)]
-pub struct StorableOrbitStation(pub OrbitStationInfo);
-
-impl Storable for StorableOrbitStation {
-    fn to_bytes(&self) -> Cow<[u8]> {
-        let json = serde_json::to_string(&self.0).unwrap();
-        Cow::Owned(json.into_bytes())
-    }
-
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        let json = String::from_utf8(bytes.to_vec()).unwrap();
-        let info: OrbitStationInfo = serde_json::from_str(&json).unwrap();
-        Self(info)
-    }
-
-    const BOUND: Bound = Bound::Unbounded;
-}
+pub type StorableOrbitStation = StorablePrincipal;

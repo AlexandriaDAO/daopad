@@ -18,12 +18,12 @@ const IIProvider = ({ children }) => {
 	const [isAuthenticated, setIsAuthenticated] = useState(false);
 	const [isLoading, setIsLoading] = useState(true);
 
-	const isLocal = process.env.DFX_NETWORK === "local";
+	const isLocal = import.meta.env.VITE_DFX_NETWORK === "local";
 	const internetIdentityUrl = isLocal
 		? `http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943`
 		: "https://identity.internetcomputer.org";
 
-	console.log("DFX_NETWORK:", process.env.DFX_NETWORK);
+	console.log("DFX_NETWORK:", import.meta.env.VITE_DFX_NETWORK);
 	console.log("Internet Identity URL:", internetIdentityUrl);
 
 	useEffect(() => {

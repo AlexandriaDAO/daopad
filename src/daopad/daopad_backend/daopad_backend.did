@@ -1,14 +1,6 @@
-type CreateOrbitStationRequest = record { name : text };
 type CreateTokenStationRequest = record {
   name : text;
   token_canister_id : principal;
-};
-type OrbitStationInfo = record {
-  owner : principal;
-  name : text;
-  created_at : nat64;
-  upgrader_id : principal;
-  station_id : principal;
 };
 type OrbitStationResponse = record {
   name : text;
@@ -16,23 +8,24 @@ type OrbitStationResponse = record {
   station_id : principal;
 };
 type Result = variant { Ok : OrbitStationResponse; Err : text };
-type Result_1 = variant { Ok : text; Err : text };
-type Result_2 = variant { Ok : vec TokenInfo; Err : text };
+type Result_1 = variant { Ok : vec TokenInfo; Err : text };
+type Result_2 = variant { Ok : nat64; Err : text };
+type Result_3 = variant { Ok : text; Err : text };
 type TokenInfo = record { chain : text; canister_id : text; symbol : text };
 service : () -> {
-  create_orbit_station : (CreateOrbitStationRequest) -> (Result);
   create_token_orbit_station : (CreateTokenStationRequest) -> (Result);
-  delete_orbit_station : () -> (Result_1);
   get_backend_principal : () -> (principal) query;
   get_kong_locker_factory_principal : () -> (principal) query;
   get_my_kong_locker_canister : () -> (opt principal) query;
-  get_my_locked_tokens : () -> (Result_2);
-  get_my_orbit_station : () -> (opt OrbitStationInfo) query;
+  get_my_locked_tokens : () -> (Result_1);
+  get_my_voting_power_for_token : (principal) -> (Result_2);
+  get_orbit_station_for_token : (principal) -> (opt principal) query;
   health_check : () -> (text) query;
+  join_orbit_station : (principal, text) -> (Result_3);
   list_all_kong_locker_registrations : () -> (
       vec record { principal; principal },
     ) query;
-  list_all_orbit_stations : () -> (vec OrbitStationInfo) query;
-  register_with_kong_locker : (principal) -> (Result_1);
-  unregister_kong_locker : () -> (Result_1);
+  list_all_orbit_stations : () -> (vec record { principal; principal }) query;
+  register_with_kong_locker : (principal) -> (Result_3);
+  unregister_kong_locker : () -> (Result_3);
 }
