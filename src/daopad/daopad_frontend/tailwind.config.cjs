@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-export default {
+module.exports = {
   darkMode: ["class"],
   content: [
     './pages/**/*.{js,jsx}',
@@ -51,6 +51,22 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        executive: {
+          charcoal: '#1a1a1a',
+          darkGray: '#2d2d2d',
+          mediumGray: '#3a3a3a',
+          lightGray: '#e8e8e8',
+          ivory: '#f8f6f1',
+          gold: '#d4af37',
+          goldLight: '#e6c757',
+          goldDark: '#b8941f',
+          seal: '#8b7355',
+        },
+      },
+      fontFamily: {
+        'serif': ['Bodoni MT', 'Didot', 'Playfair Display', 'Georgia', 'serif'],
+        'display': ['Didot', 'Bodoni MT', 'Playfair Display', 'serif'],
+        'body': ['Inter', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         lg: "var(--radius)",

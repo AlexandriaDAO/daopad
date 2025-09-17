@@ -40,6 +40,7 @@ pub async fn get_user_locked_tokens(kong_locker_principal: Principal) -> Result<
     Ok(tokens.into_iter().collect())
 }
 
+#[allow(dead_code)]
 pub async fn validate_token_in_lp_positions(kong_locker_principal: Principal, token_canister_id: Principal) -> Result<bool, String> {
     let kongswap_id = Principal::from_text("2ipq2-uqaaa-aaaar-qailq-cai")
         .map_err(|e| format!("Invalid KongSwap ID: {}", e))?;

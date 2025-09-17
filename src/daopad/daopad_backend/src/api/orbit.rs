@@ -1,43 +1,9 @@
 use candid::Principal;
 use ic_cdk::{query, update};
-use crate::types::{
-    CreateTokenStationRequest, OrbitStationResponse, TokenInfo
-};
+use crate::types::TokenInfo;
 use crate::storage::state::TOKEN_ORBIT_STATIONS;
 use crate::types::StorablePrincipal;
-use crate::orbit::station::create_orbit_station_internal;
-use crate::kong_locker::{get_user_locked_tokens, check_minimum_voting_power_for_token, get_kong_locker_for_user};
-
-#[update]
-pub async fn create_token_orbit_station(request: CreateTokenStationRequest) -> Result<OrbitStationResponse, String> {
-    let caller = ic_cdk::caller();
-
-    if caller == Principal::anonymous() {
-        return Err("Authentication required".to_string());
-    }
-
-    // Check if station already exists for this token
-    if TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations.borrow().contains_key(&StorablePrincipal(request.token_canister_id))
-    }) {
-        return Err("An Orbit Station already exists for this token".to_string());
-    }
-
-    // Check minimum voting power requirement for this specific token
-    check_minimum_voting_power_for_token(caller, request.token_canister_id).await?;
-
-    let response = create_orbit_station_internal(request.name, request.token_canister_id).await?;
-
-    // Store the station indexed by token
-    TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations.borrow_mut().insert(
-            StorablePrincipal(request.token_canister_id),
-            StorablePrincipal(response.station_id)
-        );
-    });
-
-    Ok(response)
-}
+use crate::kong_locker::{get_user_locked_tokens, get_kong_locker_for_user};
 
 #[update]
 pub async fn get_my_locked_tokens() -> Result<Vec<TokenInfo>, String> {

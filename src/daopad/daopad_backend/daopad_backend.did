@@ -1,19 +1,26 @@
-type CreateTokenStationRequest = record {
-  name : text;
+type OrbitLinkProposal = record {
+  id : nat64;
+  status : ProposalStatus;
+  yes_votes : nat64;
+  voters : vec principal;
+  created_at : nat64;
   token_canister_id : principal;
-};
-type OrbitStationResponse = record {
-  name : text;
-  upgrader_id : principal;
   station_id : principal;
+  proposer : principal;
+  total_voting_power : nat64;
+  no_votes : nat64;
+  expires_at : nat64;
 };
-type Result = variant { Ok : OrbitStationResponse; Err : text };
+type ProposalStatus = variant { Active; Approved; Rejected; Expired };
+type Result = variant { Ok : nat32; Err : text };
 type Result_1 = variant { Ok : vec TokenInfo; Err : text };
 type Result_2 = variant { Ok : nat64; Err : text };
 type Result_3 = variant { Ok : text; Err : text };
+type Result_4 = variant { Ok; Err : text };
 type TokenInfo = record { chain : text; canister_id : text; symbol : text };
 service : () -> {
-  create_token_orbit_station : (CreateTokenStationRequest) -> (Result);
+  cleanup_expired_proposals : () -> (Result);
+  get_active_proposal_for_token : (principal) -> (opt OrbitLinkProposal) query;
   get_backend_principal : () -> (principal) query;
   get_kong_locker_factory_principal : () -> (principal) query;
   get_my_kong_locker_canister : () -> (opt principal) query;
@@ -22,10 +29,13 @@ service : () -> {
   get_orbit_station_for_token : (principal) -> (opt principal) query;
   health_check : () -> (text) query;
   join_orbit_station : (principal, text) -> (Result_3);
+  list_active_proposals : () -> (vec OrbitLinkProposal) query;
   list_all_kong_locker_registrations : () -> (
       vec record { principal; principal },
     ) query;
   list_all_orbit_stations : () -> (vec record { principal; principal }) query;
+  propose_orbit_station_link : (principal, principal) -> (Result_2);
   register_with_kong_locker : (principal) -> (Result_3);
   unregister_kong_locker : () -> (Result_3);
+  vote_on_orbit_proposal : (nat64, bool) -> (Result_4);
 }

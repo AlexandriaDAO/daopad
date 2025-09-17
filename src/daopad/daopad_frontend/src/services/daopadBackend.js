@@ -16,23 +16,26 @@ const idlFactory = ({ IDL }) => {
     'chain': IDL.Text,
   });
 
-  const OrbitStationInfo = IDL.Record({
-    'station_id': IDL.Principal,
-    'upgrader_id': IDL.Principal,
-    'name': IDL.Text,
+  // Proposal System Types
+  const ProposalStatus = IDL.Variant({
+    'Active': IDL.Null,
+    'Approved': IDL.Null,
+    'Rejected': IDL.Null,
+    'Expired': IDL.Null,
+  });
+
+  const OrbitLinkProposal = IDL.Record({
+    'id': IDL.Nat64,
     'token_canister_id': IDL.Principal,
+    'station_id': IDL.Principal,
+    'proposer': IDL.Principal,
     'created_at': IDL.Nat64,
-  });
-
-  const CreateTokenStationRequest = IDL.Record({
-    'name': IDL.Text,
-    'token_canister_id': IDL.Principal,
-  });
-
-  const OrbitStationResponse = IDL.Record({
-    'station_id': IDL.Principal,
-    'upgrader_id': IDL.Principal,
-    'name': IDL.Text,
+    'expires_at': IDL.Nat64,
+    'yes_votes': IDL.Nat64,
+    'no_votes': IDL.Nat64,
+    'total_voting_power': IDL.Nat64,
+    'voters': IDL.Vec(IDL.Principal),
+    'status': ProposalStatus,
   });
 
   const TokenResult = IDL.Variant({
@@ -40,8 +43,18 @@ const idlFactory = ({ IDL }) => {
     'Err': IDL.Text,
   });
 
-  const OrbitStationResult = IDL.Variant({
-    'Ok': OrbitStationResponse,
+  const ProposalResult = IDL.Variant({
+    'Ok': IDL.Nat64,
+    'Err': IDL.Text,
+  });
+
+  const VoteResult = IDL.Variant({
+    'Ok': IDL.Null,
+    'Err': IDL.Text,
+  });
+
+  const CleanupResult = IDL.Variant({
+    'Ok': IDL.Nat32,
     'Err': IDL.Text,
   });
 
@@ -54,11 +67,17 @@ const idlFactory = ({ IDL }) => {
     'unregister_kong_locker': IDL.Func([], [Result], []),
     'list_all_kong_locker_registrations': IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Principal))], ['query']),
 
-    // Orbit Station Methods
-    'create_token_orbit_station': IDL.Func([CreateTokenStationRequest], [OrbitStationResult], []),
+    // Proposal System Methods
+    'propose_orbit_station_link': IDL.Func([IDL.Principal, IDL.Principal], [ProposalResult], []),
+    'vote_on_orbit_proposal': IDL.Func([IDL.Nat64, IDL.Bool], [VoteResult], []),
+    'get_active_proposal_for_token': IDL.Func([IDL.Principal], [IDL.Opt(OrbitLinkProposal)], ['query']),
+    'list_active_proposals': IDL.Func([], [IDL.Vec(OrbitLinkProposal)], ['query']),
+    'cleanup_expired_proposals': IDL.Func([], [CleanupResult], []),
+
+    // Orbit Station Methods (existing stations)
     'get_my_locked_tokens': IDL.Func([], [TokenResult], []),
-    'get_orbit_station_for_token': IDL.Func([IDL.Principal], [IDL.Opt(OrbitStationInfo)], ['query']),
-    'list_all_orbit_stations': IDL.Func([], [IDL.Vec(OrbitStationInfo)], ['query']),
+    'get_orbit_station_for_token': IDL.Func([IDL.Principal], [IDL.Opt(IDL.Principal)], ['query']),
+    'list_all_orbit_stations': IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Principal))], ['query']),
     'join_orbit_station': IDL.Func([IDL.Principal, IDL.Text], [Result], []),
 
     // Utility Functions
@@ -179,26 +198,76 @@ export class DAOPadBackendService {
     }
   }
 
-  // Orbit Station Methods
+  // Proposal System Methods
 
-  async createTokenOrbitStation(name, tokenCanisterId) {
+  async proposeOrbitStationLink(tokenCanisterId, stationId) {
     try {
       const actor = await this.getActor();
-      const request = {
-        name: name,
-        token_canister_id: tokenCanisterId,
-      };
-      const result = await actor.create_token_orbit_station(request);
+      const result = await actor.propose_orbit_station_link(tokenCanisterId, stationId);
+      if ('Ok' in result) {
+        return { success: true, data: Number(result.Ok) }; // proposal ID
+      } else {
+        return { success: false, error: result.Err };
+      }
+    } catch (error) {
+      console.error('Failed to propose orbit station link:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async voteOnOrbitProposal(proposalId, vote) {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.vote_on_orbit_proposal(BigInt(proposalId), vote);
       if ('Ok' in result) {
         return { success: true, data: result.Ok };
       } else {
         return { success: false, error: result.Err };
       }
     } catch (error) {
-      console.error('Failed to create token orbit station:', error);
+      console.error('Failed to vote on orbit proposal:', error);
       return { success: false, error: error.message };
     }
   }
+
+  async getActiveProposalForToken(tokenCanisterId) {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.get_active_proposal_for_token(tokenCanisterId);
+      return { success: true, data: result[0] || null };
+    } catch (error) {
+      console.error('Failed to get active proposal for token:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async listActiveProposals() {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.list_active_proposals();
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Failed to list active proposals:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async cleanupExpiredProposals() {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.cleanup_expired_proposals();
+      if ('Ok' in result) {
+        return { success: true, data: Number(result.Ok) };
+      } else {
+        return { success: false, error: result.Err };
+      }
+    } catch (error) {
+      console.error('Failed to cleanup expired proposals:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Orbit Station Methods (for existing stations)
 
   async getMyLockedTokens() {
     try {

@@ -19,5 +19,3 @@ impl Storable for StorablePrincipal {
         is_fixed_size: false,
     };
 }
-
-pub type StorableOrbitStation = StorablePrincipal;

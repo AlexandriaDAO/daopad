@@ -160,6 +160,83 @@ impl OrbitAdmin for DaoPadBackend {
 }
 ```
 
+## 🏗️ Design Principles
+
+### Minimal Storage Principle
+**Decision**: Store only essential mappings in the backend canister, avoid storing data that can be queried at runtime.
+
+#### Example: Orbit Station Information
+The backend stores only: `token_canister_id → orbit_station_id`
+The frontend constructs display data using this minimal info.
+
+#### Storage Decision:
+Store only the essential mapping: `token_canister_id → orbit_station_id`
+
+#### Why Minimal Storage:
+1. **Upgrade Safety**: Once data is in stable storage, removing it requires complex migrations
+2. **IC Best Practice**: Cross-canister queries in update calls work fine
+3. **Maintenance**: Less code, less bugs, less to maintain
+4. **Flexibility**: Can change what we display without backend changes
+
+#### Implementation Pattern:
+```javascript
+// Frontend handles minimal data gracefully
+if (result.success && result.data) {
+    setOrbitStation({
+        station_id: result.data,  // Only what we got
+        name: `${token.symbol} Treasury`  // Derive what we can
+    });
+}
+```
+
+### Orbit Station Query Strategy
+
+#### The Challenge:
+Orbit Station restricts many queries to admin/member roles only. Public users cannot query:
+- Treasury balance
+- Pending proposals
+- Member list
+- Transaction history
+- Most operational data
+
+#### Our Approach:
+
+**Backend as Admin Proxy**
+Since DAOPad backend is the Orbit Station admin, it can query protected data on behalf of users.
+
+```rust
+// Backend (admin) can query protected Orbit data
+#[update]  // Must be update, not query
+async fn get_treasury_balance(token_id: Principal) -> Result<Balance> {
+    let station_id = get_station_for_token(token_id)?;
+    // Backend has admin rights to query
+    orbit_station.get_balance(station_id).await
+}
+```
+
+**Design Considerations:**
+
+1. **Query vs Update Trade-off**
+   - Orbit queries must happen in update calls (not query methods)
+   - Slightly slower but enables admin-level access
+   - Users get data they couldn't access directly
+
+2. **No Caching Policy**
+   - No caching at this stage - keeping it clean and simple
+   - Fresh data on every request
+   - Code simplicity > user experience optimization
+   - Can always add caching later if truly needed
+
+3. **Frontend Fallbacks**
+   - If backend query fails, show minimal UI
+   - Link to Orbit Station for users to check directly
+   - Progressive enhancement as data becomes available
+
+4. **Future Options**
+   - Could make users members automatically (100+ VP)
+   - Then they could query Orbit directly
+   - But adds complexity to member management
+
 ## ⚠️ Critical Limitations
 
 ### Query Method Restriction (IC Platform Limitation)

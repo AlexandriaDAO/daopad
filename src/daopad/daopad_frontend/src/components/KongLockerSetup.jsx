@@ -86,9 +86,9 @@ const KongLockerSetup = ({ identity, onComplete }) => {
   
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="bg-executive-darkGray border-executive-gold/20">
         <CardHeader>
-          <CardTitle className="text-2xl">Connect Your Kong Locker</CardTitle>
+          <CardTitle className="text-2xl text-executive-ivory">Connect Your Kong Locker</CardTitle>
           <p className="text-muted-foreground">
             To participate in DAO governance, connect your Kong Locker canister.
             Your voting power is based on the USD value of your locked LP tokens.
@@ -118,8 +118,8 @@ const KongLockerSetup = ({ identity, onComplete }) => {
                 </div>
               )}
               {validationStep && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-                  <p className="text-blue-700 text-sm">{validationStep}</p>
+                <div className="p-3 bg-executive-mediumGray/50 border border-executive-gold/30 rounded-md">
+                  <p className="text-executive-goldLight text-sm">{validationStep}</p>
                 </div>
               )}
 
@@ -134,15 +134,15 @@ const KongLockerSetup = ({ identity, onComplete }) => {
             </div>
           ) : hasLockCanister === false ? (
             <div className="space-y-6">
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
-                <h3 className="font-semibold text-amber-800 mb-2">No Kong Locker Found</h3>
-                <p className="text-amber-700 text-sm">
+              <div className="p-4 bg-executive-mediumGray/50 border border-executive-gold/30 rounded-md">
+                <h3 className="font-semibold text-executive-goldLight mb-2">No Kong Locker Found</h3>
+                <p className="text-executive-lightGray/80 text-sm">
                   You don't have a Kong Locker canister yet. Please create one first to participate in governance.
                 </p>
               </div>
 
               <div className="space-y-4">
-                <div className="flex gap-4 p-4 bg-muted rounded-md">
+                <div className="flex gap-4 p-4 bg-executive-mediumGray/30 rounded-md">
                   <Badge variant="outline" className="rounded-full w-8 h-8 flex items-center justify-center">
                     1
                   </Badge>
@@ -163,7 +163,7 @@ const KongLockerSetup = ({ identity, onComplete }) => {
                   </div>
                 </div>
 
-                <div className="flex gap-4 p-4 bg-muted rounded-md">
+                <div className="flex gap-4 p-4 bg-executive-mediumGray/30 rounded-md">
                   <Badge variant="outline" className="rounded-full w-8 h-8 flex items-center justify-center">
                     2
                   </Badge>
@@ -189,9 +189,9 @@ const KongLockerSetup = ({ identity, onComplete }) => {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-executive-darkGray border-executive-gold/20">
         <CardHeader>
-          <CardTitle className="text-lg">How Voting Power Works</CardTitle>
+          <CardTitle className="text-lg text-executive-ivory">How Voting Power Works</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm">
@@ -204,9 +204,9 @@ const KongLockerSetup = ({ identity, onComplete }) => {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-executive-darkGray border-executive-gold/20">
         <CardHeader>
-          <CardTitle className="text-lg">Need Help?</CardTitle>
+          <CardTitle className="text-lg text-executive-ivory">Need Help?</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="space-y-2 text-sm text-muted-foreground">

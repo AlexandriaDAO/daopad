@@ -100,13 +100,17 @@ function App() {
   const shouldShowKongLockerSetup = isAuthenticated && !kongLockerCanister && !isCheckingKongLocker;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b">
+    <div className="min-h-screen bg-executive-charcoal text-executive-lightGray">
+      {/* Executive letterhead gold trim line */}
+      <div className="h-1 bg-gradient-to-r from-transparent via-executive-gold to-transparent"></div>
+
+      <header className="border-b border-executive-mediumGray bg-executive-darkGray">
         <div className="container mx-auto px-4 py-6 flex justify-between items-center">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold">DAOPad</h1>
-            <p className="text-muted-foreground">Token Governance Platform</p>
-            <p className="text-sm text-muted-foreground">Create treasuries and vote with your locked liquidity</p>
+            <h1 className="text-3xl font-display text-executive-ivory tracking-wide">DAOPad</h1>
+            <div className="h-px bg-executive-gold w-16"></div>
+            <p className="text-executive-lightGray/80 font-serif text-sm uppercase tracking-widest">Token Governance Platform</p>
+            <p className="text-xs text-executive-lightGray/60 italic">Create treasuries and vote with your locked liquidity</p>
           </div>
 
           <div className="flex items-center gap-4">
@@ -117,7 +121,7 @@ function App() {
                     <span className="text-sm text-muted-foreground">Loading balance...</span>
                   ) : (
                     <>
-                      <span className="text-sm font-mono">ICP: {icpBalance}</span>
+                      <span className="text-sm font-mono text-executive-gold">ICP: {icpBalance}</span>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -141,16 +145,16 @@ function App() {
                   </Button>
                 </div>
                 {kongLockerCanister && (
-                  <Badge variant="secondary" title={`Kong Locker: ${kongLockerCanister}`}>
+                  <Badge className="bg-executive-mediumGray border-executive-gold/30 text-executive-goldLight" title={`Kong Locker: ${kongLockerCanister}`}>
                     🔒 Connected
                   </Badge>
                 )}
-                <Button variant="outline" onClick={handleLogout}>
+                <Button className="border-executive-gold/30 text-executive-goldLight hover:bg-executive-gold/10 hover:border-executive-gold" variant="outline" onClick={handleLogout}>
                   Logout
                 </Button>
               </div>
             ) : (
-              <Button onClick={handleLogin}>
+              <Button className="bg-executive-gold text-executive-charcoal hover:bg-executive-goldLight font-serif" onClick={handleLogin}>
                 Connect with Internet Identity
               </Button>
             )}
@@ -174,43 +178,57 @@ function App() {
           )
         ) : (
           <div className="max-w-4xl mx-auto text-center space-y-12">
-            <div className="space-y-4">
-              <h2 className="text-4xl font-bold">Welcome to DAOPad</h2>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Create and manage token treasuries using your locked liquidity as voting power.
-                Connect your Kong Locker to get started with governance.
-              </p>
+            {/* Executive seal watermark effect */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center justify-center opacity-5">
+                <div className="w-64 h-64 border-8 border-executive-gold rounded-full flex items-center justify-center">
+                  <span className="text-6xl font-display">DAO</span>
+                </div>
+              </div>
+              <div className="relative space-y-4">
+                <h2 className="text-5xl font-display text-executive-ivory tracking-wider">Welcome to DAOPad</h2>
+                <div className="flex items-center justify-center gap-4">
+                  <div className="h-px bg-executive-gold/50 w-24"></div>
+                  <span className="text-executive-gold text-lg">◆</span>
+                  <div className="h-px bg-executive-gold/50 w-24"></div>
+                </div>
+                <p className="text-xl text-executive-lightGray/90 max-w-2xl mx-auto font-serif leading-relaxed">
+                  Create and manage token treasuries using your locked liquidity as voting power.
+                  Connect your Kong Locker to get started with governance.
+                </p>
+              </div>
             </div>
             <div className="grid md:grid-cols-3 gap-8">
-              <div className="space-y-4">
-                <div className="text-6xl">🔒</div>
-                <h3 className="text-xl font-semibold">Lock LP Tokens</h3>
-                <p className="text-muted-foreground">Permanently lock your LP tokens in Kong Locker to gain voting power</p>
+              <div className="bg-executive-darkGray/50 border border-executive-gold/20 p-6 rounded space-y-4">
+                <div className="text-5xl text-executive-gold">🔒</div>
+                <h3 className="text-xl font-serif text-executive-ivory">Lock LP Tokens</h3>
+                <p className="text-executive-lightGray/70 text-sm leading-relaxed">Permanently lock your LP tokens in Kong Locker to gain voting power</p>
               </div>
-              <div className="space-y-4">
-                <div className="text-6xl">🏛️</div>
-                <h3 className="text-xl font-semibold">Create Treasuries</h3>
-                <p className="text-muted-foreground">Deploy Orbit Station treasuries for your tokens with governance controls</p>
+              <div className="bg-executive-darkGray/50 border border-executive-gold/20 p-6 rounded space-y-4">
+                <div className="text-5xl text-executive-gold">🏛️</div>
+                <h3 className="text-xl font-serif text-executive-ivory">Create Treasuries</h3>
+                <p className="text-executive-lightGray/70 text-sm leading-relaxed">Deploy Orbit Station treasuries for your tokens with governance controls</p>
               </div>
-              <div className="space-y-4">
-                <div className="text-6xl">🗳️</div>
-                <h3 className="text-xl font-semibold">Vote & Govern</h3>
-                <p className="text-muted-foreground">Use your locked value as voting power to control treasury operations</p>
+              <div className="bg-executive-darkGray/50 border border-executive-gold/20 p-6 rounded space-y-4">
+                <div className="text-5xl text-executive-gold">🗳️</div>
+                <h3 className="text-xl font-serif text-executive-ivory">Vote & Govern</h3>
+                <p className="text-executive-lightGray/70 text-sm leading-relaxed">Use your locked value as voting power to control treasury operations</p>
               </div>
             </div>
-            <Button size="lg" onClick={handleLogin}>
+            <Button size="lg" className="bg-executive-gold text-executive-charcoal hover:bg-executive-goldLight font-serif px-8 py-6 text-lg" onClick={handleLogin}>
               Get Started
             </Button>
           </div>
         )}
       </main>
 
-      <footer className="border-t mt-16">
+      <footer className="border-t border-executive-gold/20 mt-16 bg-executive-darkGray">
         <div className="container mx-auto px-4 py-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            Built by <a href="https://lbry.fun" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Alexandria</a> ·
-            <a href="https://github.com/AlexandriaDAO/daopad" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">GitHub</a> ·
-            <a href="https://x.com/alexandria_lbry" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Twitter</a>
+          <div className="h-px bg-executive-gold/30 w-32 mx-auto mb-4"></div>
+          <p className="text-xs text-executive-lightGray/60 font-serif tracking-wider uppercase">
+            Built by <a href="https://lbry.fun" target="_blank" rel="noopener noreferrer" className="text-executive-gold/70 hover:text-executive-gold transition-colors">Alexandria</a> ·
+            <a href="https://github.com/AlexandriaDAO/daopad" target="_blank" rel="noopener noreferrer" className="text-executive-gold/70 hover:text-executive-gold transition-colors ml-2">GitHub</a> ·
+            <a href="https://x.com/alexandria_lbry" target="_blank" rel="noopener noreferrer" className="text-executive-gold/70 hover:text-executive-gold transition-colors ml-2">Twitter</a>
           </p>
         </div>
       </footer>

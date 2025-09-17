@@ -111,9 +111,9 @@ const TokenTabs = ({ identity }) => {
 
   if (error) {
     return (
-      <Card>
+      <Card className="bg-executive-darkGray border-executive-gold/20">
         <CardHeader>
-          <CardTitle>Unable to Load Tokens</CardTitle>
+          <CardTitle className="text-executive-ivory">Unable to Load Tokens</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">{error}</p>
@@ -138,9 +138,9 @@ const TokenTabs = ({ identity }) => {
 
   if (tokens.length === 0) {
     return (
-      <Card>
+      <Card className="bg-executive-darkGray border-executive-gold/20">
         <CardHeader>
-          <CardTitle>No Locked Tokens Found</CardTitle>
+          <CardTitle className="text-executive-ivory">No Locked Tokens Found</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">
@@ -163,10 +163,10 @@ const TokenTabs = ({ identity }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold">Token Governance</h2>
+        <h2 className="text-3xl font-display text-executive-ivory">Token Governance</h2>
       </div>
 
-      <Card>
+      <Card className="bg-executive-darkGray border-executive-gold/20">
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row md:items-center gap-4">
             <div className="flex-1">
