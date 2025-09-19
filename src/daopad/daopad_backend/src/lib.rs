@@ -8,7 +8,7 @@ use ic_cdk::init;
 use candid::Principal;
 
 pub use api::*;
-pub use types::TokenInfo;
+pub use types::{TokenInfo, UserStatus, VotingThresholds};
 pub use proposals::orbit_link::{OrbitLinkProposal, ProposalStatus};
 
 #[init]

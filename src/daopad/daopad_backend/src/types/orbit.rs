@@ -2,7 +2,7 @@ use candid::{CandidType, Deserialize, Principal};
 
 // Types needed for joining Orbit Station
 
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug, Clone)]
 pub enum UserStatus {
     Active,
     Inactive,
@@ -12,13 +12,24 @@ pub enum UserStatus {
 pub struct AddUserOperationInput {
     pub name: String,
     pub identities: Vec<Principal>,
-    pub groups: Vec<String>,
+    pub groups: Vec<String>, // UUIDs as strings
     pub status: UserStatus,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct EditUserOperationInput {
+    pub id: String, // UUID
+    pub name: Option<String>,
+    pub identities: Option<Vec<Principal>>,
+    pub groups: Option<Vec<String>>, // UUIDs as strings
+    pub status: Option<UserStatus>,
+    pub cancel_pending_requests: Option<bool>,
 }
 
 #[derive(CandidType, Deserialize)]
 pub enum RequestOperationInput {
     AddUser(AddUserOperationInput),
+    EditUser(EditUserOperationInput),
 }
 
 #[derive(CandidType, Deserialize)]
@@ -81,24 +92,65 @@ pub enum CreateRequestResult {
 }
 
 // Types for verifying admin status
+#[derive(CandidType, Deserialize, Debug)]
+pub struct Error {
+    pub code: String,
+    pub message: Option<String>,
+    pub details: Option<Vec<(String, String)>>,
+}
+
+// User type for the me() call
 #[derive(CandidType, Deserialize)]
-pub struct Admin {
-    pub id: Principal,
+pub struct UserGroup {
+    pub id: String,  // UUID
     pub name: String,
 }
 
 #[derive(CandidType, Deserialize)]
-pub struct SystemInfo {
+pub struct User {
+    pub id: String,  // UUID
     pub name: String,
-    pub version: String,
-    pub upgrader_id: Principal,
-    pub cycles: u64,
-    pub upgrader_cycles: Option<u64>,
-    pub admins: Vec<Admin>,
+    pub status: UserStatus,
+    pub groups: Vec<UserGroup>,
+    pub identities: Vec<Principal>,
+    pub last_modification_timestamp: String,  // RFC3339 timestamp
 }
 
+// Admin privileges enum - must match Orbit Station candid exactly
+#[derive(CandidType, Deserialize, Debug, PartialEq)]
+pub enum UserPrivilege {
+    Capabilities,
+    SystemInfo,
+    ManageSystemInfo,
+    ListAccounts,
+    AddAccount,
+    ListUsers,
+    AddUser,
+    ListUserGroups,
+    AddUserGroup,
+    ListPermissions,
+    ListRequestPolicies,
+    AddRequestPolicy,
+    ListAddressBookEntries,
+    AddAddressBookEntry,
+    SystemUpgrade,
+    ListRequests,
+    CreateExternalCanister,
+    ListExternalCanisters,
+    CallAnyExternalCanister,
+    ListAssets,
+    AddAsset,
+    ListNamedRules,
+    AddNamedRule,
+}
+
+// MeResult in candid has an anonymous record in the Ok variant
+// We need to match this structure exactly
 #[derive(CandidType, Deserialize)]
-pub enum GetResult<T> {
-    Ok(T),
-    Err(String),
+pub enum MeResult {
+    Ok {
+        me: User,
+        privileges: Vec<UserPrivilege>,
+    },
+    Err(Error),
 }

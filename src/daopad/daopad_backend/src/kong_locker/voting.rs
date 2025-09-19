@@ -3,21 +3,7 @@ use ic_cdk::call;
 use crate::types::UserBalancesReply;
 use crate::kong_locker::registration::get_kong_locker_for_user;
 
-const MINIMUM_VOTING_POWER: u64 = 10_000;
-
-pub async fn check_minimum_voting_power_for_token(caller: Principal, token_canister_id: Principal) -> Result<u64, String> {
-    let voting_power = get_user_voting_power_for_token(caller, token_canister_id).await?;
-
-    if voting_power < MINIMUM_VOTING_POWER {
-        return Err(format!(
-            "Insufficient voting power for this token. You have {} VP but need at least {} VP to create an Orbit Station",
-            voting_power,
-            MINIMUM_VOTING_POWER
-        ));
-    }
-
-    Ok(voting_power)
-}
+// Note: Minimum VP checks are now handled directly in the proposal system
 
 pub async fn get_user_voting_power_for_token(caller: Principal, token_canister_id: Principal) -> Result<u64, String> {
     let kong_locker_principal = get_kong_locker_for_user(caller)

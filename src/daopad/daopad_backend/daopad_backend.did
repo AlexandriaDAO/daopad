@@ -1,3 +1,25 @@
+type AdminCount = record {
+  human_admins : nat32;
+  total : nat32;
+  admin_list : vec AdminInfo;
+  daopad_backend : nat32;
+};
+type AdminInfo = record {
+  id : text;
+  status : text;
+  name : text;
+  is_daopad_backend : bool;
+  identities : vec principal;
+};
+type GovernanceStats = record {
+  active_proposals : nat64;
+  rejected_proposals : nat64;
+  average_participation : nat32;
+  configured_thresholds : opt VotingThresholds;
+  approved_proposals : nat64;
+  total_proposals : nat64;
+};
+type GroupIds = record { admin_group_id : text; operator_group_id : text };
 type OrbitLinkProposal = record {
   id : nat64;
   status : ProposalStatus;
@@ -11,31 +33,104 @@ type OrbitLinkProposal = record {
   no_votes : nat64;
   expires_at : nat64;
 };
+type PermissionStatus = record {
+  user_name : text;
+  groups : vec text;
+  privileges : vec text;
+  is_admin : bool;
+  has_system_management : bool;
+  user_id : text;
+  has_user_management : bool;
+};
+type ProposalConfig = record {
+  voting_period_seconds : nat64;
+  execution_delay_seconds : nat64;
+  required_threshold : nat32;
+  proposal_type : ProposalType;
+};
 type ProposalStatus = variant { Active; Approved; Rejected; Expired };
-type Result = variant { Ok : nat32; Err : text };
-type Result_1 = variant { Ok : vec TokenInfo; Err : text };
-type Result_2 = variant { Ok : nat64; Err : text };
-type Result_3 = variant { Ok : text; Err : text };
-type Result_4 = variant { Ok; Err : text };
+type ProposalType = variant {
+  RemoveMember;
+  ChangePermissions;
+  AddMember;
+  SystemUpgrade;
+  GeneralOperation;
+  TransferFunds;
+};
+type Result = variant { Ok : text; Err : text };
+type Result_1 = variant { Ok : nat32; Err : text };
+type Result_10 = variant { Ok : vec AdminInfo; Err : text };
+type Result_11 = variant { Ok : vec UserGroupInfo; Err : text };
+type Result_12 = variant { Ok : vec UserInfo; Err : text };
+type Result_13 = variant { Ok : PermissionStatus; Err : text };
+type Result_14 = variant { Ok; Err : text };
+type Result_2 = variant { Ok : GroupIds; Err : text };
+type Result_3 = variant { Ok : AdminCount; Err : text };
+type Result_4 = variant { Ok : GovernanceStats; Err : text };
+type Result_5 = variant { Ok : vec TokenInfo; Err : text };
+type Result_6 = variant { Ok : nat64; Err : text };
+type Result_7 = variant { Ok : ProposalConfig; Err : text };
+type Result_8 = variant { Ok : VotingThresholds; Err : text };
+type Result_9 = variant { Ok : bool; Err : text };
 type TokenInfo = record { chain : text; canister_id : text; symbol : text };
+type UserGroupInfo = record { id : text; name : text };
+type UserInfo = record {
+  id : text;
+  status : text;
+  groups : vec text;
+  name : text;
+  identities : vec principal;
+};
+type UserStatus = variant { Inactive; Active };
+type VotingThresholds = record {
+  transfer_funds : nat32;
+  change_permissions : nat32;
+  remove_members : nat32;
+  system_upgrades : nat32;
+  add_members : nat32;
+};
 service : () -> {
-  cleanup_expired_proposals : () -> (Result);
+  add_user_to_orbit : (principal, principal, text, vec text, UserStatus) -> (
+      Result,
+    );
+  cleanup_expired_proposals : () -> (Result_1);
+  downgrade_to_operator : (principal, text) -> (Result);
   get_active_proposal_for_token : (principal) -> (opt OrbitLinkProposal) query;
+  get_actual_group_ids : (principal) -> (Result_2);
+  get_admin_count : (principal) -> (Result_3);
   get_backend_principal : () -> (principal) query;
+  get_default_voting_thresholds : () -> (VotingThresholds) query;
+  get_governance_stats : (principal) -> (Result_4) query;
   get_kong_locker_factory_principal : () -> (principal) query;
   get_my_kong_locker_canister : () -> (opt principal) query;
-  get_my_locked_tokens : () -> (Result_1);
-  get_my_voting_power_for_token : (principal) -> (Result_2);
+  get_my_locked_tokens : () -> (Result_5);
+  get_my_voting_power_for_token : (principal) -> (Result_6);
   get_orbit_station_for_token : (principal) -> (opt principal) query;
+  get_predefined_groups : () -> (vec UserGroupInfo) query;
+  get_proposal_config : (principal, ProposalType) -> (Result_7) query;
+  get_voting_thresholds : (principal) -> (Result_8) query;
+  grant_self_permissions : (principal) -> (Result);
+  has_proposal_passed : (principal, ProposalType, nat64, nat64, nat64) -> (
+      Result_9,
+    ) query;
   health_check : () -> (text) query;
-  join_orbit_station : (principal, text) -> (Result_3);
+  initialize_default_thresholds : (principal) -> (Result);
+  join_orbit_station : (principal, text) -> (Result);
   list_active_proposals : () -> (vec OrbitLinkProposal) query;
+  list_all_admins : (principal) -> (Result_10);
   list_all_kong_locker_registrations : () -> (
       vec record { principal; principal },
     ) query;
   list_all_orbit_stations : () -> (vec record { principal; principal }) query;
-  propose_orbit_station_link : (principal, principal) -> (Result_2);
-  register_with_kong_locker : (principal) -> (Result_3);
-  unregister_kong_locker : () -> (Result_3);
-  vote_on_orbit_proposal : (nat64, bool) -> (Result_4);
+  list_orbit_user_groups : (principal) -> (Result_11);
+  list_orbit_users : (principal) -> (Result_12);
+  propose_orbit_station_link : (principal, principal) -> (Result_6);
+  register_with_kong_locker : (principal) -> (Result);
+  remove_admin_role : (principal, text) -> (Result);
+  remove_user_from_orbit : (principal, text) -> (Result);
+  set_voting_thresholds : (principal, VotingThresholds) -> (Result);
+  unregister_kong_locker : () -> (Result);
+  verify_permissions : (principal) -> (Result_13);
+  verify_sole_admin : (principal) -> (Result_9);
+  vote_on_orbit_proposal : (nat64, bool) -> (Result_14);
 }

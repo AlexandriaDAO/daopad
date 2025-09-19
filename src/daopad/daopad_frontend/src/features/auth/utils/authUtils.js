@@ -18,7 +18,13 @@ export const getAuthClient = async () => {
   // reason for creating new client each time is
   // if the user login has expired it will SPA will not know
   // as same client's ( isAuthenticated ) will always return true even if user session is expired
-  const authClient = await AuthClient.create();
+  const authClient = await AuthClient.create({
+    idleOptions: {
+      idleTimeout: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+      disableIdle: false,
+      disableDefaultIdleCallback: true, // We'll handle session expiry ourselves
+    }
+  });
 
   return authClient;
 };

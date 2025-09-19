@@ -1,7 +1,7 @@
 use candid::{CandidType, Deserialize, Principal};
 use ic_cdk::api::time;
 use std::collections::BTreeSet;
-use crate::storage::state::{TOKEN_ORBIT_STATIONS, ORBIT_PROPOSALS};
+use crate::storage::state::{TOKEN_ORBIT_STATIONS, ORBIT_PROPOSALS, STATION_TO_TOKEN};
 use crate::types::StorablePrincipal;
 use crate::kong_locker::voting::get_user_voting_power_for_token;
 
@@ -57,24 +57,34 @@ pub async fn propose_orbit_link(
         return Err("An Orbit Station is already linked to this token".to_string());
     }
 
-    // 3. Check no active proposal for token in ORBIT_PROPOSALS
+    // 3. CRITICAL SECURITY CHECK: Ensure station is not already linked to another token
+    if let Some(existing_token) = STATION_TO_TOKEN.with(|stations| {
+        stations.borrow().get(&StorablePrincipal(station_id)).map(|t| t.0)
+    }) {
+        return Err(format!(
+            "This Orbit Station is already linked to another token ({}). Each station can only manage one token's treasury.",
+            existing_token
+        ));
+    }
+
+    // 4. Check no active proposal for token in ORBIT_PROPOSALS
     if ORBIT_PROPOSALS.with(|proposals| {
         proposals.borrow().contains_key(&StorablePrincipal(token_canister_id))
     }) {
         return Err("An active proposal already exists for this token".to_string());
     }
 
-    // 4. Verify DAOPad backend is admin of station (cross-canister call)
+    // 5. Verify DAOPad backend is admin of station (cross-canister call)
     verify_backend_is_admin(station_id).await?;
 
-    // 5. Get total voting power for token from Kong Locker
+    // 6. Get total voting power for token from Kong Locker
     let total_voting_power = get_total_voting_power_for_token(token_canister_id).await?;
 
     if total_voting_power == 0 {
         return Err("No voting power exists for this token".to_string());
     }
 
-    // 6. Create proposal with 7-day expiry
+    // 7. Create proposal with 7-day expiry
     let proposal_id = generate_proposal_id();
     let now = time();
     let seven_days_in_nanos = 604_800_000_000_000u64; // 7 days in nanoseconds
@@ -165,13 +175,42 @@ pub async fn vote_on_proposal(
 
     // 5. If yes_votes > (total_voting_power / 2), approve immediately
     if proposal.yes_votes > (proposal.total_voting_power / 2) {
+        // CRITICAL: Final check before approval - ensure station hasn't been taken by another proposal
+        if let Some(existing_token) = STATION_TO_TOKEN.with(|stations| {
+            stations.borrow().get(&StorablePrincipal(proposal.station_id)).map(|t| t.0)
+        }) {
+            // Station was taken by another proposal that approved first - reject this one
+            proposal.status = ProposalStatus::Rejected;
+
+            // Remove from ORBIT_PROPOSALS
+            ORBIT_PROPOSALS.with(|proposals| {
+                proposals.borrow_mut().remove(&StorablePrincipal(token_canister_id));
+            });
+
+            ic_cdk::println!("Proposal {} auto-rejected: Station {} already taken by token {}",
+                proposal_id, proposal.station_id, existing_token);
+
+            return Err(format!(
+                "Station {} was already claimed by another token ({}). Proposal has been rejected.",
+                proposal.station_id, existing_token
+            ));
+        }
+
         proposal.status = ProposalStatus::Approved;
 
-        // Store station_id in TOKEN_ORBIT_STATIONS
+        // Store station_id in TOKEN_ORBIT_STATIONS (forward mapping)
         TOKEN_ORBIT_STATIONS.with(|stations| {
             stations.borrow_mut().insert(
                 StorablePrincipal(token_canister_id),
                 StorablePrincipal(proposal.station_id)
+            );
+        });
+
+        // CRITICAL: Also store in STATION_TO_TOKEN (reverse mapping) to prevent reuse
+        STATION_TO_TOKEN.with(|stations| {
+            stations.borrow_mut().insert(
+                StorablePrincipal(proposal.station_id),
+                StorablePrincipal(token_canister_id)
             );
         });
 
@@ -206,30 +245,32 @@ pub async fn vote_on_proposal(
 }
 
 async fn verify_backend_is_admin(station_id: Principal) -> Result<bool, String> {
-    use crate::types::{SystemInfo, GetResult};
+    use crate::types::orbit::{MeResult, UserPrivilege};
 
     let backend_id = ic_cdk::id();
 
-    // Call Orbit Station to check admin status
-    let result: Result<(GetResult<SystemInfo>,), _> = ic_cdk::call(
+    // Call Orbit Station's me() method to check our privileges
+    let result: Result<(MeResult,), _> = ic_cdk::call(
         station_id,
-        "system_info",
+        "me",
         ()
     ).await;
 
     match result {
-        Ok((GetResult::Ok(system_info),)) => {
-            // Check if backend_id is in the admins list
-            let is_admin = system_info.admins.iter().any(|admin| admin.id == backend_id);
+        Ok((MeResult::Ok { me, privileges },)) => {
+            // Check if we have ManageSystemInfo privilege (indicates admin status)
+            let is_admin = privileges.contains(&UserPrivilege::ManageSystemInfo);
 
             if is_admin {
                 Ok(true)
             } else {
-                Err(format!("DAOPad backend {} is not an admin of station {}", backend_id, station_id))
+                Err(format!("DAOPad backend {} is not an admin of station {}. User: {}",
+                    backend_id, station_id, me.name))
             }
         },
-        Ok((GetResult::Err(e),)) => {
-            Err(format!("Failed to get system info from station: {}", e))
+        Ok((MeResult::Err(e),)) => {
+            let error_msg = e.message.unwrap_or_else(|| e.code.clone());
+            Err(format!("Failed to verify admin status: {}", error_msg))
         },
         Err((code, msg)) => {
             Err(format!("Failed to call Orbit Station: {:?} - {}", code, msg))

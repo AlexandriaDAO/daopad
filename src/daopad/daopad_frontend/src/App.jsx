@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useIdentity } from './hooks/useIdentity';
 import { useLogout } from './hooks/useLogout';
@@ -7,24 +7,31 @@ import { fetchBalances } from './state/balance/balanceThunks';
 import { clearBalances } from './state/balance/balanceSlice';
 import {
   setKongLockerCanister,
-  clearDaoState
+  clearDaoState,
+  fetchPublicDashboard
 } from './features/dao/daoSlice';
 import { DAOPadBackendService } from './services/daopadBackend';
 
 // Components
 import KongLockerSetup from './components/KongLockerSetup';
 import TokenTabs from './components/TokenTabs';
+import PublicStatsStrip from './components/PublicStatsStrip';
+import PublicActivityFeed from './components/PublicActivityFeed';
+import TreasuryShowcase from './components/TreasuryShowcase';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 function App() {
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [isCheckingKongLocker, setIsCheckingKongLocker] = useState(false);
+  const intervalRef = useRef(null);
 
   const dispatch = useDispatch();
   const { principal, isAuthenticated } = useSelector(state => state.auth);
   const { icpBalance, isLoading: balanceLoading } = useSelector(state => state.balance);
   const { kongLockerCanister } = useSelector(state => state.dao);
+  const publicStats = useSelector(state => state.dao.publicDashboard.stats);
   const { login, identity } = useIdentity();
   const logout = useLogout();
 
@@ -43,6 +50,32 @@ function App() {
     }
     dispatch(setAuthInitialized(true));
   }, [identity, dispatch]);
+
+  // Load public data for logged-out users with proper cleanup
+  useEffect(() => {
+    if (!isAuthenticated) {
+      // Initial load
+      dispatch(fetchPublicDashboard());
+
+      // Setup auto-refresh
+      intervalRef.current = setInterval(() => {
+        dispatch(fetchPublicDashboard());
+      }, 30000);
+    } else {
+      // Clear interval when authenticated
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [isAuthenticated, dispatch]);
 
   const checkKongLockerCanister = async () => {
     if (!identity) return;
@@ -162,6 +195,17 @@ function App() {
         </div>
       </header>
 
+      {/* Experimental Warning Banner */}
+      <div className="bg-yellow-50 border-b border-yellow-200">
+        <div className="container mx-auto px-4 py-3">
+          <Alert className="border-yellow-400 bg-transparent p-0 rounded-none">
+            <AlertDescription className="text-sm text-yellow-800">
+              <span className="font-semibold">⚠️ Experimental Product:</span> This platform is currently in testing. Feel free to explore and play around (everything's free!), but expect changes as we improve the system. No real funds are at risk during this experimental phase.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+
       <main className="container mx-auto px-4 py-8">
         {isAuthenticated ? (
           shouldShowKongLockerSetup ? (
@@ -194,25 +238,56 @@ function App() {
                 </div>
                 <p className="text-xl text-executive-lightGray/90 max-w-2xl mx-auto font-serif leading-relaxed">
                   Create and manage token treasuries using your locked liquidity as voting power.
-                  Connect your Kong Locker to get started with governance.
                 </p>
               </div>
             </div>
+
+            {/* Live stats strip */}
+            <PublicStatsStrip />
+
+            {/* Activity sections */}
+            <div className="grid md:grid-cols-2 gap-8 text-left">
+              <PublicActivityFeed />
+              <TreasuryShowcase />
+            </div>
+
+            {/* Update existing cards with live counts */}
             <div className="grid md:grid-cols-3 gap-8">
               <div className="bg-executive-darkGray/50 border border-executive-gold/20 p-6 rounded space-y-4">
                 <div className="text-5xl text-executive-gold">🔒</div>
                 <h3 className="text-xl font-serif text-executive-ivory">Lock LP Tokens</h3>
-                <p className="text-executive-lightGray/70 text-sm leading-relaxed">Permanently lock your LP tokens in Kong Locker to gain voting power</p>
+                <p className="text-executive-lightGray/70 text-sm leading-relaxed">
+                  Permanently lock your LP tokens in Kong Locker to gain voting power
+                </p>
+                {publicStats && (
+                  <Badge className="bg-executive-gold/20 text-executive-goldLight border-executive-gold/30">
+                    {publicStats.participants} participants
+                  </Badge>
+                )}
               </div>
               <div className="bg-executive-darkGray/50 border border-executive-gold/20 p-6 rounded space-y-4">
                 <div className="text-5xl text-executive-gold">🏛️</div>
                 <h3 className="text-xl font-serif text-executive-ivory">Create Treasuries</h3>
-                <p className="text-executive-lightGray/70 text-sm leading-relaxed">Deploy Orbit Station treasuries for your tokens with governance controls</p>
+                <p className="text-executive-lightGray/70 text-sm leading-relaxed">
+                  Deploy Orbit Station treasuries for your tokens with governance controls
+                </p>
+                {publicStats && (
+                  <Badge className="bg-executive-gold/20 text-executive-goldLight border-executive-gold/30">
+                    {publicStats.treasuries} treasuries
+                  </Badge>
+                )}
               </div>
               <div className="bg-executive-darkGray/50 border border-executive-gold/20 p-6 rounded space-y-4">
                 <div className="text-5xl text-executive-gold">🗳️</div>
                 <h3 className="text-xl font-serif text-executive-ivory">Vote & Govern</h3>
-                <p className="text-executive-lightGray/70 text-sm leading-relaxed">Use your locked value as voting power to control treasury operations</p>
+                <p className="text-executive-lightGray/70 text-sm leading-relaxed">
+                  Use your locked value as voting power to control treasury operations
+                </p>
+                {publicStats && (
+                  <Badge className="bg-executive-gold/20 text-executive-goldLight border-executive-gold/30">
+                    {publicStats.activeProposals} active votes
+                  </Badge>
+                )}
               </div>
             </div>
             <Button size="lg" className="bg-executive-gold text-executive-charcoal hover:bg-executive-goldLight font-serif px-8 py-6 text-lg" onClick={handleLogin}>

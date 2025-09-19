@@ -32,7 +32,13 @@ const IIProvider = ({ children }) => {
 
 	const initAuth = async () => {
 		try {
-			const client = await AuthClient.create();
+			const client = await AuthClient.create({
+				idleOptions: {
+					idleTimeout: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+					disableIdle: false,
+					disableDefaultIdleCallback: true, // We'll handle session expiry ourselves
+				}
+			});
 			setAuthClient(client);
 
 			const isAuth = await client.isAuthenticated();

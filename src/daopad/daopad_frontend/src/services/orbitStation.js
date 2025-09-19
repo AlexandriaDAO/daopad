@@ -155,9 +155,65 @@ const orbitStationIDL = ({ IDL }) => {
     }),
     Err: Error,
   });
-  
+
+  // User and member types for querying users
+  const UserStatus = IDL.Variant({
+    'Active': IDL.Null,
+    'Inactive': IDL.Null,
+  });
+
+  const UserGroup = IDL.Record({
+    'id': UUID,
+    'name': IDL.Text,
+  });
+
+  const User = IDL.Record({
+    'id': UUID,
+    'name': IDL.Text,
+    'status': UserStatus,
+    'groups': IDL.Vec(UserGroup),
+    'identities': IDL.Vec(IDL.Principal),
+    'last_modification_timestamp': TimestampRFC3339,
+  });
+
+  const ListUsersInput = IDL.Record({
+    'search_term': IDL.Opt(IDL.Text),
+    'statuses': IDL.Opt(IDL.Vec(UserStatus)),
+    'groups': IDL.Opt(IDL.Vec(UUID)),
+    'paginate': IDL.Opt(PaginationInput),
+  });
+
+  const ListUsersResult = IDL.Variant({
+    'Ok': IDL.Record({
+      'users': IDL.Vec(User),
+      'next_offset': IDL.Opt(IDL.Nat64),
+      'total': IDL.Nat64,
+    }),
+    'Err': Error,
+  });
+
+  // System info returned by Orbit stations (we only consume a subset of fields)
+  const SystemInfo = IDL.Record({
+    'name': IDL.Text,
+    'version': IDL.Text,
+    'upgrader_id': IDL.Principal,
+    'cycles': IDL.Nat64,
+    'upgrader_cycles': IDL.Opt(IDL.Nat64),
+    'last_upgrade_timestamp': TimestampRFC3339,
+    'raw_rand_successful': IDL.Bool,
+    'disaster_recovery': IDL.Opt(IDL.Unknown),
+    'cycle_obtain_strategy': IDL.Unknown,
+  });
+
+  const SystemInfoResult = IDL.Variant({
+    'Ok': IDL.Record({ system: SystemInfo }),
+    'Err': Error,
+  });
+
   return IDL.Service({
     list_requests: IDL.Func([ListRequestsInput], [ListRequestsResult], ['query']),
+    list_users: IDL.Func([ListUsersInput], [ListUsersResult], ['query']),
+    system_info: IDL.Func([], [SystemInfoResult], ['query']),
   });
 };
 
@@ -245,6 +301,139 @@ export class OrbitStationService {
       return {
         success: false,
         error: error.message
+      };
+    }
+  }
+
+  async listAllUsers() {
+    try {
+      const input = {
+        search_term: [],
+        statuses: [],
+        groups: [],
+        paginate: [{
+          offset: [],
+          limit: [100], // Get up to 100 users
+        }],
+      };
+
+      const result = await this.actor.list_users(input);
+
+      if ('Ok' in result) {
+        return {
+          success: true,
+          data: {
+            users: result.Ok.users,
+            total: Number(result.Ok.total),
+            hasMore: result.Ok.next_offset.length > 0,
+          }
+        };
+      } else {
+        return {
+          success: false,
+          error: result.Err.message || 'Failed to list users'
+        };
+      }
+    } catch (error) {
+      console.error('Failed to list users:', error);
+      return {
+        success: false,
+        error: error.message || 'Network error'
+      };
+    }
+  }
+
+  async getSystemInfo() {
+    try {
+      const result = await this.actor.system_info();
+
+      if ('Ok' in result) {
+        return {
+          success: true,
+          data: result.Ok.system,
+        };
+      }
+
+      const errMessage = result.Err?.message?.[0] || result.Err?.code || 'Failed to get system info';
+      return {
+        success: false,
+        error: errMessage,
+      };
+    } catch (error) {
+      console.error('Failed to get system info:', error);
+      return {
+        success: false,
+        error: error.message || 'Network error'
+      };
+    }
+  }
+
+  // Helper method to get all members with their roles
+  async getAllMembersWithRoles() {
+    try {
+      const [usersResult, systemResult] = await Promise.all([
+        this.listAllUsers(),
+        this.getSystemInfo()
+      ]);
+
+      if (!usersResult.success) {
+        return usersResult;
+      }
+
+      // Get admin IDs for role detection
+      const adminIds = new Set(
+        systemResult.success && Array.isArray(systemResult.data?.admins)
+          ? systemResult.data.admins.map(admin => admin.id)
+          : []
+      );
+
+      // Standard group UUIDs from Orbit documentation
+      const ADMIN_GROUP_ID = "00000000-0000-4000-8000-000000000000";
+      const OPERATOR_GROUP_ID = "00000000-0000-4000-8000-000000000001";
+
+      const membersWithRoles = usersResult.data.users.map(user => {
+        const roles = [];
+
+        // Check if user is in admin/operator groups
+        user.groups.forEach(group => {
+          if (group.id === ADMIN_GROUP_ID) {
+            roles.push('Admin');
+          } else if (group.id === OPERATOR_GROUP_ID) {
+            roles.push('Operator');
+          } else {
+            roles.push(group.name); // Custom group name
+          }
+        });
+
+        // Check if user is in system admins (from system_info)
+        if (adminIds.has(user.id)) {
+          roles.push('System Admin');
+        }
+
+        // Default role if no specific roles
+        if (roles.length === 0) {
+          roles.push('Member');
+        }
+
+        return {
+          ...user,
+          roles: [...new Set(roles)], // Remove duplicates
+        };
+      });
+
+      return {
+        success: true,
+        data: {
+          members: membersWithRoles,
+          total: usersResult.data.total,
+          hasMore: usersResult.data.hasMore,
+        }
+      };
+    } catch (error) {
+      console.error('Failed to get members with roles:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get member information'
       };
     }
   }

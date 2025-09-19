@@ -10,8 +10,14 @@ export class AuthService {
   
   async init() {
     if (this.isInitialized) return;
-    
-    this.authClient = await AuthClient.create();
+
+    this.authClient = await AuthClient.create({
+      idleOptions: {
+        idleTimeout: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+        disableIdle: false,
+        disableDefaultIdleCallback: true, // We'll handle session expiry ourselves
+      }
+    });
     if (await this.authClient.isAuthenticated()) {
       this.identity = this.authClient.getIdentity();
       this.principal = this.identity.getPrincipal();

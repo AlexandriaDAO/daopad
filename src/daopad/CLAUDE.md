@@ -103,35 +103,34 @@ daopad/
 
 ### Development Workflow
 
-#### Backend Changes
+#### Making Changes
 ```bash
-# 1. Make Rust changes
+# Backend changes
 cd daopad_backend
 vim src/lib.rs
 
-# 2. Build (from project root)
+# Frontend changes
+cd daopad_frontend
+vim src/components/SomeComponent.jsx
+
+# Build backend if Rust changed (from project root)
 cd ../..  # Back to project root
 cargo build --target wasm32-unknown-unknown --release -p daopad_backend --locked
 
-# 3. Extract candid
+# Extract candid if Rust changed
 candid-extractor target/wasm32-unknown-unknown/release/daopad_backend.wasm > src/daopad/daopad_backend/daopad_backend.did
-
-# 4. Deploy (from src/daopad/)
-cd src/daopad
-./deploy.sh --network ic --backend-only
 ```
 
-#### Frontend Changes
+#### ALWAYS DEPLOY TO MAINNET AFTER CHANGES
 ```bash
-# 1. Development server
-cd daopad_frontend
-npm install
-npm run dev  # localhost:3000
+# From src/daopad/ directory
+cd src/daopad
+./deploy.sh --network ic  # Deploys both backend and frontend
 
-# 2. Deploy
-cd ..  # Back to src/daopad/
-./deploy.sh --network ic --frontend-only
+# Note: The --backend-only and --frontend-only flags exist but we typically deploy everything
 ```
+
+**⚠️ CRITICAL: Always deploy to mainnet using `./deploy.sh --network ic` after making ANY changes. There is no local testing environment - all testing happens on mainnet. This ensures both frontend and backend stay in sync.**
 
 ## 🔑 Key Integration Points
 
@@ -339,6 +338,164 @@ dfx canister --network ic call kong_locker get_all_voting_powers
 dfx canister --network ic call kong_locker get_total_value_locked
 ```
 
+## ⚠️ CRITICAL: Orbit Station Integration Workflow
+
+### The Golden Rule: NEVER GUESS TYPES - ALWAYS VERIFY FIRST
+
+When implementing ANY Orbit Station functionality, follow this EXACT workflow to guarantee success:
+
+### Step 1: Research Phase (MANDATORY - DO THIS FIRST!)
+
+**BEFORE writing any code:**
+
+1. **Study the Orbit Station source code**
+   ```bash
+   # Navigate to reference
+   cd orbit-reference/core/station/
+
+   # Find the exact operation you want to implement
+   grep -r "OperationName" --include="*.rs" --include="*.did"
+
+   # Example for user management:
+   grep -r "AddUser" orbit-reference/core/station/
+   grep -r "EditUser" orbit-reference/core/station/
+   ```
+
+2. **Identify the exact type structures**
+   - Check `orbit-reference/core/station/api/spec.did` for Candid interface
+   - Check `orbit-reference/core/station/impl/src/models/` for Rust types
+   - Check `orbit-reference/core/station/impl/src/mappers/` for type conversions
+   - **COPY THE EXACT FIELD NAMES AND TYPES - DO NOT IMPROVISE**
+
+3. **Test with dfx first (CRITICAL STEP)**
+   ```bash
+   # Get the exact type structure
+   dfx canister --network ic call fec7w-zyaaa-aaaaa-qaffq-cai __get_candid
+
+   # Test the operation manually to verify types
+   dfx canister --network ic call fec7w-zyaaa-aaaaa-qaffq-cai operation_name '(record { ... })'
+   ```
+
+### Step 2: Type Definition Phase
+
+1. **Create types EXACTLY as they appear in Orbit**
+   ```rust
+   // COPY from orbit-reference, don't improvise
+   #[derive(CandidType, Deserialize)]
+   pub struct ExactTypeFromOrbit {
+       // Match field names exactly (including underscores vs camelCase)
+       // Match field types exactly
+       // Include ALL fields, even optional ones
+   }
+   ```
+
+2. **Verify types compile before using them**
+   ```bash
+   cargo build --target wasm32-unknown-unknown --release -p daopad_backend
+   ```
+
+### Step 3: Implementation Phase
+
+1. **Write a minimal test function first**
+   ```rust
+   #[update]
+   async fn test_orbit_operation() -> Result<String, String> {
+       // Just try to call Orbit with hardcoded values
+       // Verify it works before building full feature
+       let result: Result<(ExpectedReturnType,), _> = ic_cdk::call(
+           station_id,
+           "method_name",
+           (params,)
+       ).await;
+   }
+   ```
+
+2. **Test with dfx before integrating**
+   ```bash
+   dfx canister --network ic call daopad_backend test_orbit_operation
+   ```
+
+3. **Only after verification, build the full feature**
+
+### Step 4: Common Patterns That Work
+
+**For User Management:**
+```rust
+// These UUIDs are hardcoded in Orbit Station - use them exactly
+const ADMIN_GROUP_ID: &str = "00000000-e400-0000-4d8f-480000000000";
+const OPERATOR_GROUP_ID: &str = "00000000-e400-0000-4d8f-480000000001";
+```
+
+**For Request Creation:**
+- Most operations need to create a request, not direct calls
+- Always use `create_request` with the appropriate operation type
+- Check if operation needs approval (most do)
+
+**For Result Handling:**
+```rust
+// Orbit often returns tagged enums
+match result {
+    Ok((CreateRequestResult::Ok(response),)) => {
+        // Success case
+    },
+    Ok((CreateRequestResult::Err(e),)) => {
+        // Orbit returned an error
+    },
+    Err((code, msg)) => {
+        // IC call failed
+    }
+}
+```
+
+### ❌ Common Pitfalls That WILL Cause Failures
+
+1. **Assuming type names** - Orbit uses specific names, don't guess
+2. **Skipping dfx testing** - Always test manually first
+3. **Creating types before checking source** - Will lead to mismatches
+4. **Forgetting operations need requests** - Most changes need approval
+5. **Ignoring permission requirements** - Check what permissions are needed
+6. **Using wrong field formats** - UUIDs as strings, not Principal
+
+### ✅ Why This Workflow Works Every Time
+
+1. **Source code is truth** - Orbit reference shows exact implementation
+2. **dfx testing catches issues early** - Before writing any code
+3. **Exact type matching** - No guessing means no mismatches
+4. **Permission awareness** - Know requirements upfront
+
+### Example: Successfully Adding a User
+
+1. **Research:**
+   ```bash
+   grep -r "AddUserOperationInput" orbit-reference/
+   # Found exact type in api/spec.did
+   ```
+
+2. **Verify structure:**
+   ```candid
+   type AddUserOperationInput = record {
+     name: text;
+     identities: vec principal;
+     groups: vec text;  // UUIDs as strings!
+     status: UserStatus;
+   };
+   ```
+
+3. **Test manually first:**
+   ```bash
+   dfx canister --network ic call fec7w-zyaaa-aaaaa-qaffq-cai create_request '(record {
+     operation = variant { AddUser = record {
+       name = "Test User";
+       identities = vec { principal "aaaaa-aa" };
+       groups = vec {};
+       status = variant { Active }
+     }};
+     title = opt "Add Test User";
+   })'
+   ```
+
+4. **Only then implement in code**
+
 ## For Claude Code
 
 ### Primary Rules:
@@ -347,6 +504,7 @@ dfx canister --network ic call kong_locker get_total_value_locked
 3. **Use local deploy.sh** - Always deploy from `src/daopad/` directory
 4. **Extract candid** - After every Rust change
 5. **Test on mainnet** - No local testing, deploy directly to IC
+6. **FOLLOW ORBIT WORKFLOW** - Never skip the research phase when integrating with Orbit
 
 ### Reference Repository Usage:
 
