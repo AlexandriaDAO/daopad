@@ -64,10 +64,10 @@ export const createBalanceService = (identity) => {
       console.log("Calling icrc1_balance_of with account:", account);
       const balance = await actor.icrc1_balance_of(account);
       console.log("ICP balance received:", balance.toString());
-      return balance;
+      return balance.toString();
     } catch (error) {
       console.error("Error fetching ICP balance:", error);
-      return 0n;
+      return "0";
     }
   };
 
@@ -82,10 +82,10 @@ export const createBalanceService = (identity) => {
         owner: principal,
         subaccount: [],
       });
-      return balance;
+      return balance.toString();
     } catch (error) {
       console.error("Error fetching ALEX balance:", error);
-      return 0n;
+      return "0";
     }
   };
 
@@ -97,10 +97,10 @@ export const createBalanceService = (identity) => {
     
     try {
       const stake = await actor.get_stake(principal);
-      return stake && stake[0] ? stake[0].amount : 0n;
+      return stake && stake[0] ? stake[0].amount.toString() : "0";
     } catch (error) {
       console.error("Error fetching staked ALEX balance:", error);
-      return 0n;
+      return "0";
     }
   };
 
@@ -113,6 +113,6 @@ export const createBalanceService = (identity) => {
 
 // Convert e8s to display format (divide by 10^8)
 export const e8sToDisplay = (e8s) => {
-  const e8sNum = Number(e8s);
+  const e8sNum = typeof e8s === "string" ? Number(e8s) : Number(e8s ?? 0);
   return (e8sNum / 100_000_000).toFixed(2);
 };

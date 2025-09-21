@@ -1,5 +1,5 @@
 use candid::Principal;
-use ic_stable_structures::{Storable, storable::Bound};
+use ic_stable_structures::{storable::Bound, Storable};
 use std::borrow::Cow;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]

@@ -1,8 +1,8 @@
-use candid::Principal;
-use ic_cdk::{query, update};
+use crate::kong_locker::{get_user_voting_power_for_token, register_with_kong_locker_internal};
 use crate::storage::state::KONG_LOCKER_PRINCIPALS;
 use crate::types::StorablePrincipal;
-use crate::kong_locker::{register_with_kong_locker_internal, get_user_voting_power_for_token};
+use candid::Principal;
+use ic_cdk::{query, update};
 
 #[update]
 pub async fn register_with_kong_locker(kong_locker_principal: Principal) -> Result<String, String> {
@@ -24,7 +24,8 @@ pub fn get_my_kong_locker_canister() -> Option<Principal> {
 #[query]
 pub fn list_all_kong_locker_registrations() -> Vec<(Principal, Principal)> {
     KONG_LOCKER_PRINCIPALS.with(|p| {
-        p.borrow().iter()
+        p.borrow()
+            .iter()
             .map(|(user, canister)| (user.0, canister.0))
             .collect()
     })
@@ -39,7 +40,11 @@ pub fn unregister_kong_locker() -> Result<String, String> {
     }
 
     KONG_LOCKER_PRINCIPALS.with(|principals| {
-        if principals.borrow_mut().remove(&StorablePrincipal(caller)).is_some() {
+        if principals
+            .borrow_mut()
+            .remove(&StorablePrincipal(caller))
+            .is_some()
+        {
             Ok("Kong Locker canister unregistered successfully".to_string())
         } else {
             Err("No Kong Locker canister registered for your principal".to_string())

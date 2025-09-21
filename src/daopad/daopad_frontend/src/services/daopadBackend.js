@@ -148,8 +148,108 @@ const idlFactory = ({ IDL }) => {
     'Err': IDL.Text,
   });
 
+  // Treasury Account Types
+  const AccountMetadata = IDL.Record({
+    'key': IDL.Text,
+    'value': IDL.Text,
+  });
+
+  const AccountAddress = IDL.Record({
+    'address': IDL.Text,
+    'format': IDL.Text,
+  });
+
+  const AccountBalance = IDL.Record({
+    'account_id': IDL.Text,
+    'asset_id': IDL.Text,
+    'balance': IDL.Nat,
+    'decimals': IDL.Nat32,
+    'last_update_timestamp': IDL.Text,
+    'query_state': IDL.Text,
+  });
+
+  const AccountAsset = IDL.Record({
+    'asset_id': IDL.Text,
+    'balance': IDL.Opt(AccountBalance),
+  });
+
+  const RequestPolicyRule = IDL.Rec();
+  RequestPolicyRule.fill(
+    IDL.Variant({
+      'AutoApproved': IDL.Null,
+      'QuorumPercentage': IDL.Record({ 'min_approved': IDL.Nat32 }),
+      'Quorum': IDL.Record({ 'min_approved': IDL.Nat32 }),
+      'AllowListedByMetadata': AccountMetadata,
+      'AllowListed': IDL.Null,
+      'AnyOf': IDL.Vec(RequestPolicyRule),
+      'AllOf': IDL.Vec(RequestPolicyRule),
+      'Not': RequestPolicyRule,
+      'NamedRule': IDL.Text,
+    })
+  );
+
+  const Account = IDL.Record({
+    'id': IDL.Text,
+    'assets': IDL.Vec(AccountAsset),
+    'addresses': IDL.Vec(AccountAddress),
+    'name': IDL.Text,
+    'metadata': IDL.Vec(AccountMetadata),
+    'transfer_request_policy': IDL.Opt(RequestPolicyRule),
+    'configs_request_policy': IDL.Opt(RequestPolicyRule),
+    'last_modification_timestamp': IDL.Text,
+  });
+
+  const AccountCallerPrivileges = IDL.Record({
+    'id': IDL.Text,
+    'can_edit': IDL.Bool,
+    'can_transfer': IDL.Bool,
+  });
+
+  const Error = IDL.Record({
+    'code': IDL.Text,
+    'message': IDL.Opt(IDL.Text),
+  });
+
+  const ListAccountsResult = IDL.Variant({
+    'Ok': IDL.Record({
+      'accounts': IDL.Vec(Account),
+      'privileges': IDL.Vec(AccountCallerPrivileges),
+      'total': IDL.Nat64,
+      'next_offset': IDL.Opt(IDL.Nat64),
+    }),
+    'Err': Error,
+  });
+
+  const FetchAccountBalancesResult = IDL.Variant({
+    'Ok': IDL.Vec(IDL.Opt(AccountBalance)),
+    'Err': IDL.Text,
+  });
+
   const BoolResult = IDL.Variant({
     'Ok': IDL.Bool,
+    'Err': IDL.Text,
+  });
+
+  const StringVecResult = IDL.Variant({
+    'Ok': IDL.Vec(IDL.Text),
+    'Err': IDL.Text,
+  });
+
+  // Request Management Types
+  const SimplifiedRequest = IDL.Record({
+    'id': IDL.Text,
+    'title': IDL.Text,
+    'summary': IDL.Opt(IDL.Text),
+    'operation_type': IDL.Text,
+    'status': IDL.Text,
+    'requester_name': IDL.Text,
+    'created_at': IDL.Text,
+    'approval_count': IDL.Nat32,
+    'rejection_count': IDL.Nat32,
+  });
+
+  const SimplifiedRequestVecResult = IDL.Variant({
+    'Ok': IDL.Vec(SimplifiedRequest),
     'Err': IDL.Text,
   });
 
@@ -182,18 +282,27 @@ const idlFactory = ({ IDL }) => {
     'get_predefined_groups': IDL.Func([], [IDL.Vec(UserGroupInfo)], ['query']),
 
     // DAO Transition Methods
-    'grant_self_permissions': IDL.Func([IDL.Principal], [UserManagementResult], []),
-    'verify_permissions': IDL.Func([IDL.Principal], [PermissionResult], []),
     'list_all_admins': IDL.Func([IDL.Principal], [AdminListResult], []),
     'remove_admin_role': IDL.Func([IDL.Principal, IDL.Text], [UserManagementResult], []),
     'downgrade_to_operator': IDL.Func([IDL.Principal, IDL.Text], [UserManagementResult], []),
     'verify_sole_admin': IDL.Func([IDL.Principal], [BoolResult], []),
     'get_admin_count': IDL.Func([IDL.Principal], [AdminCountResult], []),
 
+    // Request Management Methods
+    'list_orbit_requests': IDL.Func([IDL.Principal, IDL.Bool], [SimplifiedRequestVecResult], []),
+    'approve_orbit_request': IDL.Func([IDL.Principal, IDL.Text, IDL.Opt(IDL.Text)], [Result], []),
+    'reject_orbit_request': IDL.Func([IDL.Principal, IDL.Text, IDL.Opt(IDL.Text)], [Result], []),
+    'batch_approve_requests': IDL.Func([IDL.Principal, IDL.Vec(IDL.Text)], [StringVecResult], []),
+
+    // Treasury Account Methods
+    'list_orbit_accounts': IDL.Func([IDL.Principal, IDL.Opt(IDL.Text), IDL.Opt(IDL.Nat64), IDL.Opt(IDL.Nat64)], [IDL.Variant({ 'Ok': ListAccountsResult, 'Err': IDL.Text })], []),
+    'fetch_orbit_account_balances': IDL.Func([IDL.Principal, IDL.Vec(IDL.Text)], [IDL.Variant({ 'Ok': IDL.Vec(IDL.Opt(AccountBalance)), 'Err': IDL.Text })], []),
+
     // Utility Functions
     'get_backend_principal': IDL.Func([], [IDL.Principal], ['query']),
     'get_kong_locker_factory_principal': IDL.Func([], [IDL.Principal], ['query']),
     'health_check': IDL.Func([], [IDL.Text], ['query']),
+
   });
 };
 
@@ -521,35 +630,6 @@ export class DAOPadBackendService {
 
   // DAO Transition Methods
 
-  async grantSelfPermissions(tokenCanisterId) {
-    try {
-      const actor = await this.getActor();
-      const result = await actor.grant_self_permissions(tokenCanisterId);
-      if ('Ok' in result) {
-        return { success: true, data: result.Ok };
-      } else {
-        return { success: false, error: result.Err };
-      }
-    } catch (error) {
-      console.error('Failed to grant self permissions:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async verifyPermissions(tokenCanisterId) {
-    try {
-      const actor = await this.getActor();
-      const result = await actor.verify_permissions(tokenCanisterId);
-      if ('Ok' in result) {
-        return { success: true, data: result.Ok };
-      } else {
-        return { success: false, error: result.Err };
-      }
-    } catch (error) {
-      console.error('Failed to verify permissions:', error);
-      return { success: false, error: error.message };
-    }
-  }
 
   async listAllAdmins(tokenCanisterId) {
     try {
@@ -581,6 +661,68 @@ export class DAOPadBackendService {
     }
   }
 
+
+  // Request Management Methods
+  async listOrbitRequests(tokenCanisterId, includeCompleted = false) {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.list_orbit_requests(tokenCanisterId, includeCompleted);
+      if ('Ok' in result) {
+        return { success: true, data: result.Ok };
+      } else {
+        return { success: false, error: result.Err };
+      }
+    } catch (error) {
+      console.error('Failed to list orbit requests:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async approveOrbitRequest(tokenCanisterId, requestId) {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.approve_orbit_request(tokenCanisterId, requestId, []);
+      if ('Ok' in result) {
+        return { success: true, data: result.Ok };
+      } else {
+        return { success: false, error: result.Err };
+      }
+    } catch (error) {
+      console.error('Failed to approve orbit request:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async rejectOrbitRequest(tokenCanisterId, requestId) {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.reject_orbit_request(tokenCanisterId, requestId, []);
+      if ('Ok' in result) {
+        return { success: true, data: result.Ok };
+      } else {
+        return { success: false, error: result.Err };
+      }
+    } catch (error) {
+      console.error('Failed to reject orbit request:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async batchApproveRequests(tokenCanisterId, requestIds) {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.batch_approve_requests(tokenCanisterId, requestIds);
+      if ('Ok' in result) {
+        return { success: true, data: result.Ok };
+      } else {
+        return { success: false, error: result.Err };
+      }
+    } catch (error) {
+      console.error('Failed to batch approve requests:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   async downgradeToOperator(tokenCanisterId, userId) {
     try {
       const actor = await this.getActor();
@@ -607,6 +749,56 @@ export class DAOPadBackendService {
       }
     } catch (error) {
       console.error('Failed to verify sole admin:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Treasury Account Methods
+
+  async listOrbitAccounts(stationId, searchTerm, limit, offset) {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.list_orbit_accounts(
+        stationId,
+        searchTerm ? [searchTerm] : [],
+        limit ? [limit] : [],
+        offset ? [offset] : []
+      );
+
+      if ('Ok' in result && 'Ok' in result.Ok) {
+        const data = result.Ok.Ok;
+        return {
+          success: true,
+          data: {
+            accounts: data.accounts,
+            privileges: data.privileges,
+            total: Number(data.total),
+            nextOffset: data.next_offset?.[0] ? Number(data.next_offset[0]) : null
+          }
+        };
+      } else if ('Ok' in result && 'Err' in result.Ok) {
+        return { success: false, error: result.Ok.Err.message || result.Ok.Err.code };
+      } else {
+        return { success: false, error: result.Err || 'Unknown error' };
+      }
+    } catch (error) {
+      console.error('Failed to list orbit accounts:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async fetchOrbitAccountBalances(stationId, accountIds) {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.fetch_orbit_account_balances(stationId, accountIds);
+
+      if ('Ok' in result) {
+        return { success: true, data: result.Ok };
+      } else {
+        return { success: false, error: result.Err };
+      }
+    } catch (error) {
+      console.error('Failed to fetch account balances:', error);
       return { success: false, error: error.message };
     }
   }
@@ -712,4 +904,22 @@ export class DAOPadBackendService {
       };
     }
   }
+    async testBackendIntegration(payload = {}) {
+        try {
+            const actor = await this.getActor();
+            const result = await actor.health_check();
+            return {
+                success: true,
+                data: {
+                    message: 'Backend integration healthy',
+                    payload,
+                    result,
+                },
+            };
+        } catch (error) {
+            console.error('Backend integration test failed', error);
+            return { success: false, error: error?.message ?? 'Unknown error' };
+        }
+    }
+
 }

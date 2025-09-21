@@ -1,17 +1,23 @@
+use crate::types::{TokenInfo, UserBalancesReply};
 use candid::Principal;
 use ic_cdk::call;
 use std::collections::HashSet;
-use crate::types::{UserBalancesReply, TokenInfo};
 
-pub async fn get_user_locked_tokens(kong_locker_principal: Principal) -> Result<Vec<TokenInfo>, String> {
+pub async fn get_user_locked_tokens(
+    kong_locker_principal: Principal,
+) -> Result<Vec<TokenInfo>, String> {
     let kongswap_id = Principal::from_text("2ipq2-uqaaa-aaaar-qailq-cai")
         .map_err(|e| format!("Invalid KongSwap ID: {}", e))?;
 
-    let user_balances_result: Result<(Result<Vec<UserBalancesReply>, String>,), (ic_cdk::api::call::RejectionCode, String)> = call(
+    let user_balances_result: Result<
+        (Result<Vec<UserBalancesReply>, String>,),
+        (ic_cdk::api::call::RejectionCode, String),
+    > = call(
         kongswap_id,
         "user_balances",
-        (kong_locker_principal.to_string(),)
-    ).await;
+        (kong_locker_principal.to_string(),),
+    )
+    .await;
 
     let user_balances = user_balances_result
         .map_err(|e| format!("Failed to get LP positions: {:?}", e))?
@@ -41,15 +47,22 @@ pub async fn get_user_locked_tokens(kong_locker_principal: Principal) -> Result<
 }
 
 #[allow(dead_code)]
-pub async fn validate_token_in_lp_positions(kong_locker_principal: Principal, token_canister_id: Principal) -> Result<bool, String> {
+pub async fn validate_token_in_lp_positions(
+    kong_locker_principal: Principal,
+    token_canister_id: Principal,
+) -> Result<bool, String> {
     let kongswap_id = Principal::from_text("2ipq2-uqaaa-aaaar-qailq-cai")
         .map_err(|e| format!("Invalid KongSwap ID: {}", e))?;
 
-    let user_balances_result: Result<(Result<Vec<UserBalancesReply>, String>,), (ic_cdk::api::call::RejectionCode, String)> = call(
+    let user_balances_result: Result<
+        (Result<Vec<UserBalancesReply>, String>,),
+        (ic_cdk::api::call::RejectionCode, String),
+    > = call(
         kongswap_id,
         "user_balances",
-        (kong_locker_principal.to_string(),)
-    ).await;
+        (kong_locker_principal.to_string(),),
+    )
+    .await;
 
     let user_balances = user_balances_result
         .map_err(|e| format!("Failed to get LP positions: {:?}", e))?
@@ -58,8 +71,8 @@ pub async fn validate_token_in_lp_positions(kong_locker_principal: Principal, to
 
     let token_exists = user_balances.iter().any(|balance| {
         let UserBalancesReply::LP(lp_reply) = balance;
-        lp_reply.address_0 == token_canister_id.to_string() ||
-        lp_reply.address_1 == token_canister_id.to_string()
+        lp_reply.address_0 == token_canister_id.to_string()
+            || lp_reply.address_1 == token_canister_id.to_string()
     });
 
     Ok(token_exists)

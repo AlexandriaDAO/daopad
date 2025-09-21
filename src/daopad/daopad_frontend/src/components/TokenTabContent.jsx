@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Principal } from '@dfinity/principal';
+import { useDispatch } from 'react-redux';
 import { DAOPadBackendService } from '../services/daopadBackend';
 import { OrbitStationService } from '../services/orbitStation';
 import OrbitUserManager from './OrbitUserManager';
 import DAOTransitionManager from './DAOTransitionManager';
+import RequestManager from './orbit/RequestManager';
+import AccountsPage from './orbit/AccountsPage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,8 +15,13 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { upsertStationMapping } from '../features/dao/daoSlice';
+import { useActiveStation } from '../hooks/useActiveStation';
+import OrbitStationPlaceholder from './orbit/OrbitStationPlaceholder';
 
 const TokenTabContent = ({ token, identity, votingPower, lpPositions, onRefresh }) => {
+  const dispatch = useDispatch();
+  const activeStation = useActiveStation(token?.canister_id);
   const [orbitStation, setOrbitStation] = useState(null);
   const [activeProposal, setActiveProposal] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -31,6 +39,14 @@ const TokenTabContent = ({ token, identity, votingPower, lpPositions, onRefresh 
   const [daoStatus, setDaoStatus] = useState(null); // 'real', 'pseudo', 'invalid', null
   const [tokenMetadata, setTokenMetadata] = useState(null);
   const [loadingMetadata, setLoadingMetadata] = useState(false);
+
+  const toPrincipalText = (value) => {
+    if (!value) return null;
+    if (typeof value === 'string') return value;
+    if (typeof value?.toText === 'function') return value.toText();
+    if (typeof value?.toString === 'function') return value.toString();
+    return String(value);
+  };
 
   useEffect(() => {
     loadTokenStatus();
@@ -94,11 +110,18 @@ const TokenTabContent = ({ token, identity, votingPower, lpPositions, onRefresh 
       // Check if there's a station for this token
       const stationResult = await daopadService.getOrbitStationForToken(tokenPrincipal);
       if (stationResult.success && stationResult.data) {
+        const stationText = toPrincipalText(stationResult.data);
         // Station exists
         setOrbitStation({
-          station_id: stationResult.data,
+          station_id: stationText,
           name: `${token.symbol} Treasury`,
         });
+        dispatch(upsertStationMapping({
+          tokenId: token.canister_id,
+          stationId: stationText,
+          status: 'linked',
+          source: 'token-status',
+        }));
         setActiveProposal(null);
       } else {
         // No station, check for active proposal
@@ -107,13 +130,32 @@ const TokenTabContent = ({ token, identity, votingPower, lpPositions, onRefresh 
         const proposalResult = await daopadService.getActiveProposalForToken(tokenPrincipal);
         if (proposalResult.success && proposalResult.data) {
           setActiveProposal(proposalResult.data);
+          dispatch(upsertStationMapping({
+            tokenId: token.canister_id,
+            stationId: null,
+            status: 'proposal',
+            source: 'token-status',
+          }));
         } else {
           setActiveProposal(null);
+          dispatch(upsertStationMapping({
+            tokenId: token.canister_id,
+            stationId: null,
+            status: 'missing',
+            source: 'token-status',
+          }));
         }
       }
     } catch (err) {
       console.error('Error loading token status:', err);
       setError('Failed to load token status');
+      dispatch(upsertStationMapping({
+        tokenId: token?.canister_id,
+        stationId: null,
+        status: 'error',
+        source: 'token-status',
+        error: err?.message || 'Failed to load token status',
+      }));
     } finally {
       setLoading(false);
     }
@@ -531,21 +573,23 @@ const TokenTabContent = ({ token, identity, votingPower, lpPositions, onRefresh 
                 </div>
               )}
 
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => window.open(`https://${orbitStation.station_id}.icp0.io`, '_blank')}
-                >
-                  Open Treasury
-                </Button>
-                {!showJoinForm && userVotingPower >= 100 && (
+              {/* Treasury Accounts Section */}
+              <AccountsPage
+                token={token}
+                identity={identity}
+                orbitStation={orbitStation}
+              />
+
+              {!showJoinForm && userVotingPower >= 100 && (
+                <div className="flex">
                   <Button
                     onClick={() => setShowJoinForm(true)}
                     variant="outline"
                   >
                     Join as Member
                   </Button>
-                )}
-              </div>
+                </div>
+              )}
 
               {showJoinForm && (
                 <Card>
@@ -611,6 +655,12 @@ const TokenTabContent = ({ token, identity, votingPower, lpPositions, onRefresh 
                 token={token}
                 identity={identity}
                 orbitStation={orbitStation}
+              />
+
+              {/* Request Manager */}
+              <RequestManager
+                token={token}
+                identity={identity}
               />
             </div>
           ) : activeProposal ? (
@@ -760,26 +810,16 @@ const TokenTabContent = ({ token, identity, votingPower, lpPositions, onRefresh 
           ) : (
             // No station and no proposal - show propose form
             <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">○ No Station</Badge>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-muted-foreground">No treasury exists for {token.symbol}.</p>
-                  <p className="text-sm text-muted-foreground">
-                    To link a station: Create one at{' '}
-                    <a
-                      href="https://orbit.orbitcontrol.panel"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-500 hover:underline"
-                    >
-                      Orbit Control Panel
-                    </a>
-                    , then propose linking it here.
-                  </p>
-                </div>
-              </div>
+              <OrbitStationPlaceholder
+                tokenSymbol={token.symbol}
+                status={activeStation.status}
+                error={activeStation.status === 'error' ? (activeStation.error || error) : null}
+                className="border-executive-gold/30"
+              >
+                <p className="mt-2 text-xs text-executive-lightGray/60">
+                  Once a treasury is linked, governance requests and membership workflows will activate automatically.
+                </p>
+              </OrbitStationPlaceholder>
 
               <Card>
                 <CardContent className="pt-4">

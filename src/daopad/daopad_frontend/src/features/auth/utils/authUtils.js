@@ -4,7 +4,9 @@ import { AuthClient } from "@dfinity/auth-client";
 import {
   daopad_backend,
   createActor as createActorDaopadBackend,
-} from "../../../../../declarations/daopad_backend";
+} from "../../../declarations/daopad_backend";
+// Use locally vendored declarations to avoid sandbox permission issues
+// when building in the Codex CLI environment.
 
 const isLocalDevelopment = process.env.DFX_NETWORK !== "ic";
 

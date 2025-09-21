@@ -1,26 +1,36 @@
+use crate::kong_locker::registration::get_kong_locker_for_user;
+use crate::types::UserBalancesReply;
 use candid::Principal;
 use ic_cdk::call;
-use crate::types::UserBalancesReply;
-use crate::kong_locker::registration::get_kong_locker_for_user;
 
 // Note: Minimum VP checks are now handled directly in the proposal system
 
-pub async fn get_user_voting_power_for_token(caller: Principal, token_canister_id: Principal) -> Result<u64, String> {
-    let kong_locker_principal = get_kong_locker_for_user(caller)
-        .ok_or("Must register Kong Locker canister first")?;
+pub async fn get_user_voting_power_for_token(
+    caller: Principal,
+    token_canister_id: Principal,
+) -> Result<u64, String> {
+    let kong_locker_principal =
+        get_kong_locker_for_user(caller).ok_or("Must register Kong Locker canister first")?;
 
     calculate_voting_power_for_token(kong_locker_principal, token_canister_id).await
 }
 
-pub async fn calculate_voting_power_for_token(kong_locker_principal: Principal, token_canister_id: Principal) -> Result<u64, String> {
+pub async fn calculate_voting_power_for_token(
+    kong_locker_principal: Principal,
+    token_canister_id: Principal,
+) -> Result<u64, String> {
     let kongswap_id = Principal::from_text("2ipq2-uqaaa-aaaar-qailq-cai")
         .map_err(|e| format!("Invalid KongSwap ID: {}", e))?;
 
-    let user_balances_result: Result<(Result<Vec<UserBalancesReply>, String>,), (ic_cdk::api::call::RejectionCode, String)> = call(
+    let user_balances_result: Result<
+        (Result<Vec<UserBalancesReply>, String>,),
+        (ic_cdk::api::call::RejectionCode, String),
+    > = call(
         kongswap_id,
         "user_balances",
-        (kong_locker_principal.to_string(),)
-    ).await;
+        (kong_locker_principal.to_string(),),
+    )
+    .await;
 
     let user_balances = user_balances_result
         .map_err(|e| format!("Failed to get LP positions: {:?}", e))?
@@ -30,7 +40,8 @@ pub async fn calculate_voting_power_for_token(kong_locker_principal: Principal, 
     // Calculate TOTAL USD value for positions containing this specific token
     // Important: Use the full usd_balance of the LP position (both sides combined)
     let token_id_str = token_canister_id.to_string();
-    let total_usd_value: f64 = user_balances.iter()
+    let total_usd_value: f64 = user_balances
+        .iter()
         .filter_map(|balance| {
             let UserBalancesReply::LP(lp_reply) = balance;
             // Count the FULL position value if this token is in the pair

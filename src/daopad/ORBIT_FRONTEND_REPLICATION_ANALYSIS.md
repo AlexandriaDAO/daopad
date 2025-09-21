@@ -4,6 +4,14 @@
 
 This document analyzes the feasibility of replicating Orbit Station's frontend functionality within the DAOPad application. The analysis covers codebase size, functional areas, technical differences, and provides a phased implementation plan based on actual code distribution and reusability assessment.
 
+## 🛠️ Agent Execution Checklist
+
+- **Deploy-in-place mindset**: All development, validation, and QA happen directly against mainnet (`./deploy.sh --network ic`). There is no local replica.
+- **Token-driven station context**: Every Orbit-derived UI must resolve the station canister for the currently selected token. If no station is linked, render the Orbit shell in a disabled state with guidance to create/configure a treasury.
+- **Frontend queries vs. backend updates**: Preserve the original architecture—queries hit Orbit directly through generated actors for low-latency responses; any operation that mutates Orbit state must flow through the DAOPad backend canister (which performs the inter-canister update).
+- **Ship the phases**: Treat each phase as an implementable slice. Finish the checklists, verify on mainnet, and leave docs/code comments noting remaining gaps before moving on.
+- **Call out blockers**: If an Orbit API denies access or returns unexpected data, document the failure, add user-facing messaging, and log the issue for follow-up.
+
 ## 📊 Codebase Analysis
 
 ### Orbit Station Frontend (Vue.js)
@@ -200,6 +208,11 @@ describe('UserManagement', () => {
 - Core layout primitives: ~2,000 LOC (ShadCN adaptation)
 - Authentication foundation: ~1,500 LOC (React patterns)
 - Testing setup: ~500 LOC (Jest + RTL configuration)
+
+**Pre-flight tasks**
+- [ ] Extend the DAO slice (or create a dedicated selector) that maps `token_canister_id → station_canister_id`.
+- [ ] Build a `useActiveStation()` hook that returns `{ stationId, token, status }` for consumption across Orbit feature modules.
+- [ ] Add UI fallbacks for tokens that lack a station so the replicated views always have a defined state.
 
 #### 1.1 Generated Bindings Integration
 - [ ] Import and adapt canister type definitions

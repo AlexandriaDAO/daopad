@@ -21,6 +21,8 @@ import TreasuryShowcase from './components/TreasuryShowcase';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { QueryClientProvider } from './providers/QueryClientProvider.jsx';
+import { Toaster } from '@/components/ui/toaster';
 
 function App() {
   const [copyFeedback, setCopyFeedback] = useState(false);
@@ -133,78 +135,79 @@ function App() {
   const shouldShowKongLockerSetup = isAuthenticated && !kongLockerCanister && !isCheckingKongLocker;
 
   return (
-    <div className="min-h-screen bg-executive-charcoal text-executive-lightGray">
-      {/* Executive letterhead gold trim line */}
-      <div className="h-1 bg-gradient-to-r from-transparent via-executive-gold to-transparent"></div>
+    <QueryClientProvider>
+      <div className="min-h-screen bg-executive-charcoal text-executive-lightGray">
+        {/* Executive letterhead gold trim line */}
+        <div className="h-1 bg-gradient-to-r from-transparent via-executive-gold to-transparent"></div>
 
-      <header className="border-b border-executive-mediumGray bg-executive-darkGray">
-        <div className="container mx-auto px-4 py-6 flex justify-between items-center">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-display text-executive-ivory tracking-wide">DAOPad</h1>
-            <div className="h-px bg-executive-gold w-16"></div>
-            <p className="text-executive-lightGray/80 font-serif text-sm uppercase tracking-widest">Token Governance Platform</p>
-            <p className="text-xs text-executive-lightGray/60 italic">Create treasuries and vote with your locked liquidity</p>
-          </div>
+        <header className="border-b border-executive-mediumGray bg-executive-darkGray">
+          <div className="container mx-auto px-4 py-6 flex justify-between items-center">
+            <div className="space-y-1">
+              <h1 className="text-3xl font-display text-executive-ivory tracking-wide">DAOPad</h1>
+              <div className="h-px bg-executive-gold w-16"></div>
+              <p className="text-executive-lightGray/80 font-serif text-sm uppercase tracking-widest">Token Governance Platform</p>
+              <p className="text-xs text-executive-lightGray/60 italic">Create treasuries and vote with your locked liquidity</p>
+            </div>
 
-          <div className="flex items-center gap-4">
-            {isAuthenticated ? (
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  {balanceLoading ? (
-                    <span className="text-sm text-muted-foreground">Loading balance...</span>
-                  ) : (
-                    <>
-                      <span className="text-sm font-mono text-executive-gold">ICP: {icpBalance}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => dispatch(fetchBalances(identity))}
-                        title="Refresh balance"
-                      >
-                        ↻
-                      </Button>
-                    </>
+            <div className="flex items-center gap-4">
+              {isAuthenticated ? (
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    {balanceLoading ? (
+                      <span className="text-sm text-muted-foreground">Loading balance...</span>
+                    ) : (
+                      <>
+                        <span className="text-sm font-mono text-executive-gold">ICP: {icpBalance}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => dispatch(fetchBalances(identity))}
+                          title="Refresh balance"
+                        >
+                          ↻
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-mono">{principal.slice(0, 5)}...{principal.slice(-4)}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={copyPrincipal}
+                      title="Copy principal"
+                    >
+                      {copyFeedback ? '✓' : '⧉'}
+                    </Button>
+                  </div>
+                  {kongLockerCanister && (
+                    <Badge className="bg-executive-mediumGray border-executive-gold/30 text-executive-goldLight" title={`Kong Locker: ${kongLockerCanister}`}>
+                      🔒 Connected
+                    </Badge>
                   )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-mono">{principal.slice(0, 5)}...{principal.slice(-4)}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={copyPrincipal}
-                    title="Copy principal"
-                  >
-                    {copyFeedback ? '✓' : '⧉'}
+                  <Button className="border-executive-gold/30 text-executive-goldLight hover:bg-executive-gold/10 hover:border-executive-gold" variant="outline" onClick={handleLogout}>
+                    Logout
                   </Button>
                 </div>
-                {kongLockerCanister && (
-                  <Badge className="bg-executive-mediumGray border-executive-gold/30 text-executive-goldLight" title={`Kong Locker: ${kongLockerCanister}`}>
-                    🔒 Connected
-                  </Badge>
-                )}
-                <Button className="border-executive-gold/30 text-executive-goldLight hover:bg-executive-gold/10 hover:border-executive-gold" variant="outline" onClick={handleLogout}>
-                  Logout
+              ) : (
+                <Button className="bg-executive-gold text-executive-charcoal hover:bg-executive-goldLight font-serif" onClick={handleLogin}>
+                  Connect with Internet Identity
                 </Button>
-              </div>
-            ) : (
-              <Button className="bg-executive-gold text-executive-charcoal hover:bg-executive-goldLight font-serif" onClick={handleLogin}>
-                Connect with Internet Identity
-              </Button>
-            )}
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Experimental Warning Banner */}
+        <div className="bg-yellow-50 border-b border-yellow-200">
+          <div className="container mx-auto px-4 py-3">
+            <Alert className="border-yellow-400 bg-transparent p-0 rounded-none">
+              <AlertDescription className="text-sm text-yellow-800">
+                <span className="font-semibold">⚠️ Experimental Product:</span> This platform is currently in testing. Feel free to explore and play around (everything's free!), but expect changes as we improve the system. No real funds are at risk during this experimental phase.
+              </AlertDescription>
+            </Alert>
           </div>
         </div>
-      </header>
-
-      {/* Experimental Warning Banner */}
-      <div className="bg-yellow-50 border-b border-yellow-200">
-        <div className="container mx-auto px-4 py-3">
-          <Alert className="border-yellow-400 bg-transparent p-0 rounded-none">
-            <AlertDescription className="text-sm text-yellow-800">
-              <span className="font-semibold">⚠️ Experimental Product:</span> This platform is currently in testing. Feel free to explore and play around (everything's free!), but expect changes as we improve the system. No real funds are at risk during this experimental phase.
-            </AlertDescription>
-          </Alert>
-        </div>
-      </div>
 
       <main className="container mx-auto px-4 py-8">
         {isAuthenticated ? (
@@ -297,6 +300,7 @@ function App() {
         )}
       </main>
 
+      <Toaster />
       <footer className="border-t border-executive-gold/20 mt-16 bg-executive-darkGray">
         <div className="container mx-auto px-4 py-6 text-center">
           <div className="h-px bg-executive-gold/30 w-32 mx-auto mb-4"></div>
@@ -307,7 +311,8 @@ function App() {
           </p>
         </div>
       </footer>
-    </div>
+      </div>
+    </QueryClientProvider>
   );
 }
 

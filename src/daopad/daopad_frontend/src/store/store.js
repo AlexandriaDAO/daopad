@@ -2,11 +2,13 @@ import { configureStore } from '@reduxjs/toolkit';
 import authReducer from '../features/auth/authSlice';
 import balanceReducer from '../state/balance/balanceSlice';
 import daoReducer from '../features/dao/daoSlice';
+import stationReducer from '../features/station/stationSlice';
 
 export const store = configureStore({
     reducer: {
         auth: authReducer,
         balance: balanceReducer,
         dao: daoReducer,
+        station: stationReducer,
     },
 });

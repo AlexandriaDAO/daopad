@@ -1,7 +1,7 @@
-use candid::{CandidType, Deserialize, Principal};
-use ic_cdk::{update, query};
 use crate::storage::state::{TOKEN_ORBIT_STATIONS, VOTING_THRESHOLDS};
 use crate::types::{StorablePrincipal, VotingThresholds};
+use candid::{CandidType, Deserialize, Principal};
+use ic_cdk::{query, update};
 
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub enum ProposalType {
@@ -30,7 +30,10 @@ pub fn set_voting_thresholds(
 ) -> Result<String, String> {
     // Verify the token has an associated Orbit Station
     TOKEN_ORBIT_STATIONS.with(|stations| {
-        if !stations.borrow().contains_key(&StorablePrincipal(token_canister_id)) {
+        if !stations
+            .borrow()
+            .contains_key(&StorablePrincipal(token_canister_id))
+        {
             return Err("No Orbit Station linked to this token".to_string());
         }
         Ok(())
@@ -55,19 +58,19 @@ pub fn set_voting_thresholds(
 
     // Store the thresholds
     VOTING_THRESHOLDS.with(|thresholds_map| {
-        thresholds_map.borrow_mut().insert(
-            StorablePrincipal(token_canister_id),
-            thresholds.clone()
-        );
+        thresholds_map
+            .borrow_mut()
+            .insert(StorablePrincipal(token_canister_id), thresholds.clone());
     });
 
-    Ok(format!("Voting thresholds updated for token {}", token_canister_id))
+    Ok(format!(
+        "Voting thresholds updated for token {}",
+        token_canister_id
+    ))
 }
 
 #[query]
-pub fn get_voting_thresholds(
-    token_canister_id: Principal,
-) -> Result<VotingThresholds, String> {
+pub fn get_voting_thresholds(token_canister_id: Principal) -> Result<VotingThresholds, String> {
     VOTING_THRESHOLDS.with(|thresholds_map| {
         thresholds_map
             .borrow()
@@ -83,12 +86,13 @@ pub fn get_default_voting_thresholds() -> VotingThresholds {
 }
 
 #[update]
-pub fn initialize_default_thresholds(
-    token_canister_id: Principal,
-) -> Result<String, String> {
+pub fn initialize_default_thresholds(token_canister_id: Principal) -> Result<String, String> {
     // Verify the token has an associated Orbit Station
     TOKEN_ORBIT_STATIONS.with(|stations| {
-        if !stations.borrow().contains_key(&StorablePrincipal(token_canister_id)) {
+        if !stations
+            .borrow()
+            .contains_key(&StorablePrincipal(token_canister_id))
+        {
             return Err("No Orbit Station linked to this token".to_string());
         }
         Ok(())
@@ -96,7 +100,9 @@ pub fn initialize_default_thresholds(
 
     // Check if thresholds already exist
     let exists = VOTING_THRESHOLDS.with(|thresholds_map| {
-        thresholds_map.borrow().contains_key(&StorablePrincipal(token_canister_id))
+        thresholds_map
+            .borrow()
+            .contains_key(&StorablePrincipal(token_canister_id))
     });
 
     if exists {
@@ -107,7 +113,7 @@ pub fn initialize_default_thresholds(
     VOTING_THRESHOLDS.with(|thresholds_map| {
         thresholds_map.borrow_mut().insert(
             StorablePrincipal(token_canister_id),
-            VotingThresholds::default()
+            VotingThresholds::default(),
         );
     });
 
@@ -120,8 +126,8 @@ pub fn get_proposal_config(
     proposal_type: ProposalType,
 ) -> Result<ProposalConfig, String> {
     // Get the voting thresholds for this token
-    let thresholds = get_voting_thresholds(token_canister_id)
-        .unwrap_or_else(|_| VotingThresholds::default());
+    let thresholds =
+        get_voting_thresholds(token_canister_id).unwrap_or_else(|_| VotingThresholds::default());
 
     // Determine the threshold based on proposal type
     let required_threshold = match proposal_type {
@@ -137,7 +143,7 @@ pub fn get_proposal_config(
     Ok(ProposalConfig {
         proposal_type,
         required_threshold,
-        voting_period_seconds: 7 * 24 * 60 * 60, // 7 days
+        voting_period_seconds: 7 * 24 * 60 * 60,   // 7 days
         execution_delay_seconds: 2 * 24 * 60 * 60, // 2 days
     })
 }
@@ -178,9 +184,7 @@ pub struct GovernanceStats {
 }
 
 #[query]
-pub fn get_governance_stats(
-    token_canister_id: Principal,
-) -> Result<GovernanceStats, String> {
+pub fn get_governance_stats(token_canister_id: Principal) -> Result<GovernanceStats, String> {
     // Get configured thresholds if any
     let configured_thresholds = VOTING_THRESHOLDS.with(|thresholds_map| {
         thresholds_map

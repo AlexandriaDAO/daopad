@@ -1,12 +1,11 @@
-use candid::{Principal, CandidType, Deserialize};
-use ic_cdk::update;
 use crate::storage::state::TOKEN_ORBIT_STATIONS;
-use crate::types::StorablePrincipal;
 use crate::types::orbit::{
-    RequestOperationInput, CreateRequestInput,
-    RequestExecutionSchedule, CreateRequestResult, MeResult,
-    UserPrivilege, EditUserOperationInput, Error
+    CreateRequestInput, CreateRequestResult, EditUserOperationInput, Error, MeResult,
+    RequestExecutionSchedule, RequestOperationInput, UserPrivilege,
 };
+use crate::types::StorablePrincipal;
+use candid::{CandidType, Deserialize, Principal};
+use ic_cdk::update;
 
 // Types for dynamic group ID resolution
 #[derive(CandidType, Deserialize)]
@@ -15,7 +14,7 @@ pub struct OrbitListGroupsInput {
     pub paginate: Option<PaginationInput>,
 }
 
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct PaginationInput {
     pub offset: Option<u64>,
     pub limit: Option<u16>,
@@ -56,11 +55,10 @@ pub struct GroupIds {
 
 // Helper function to get actual group IDs for this Orbit Station
 #[update]
-pub async fn get_actual_group_ids(
-    token_canister_id: Principal,
-) -> Result<GroupIds, String> {
+pub async fn get_actual_group_ids(token_canister_id: Principal) -> Result<GroupIds, String> {
     let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations.borrow()
+        stations
+            .borrow()
             .get(&StorablePrincipal(token_canister_id))
             .map(|s| s.0)
             .ok_or("No Orbit Station linked to this token".to_string())
@@ -73,51 +71,48 @@ pub async fn get_actual_group_ids(
         (OrbitListGroupsInput {
             search_term: None,
             paginate: None,
-        },)
-    ).await;
+        },),
+    )
+    .await;
 
     match result {
-        Ok((response,)) => {
-            match response {
-                OrbitListGroupsResponse::Ok(data) => {
-                    let mut admin_id = None;
-                    let mut operator_id = None;
+        Ok((response,)) => match response {
+            OrbitListGroupsResponse::Ok(data) => {
+                let mut admin_id = None;
+                let mut operator_id = None;
 
-                    for group in data.user_groups {
-                        if group.name == "Admin" {
-                            admin_id = Some(group.id.clone());
-                        } else if group.name == "Operator" {
-                            operator_id = Some(group.id.clone());
-                        }
+                for group in data.user_groups {
+                    if group.name == "Admin" {
+                        admin_id = Some(group.id.clone());
+                    } else if group.name == "Operator" {
+                        operator_id = Some(group.id.clone());
                     }
-
-                    Ok(GroupIds {
-                        admin_group_id: admin_id.ok_or("Admin group not found")?,
-                        operator_group_id: operator_id.ok_or("Operator group not found")?,
-                    })
-                },
-                OrbitListGroupsResponse::Err(e) => {
-                    Err(format!("Failed to list groups: {:?}", e))
                 }
+
+                Ok(GroupIds {
+                    admin_group_id: admin_id.ok_or("Admin group not found")?,
+                    operator_group_id: operator_id.ok_or("Operator group not found")?,
+                })
             }
+            OrbitListGroupsResponse::Err(e) => Err(format!("Failed to list groups: {:?}", e)),
         },
-        Err((code, msg)) => {
-            Err(format!("Failed to call Orbit Station: {:?} - {}", code, msg))
-        }
+        Err((code, msg)) => Err(format!(
+            "Failed to call Orbit Station: {:?} - {}",
+            code, msg
+        )),
     }
 }
 
 // Phase 1: Permission Management Functions
 
 #[update]
-pub async fn grant_self_permissions(
-    token_canister_id: Principal,
-) -> Result<String, String> {
+pub async fn grant_self_permissions(token_canister_id: Principal) -> Result<String, String> {
     let backend_principal = ic_cdk::api::id();
 
     // Get the Orbit Station ID for this token
     let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations.borrow()
+        stations
+            .borrow()
             .get(&StorablePrincipal(token_canister_id))
             .map(|s| s.0)
             .ok_or("No Orbit Station linked to this token".to_string())
@@ -142,34 +137,31 @@ pub async fn grant_self_permissions(
 }
 
 #[update]
-pub async fn verify_permissions(
-    token_canister_id: Principal,
-) -> Result<PermissionStatus, String> {
+pub async fn verify_permissions(token_canister_id: Principal) -> Result<PermissionStatus, String> {
     // Get the Orbit Station ID for this token
     let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations.borrow()
+        stations
+            .borrow()
             .get(&StorablePrincipal(token_canister_id))
             .map(|s| s.0)
             .ok_or("No Orbit Station linked to this token".to_string())
     })?;
 
     // Call Orbit Station's me() function to get current user info and privileges
-    let result: Result<(MeResult,), _> = ic_cdk::call(
-        station_id,
-        "me",
-        ()
-    ).await;
+    let result: Result<(MeResult,), _> = ic_cdk::call(station_id, "me", ()).await;
 
     match result {
         Ok((MeResult::Ok { me, privileges },)) => {
             // Get actual group IDs for this Orbit Station
-            let group_ids = get_actual_group_ids(token_canister_id).await.unwrap_or_else(|_| {
-                // Fallback to common defaults if we can't fetch them
-                GroupIds {
-                    admin_group_id: "00000000-0000-4000-8000-000000000000".to_string(),
-                    operator_group_id: "00000000-0000-4000-8000-000000000001".to_string(),
-                }
-            });
+            let group_ids = get_actual_group_ids(token_canister_id)
+                .await
+                .unwrap_or_else(|_| {
+                    // Fallback to common defaults if we can't fetch them
+                    GroupIds {
+                        admin_group_id: "00000000-0000-4000-8000-000000000000".to_string(),
+                        operator_group_id: "00000000-0000-4000-8000-000000000001".to_string(),
+                    }
+                });
 
             // Check if we're in the admin group using the actual group ID
             let is_admin = me.groups.iter().any(|g| g.id == group_ids.admin_group_id);
@@ -187,38 +179,38 @@ pub async fn verify_permissions(
                 groups: me.groups.into_iter().map(|g| g.name).collect(),
                 privileges: privileges.into_iter().map(|p| format!("{:?}", p)).collect(),
             })
-        },
-        Ok((MeResult::Err(e),)) => {
-            Err(format!("Failed to get user info: {:?}", e))
-        },
-        Err((code, msg)) => {
-            Err(format!("Failed to call Orbit Station: {:?} - {}", code, msg))
         }
+        Ok((MeResult::Err(e),)) => Err(format!("Failed to get user info: {:?}", e)),
+        Err((code, msg)) => Err(format!(
+            "Failed to call Orbit Station: {:?} - {}",
+            code, msg
+        )),
     }
 }
 
 // Phase 2: Admin Management Functions
 
 #[update]
-pub async fn list_all_admins(
-    token_canister_id: Principal,
-) -> Result<Vec<AdminInfo>, String> {
+pub async fn list_all_admins(token_canister_id: Principal) -> Result<Vec<AdminInfo>, String> {
     // Get the Orbit Station ID for this token
     let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations.borrow()
+        stations
+            .borrow()
             .get(&StorablePrincipal(token_canister_id))
             .map(|s| s.0)
             .ok_or("No Orbit Station linked to this token".to_string())
     })?;
 
     // Get actual group IDs for this Orbit Station
-    let group_ids = get_actual_group_ids(token_canister_id).await.unwrap_or_else(|_| {
-        // Fallback to common defaults if we can't fetch them
-        GroupIds {
-            admin_group_id: "00000000-0000-4000-8000-000000000000".to_string(),
-            operator_group_id: "00000000-0000-4000-8000-000000000001".to_string(),
-        }
-    });
+    let group_ids = get_actual_group_ids(token_canister_id)
+        .await
+        .unwrap_or_else(|_| {
+            // Fallback to common defaults if we can't fetch them
+            GroupIds {
+                admin_group_id: "00000000-0000-4000-8000-000000000000".to_string(),
+                operator_group_id: "00000000-0000-4000-8000-000000000001".to_string(),
+            }
+        });
 
     // Use the existing list_users functionality with actual admin group ID
     let list_input = crate::api::orbit_users::ListUsersInput {
@@ -228,32 +220,34 @@ pub async fn list_all_admins(
         paginate: None,
     };
 
-    let result: Result<(crate::api::orbit_users::ListUsersResult,), _> = ic_cdk::call(
-        station_id,
-        "list_users",
-        (list_input,)
-    ).await;
+    let result: Result<(crate::api::orbit_users::ListUsersResult,), _> =
+        ic_cdk::call(station_id, "list_users", (list_input,)).await;
 
     match result {
         Ok((crate::api::orbit_users::ListUsersResult::Ok(response),)) => {
-            let admins: Vec<AdminInfo> = response.users.into_iter().map(|u| {
-                let is_backend = u.identities.contains(&ic_cdk::api::id());
-                AdminInfo {
-                    id: u.id,
-                    name: u.name,
-                    identities: u.identities,
-                    status: format!("{:?}", u.status),
-                    is_daopad_backend: is_backend,
-                }
-            }).collect();
+            let admins: Vec<AdminInfo> = response
+                .users
+                .into_iter()
+                .map(|u| {
+                    let is_backend = u.identities.contains(&ic_cdk::api::id());
+                    AdminInfo {
+                        id: u.id,
+                        name: u.name,
+                        identities: u.identities,
+                        status: format!("{:?}", u.status),
+                        is_daopad_backend: is_backend,
+                    }
+                })
+                .collect();
             Ok(admins)
-        },
+        }
         Ok((crate::api::orbit_users::ListUsersResult::Err(e),)) => {
             Err(format!("Failed to list admins: {:?}", e))
-        },
-        Err((code, msg)) => {
-            Err(format!("Failed to call Orbit Station: {:?} - {}", code, msg))
         }
+        Err((code, msg)) => Err(format!(
+            "Failed to call Orbit Station: {:?} - {}",
+            code, msg
+        )),
     }
 }
 
@@ -264,7 +258,8 @@ pub async fn remove_admin_role(
 ) -> Result<String, String> {
     // Get the Orbit Station ID for this token
     let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations.borrow()
+        stations
+            .borrow()
             .get(&StorablePrincipal(token_canister_id))
             .map(|s| s.0)
             .ok_or("No Orbit Station linked to this token".to_string())
@@ -272,7 +267,8 @@ pub async fn remove_admin_role(
 
     // Safety check: Don't remove ourselves
     let admins = list_all_admins(token_canister_id).await?;
-    let target_admin = admins.iter()
+    let target_admin = admins
+        .iter()
         .find(|a| a.id == user_id)
         .ok_or("User not found in admin list")?;
 
@@ -299,22 +295,18 @@ pub async fn remove_admin_role(
     };
 
     // Call Orbit Station to create the request
-    let result: Result<(CreateRequestResult,), _> = ic_cdk::call(
-        station_id,
-        "create_request",
-        (request_input,)
-    ).await;
+    let result: Result<(CreateRequestResult,), _> =
+        ic_cdk::call(station_id, "create_request", (request_input,)).await;
 
     match result {
-        Ok((CreateRequestResult::Ok(response),)) => {
-            Ok(response.request.id)
-        },
+        Ok((CreateRequestResult::Ok(response),)) => Ok(response.request.id),
         Ok((CreateRequestResult::Err(e),)) => {
             Err(format!("Failed to create remove admin request: {}", e))
-        },
-        Err((code, msg)) => {
-            Err(format!("Failed to call Orbit Station: {:?} - {}", code, msg))
         }
+        Err((code, msg)) => Err(format!(
+            "Failed to call Orbit Station: {:?} - {}",
+            code, msg
+        )),
     }
 }
 
@@ -325,20 +317,23 @@ pub async fn downgrade_to_operator(
 ) -> Result<String, String> {
     // Get the Orbit Station ID for this token
     let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations.borrow()
+        stations
+            .borrow()
             .get(&StorablePrincipal(token_canister_id))
             .map(|s| s.0)
             .ok_or("No Orbit Station linked to this token".to_string())
     })?;
 
     // Get actual group IDs for this Orbit Station
-    let group_ids = get_actual_group_ids(token_canister_id).await.unwrap_or_else(|_| {
-        // Fallback to common defaults if we can't fetch them
-        GroupIds {
-            admin_group_id: "00000000-0000-4000-8000-000000000000".to_string(),
-            operator_group_id: "00000000-0000-4000-8000-000000000001".to_string(),
-        }
-    });
+    let group_ids = get_actual_group_ids(token_canister_id)
+        .await
+        .unwrap_or_else(|_| {
+            // Fallback to common defaults if we can't fetch them
+            GroupIds {
+                admin_group_id: "00000000-0000-4000-8000-000000000000".to_string(),
+                operator_group_id: "00000000-0000-4000-8000-000000000001".to_string(),
+            }
+        });
 
     // Create edit user operation to set as operator only
     let edit_user_operation = EditUserOperationInput {
@@ -359,31 +354,25 @@ pub async fn downgrade_to_operator(
     };
 
     // Call Orbit Station to create the request
-    let result: Result<(CreateRequestResult,), _> = ic_cdk::call(
-        station_id,
-        "create_request",
-        (request_input,)
-    ).await;
+    let result: Result<(CreateRequestResult,), _> =
+        ic_cdk::call(station_id, "create_request", (request_input,)).await;
 
     match result {
-        Ok((CreateRequestResult::Ok(response),)) => {
-            Ok(response.request.id)
-        },
+        Ok((CreateRequestResult::Ok(response),)) => Ok(response.request.id),
         Ok((CreateRequestResult::Err(e),)) => {
             Err(format!("Failed to create downgrade request: {}", e))
-        },
-        Err((code, msg)) => {
-            Err(format!("Failed to call Orbit Station: {:?} - {}", code, msg))
         }
+        Err((code, msg)) => Err(format!(
+            "Failed to call Orbit Station: {:?} - {}",
+            code, msg
+        )),
     }
 }
 
 // Phase 3: Verification Functions
 
 #[update]
-pub async fn verify_sole_admin(
-    token_canister_id: Principal,
-) -> Result<bool, String> {
+pub async fn verify_sole_admin(token_canister_id: Principal) -> Result<bool, String> {
     let admins = list_all_admins(token_canister_id).await?;
 
     // Check if DAOPad backend is the only admin
@@ -398,9 +387,7 @@ pub async fn verify_sole_admin(
 }
 
 #[update]
-pub async fn get_admin_count(
-    token_canister_id: Principal,
-) -> Result<AdminCount, String> {
+pub async fn get_admin_count(token_canister_id: Principal) -> Result<AdminCount, String> {
     let admins = list_all_admins(token_canister_id).await?;
 
     let daopad_admins = admins.iter().filter(|a| a.is_daopad_backend).count() as u32;

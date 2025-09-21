@@ -1,11 +1,11 @@
-use candid::Principal;
-use ic_cdk::{update, query};
 use crate::storage::state::TOKEN_ORBIT_STATIONS;
-use crate::types::StorablePrincipal;
 use crate::types::orbit::{
-    AddUserOperationInput, EditUserOperationInput, UserStatus, RequestOperationInput,
-    CreateRequestInput, RequestExecutionSchedule, CreateRequestResult
+    AddUserOperationInput, CreateRequestInput, CreateRequestResult, EditUserOperationInput,
+    RequestExecutionSchedule, RequestOperationInput, UserStatus,
 };
+use crate::types::StorablePrincipal;
+use candid::Principal;
+use ic_cdk::{query, update};
 
 // Note: Group UUIDs are instance-specific and should be fetched dynamically
 // These are common defaults but may differ between Orbit Station instances
@@ -21,7 +21,8 @@ pub async fn add_user_to_orbit(
 ) -> Result<String, String> {
     // Get the Orbit Station ID for this token
     let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations.borrow()
+        stations
+            .borrow()
             .get(&StorablePrincipal(token_canister_id))
             .map(|s| s.0)
             .ok_or("No Orbit Station linked to this token".to_string())
@@ -44,11 +45,8 @@ pub async fn add_user_to_orbit(
     };
 
     // Call Orbit Station to create the request
-    let result: Result<(CreateRequestResult,), _> = ic_cdk::call(
-        station_id,
-        "create_request",
-        (request_input,)
-    ).await;
+    let result: Result<(CreateRequestResult,), _> =
+        ic_cdk::call(station_id, "create_request", (request_input,)).await;
 
     match result {
         Ok((CreateRequestResult::Ok(response),)) => {
@@ -70,7 +68,8 @@ pub async fn remove_user_from_orbit(
 ) -> Result<String, String> {
     // Get the Orbit Station ID for this token
     let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations.borrow()
+        stations
+            .borrow()
             .get(&StorablePrincipal(token_canister_id))
             .map(|s| s.0)
             .ok_or("No Orbit Station linked to this token".to_string())
@@ -95,11 +94,8 @@ pub async fn remove_user_from_orbit(
     };
 
     // Call Orbit Station to create the request
-    let result: Result<(CreateRequestResult,), _> = ic_cdk::call(
-        station_id,
-        "create_request",
-        (request_input,)
-    ).await;
+    let result: Result<(CreateRequestResult,), _> =
+        ic_cdk::call(station_id, "create_request", (request_input,)).await;
 
     match result {
         Ok((CreateRequestResult::Ok(response),)) => {
@@ -121,7 +117,8 @@ pub async fn list_orbit_user_groups(
 ) -> Result<Vec<UserGroupInfo>, String> {
     // Get the Orbit Station ID for this token
     let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations.borrow()
+        stations
+            .borrow()
             .get(&StorablePrincipal(token_canister_id))
             .map(|s| s.0)
             .ok_or("No Orbit Station linked to this token".to_string())
@@ -134,26 +131,26 @@ pub async fn list_orbit_user_groups(
     };
 
     // Call Orbit Station to list user groups
-    let result: Result<(ListUserGroupsResult,), _> = ic_cdk::call(
-        station_id,
-        "list_user_groups",
-        (list_input,)
-    ).await;
+    let result: Result<(ListUserGroupsResult,), _> =
+        ic_cdk::call(station_id, "list_user_groups", (list_input,)).await;
 
     match result {
         Ok((ListUserGroupsResult::Ok(response),)) => {
-            let groups: Vec<UserGroupInfo> = response.groups.into_iter().map(|g| UserGroupInfo {
-                id: g.id,
-                name: g.name,
-            }).collect();
+            let groups: Vec<UserGroupInfo> = response
+                .groups
+                .into_iter()
+                .map(|g| UserGroupInfo {
+                    id: g.id,
+                    name: g.name,
+                })
+                .collect();
             Ok(groups)
-        },
-        Ok((ListUserGroupsResult::Err(e),)) => {
-            Err(format!("Failed to list user groups: {:?}", e))
-        },
-        Err((code, msg)) => {
-            Err(format!("Failed to call Orbit Station: {:?} - {}", code, msg))
         }
+        Ok((ListUserGroupsResult::Err(e),)) => Err(format!("Failed to list user groups: {:?}", e)),
+        Err((code, msg)) => Err(format!(
+            "Failed to call Orbit Station: {:?} - {}",
+            code, msg
+        )),
     }
 }
 
@@ -175,12 +172,11 @@ pub fn get_predefined_groups() -> Vec<UserGroupInfo> {
 
 // Helper function to list users in an Orbit Station
 #[update]
-pub async fn list_orbit_users(
-    token_canister_id: Principal,
-) -> Result<Vec<UserInfo>, String> {
+pub async fn list_orbit_users(token_canister_id: Principal) -> Result<Vec<UserInfo>, String> {
     // Get the Orbit Station ID for this token
     let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations.borrow()
+        stations
+            .borrow()
             .get(&StorablePrincipal(token_canister_id))
             .map(|s| s.0)
             .ok_or("No Orbit Station linked to this token".to_string())
@@ -195,29 +191,29 @@ pub async fn list_orbit_users(
     };
 
     // Call Orbit Station to list users
-    let result: Result<(ListUsersResult,), _> = ic_cdk::call(
-        station_id,
-        "list_users",
-        (list_input,)
-    ).await;
+    let result: Result<(ListUsersResult,), _> =
+        ic_cdk::call(station_id, "list_users", (list_input,)).await;
 
     match result {
         Ok((ListUsersResult::Ok(response),)) => {
-            let users: Vec<UserInfo> = response.users.into_iter().map(|u| UserInfo {
-                id: u.id,
-                name: u.name,
-                identities: u.identities,
-                status: format!("{:?}", u.status),
-                groups: u.groups.into_iter().map(|g| g.name).collect(),
-            }).collect();
+            let users: Vec<UserInfo> = response
+                .users
+                .into_iter()
+                .map(|u| UserInfo {
+                    id: u.id,
+                    name: u.name,
+                    identities: u.identities,
+                    status: format!("{:?}", u.status),
+                    groups: u.groups.into_iter().map(|g| g.name).collect(),
+                })
+                .collect();
             Ok(users)
-        },
-        Ok((ListUsersResult::Err(e),)) => {
-            Err(format!("Failed to list users: {:?}", e))
-        },
-        Err((code, msg)) => {
-            Err(format!("Failed to call Orbit Station: {:?} - {}", code, msg))
         }
+        Ok((ListUsersResult::Err(e),)) => Err(format!("Failed to list users: {:?}", e)),
+        Err((code, msg)) => Err(format!(
+            "Failed to call Orbit Station: {:?} - {}",
+            code, msg
+        )),
     }
 }
 
@@ -244,13 +240,7 @@ pub struct ListUsersInput {
     pub search_term: Option<String>,
     pub statuses: Option<Vec<UserStatus>>,
     pub groups: Option<Vec<String>>,
-    pub paginate: Option<PaginationInput>,
-}
-
-#[derive(candid::CandidType, candid::Deserialize)]
-pub struct PaginationInput {
-    pub offset: Option<u64>,
-    pub limit: Option<u64>,
+    pub paginate: Option<crate::api::dao_transition::PaginationInput>,
 }
 
 #[derive(candid::CandidType, candid::Deserialize)]
@@ -293,7 +283,7 @@ pub enum ListUsersResult {
 #[derive(candid::CandidType, candid::Deserialize)]
 pub struct ListUserGroupsInput {
     pub search_term: Option<String>,
-    pub paginate: Option<PaginationInput>,
+    pub paginate: Option<crate::api::dao_transition::PaginationInput>,
 }
 
 #[derive(candid::CandidType, candid::Deserialize)]
@@ -303,7 +293,6 @@ pub struct ListUserGroupsResponse {
     pub total: u64,
     pub privileges: Vec<UserGroupCallerPrivilegesDTO>,
 }
-
 
 #[derive(candid::CandidType, candid::Deserialize)]
 pub struct UserGroupCallerPrivilegesDTO {

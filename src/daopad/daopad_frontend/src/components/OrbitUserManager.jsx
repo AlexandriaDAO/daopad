@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Principal } from '@dfinity/principal';
 import { DAOPadBackendService } from '../services/daopadBackend';
+import { useActiveStation } from '../hooks/useActiveStation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import OrbitStationPlaceholder from './orbit/OrbitStationPlaceholder';
 import {
   Table,
   TableBody,
@@ -35,6 +37,7 @@ import {
 } from 'lucide-react';
 
 const OrbitUserManager = ({ token, identity, orbitStation }) => {
+  const activeStation = useActiveStation(token?.canister_id);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -210,7 +213,27 @@ const OrbitUserManager = ({ token, identity, orbitStation }) => {
   };
 
   if (!orbitStation?.station_id) {
-    return null;
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Orbit Station Members
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <OrbitStationPlaceholder
+            tokenSymbol={token?.symbol ?? 'this token'}
+            status={activeStation.status}
+            error={activeStation.error}
+          >
+            <p className="mt-2 text-xs text-executive-lightGray/60">
+              Link a treasury to manage membership, roles, and permissions directly from DAOPad.
+            </p>
+          </OrbitStationPlaceholder>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (

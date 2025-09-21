@@ -14,9 +14,10 @@ const TreasuryShowcase = () => {
   const filteredTreasuries = useMemo(() => {
     if (!treasuries || treasuries.length === 0) return [];
 
-    const filtered = searchTerm
-      ? treasuries.filter(([tokenId]) =>
-          tokenId.toString().toLowerCase().includes(searchTerm.toLowerCase()))
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const filtered = normalizedSearch
+      ? treasuries.filter(({ tokenId }) =>
+          (tokenId || '').toLowerCase().includes(normalizedSearch))
       : treasuries;
 
     return filtered.slice(0, 10);
@@ -49,9 +50,9 @@ const TreasuryShowcase = () => {
           </p>
         ) : filteredTreasuries.length > 0 ? (
           <div className="space-y-2 max-h-64 overflow-y-auto">
-            {filteredTreasuries.map(([tokenId, stationId]) => (
+            {filteredTreasuries.map(({ tokenId, stationId }) => (
               <div
-                key={tokenId.toString()}
+                key={tokenId}
                 className="flex justify-between items-center p-2
                           bg-executive-darkGray/30 rounded
                           border border-executive-gold/10
@@ -59,10 +60,10 @@ const TreasuryShowcase = () => {
               >
                 <div className="flex flex-col">
                   <span className="text-xs font-mono text-executive-lightGray">
-                    Token: {tokenId.toString().slice(0, 8)}...{tokenId.toString().slice(-4)}
+                    Token: {tokenId.slice(0, 8)}...{tokenId.slice(-4)}
                   </span>
                   <span className="text-xs text-executive-lightGray/40">
-                    Station: {stationId.toString().slice(0, 8)}...
+                    Station: {stationId.slice(0, 8)}...
                   </span>
                 </div>
                 <Badge className="bg-executive-gold/20 text-executive-goldLight

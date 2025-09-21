@@ -1,9 +1,12 @@
+use crate::proposals::orbit_link::OrbitLinkProposal;
+use crate::storage::memory::{
+    Memory, KONG_LOCKER_PRINCIPALS_MEM_ID, MEMORY_MANAGER, ORBIT_STATIONS_MEM_ID,
+    STATION_TO_TOKEN_MEM_ID,
+};
+use crate::types::{StorablePrincipal, VotingThresholds};
 use ic_stable_structures::StableBTreeMap;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use crate::storage::memory::{Memory, MEMORY_MANAGER, KONG_LOCKER_PRINCIPALS_MEM_ID, ORBIT_STATIONS_MEM_ID, STATION_TO_TOKEN_MEM_ID};
-use crate::types::{StorablePrincipal, VotingThresholds};
-use crate::proposals::orbit_link::OrbitLinkProposal;
 
 thread_local! {
     pub static KONG_LOCKER_PRINCIPALS: RefCell<StableBTreeMap<StorablePrincipal, StorablePrincipal, Memory>> = RefCell::new(

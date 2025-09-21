@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { DAOPadBackendService } from '../services/daopadBackend';
 import { KongLockerService } from '../services/kongLockerService';
 import TokenTabContent from './TokenTabContent';
@@ -99,6 +99,18 @@ const TokenTabs = ({ identity }) => {
     }
   };
 
+  const showOrbitDebugPanels = import.meta.env.VITE_SHOW_ORBIT_DEBUG === 'true';
+
+  const OrbitStationTest = useMemo(() => {
+    if (!showOrbitDebugPanels) return null;
+    return React.lazy(() => import('./OrbitStationTest'));
+  }, [showOrbitDebugPanels]);
+
+  const ReactQueryDemo = useMemo(() => {
+    if (!showOrbitDebugPanels) return null;
+    return React.lazy(() => import('./ReactQueryDemo'));
+  }, [showOrbitDebugPanels]);
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -165,6 +177,23 @@ const TokenTabs = ({ identity }) => {
       <div>
         <h2 className="text-3xl font-display text-executive-ivory">Token Governance</h2>
       </div>
+
+      {showOrbitDebugPanels && OrbitStationTest && ReactQueryDemo && (
+        <Suspense
+          fallback={(
+            <Card className="bg-executive-darkGray border-executive-gold/20">
+              <CardContent className="py-12 text-center text-sm text-executive-lightGray">
+                Loading developer tools…
+              </CardContent>
+            </Card>
+          )}
+        >
+          <div className="grid lg:grid-cols-2 gap-6">
+            <OrbitStationTest />
+            <ReactQueryDemo />
+          </div>
+        </Suspense>
+      )}
 
       <Card className="bg-executive-darkGray border-executive-gold/20">
         <CardContent className="pt-6">

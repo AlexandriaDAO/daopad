@@ -1,9 +1,9 @@
+use crate::kong_locker::voting::get_user_voting_power_for_token;
+use crate::storage::state::{ORBIT_PROPOSALS, STATION_TO_TOKEN, TOKEN_ORBIT_STATIONS};
+use crate::types::StorablePrincipal;
 use candid::{CandidType, Deserialize, Principal};
 use ic_cdk::api::time;
 use std::collections::BTreeSet;
-use crate::storage::state::{TOKEN_ORBIT_STATIONS, ORBIT_PROPOSALS, STATION_TO_TOKEN};
-use crate::types::StorablePrincipal;
-use crate::kong_locker::voting::get_user_voting_power_for_token;
 
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct OrbitLinkProposal {
@@ -12,10 +12,10 @@ pub struct OrbitLinkProposal {
     pub station_id: Principal,
     pub proposer: Principal,
     pub created_at: u64,
-    pub expires_at: u64,  // 7 days from creation
-    pub yes_votes: u64,   // Weighted by voting power
-    pub no_votes: u64,    // Weighted by voting power
-    pub total_voting_power: u64,  // Total VP for this token
+    pub expires_at: u64,         // 7 days from creation
+    pub yes_votes: u64,          // Weighted by voting power
+    pub no_votes: u64,           // Weighted by voting power
+    pub total_voting_power: u64, // Total VP for this token
     pub voters: BTreeSet<Principal>,
     pub status: ProposalStatus,
 }
@@ -45,21 +45,25 @@ pub async fn propose_orbit_link(
     if proposer_power < MINIMUM_VP_FOR_PROPOSAL {
         return Err(format!(
             "Insufficient voting power to create proposal. You have {} VP but need at least {} VP",
-            proposer_power,
-            MINIMUM_VP_FOR_PROPOSAL
+            proposer_power, MINIMUM_VP_FOR_PROPOSAL
         ));
     }
 
     // 2. Check no existing station for token in TOKEN_ORBIT_STATIONS
     if TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations.borrow().contains_key(&StorablePrincipal(token_canister_id))
+        stations
+            .borrow()
+            .contains_key(&StorablePrincipal(token_canister_id))
     }) {
         return Err("An Orbit Station is already linked to this token".to_string());
     }
 
     // 3. CRITICAL SECURITY CHECK: Ensure station is not already linked to another token
     if let Some(existing_token) = STATION_TO_TOKEN.with(|stations| {
-        stations.borrow().get(&StorablePrincipal(station_id)).map(|t| t.0)
+        stations
+            .borrow()
+            .get(&StorablePrincipal(station_id))
+            .map(|t| t.0)
     }) {
         return Err(format!(
             "This Orbit Station is already linked to another token ({}). Each station can only manage one token's treasury.",
@@ -69,7 +73,9 @@ pub async fn propose_orbit_link(
 
     // 4. Check no active proposal for token in ORBIT_PROPOSALS
     if ORBIT_PROPOSALS.with(|proposals| {
-        proposals.borrow().contains_key(&StorablePrincipal(token_canister_id))
+        proposals
+            .borrow()
+            .contains_key(&StorablePrincipal(token_canister_id))
     }) {
         return Err("An active proposal already exists for this token".to_string());
     }
@@ -105,19 +111,15 @@ pub async fn propose_orbit_link(
 
     // Store the proposal
     ORBIT_PROPOSALS.with(|proposals| {
-        proposals.borrow_mut().insert(
-            StorablePrincipal(token_canister_id),
-            proposal
-        );
+        proposals
+            .borrow_mut()
+            .insert(StorablePrincipal(token_canister_id), proposal);
     });
 
     Ok(proposal_id)
 }
 
-pub async fn vote_on_proposal(
-    proposal_id: u64,
-    vote: bool,
-) -> Result<(), String> {
+pub async fn vote_on_proposal(proposal_id: u64, vote: bool) -> Result<(), String> {
     let voter = ic_cdk::caller();
 
     if voter == Principal::anonymous() {
@@ -126,7 +128,8 @@ pub async fn vote_on_proposal(
 
     // Find the proposal by ID
     let (token_canister_id, mut proposal) = ORBIT_PROPOSALS.with(|proposals| {
-        proposals.borrow()
+        proposals
+            .borrow()
             .iter()
             .find(|(_, p)| p.id == proposal_id)
             .map(|(k, v)| (k.0, v.clone()))
@@ -144,10 +147,9 @@ pub async fn vote_on_proposal(
         // Mark as expired
         proposal.status = ProposalStatus::Expired;
         ORBIT_PROPOSALS.with(|proposals| {
-            proposals.borrow_mut().insert(
-                StorablePrincipal(token_canister_id),
-                proposal.clone()
-            );
+            proposals
+                .borrow_mut()
+                .insert(StorablePrincipal(token_canister_id), proposal.clone());
         });
         return Err("Proposal has expired".to_string());
     }
@@ -177,18 +179,27 @@ pub async fn vote_on_proposal(
     if proposal.yes_votes > (proposal.total_voting_power / 2) {
         // CRITICAL: Final check before approval - ensure station hasn't been taken by another proposal
         if let Some(existing_token) = STATION_TO_TOKEN.with(|stations| {
-            stations.borrow().get(&StorablePrincipal(proposal.station_id)).map(|t| t.0)
+            stations
+                .borrow()
+                .get(&StorablePrincipal(proposal.station_id))
+                .map(|t| t.0)
         }) {
             // Station was taken by another proposal that approved first - reject this one
             proposal.status = ProposalStatus::Rejected;
 
             // Remove from ORBIT_PROPOSALS
             ORBIT_PROPOSALS.with(|proposals| {
-                proposals.borrow_mut().remove(&StorablePrincipal(token_canister_id));
+                proposals
+                    .borrow_mut()
+                    .remove(&StorablePrincipal(token_canister_id));
             });
 
-            ic_cdk::println!("Proposal {} auto-rejected: Station {} already taken by token {}",
-                proposal_id, proposal.station_id, existing_token);
+            ic_cdk::println!(
+                "Proposal {} auto-rejected: Station {} already taken by token {}",
+                proposal_id,
+                proposal.station_id,
+                existing_token
+            );
 
             return Err(format!(
                 "Station {} was already claimed by another token ({}). Proposal has been rejected.",
@@ -202,7 +213,7 @@ pub async fn vote_on_proposal(
         TOKEN_ORBIT_STATIONS.with(|stations| {
             stations.borrow_mut().insert(
                 StorablePrincipal(token_canister_id),
-                StorablePrincipal(proposal.station_id)
+                StorablePrincipal(proposal.station_id),
             );
         });
 
@@ -210,34 +221,41 @@ pub async fn vote_on_proposal(
         STATION_TO_TOKEN.with(|stations| {
             stations.borrow_mut().insert(
                 StorablePrincipal(proposal.station_id),
-                StorablePrincipal(token_canister_id)
+                StorablePrincipal(token_canister_id),
             );
         });
 
         // Remove from ORBIT_PROPOSALS (proposal completed)
         ORBIT_PROPOSALS.with(|proposals| {
-            proposals.borrow_mut().remove(&StorablePrincipal(token_canister_id));
+            proposals
+                .borrow_mut()
+                .remove(&StorablePrincipal(token_canister_id));
         });
 
-        ic_cdk::println!("Proposal {} approved! Station {} linked to token {}",
-            proposal_id, proposal.station_id, token_canister_id);
+        ic_cdk::println!(
+            "Proposal {} approved! Station {} linked to token {}",
+            proposal_id,
+            proposal.station_id,
+            token_canister_id
+        );
     } else if proposal.no_votes > (proposal.total_voting_power / 2) {
         // If no_votes exceed 50%, reject the proposal
         proposal.status = ProposalStatus::Rejected;
 
         // Remove from ORBIT_PROPOSALS
         ORBIT_PROPOSALS.with(|proposals| {
-            proposals.borrow_mut().remove(&StorablePrincipal(token_canister_id));
+            proposals
+                .borrow_mut()
+                .remove(&StorablePrincipal(token_canister_id));
         });
 
         ic_cdk::println!("Proposal {} rejected", proposal_id);
     } else {
         // Still active, update the proposal
         ORBIT_PROPOSALS.with(|proposals| {
-            proposals.borrow_mut().insert(
-                StorablePrincipal(token_canister_id),
-                proposal
-            );
+            proposals
+                .borrow_mut()
+                .insert(StorablePrincipal(token_canister_id), proposal);
         });
     }
 
@@ -250,11 +268,7 @@ async fn verify_backend_is_admin(station_id: Principal) -> Result<bool, String> 
     let backend_id = ic_cdk::id();
 
     // Call Orbit Station's me() method to check our privileges
-    let result: Result<(MeResult,), _> = ic_cdk::call(
-        station_id,
-        "me",
-        ()
-    ).await;
+    let result: Result<(MeResult,), _> = ic_cdk::call(station_id, "me", ()).await;
 
     match result {
         Ok((MeResult::Ok { me, privileges },)) => {
@@ -264,27 +278,31 @@ async fn verify_backend_is_admin(station_id: Principal) -> Result<bool, String> 
             if is_admin {
                 Ok(true)
             } else {
-                Err(format!("DAOPad backend {} is not an admin of station {}. User: {}",
-                    backend_id, station_id, me.name))
+                Err(format!(
+                    "DAOPad backend {} is not an admin of station {}. User: {}",
+                    backend_id, station_id, me.name
+                ))
             }
-        },
+        }
         Ok((MeResult::Err(e),)) => {
             let error_msg = e.message.unwrap_or_else(|| e.code.clone());
             Err(format!("Failed to verify admin status: {}", error_msg))
-        },
-        Err((code, msg)) => {
-            Err(format!("Failed to call Orbit Station: {:?} - {}", code, msg))
         }
+        Err((code, msg)) => Err(format!(
+            "Failed to call Orbit Station: {:?} - {}",
+            code, msg
+        )),
     }
 }
 
 async fn get_total_voting_power_for_token(token: Principal) -> Result<u64, String> {
-    use crate::storage::state::KONG_LOCKER_PRINCIPALS;
     use crate::kong_locker::voting::calculate_voting_power_for_token;
+    use crate::storage::state::KONG_LOCKER_PRINCIPALS;
 
     // Get all registered Kong Locker principals
     let all_kong_lockers = KONG_LOCKER_PRINCIPALS.with(|principals| {
-        principals.borrow()
+        principals
+            .borrow()
             .iter()
             .map(|(_, locker)| locker.0)
             .collect::<Vec<Principal>>()

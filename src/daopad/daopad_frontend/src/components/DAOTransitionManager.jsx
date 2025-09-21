@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Principal } from '@dfinity/principal';
 import { DAOPadBackendService } from '../services/daopadBackend';
+import { useActiveStation } from '../hooks/useActiveStation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,8 +36,10 @@ import {
   ArrowRight,
   AlertTriangle
 } from 'lucide-react';
+import OrbitStationPlaceholder from './orbit/OrbitStationPlaceholder';
 
 const DAOTransitionManager = ({ token, identity, orbitStation }) => {
+  const activeStation = useActiveStation(token?.canister_id);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -228,7 +231,27 @@ const DAOTransitionManager = ({ token, identity, orbitStation }) => {
   };
 
   if (!orbitStation?.station_id) {
-    return null;
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            DAO Transition Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <OrbitStationPlaceholder
+            tokenSymbol={token?.symbol ?? 'this token'}
+            status={activeStation.status}
+            error={activeStation.error}
+          >
+            <p className="mt-2 text-xs text-executive-lightGray/60">
+              Link the Orbit Station treasury before migrating admin privileges to the DAOPad backend.
+            </p>
+          </OrbitStationPlaceholder>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (

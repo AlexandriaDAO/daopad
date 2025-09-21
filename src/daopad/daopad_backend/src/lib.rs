@@ -1,15 +1,16 @@
-mod types;
-mod storage;
-mod proposals;
-mod kong_locker;
 mod api;
+mod kong_locker;
+mod proposals;
+mod storage;
+mod types;
 
-use ic_cdk::init;
 use candid::Principal;
+use ic_cdk::init;
 
 pub use api::*;
-pub use types::{TokenInfo, UserStatus, VotingThresholds};
 pub use proposals::orbit_link::{OrbitLinkProposal, ProposalStatus};
+pub use types::orbit::{AccountBalance, ListAccountsResult};
+pub use types::{TokenInfo, UserStatus, VotingThresholds};
 
 #[init]
 fn init() {

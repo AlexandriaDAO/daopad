@@ -1,9 +1,14 @@
+use crate::kong_locker::{get_kong_locker_for_user, get_user_locked_tokens};
+use crate::storage::state::TOKEN_ORBIT_STATIONS;
+use crate::types::orbit::{
+    Account, AccountBalance, FetchAccountBalancesInput, FetchAccountBalancesResult,
+    ListAccountsInput, ListAccountsResult, AddAccountOperationInput, Allow, AuthScope,
+    AccountMetadata,
+};
+use crate::types::StorablePrincipal;
+use crate::types::TokenInfo;
 use candid::Principal;
 use ic_cdk::{query, update};
-use crate::types::TokenInfo;
-use crate::storage::state::TOKEN_ORBIT_STATIONS;
-use crate::types::StorablePrincipal;
-use crate::kong_locker::{get_user_locked_tokens, get_kong_locker_for_user};
 
 #[update]
 pub async fn get_my_locked_tokens() -> Result<Vec<TokenInfo>, String> {
@@ -13,8 +18,8 @@ pub async fn get_my_locked_tokens() -> Result<Vec<TokenInfo>, String> {
         return Err("Authentication required".to_string());
     }
 
-    let kong_locker_principal = get_kong_locker_for_user(caller)
-        .ok_or("Must register Kong Locker canister first")?;
+    let kong_locker_principal =
+        get_kong_locker_for_user(caller).ok_or("Must register Kong Locker canister first")?;
 
     get_user_locked_tokens(kong_locker_principal).await
 }
@@ -22,7 +27,8 @@ pub async fn get_my_locked_tokens() -> Result<Vec<TokenInfo>, String> {
 #[query]
 pub fn get_orbit_station_for_token(token_canister_id: Principal) -> Option<Principal> {
     TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations.borrow()
+        stations
+            .borrow()
             .get(&StorablePrincipal(token_canister_id))
             .map(|s| s.0)
     })
@@ -31,16 +37,24 @@ pub fn get_orbit_station_for_token(token_canister_id: Principal) -> Option<Princ
 #[query]
 pub fn list_all_orbit_stations() -> Vec<(Principal, Principal)> {
     TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations.borrow().iter()
+        stations
+            .borrow()
+            .iter()
             .map(|(token, station)| (token.0, station.0))
             .collect()
     })
 }
 
 #[update]
-pub async fn join_orbit_station(token_canister_id: Principal, display_name: String) -> Result<String, String> {
-    use crate::types::{CreateRequestInput, RequestOperationInput, AddUserOperationInput, RequestExecutionSchedule, CreateRequestResult};
+pub async fn join_orbit_station(
+    token_canister_id: Principal,
+    display_name: String,
+) -> Result<String, String> {
     use crate::kong_locker::voting::get_user_voting_power_for_token;
+    use crate::types::{
+        AddUserOperationInput, CreateRequestInput, CreateRequestResult, RequestExecutionSchedule,
+        RequestOperationInput,
+    };
     use ic_cdk::call;
 
     let caller = ic_cdk::caller();
@@ -50,11 +64,14 @@ pub async fn join_orbit_station(token_canister_id: Principal, display_name: Stri
     }
 
     // Find the station for this token
-    let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations.borrow()
-            .get(&StorablePrincipal(token_canister_id))
-            .map(|s| s.0)
-    }).ok_or("No Orbit station exists for this token")?;
+    let station_id = TOKEN_ORBIT_STATIONS
+        .with(|stations| {
+            stations
+                .borrow()
+                .get(&StorablePrincipal(token_canister_id))
+                .map(|s| s.0)
+        })
+        .ok_or("No Orbit station exists for this token")?;
 
     // Check if user has at least 100 voting power for this token
     const MINIMUM_VP_TO_JOIN: u64 = 100;
@@ -63,8 +80,7 @@ pub async fn join_orbit_station(token_canister_id: Principal, display_name: Stri
     if voting_power < MINIMUM_VP_TO_JOIN {
         return Err(format!(
             "Insufficient voting power. You have {} VP but need at least {} VP to join as a member",
-            voting_power,
-            MINIMUM_VP_TO_JOIN
+            voting_power, MINIMUM_VP_TO_JOIN
         ));
     }
 
@@ -77,31 +93,163 @@ pub async fn join_orbit_station(token_canister_id: Principal, display_name: Stri
             status: crate::types::UserStatus::Active,
         }),
         title: Some(format!("Add {} as member", display_name)),
-        summary: Some(format!("Adding user with {} VP as a member to the station", voting_power)),
+        summary: Some(format!(
+            "Adding user with {} VP as a member to the station",
+            voting_power
+        )),
         execution_plan: Some(RequestExecutionSchedule::Immediate),
         expiration_dt: None,
     };
 
     // Call Orbit Station to create the request
-    let result: Result<(CreateRequestResult,), _> = call(
-        station_id,
-        "create_request",
-        (add_user_input,)
-    ).await;
+    let result: Result<(CreateRequestResult,), _> =
+        call(station_id, "create_request", (add_user_input,)).await;
+
+    match result {
+        Ok((CreateRequestResult::Ok(response),)) => Ok(format!(
+            "Successfully created member request. Request ID: {}. Status: {:?}",
+            response.request.id, response.request.status
+        )),
+        Ok((CreateRequestResult::Err(e),)) => {
+            Err(format!("Failed to create member request: {}", e))
+        }
+        Err((code, msg)) => Err(format!(
+            "Failed to call Orbit Station: {:?} - {}",
+            code, msg
+        )),
+    }
+}
+
+#[update]
+pub async fn list_orbit_accounts(
+    station_id: Principal,
+    search_term: Option<String>,
+    limit: Option<u64>,
+    offset: Option<u64>,
+) -> Result<ListAccountsResult, String> {
+    // Build the input for list_accounts
+    let input = ListAccountsInput {
+        search_term,
+        paginate: if limit.is_some() || offset.is_some() {
+            Some(crate::types::orbit::PaginationInput { limit, offset })
+        } else {
+            None
+        },
+    };
+
+    // Call the Orbit Station canister
+    let result: Result<(ListAccountsResult,), _> =
+        ic_cdk::call(station_id, "list_accounts", (input,)).await;
+
+    match result {
+        Ok((response,)) => Ok(response),
+        Err((code, msg)) => Err(format!(
+            "Failed to call Orbit Station list_accounts: {:?} - {}",
+            code, msg
+        )),
+    }
+}
+
+#[update]
+pub async fn fetch_orbit_account_balances(
+    station_id: Principal,
+    account_ids: Vec<String>,
+) -> Result<Vec<Option<AccountBalance>>, String> {
+    // Build the input for fetch_account_balances
+    let input = FetchAccountBalancesInput { account_ids };
+
+    // Call the Orbit Station canister
+    let result: Result<(FetchAccountBalancesResult,), _> =
+        ic_cdk::call(station_id, "fetch_account_balances", (input,)).await;
+
+    match result {
+        Ok((FetchAccountBalancesResult::Ok { balances },)) => Ok(balances),
+        Ok((FetchAccountBalancesResult::Err(e),)) => {
+            Err(format!("Failed to fetch account balances: {}", e))
+        }
+        Err((code, msg)) => Err(format!(
+            "Failed to call Orbit Station fetch_account_balances: {:?} - {}",
+            code, msg
+        )),
+    }
+}
+
+#[update]
+pub async fn create_orbit_treasury_account(
+    station_id: Principal,
+    account_name: String,
+    account_type: Option<String>, // e.g., "reserves", "operations", etc.
+) -> Result<String, String> {
+    use crate::types::{CreateRequestInput, CreateRequestResult, RequestExecutionSchedule, RequestOperationInput};
+
+    // ICP asset UUID - this is constant in Orbit Station
+    const ICP_ASSET_ID: &str = "7802cbab-221d-4e49-b764-a695ea6def1a";
+
+    // Build metadata if account type is specified
+    let mut metadata = Vec::new();
+    if let Some(acc_type) = account_type.clone() {
+        metadata.push(AccountMetadata {
+            key: "type".to_string(),
+            value: acc_type,
+        });
+    }
+
+    // Create permissions - all restricted (only admins/operators can access)
+    let restricted_permission = Allow {
+        auth_scope: AuthScope::Restricted,
+        users: vec![],
+        user_groups: vec![],
+    };
+
+    // Read permission can be more open (all authenticated users)
+    let read_permission = Allow {
+        auth_scope: AuthScope::Authenticated,
+        users: vec![],
+        user_groups: vec![],
+    };
+
+    // Build the AddAccount operation input
+    let add_account_input = AddAccountOperationInput {
+        name: account_name.clone(),
+        assets: vec![ICP_ASSET_ID.to_string()],
+        metadata,
+        read_permission,
+        configs_permission: restricted_permission.clone(),
+        transfer_permission: restricted_permission,
+        configs_request_policy: None,
+        transfer_request_policy: None,
+    };
+
+    // Create the request input
+    let request_input = CreateRequestInput {
+        operation: RequestOperationInput::AddAccount(add_account_input),
+        title: Some(format!("Create {} treasury account", account_name)),
+        summary: Some(format!(
+            "Creating a new treasury account: {} {}",
+            account_name,
+            account_type.map_or(String::new(), |t| format!("({})", t))
+        )),
+        execution_plan: Some(RequestExecutionSchedule::Immediate),
+        expiration_dt: None,
+    };
+
+    // Call Orbit Station to create the request
+    let result: Result<(CreateRequestResult,), _> =
+        ic_cdk::call(station_id, "create_request", (request_input,)).await;
 
     match result {
         Ok((CreateRequestResult::Ok(response),)) => {
             Ok(format!(
-                "Successfully created member request. Request ID: {}. Status: {:?}",
-                response.request.id,
-                response.request.status
+                "Successfully created treasury account request. Request ID: {}. Status: {:?}",
+                response.request.id, response.request.status
             ))
-        },
-        Ok((CreateRequestResult::Err(e),)) => {
-            Err(format!("Failed to create member request: {}", e))
-        },
-        Err((code, msg)) => {
-            Err(format!("Failed to call Orbit Station: {:?} - {}", code, msg))
         }
+        Ok((CreateRequestResult::Err(e),)) => {
+            Err(format!("Failed to create treasury account request: {}", e))
+        }
+        Err((code, msg)) => Err(format!(
+            "Failed to call Orbit Station: {:?} - {}",
+            code, msg
+        )),
     }
 }

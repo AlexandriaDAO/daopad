@@ -340,9 +340,18 @@ dfx canister --network ic call kong_locker get_total_value_locked
 
 ## ⚠️ CRITICAL: Orbit Station Integration Workflow
 
-### The Golden Rule: NEVER GUESS TYPES - ALWAYS VERIFY FIRST
+### The Golden Rule: NEVER GUESS TYPES - ALWAYS VERIFY WITH DFX FIRST
 
 When implementing ANY Orbit Station functionality, follow this EXACT workflow to guarantee success:
+
+### 🔑 Test Environment Setup (ONE-TIME SETUP)
+
+**We have a dedicated test station for development:**
+- **Station ID**: `fec7w-zyaaa-aaaaa-qaffq-cai` (ALEX token test station)
+- **DFX Identity**: `daopad` (already an admin/operator on this station)
+- **Token ID**: `ysy5f-2qaaa-aaaap-qkmmq-cai` (linked to test station)
+
+**Why this matters**: With admin access, we can test EVERY Orbit Station call directly before implementing in code. This eliminates ALL guesswork about types and responses.
 
 ### Step 1: Research Phase (MANDATORY - DO THIS FIRST!)
 
@@ -367,13 +376,20 @@ When implementing ANY Orbit Station functionality, follow this EXACT workflow to
    - Check `orbit-reference/core/station/impl/src/mappers/` for type conversions
    - **COPY THE EXACT FIELD NAMES AND TYPES - DO NOT IMPROVISE**
 
-3. **Test with dfx first (CRITICAL STEP)**
+3. **Test with dfx first (CRITICAL STEP - USE OUR TEST STATION)**
    ```bash
-   # Get the exact type structure
-   dfx canister --network ic call fec7w-zyaaa-aaaaa-qaffq-cai __get_candid
+   # ALWAYS use our test station where daopad identity is admin
+   export TEST_STATION="fec7w-zyaaa-aaaaa-qaffq-cai"
 
-   # Test the operation manually to verify types
-   dfx canister --network ic call fec7w-zyaaa-aaaaa-qaffq-cai operation_name '(record { ... })'
+   # Get the exact type structure
+   dfx canister --network ic call $TEST_STATION __get_candid
+
+   # Test the EXACT operation you want to implement
+   dfx canister --network ic call $TEST_STATION operation_name '(record { ... })'
+
+   # Capture the COMPLETE response - this shows EXACTLY what types to expect
+   # If it works in dfx, it WILL work in code with matching types
+   # If it fails in dfx, it WILL fail in code - fix it here first!
    ```
 
 ### Step 2: Type Definition Phase
@@ -400,22 +416,28 @@ When implementing ANY Orbit Station functionality, follow this EXACT workflow to
    ```rust
    #[update]
    async fn test_orbit_operation() -> Result<String, String> {
-       // Just try to call Orbit with hardcoded values
-       // Verify it works before building full feature
+       // Use EXACT types that worked in dfx testing
+       let test_station = Principal::from_text("fec7w-zyaaa-aaaaa-qaffq-cai").unwrap();
+
+       // Copy the EXACT structure that worked in dfx
        let result: Result<(ExpectedReturnType,), _> = ic_cdk::call(
-           station_id,
+           test_station,
            "method_name",
            (params,)
        ).await;
    }
    ```
 
-2. **Test with dfx before integrating**
+2. **Test your backend function with dfx**
    ```bash
+   # Test with our test station first
    dfx canister --network ic call daopad_backend test_orbit_operation
+
+   # Compare with direct Orbit call - output should match!
+   dfx canister --network ic call $TEST_STATION method_name '(same_params)'
    ```
 
-3. **Only after verification, build the full feature**
+3. **Only after both match perfectly, build the full feature**
 
 ### Step 4: Common Patterns That Work
 
@@ -450,18 +472,55 @@ match result {
 ### ❌ Common Pitfalls That WILL Cause Failures
 
 1. **Assuming type names** - Orbit uses specific names, don't guess
-2. **Skipping dfx testing** - Always test manually first
+2. **Skipping dfx testing** - Always test manually first WITH OUR TEST STATION
 3. **Creating types before checking source** - Will lead to mismatches
-4. **Forgetting operations need requests** - Most changes need approval
-5. **Ignoring permission requirements** - Check what permissions are needed
-6. **Using wrong field formats** - UUIDs as strings, not Principal
+4. **Not capturing complete responses** - Missing fields = decode errors
+5. **Testing without admin access** - Use daopad identity on test station
+6. **Forgetting operations need requests** - Most changes need approval
+7. **Ignoring permission requirements** - Check what permissions are needed
+8. **Using wrong field formats** - UUIDs as strings, not Principal
+9. **Not comparing dfx outputs** - Backend and direct calls should match
 
 ### ✅ Why This Workflow Works Every Time
 
-1. **Source code is truth** - Orbit reference shows exact implementation
-2. **dfx testing catches issues early** - Before writing any code
-3. **Exact type matching** - No guessing means no mismatches
-4. **Permission awareness** - Know requirements upfront
+1. **Test station access** - We have admin rights to test EVERYTHING
+2. **Source code is truth** - Orbit reference shows exact implementation
+3. **dfx testing catches issues early** - Before writing any code
+4. **Exact type matching** - Copy what works in dfx, no guessing
+5. **Permission awareness** - daopad identity has all needed permissions
+6. **Deterministic debugging** - If dfx works, code will work with same types
+
+### Real Example: Debugging list_requests (What We Just Fixed)
+
+1. **Problem**: Frontend showed "failed to decode canister response" error
+
+2. **Debug with dfx first**:
+   ```bash
+   # Test directly on our station as daopad identity
+   dfx canister --network ic call fec7w-zyaaa-aaaaa-qaffq-cai list_requests '(record {
+     statuses = null;  # This caused decode error!
+     only_approvable = false;
+     with_evaluation_results = false
+   })'
+
+   # Found: Completed requests have complex nested types
+   # Solution: Use statuses = opt vec { variant { Created } } instead
+   ```
+
+3. **Discovered type mismatches**:
+   - Backend had extra fields (deduplication_keys, tags) - REMOVED
+   - Backend had non-existent variant (SystemRestore) - REMOVED
+   - Completed AddUser ops have groups as records, not strings - AVOIDED
+
+4. **Fixed by matching EXACTLY what worked in dfx**:
+   ```rust
+   // Only request non-completed statuses (what worked in dfx)
+   statuses: Some(vec![
+       RequestStatusCode::Created,
+       RequestStatusCode::Processing,
+       RequestStatusCode::Scheduled,
+   ])
+   ```
 
 ### Example: Successfully Adding a User
 
@@ -481,8 +540,9 @@ match result {
    };
    ```
 
-3. **Test manually first:**
+3. **Test manually first on OUR TEST STATION:**
    ```bash
+   # Use our test station where we have admin access
    dfx canister --network ic call fec7w-zyaaa-aaaaa-qaffq-cai create_request '(record {
      operation = variant { AddUser = record {
        name = "Test User";
@@ -494,7 +554,19 @@ match result {
    })'
    ```
 
-4. **Only then implement in code**
+4. **Only then implement in code** - using EXACT types that worked in step 3
+
+### 🎯 The Deterministic Debugging Workflow
+
+**When frontend shows an error:**
+1. **STOP** - Don't guess what's wrong
+2. **REPRODUCE** - Call the same backend method with dfx
+3. **ISOLATE** - Call Orbit directly with same params
+4. **COMPARE** - Find the difference in responses
+5. **FIX** - Adjust types to match what Orbit actually returns
+6. **VERIFY** - Test the fix with dfx before deploying
+
+**This workflow is DETERMINISTIC** - it will ALWAYS find the issue because we can see exactly what Orbit returns vs what our code expects.
 
 ## For Claude Code
 
@@ -526,6 +598,9 @@ match result {
 - [ ] Currently in `src/daopad/` directory
 - [ ] Using `./deploy.sh` (not root deploy.sh)
 - [ ] All reference repositories treated as read-only
+- [ ] **TESTED WITH DFX ON TEST STATION FIRST** (fec7w-zyaaa-aaaaa-qaffq-cai)
+- [ ] **Captured complete response from dfx test**
+- [ ] **Backend types match EXACTLY what worked in dfx**
 - [ ] Candid extracted after Rust changes
 - [ ] Focusing on governance/voting features
 - [ ] Using Orbit patterns without copying code directly

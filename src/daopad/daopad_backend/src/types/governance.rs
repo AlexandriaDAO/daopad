@@ -2,11 +2,11 @@ use candid::{CandidType, Deserialize};
 
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct VotingThresholds {
-    pub transfer_funds: u32,      // Percentage required to transfer funds
-    pub add_members: u32,         // Percentage required to add new members
-    pub remove_members: u32,      // Percentage required to remove members
-    pub change_permissions: u32,  // Percentage required to change permissions
-    pub system_upgrades: u32,     // Percentage required for system upgrades
+    pub transfer_funds: u32,     // Percentage required to transfer funds
+    pub add_members: u32,        // Percentage required to add new members
+    pub remove_members: u32,     // Percentage required to remove members
+    pub change_permissions: u32, // Percentage required to change permissions
+    pub system_upgrades: u32,    // Percentage required for system upgrades
 }
 
 impl Default for VotingThresholds {

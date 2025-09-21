@@ -1,6 +1,6 @@
+use crate::storage::memory::KONG_LOCKER_FACTORY;
 use candid::Principal;
 use ic_cdk::query;
-use crate::storage::memory::KONG_LOCKER_FACTORY;
 
 #[query]
 pub fn get_backend_principal() -> Principal {

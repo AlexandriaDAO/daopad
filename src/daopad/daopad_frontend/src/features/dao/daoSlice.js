@@ -20,18 +20,46 @@ export const fetchPublicDashboard = createAsyncThunk(
           daopadService.listAllKongLockerRegistrations()
         ]);
 
+      const toPrincipalText = (principal) => {
+        if (!principal) return null;
+        if (typeof principal === 'string') return principal;
+        if (typeof principal?.toText === 'function') return principal.toText();
+        if (typeof principal?.toString === 'function') return principal.toString();
+        return String(principal);
+      };
+
+      const treasuryPairs = stations.success
+        ? (stations.data || [])
+            .map(([tokenPrincipal, stationPrincipal]) => ({
+              tokenId: toPrincipalText(tokenPrincipal),
+              stationId: toPrincipalText(stationPrincipal),
+            }))
+            .filter(pair => pair.tokenId && pair.stationId)
+        : [];
+
+      const stationMappings = treasuryPairs.reduce((acc, pair) => {
+        acc[pair.tokenId] = {
+          stationId: pair.stationId,
+          status: 'linked',
+          updatedAt: Date.now(),
+          source: 'publicDashboard',
+        };
+        return acc;
+      }, {});
+
       return {
         stats: {
           participants: totalPositions.success ?
             totalPositions.data.totalLockCanisters : 0,
           activeProposals: proposals.success ?
             proposals.data.filter(p => p.status?.Active !== undefined).length : 0,
-          treasuries: stations.success ? stations.data.length : 0,
+          treasuries: treasuryPairs.length,
           registeredVoters: registrations.success ? registrations.data.length : 0,
           totalValueLocked: 0  // Would need KongSwap queries
         },
         proposals: proposals.success ? proposals.data : [],
-        treasuries: stations.success ? stations.data : [],
+        treasuries: treasuryPairs,
+        stationMappings,
         hasErrors: !totalPositions.success || !proposals.success ||
                   !stations.success || !registrations.success
       };
@@ -52,6 +80,9 @@ const initialState = {
   lpPositionsLoading: false,
   lpPositionsError: null,
   votingPower: 0,
+
+  // Orbit station mapping (token_canister_id -> station info)
+  stationIndex: {},
 
   // System Stats
   systemStats: null,
@@ -115,6 +146,24 @@ const daoSlice = createSlice({
     setSystemStatsLoading: (state, action) => {
       state.systemStatsLoading = action.payload;
     },
+
+    // Orbit station mapping
+    upsertStationMapping: (state, action) => {
+      const { tokenId, stationId, status, source, error } = action.payload || {};
+      if (!tokenId) return;
+      state.stationIndex[tokenId] = {
+        stationId: stationId ?? null,
+        status: status ?? (stationId ? 'linked' : 'missing'),
+        updatedAt: Date.now(),
+        source: source ?? 'manual',
+        error: error ?? null,
+      };
+    },
+    clearStationMapping: (state, action) => {
+      const tokenId = action.payload;
+      if (!tokenId) return;
+      delete state.stationIndex[tokenId];
+    },
     
     // Clear all DAO state (on logout)
     clearDaoState: (state) => {
@@ -147,6 +196,16 @@ const daoSlice = createSlice({
         state.publicDashboard.lastUpdated = Date.now();
         state.publicDashboard.isLoading = false;
         state.publicDashboard.hasPartialData = action.payload.hasErrors;
+        if (action.payload.stationMappings) {
+          Object.entries(action.payload.stationMappings).forEach(([tokenId, entry]) => {
+            if (!tokenId) return;
+            state.stationIndex[tokenId] = {
+              ...state.stationIndex[tokenId],
+              ...entry,
+              updatedAt: entry?.updatedAt ?? Date.now(),
+            };
+          });
+        }
       })
       .addCase(fetchPublicDashboard.rejected, (state, action) => {
         state.publicDashboard.isLoading = false;
@@ -166,6 +225,8 @@ export const {
   setVotingPower,
   setSystemStats,
   setSystemStatsLoading,
+  upsertStationMapping,
+  clearStationMapping,
   clearDaoState,
   clearPublicDashboard,
 } = daoSlice.actions;
@@ -178,5 +239,8 @@ export const selectActiveProposalCount = (state) =>
   state.dao.publicDashboard.proposals.filter(
     p => p.status?.Active !== undefined
   ).length;
+export const selectStationIndex = (state) => state.dao.stationIndex;
+export const selectStationByToken = (state, tokenId) =>
+  tokenId ? state.dao.stationIndex[tokenId] || null : null;
 
 export default daoSlice.reducer;
