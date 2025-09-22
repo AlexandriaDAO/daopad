@@ -7,7 +7,8 @@ use crate::types::orbit::{
 };
 use crate::types::StorablePrincipal;
 use crate::types::TokenInfo;
-use candid::Principal;
+use crate::{create_transfer_request_in_orbit, get_transfer_requests_from_orbit, approve_transfer_orbit_request};
+use candid::{Principal, Nat};
 use ic_cdk::{query, update};
 
 #[update]
@@ -252,4 +253,71 @@ pub async fn create_orbit_treasury_account(
             code, msg
         )),
     }
+}
+
+// Treasury Transfer Methods
+
+#[update]
+pub async fn create_transfer_request(
+    from_account_id: String,
+    from_asset_id: String,
+    to_address: String,
+    amount: Nat,
+    title: String,
+    description: String,
+    memo: Option<String>,
+    token_id: Principal,
+) -> Result<String, String> {
+    let caller = ic_cdk::caller();
+
+    // Get station for this token
+    let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
+        stations
+            .borrow()
+            .get(&StorablePrincipal(token_id))
+            .map(|s| s.0)
+    }).ok_or("No treasury for this token")?;
+
+    create_transfer_request_in_orbit(
+        station_id,
+        caller,
+        token_id,
+        from_account_id,
+        from_asset_id,
+        to_address,
+        amount,
+        title,
+        description,
+        memo,
+    ).await
+}
+
+#[update]
+pub async fn get_transfer_requests(
+    token_id: Principal
+) -> Result<Vec<String>, String> {
+    let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
+        stations
+            .borrow()
+            .get(&StorablePrincipal(token_id))
+            .map(|s| s.0)
+    }).ok_or("No treasury for this token")?;
+
+    get_transfer_requests_from_orbit(station_id).await
+}
+
+#[update]
+pub async fn approve_transfer_request(
+    request_id: String,
+    token_id: Principal,
+) -> Result<(), String> {
+    let caller = ic_cdk::caller();
+    let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
+        stations
+            .borrow()
+            .get(&StorablePrincipal(token_id))
+            .map(|s| s.0)
+    }).ok_or("No treasury for this token")?;
+
+    approve_transfer_orbit_request(station_id, request_id, caller).await
 }

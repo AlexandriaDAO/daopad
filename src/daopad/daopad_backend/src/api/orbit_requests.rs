@@ -1,27 +1,25 @@
-use candid::{types::value::IDLValue, types::Label, Principal};
+use candid::{CandidType, Deserialize, Principal};
 use ic_cdk::update;
-use std::collections::{HashMap, HashSet};
 
-use crate::storage::state::TOKEN_ORBIT_STATIONS;
-use crate::types::StorablePrincipal;
+// UUID type alias matching Orbit (spec.did line 5)
+type UUID = String;
+type TimestampRFC3339 = String;
 
-#[derive(candid::CandidType, candid::Deserialize, Clone, Debug)]
-pub struct ListRequestsInput {
-    pub requester_ids: Option<Vec<String>>,
-    pub approver_ids: Option<Vec<String>>,
-    pub statuses: Option<Vec<RequestStatusCode>>,
-    pub operation_types: Option<Vec<ListRequestsOperationType>>,
-    pub expiration_from_dt: Option<String>,
-    pub expiration_to_dt: Option<String>,
-    pub created_from_dt: Option<String>,
-    pub created_to_dt: Option<String>,
-    pub paginate: Option<crate::api::dao_transition::PaginationInput>,
-    pub sort_by: Option<ListRequestsSortBy>,
-    pub only_approvable: bool,
-    pub with_evaluation_results: bool,
+// Exact RequestStatus from spec.did lines 280-300
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub enum RequestStatus {
+    Created,
+    Approved,
+    Rejected,
+    Cancelled { reason: Option<String> },
+    Scheduled { scheduled_at: TimestampRFC3339 },
+    Processing { started_at: TimestampRFC3339 },
+    Completed { completed_at: TimestampRFC3339 },
+    Failed { reason: Option<String> },
 }
 
-#[derive(candid::CandidType, candid::Deserialize, Clone, Debug)]
+// Exact RequestStatusCode from spec.did lines 302-311
+#[derive(CandidType, Deserialize, Clone, Debug)]
 pub enum RequestStatusCode {
     Created,
     Approved,
@@ -33,22 +31,92 @@ pub enum RequestStatusCode {
     Failed,
 }
 
-#[derive(candid::CandidType, candid::Deserialize, Clone, Debug)]
-pub enum ListRequestsSortBy {
-    CreatedAt(SortDirection),
-    ExpirationDt(SortDirection),
-    LastModificationDt(SortDirection),
+// Exact RequestExecutionSchedule from spec.did
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub enum RequestExecutionSchedule {
+    Immediate,
+    Scheduled { execution_time: TimestampRFC3339 },
 }
 
-#[derive(candid::CandidType, candid::Deserialize, Clone, Debug)]
-pub enum SortDirection {
+// Exact RequestApproval structure
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct RequestApproval {
+    pub approver_id: UUID,
+    pub status: RequestApprovalStatus,
+    pub status_reason: Option<String>,
+    pub decided_at: TimestampRFC3339,
+}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub enum RequestApprovalStatus {
+    Approved,
+    Rejected,
+}
+
+// Complete RequestOperation variant (spec.did lines 1030-1099)
+// Using candid reserved type to avoid decode issues
+use candid::Reserved;
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct Request {
+    pub id: UUID,
+    pub title: String,
+    pub summary: Option<String>,
+    pub operation: Reserved,  // Use Reserved to accept any candid value
+    pub requested_by: UUID,
+    pub approvals: Vec<RequestApproval>,
+    pub created_at: TimestampRFC3339,
+    pub status: RequestStatus,
+    pub expiration_dt: TimestampRFC3339,
+    pub execution_plan: RequestExecutionSchedule,
+    pub deduplication_key: Option<String>,
+    pub tags: Vec<String>,
+}
+
+// Exact ListRequestsInput from spec.did lines 1442-1471
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct ListRequestsInput {
+    pub requester_ids: Option<Vec<UUID>>,
+    pub approver_ids: Option<Vec<UUID>>,
+    pub statuses: Option<Vec<RequestStatusCode>>,
+    pub operation_types: Option<Vec<ListRequestsOperationType>>,
+    pub expiration_from_dt: Option<TimestampRFC3339>,
+    pub expiration_to_dt: Option<TimestampRFC3339>,
+    pub created_from_dt: Option<TimestampRFC3339>,
+    pub created_to_dt: Option<TimestampRFC3339>,
+    pub paginate: Option<PaginationInput>,
+    pub sort_by: Option<ListRequestsSortBy>,
+    pub only_approvable: bool,
+    pub with_evaluation_results: bool,
+    pub deduplication_keys: Option<Vec<String>>,
+    pub tags: Option<Vec<String>>,
+}
+
+// PaginationInput from spec.did lines 12-19
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct PaginationInput {
+    pub offset: Option<u64>,
+    pub limit: Option<u16>,
+}
+
+// Sort options from spec.did lines 1432-1439
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub enum ListRequestsSortBy {
+    CreatedAt(SortByDirection),
+    ExpirationDt(SortByDirection),
+    LastModificationDt(SortByDirection),
+}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub enum SortByDirection {
     Asc,
     Desc,
 }
 
-#[derive(candid::CandidType, candid::Deserialize, Clone, Debug)]
+// Complete operation type enum from spec.did lines 1352-1430
+#[derive(CandidType, Deserialize, Clone, Debug)]
 pub enum ListRequestsOperationType {
-    Transfer(Option<String>),
+    Transfer(Option<UUID>),  // Optional account ID filter
     EditAccount,
     AddAccount,
     AddUser,
@@ -83,73 +151,30 @@ pub enum ListRequestsOperationType {
     RemoveNamedRule,
 }
 
-#[derive(candid::CandidType, candid::Deserialize, Clone, Debug)]
-pub enum RequestApprovalStatus {
-    Approved,
-    Rejected,
-}
-
-#[derive(candid::CandidType, candid::Deserialize, Clone, Debug)]
-pub enum RequestStatus {
-    Created,
-    Approved,
-    Rejected,
-    Cancelled { reason: Option<String> },
-    Scheduled { scheduled_at: String },
-    Processing { started_at: String },
-    Completed { completed_at: String },
-    Failed { reason: Option<String> },
-}
-
-#[derive(candid::CandidType, candid::Deserialize, Clone, Debug)]
-pub enum RequestExecutionSchedule {
-    Immediate,
-    Scheduled { execution_time: String },
-}
-
-#[derive(candid::CandidType, candid::Deserialize, Clone, Debug)]
-pub struct RequestApproval {
-    pub approver_id: String,
-    pub status: RequestApprovalStatus,
-    pub status_reason: Option<String>,
-    pub decided_at: String,
-}
-
-#[derive(candid::CandidType, candid::Deserialize, Clone, Debug)]
-pub struct Request {
-    pub id: String,
-    pub title: String,
-    pub summary: Option<String>,
-    pub operation: IDLValue, // Back to IDLValue - it works for non-completed requests
-    pub requested_by: String,
-    pub approvals: Vec<RequestApproval>,
-    pub created_at: String,
-    pub status: RequestStatus,
-    pub expiration_dt: String,
-    pub execution_plan: RequestExecutionSchedule,
-}
-
-#[derive(candid::CandidType, candid::Deserialize, Clone, Debug)]
+// Additional types needed for responses
+#[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct RequestCallerPrivileges {
-    pub id: String,
+    pub id: UUID,
     pub can_approve: bool,
 }
 
-#[derive(candid::CandidType, candid::Deserialize, Clone, Debug)]
+// This matches Orbit's actual return type
+#[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct DisplayUser {
-    pub id: String,
+    pub id: UUID,
     pub name: String,
+    pub groups: Vec<UUID>, // Groups are UUIDs in actual response
 }
 
-#[derive(candid::CandidType, candid::Deserialize, Clone, Debug)]
+#[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct RequestAdditionalInfo {
-    pub id: String,
+    pub id: UUID,
     pub requester_name: String,
     pub approvers: Vec<DisplayUser>,
-    pub evaluation_result: Option<IDLValue>, // Use IDLValue since we don't parse this field
+    pub evaluation_result: Option<Reserved>,
 }
 
-#[derive(candid::CandidType, candid::Deserialize, Clone, Debug)]
+#[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct ListRequestsResponse {
     pub requests: Vec<Request>,
     pub total: u64,
@@ -158,292 +183,113 @@ pub struct ListRequestsResponse {
     pub additional_info: Vec<RequestAdditionalInfo>,
 }
 
-#[derive(candid::CandidType, candid::Deserialize, Clone, Debug)]
+#[derive(CandidType, Deserialize, Clone, Debug)]
 pub enum ListRequestsResult {
     Ok(ListRequestsResponse),
-    Err(crate::types::orbit::Error),
+    Err(Error),
 }
 
-#[derive(candid::CandidType, candid::Deserialize, Clone, Debug)]
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct Error {
+    pub code: String,
+    pub message: Option<String>,
+    pub details: Option<Vec<(String, String)>>,
+}
+
+// Get request types
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct GetRequestInput {
+    pub request_id: UUID,
+    pub with_full_info: Option<bool>,
+}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct GetRequestResponse {
+    pub request: Request,
+    pub privileges: RequestCallerPrivileges,
+    pub additional_info: RequestAdditionalInfo,
+}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub enum GetRequestResult {
+    Ok(GetRequestResponse),
+    Err(Error),
+}
+
+// Submit approval types
+#[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct SubmitRequestApprovalInput {
-    pub request_id: String,
+    pub request_id: UUID,
     pub decision: RequestApprovalStatus,
     pub reason: Option<String>,
 }
 
-#[derive(candid::CandidType, candid::Deserialize, Clone, Debug)]
+#[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct SubmitRequestApprovalResponse {
     pub request: Request,
     pub privileges: RequestCallerPrivileges,
     pub additional_info: RequestAdditionalInfo,
 }
 
-#[derive(candid::CandidType, candid::Deserialize, Clone, Debug)]
+#[derive(CandidType, Deserialize, Clone, Debug)]
 pub enum SubmitRequestApprovalResult {
     Ok(SubmitRequestApprovalResponse),
-    Err(crate::types::orbit::Error),
+    Err(Error),
 }
 
-#[derive(candid::CandidType, candid::Deserialize, Clone)]
-pub struct SimplifiedRequest {
-    pub id: String,
-    pub title: String,
-    pub summary: Option<String>,
-    pub operation_type: String,
-    pub status: String,
-    pub requester_name: String,
-    pub created_at: String,
-    pub approval_count: u32,
-    pub rejection_count: u32,
-}
+use crate::storage::state::TOKEN_ORBIT_STATIONS;
+use crate::types::StorablePrincipal;
 
-fn format_request_status(status: &RequestStatus) -> String {
-    match status {
-        RequestStatus::Created => "Created".to_string(),
-        RequestStatus::Approved => "Approved".to_string(),
-        RequestStatus::Rejected => "Rejected".to_string(),
-        RequestStatus::Cancelled { .. } => "Cancelled".to_string(),
-        RequestStatus::Scheduled { .. } => "Scheduled".to_string(),
-        RequestStatus::Processing { .. } => "Processing".to_string(),
-        RequestStatus::Completed { .. } => "Completed".to_string(),
-        RequestStatus::Failed { .. } => "Failed".to_string(),
-    }
-}
-
-fn derive_operation_label(request: &Request) -> String {
-    if let IDLValue::Variant(variant) = &request.operation {
-        let field = variant.0.as_ref();
-        let label = match &field.id {
-            Label::Named(name) => Some(name.clone()),
-            Label::Id(id) => Some(format!("#{id}")),
-            Label::Unnamed(idx) => Some(format!("variant_{idx}")),
-        };
-
-        if let Some(name) = label {
-            if !name.is_empty() {
-                return name;
-            }
-        }
-    }
-
-    let trimmed_title = request.title.trim();
-    if !trimmed_title.is_empty() {
-        return trimmed_title.to_string();
-    }
-
-    if let Some(summary) = &request.summary {
-        let trimmed = summary.trim();
-        if !trimmed.is_empty() {
-            return trimmed.to_string();
-        }
-    }
-
-    "Request".to_string()
-}
-
-fn requester_name_for(
-    id: &str,
-    info_map: &HashMap<String, RequestAdditionalInfo>,
-    fallback: &str,
-) -> String {
-    info_map
-        .get(id)
-        .map(|info| info.requester_name.clone())
-        .filter(|name| !name.is_empty())
-        .unwrap_or_else(|| fallback.to_string())
-}
-
-fn approval_counts(approvals: &[RequestApproval]) -> (u32, u32) {
-    approvals.iter().fold(
-        (0u32, 0u32),
-        |(approved, rejected), approval| match approval.status {
-            RequestApprovalStatus::Approved => (approved + 1, rejected),
-            RequestApprovalStatus::Rejected => (approved, rejected + 1),
-        },
-    )
-}
-
-/// List Orbit Station requests that are relevant to a token.
+/// List all requests from Orbit Station with domain filtering
 ///
-/// KNOWN ISSUE: When include_completed=true, the decoding fails for completed AddUser
-/// operations because they contain nested UserGroup records with both 'id' and 'name'
-/// fields, while our types expect simpler structures. For now, only use include_completed=false.
+/// This method acts as an admin proxy, allowing DAOPad to query
+/// all requests regardless of user permissions.
 #[update]
 pub async fn list_orbit_requests(
     token_canister_id: Principal,
-    include_completed: bool,
-) -> Result<Vec<SimplifiedRequest>, String> {
+    filters: ListRequestsInput,
+) -> Result<ListRequestsResponse, String> {
+    // Get station ID from storage
     let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
         stations
             .borrow()
             .get(&StorablePrincipal(token_canister_id))
             .map(|s| s.0)
-            .ok_or_else(|| "No Orbit Station linked to this token".to_string())
+            .ok_or_else(|| format!(
+                "No Orbit Station linked to token {}",
+                token_canister_id.to_text()
+            ))
     })?;
 
-    // Always include completed for permission requests since they auto-approve
-    // But exclude other completed requests to avoid decode issues
-    let statuses = if include_completed {
-        None
-    } else {
-        Some(vec![
-            RequestStatusCode::Created,
-            RequestStatusCode::Processing,
-            RequestStatusCode::Scheduled,
-            RequestStatusCode::Approved,
-        ])
-    };
+    // Make inter-canister call with exact Orbit types
+    let result: (ListRequestsResult,) = ic_cdk::call(
+        station_id,
+        "list_requests",
+        (filters,)
+    ).await.map_err(|e| format!("IC call failed: {:?}", e))?;
 
-    // First get permission requests specifically (they may be completed)
-    let perm_input = ListRequestsInput {
-        requester_ids: None,
-        approver_ids: None,
-        statuses: None, // Get all statuses for permission requests
-        operation_types: Some(vec![ListRequestsOperationType::EditPermission]),
-        expiration_from_dt: None,
-        expiration_to_dt: None,
-        created_from_dt: None,
-        created_to_dt: None,
-        paginate: None,
-        sort_by: Some(ListRequestsSortBy::CreatedAt(SortDirection::Desc)),
-        only_approvable: false,
-        with_evaluation_results: false,
-    };
-
-    // Get permission requests
-    let perm_result: Result<(ListRequestsResult,), _> =
-        ic_cdk::call(station_id, "list_requests", (perm_input,)).await;
-
-    let mut all_requests = Vec::new();
-    let mut all_info = Vec::new();
-
-    // Process permission requests if successful
-    if let Ok((ListRequestsResult::Ok(perm_response),)) = perm_result {
-        all_requests.extend(perm_response.requests);
-        all_info.extend(perm_response.additional_info);
-    }
-
-    // Now get other requests with status filter
-    let list_input = ListRequestsInput {
-        requester_ids: None,
-        approver_ids: None,
-        statuses,
-        operation_types: None,
-        expiration_from_dt: None,
-        expiration_to_dt: None,
-        created_from_dt: None,
-        created_to_dt: None,
-        paginate: None,
-        sort_by: Some(ListRequestsSortBy::CreatedAt(SortDirection::Desc)),
-        only_approvable: false,
-        with_evaluation_results: false,
-    };
-
-    let result: Result<(ListRequestsResult,), _> =
-        ic_cdk::call(station_id, "list_requests", (list_input,)).await;
-
-    match result {
-        Ok((ListRequestsResult::Ok(response),)) => {
-            // Add non-permission requests to our collection
-            all_requests.extend(response.requests);
-            all_info.extend(response.additional_info);
-
-            // Build info map from combined results
-            let info_map: HashMap<String, RequestAdditionalInfo> = all_info
-                .into_iter()
-                .map(|info| (info.id.clone(), info))
-                .collect();
-
-            // Filter out EditPermission requests that aren't permission-related
-            // to avoid duplicates
-            let mut seen_ids = std::collections::HashSet::new();
-            let simplified = all_requests
-                .into_iter()
-                .filter(|request| seen_ids.insert(request.id.clone()))
-                .map(|request| {
-                    let status_str = format_request_status(&request.status);
-                    let (approved, rejected) = approval_counts(&request.approvals);
-                    let requester_name =
-                        requester_name_for(&request.id, &info_map, &request.requested_by);
-                    let operation_type = derive_operation_label(&request);
-
-                    SimplifiedRequest {
-                        id: request.id,
-                        title: request.title,
-                        summary: request.summary,
-                        operation_type,
-                        status: status_str,
-                        requester_name,
-                        created_at: request.created_at,
-                        approval_count: approved,
-                        rejection_count: rejected,
-                    }
-                })
-                .collect();
-
-            Ok(simplified)
-        }
-        Ok((ListRequestsResult::Err(err),)) => Err(format!(
-            "Failed to list requests: {}",
-            err.message.unwrap_or_else(|| err.code)
-        )),
-        Err((code, msg)) => Err(format!(
-            "Failed to call Orbit Station: {:?} - {}",
-            code, msg
-        )),
-    }
-}
-
-/// Approve a specific Orbit Station request.
-#[update]
-pub async fn approve_orbit_request(
-    token_canister_id: Principal,
-    request_id: String,
-    reason: Option<String>,
-) -> Result<String, String> {
-    let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations
-            .borrow()
-            .get(&StorablePrincipal(token_canister_id))
-            .map(|s| s.0)
-            .ok_or_else(|| "No Orbit Station linked to this token".to_string())
-    })?;
-
-    let approval_input = SubmitRequestApprovalInput {
-        request_id: request_id.clone(),
-        decision: RequestApprovalStatus::Approved,
-        reason: reason.or_else(|| Some("Approved via DAOPad backend".to_string())),
-    };
-
-    let result: Result<(SubmitRequestApprovalResult,), _> =
-        ic_cdk::call(station_id, "submit_request_approval", (approval_input,)).await;
-
-    match result {
-        Ok((SubmitRequestApprovalResult::Ok(response),)) => {
-            let status = format_request_status(&response.request.status);
-            Ok(format!(
-                "Request {} approved. New status: {}",
-                request_id, status
+    // Handle Orbit's tagged response enum
+    match result.0 {
+        ListRequestsResult::Ok(response) => Ok(response),
+        ListRequestsResult::Err(err) => {
+            let message = err
+                .message
+                .clone()
+                .unwrap_or_else(|| err.code.clone());
+            Err(format!(
+                "Orbit Station error (code: {}): {}",
+                err.code, message
             ))
         }
-        Ok((SubmitRequestApprovalResult::Err(err),)) => Err(format!(
-            "Failed to approve request: {}",
-            err.message.unwrap_or_else(|| err.code)
-        )),
-        Err((code, msg)) => Err(format!(
-            "Failed to call Orbit Station: {:?} - {}",
-            code, msg
-        )),
     }
 }
 
-/// Reject a specific Orbit Station request.
+/// Get a single request by ID
 #[update]
-pub async fn reject_orbit_request(
+pub async fn get_orbit_request(
     token_canister_id: Principal,
     request_id: String,
-    reason: Option<String>,
-) -> Result<String, String> {
+) -> Result<GetRequestResponse, String> {
     let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
         stations
             .borrow()
@@ -452,48 +298,65 @@ pub async fn reject_orbit_request(
             .ok_or_else(|| "No Orbit Station linked to this token".to_string())
     })?;
 
-    let rejection_input = SubmitRequestApprovalInput {
-        request_id: request_id.clone(),
-        decision: RequestApprovalStatus::Rejected,
-        reason: reason.or_else(|| Some("Rejected via DAOPad backend".to_string())),
+    let input = GetRequestInput {
+        request_id,
+        with_full_info: Some(true),
     };
 
-    let result: Result<(SubmitRequestApprovalResult,), _> =
-        ic_cdk::call(station_id, "submit_request_approval", (rejection_input,)).await;
+    let result: (GetRequestResult,) = ic_cdk::call(
+        station_id,
+        "get_request",
+        (input,)
+    ).await.map_err(|e| format!("IC call failed: {:?}", e))?;
 
-    match result {
-        Ok((SubmitRequestApprovalResult::Ok(response),)) => {
-            let status = format_request_status(&response.request.status);
-            Ok(format!(
-                "Request {} rejected. New status: {}",
-                request_id, status
-            ))
+    match result.0 {
+        GetRequestResult::Ok(response) => Ok(response),
+        GetRequestResult::Err(err) => {
+            let message = err
+                .message
+                .clone()
+                .unwrap_or_else(|| err.code.clone());
+            Err(format!("Failed to get request: {}", message))
         }
-        Ok((SubmitRequestApprovalResult::Err(err),)) => Err(format!(
-            "Failed to reject request: {}",
-            err.message.unwrap_or_else(|| err.code)
-        )),
-        Err((code, msg)) => Err(format!(
-            "Failed to call Orbit Station: {:?} - {}",
-            code, msg
-        )),
     }
 }
 
-/// Batch approve multiple requests sequentially.
+/// Submit approval decision for a request
 #[update]
-pub async fn batch_approve_requests(
+pub async fn submit_request_approval(
     token_canister_id: Principal,
-    request_ids: Vec<String>,
-) -> Result<Vec<String>, String> {
-    let mut results = Vec::with_capacity(request_ids.len());
+    request_id: String,
+    decision: RequestApprovalStatus,
+    reason: Option<String>,
+) -> Result<SubmitRequestApprovalResponse, String> {
+    let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
+        stations
+            .borrow()
+            .get(&StorablePrincipal(token_canister_id))
+            .map(|s| s.0)
+            .ok_or_else(|| "No Orbit Station linked to this token".to_string())
+    })?;
 
-    for request_id in request_ids {
-        match approve_orbit_request(token_canister_id, request_id.clone(), None).await {
-            Ok(message) => results.push(format!("✓ {}: {}", request_id, message)),
-            Err(error) => results.push(format!("✗ {}: {}", request_id, error)),
+    let input = SubmitRequestApprovalInput {
+        request_id,
+        decision,
+        reason,
+    };
+
+    let result: (SubmitRequestApprovalResult,) = ic_cdk::call(
+        station_id,
+        "submit_request_approval",
+        (input,)
+    ).await.map_err(|e| format!("IC call failed: {:?}", e))?;
+
+    match result.0 {
+        SubmitRequestApprovalResult::Ok(response) => Ok(response),
+        SubmitRequestApprovalResult::Err(err) => {
+            let message = err
+                .message
+                .clone()
+                .unwrap_or_else(|| err.code.clone());
+            Err(format!("Failed to submit approval: {}", message))
         }
     }
-
-    Ok(results)
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { DAOPadBackendService } from '../services/daopadBackend';
 import { KongLockerService } from '../services/kongLockerService';
-import TokenTabContent from './TokenTabContent';
+import TokenDashboard from './TokenDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -239,7 +239,7 @@ const TokenTabs = ({ identity }) => {
 
       <div>
         {tokens[activeTab] && (
-          <TokenTabContent
+          <TokenDashboard
             token={tokens[activeTab]}
             identity={identity}
             votingPower={tokenVotingPowers[tokens[activeTab].canister_id] || 0}
