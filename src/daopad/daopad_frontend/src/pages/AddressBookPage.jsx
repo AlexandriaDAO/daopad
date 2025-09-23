@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, Copy, Pencil, Trash2, Eye, MoreHorizontal } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import { addressBookService } from '../services/addressBookService';
 import AddressBookDialog from '../components/address-book/AddressBookDialog';
 import AddressBookTable from '../components/address-book/AddressBookTable';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
 
 const AddressBookPage = ({ identity }) => {
   // Initialize service with identity
@@ -151,123 +155,111 @@ const AddressBookPage = ({ identity }) => {
   ];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Page header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Address Book
-        </h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Manage saved addresses for easy transfers
-        </p>
-      </div>
+    <div className="space-y-4">
 
-      {/* Main content card */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-        {/* Toolbar */}
-        <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {/* Search input */}
-              {canList && (
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search addresses..."
-                    value={searchTerm}
-                    onChange={handleSearch}
-                    className="pl-10 pr-4 py-2 w-64 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Add button */}
-            {canCreate && (
-              <AddressBookDialog
-                trigger={
-                  <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Address
-                  </button>
-                }
-                onOpenChange={setDisableRefresh}
-                onSuccess={() => setForceReload(prev => prev + 1)}
+      {/* Toolbar */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2 flex-1">
+          {canList && (
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search addresses..."
+                value={searchTerm}
+                onChange={handleSearch}
+                className="pl-10"
               />
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
-        {/* Error message */}
-        {error && (
-          <div className="px-6 py-4 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
-            <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
-          </div>
-        )}
-
-        {/* Table */}
-        {loading && entries.length === 0 ? (
-          <div className="px-6 py-12 text-center">
-            <p className="text-gray-500 dark:text-gray-400">Loading...</p>
-          </div>
-        ) : entries.length === 0 ? (
-          <div className="px-6 py-12 text-center">
-            <p className="text-gray-500 dark:text-gray-400">
-              No address book entries found.
-              {canCreate && " Click 'New Address' to add your first entry."}
-            </p>
-          </div>
-        ) : (
-          <AddressBookTable
-            entries={entries}
-            privileges={privileges}
-            loading={loading}
-            onCopy={handleCopy}
-            onEdit={(entry) => {
-              // Will implement edit dialog later
-              console.log('Edit:', entry);
-            }}
-            onDelete={handleDelete}
-            onView={(entry) => {
-              // Will implement view dialog later
-              console.log('View:', entry);
-            }}
+        {canCreate && (
+          <AddressBookDialog
+            trigger={
+              <Button size="sm">
+                <Plus className="mr-2 h-4 w-4" />
+                New Address
+              </Button>
+            }
+            onOpenChange={setDisableRefresh}
+            onSuccess={() => setForceReload(prev => prev + 1)}
           />
         )}
-
-        {/* Pagination */}
-        {pagination.totalPages > 1 && (
-          <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-700 dark:text-gray-300">
-                Showing {pagination.offset + 1} to{' '}
-                {Math.min(pagination.offset + pagination.limit, pagination.total)} of{' '}
-                {pagination.total} results
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handlePageChange(pagination.selectedPage - 1)}
-                  disabled={pagination.selectedPage === 1}
-                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700"
-                >
-                  Previous
-                </button>
-                <span className="px-3 py-1 text-sm">
-                  Page {pagination.selectedPage} of {pagination.totalPages}
-                </span>
-                <button
-                  onClick={() => handlePageChange(pagination.selectedPage + 1)}
-                  disabled={pagination.selectedPage === pagination.totalPages}
-                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Error message */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Table */}
+      <Card>
+        <CardContent className="p-0">
+          {loading && entries.length === 0 ? (
+            <div className="py-12 text-center">
+              <p className="text-muted-foreground">Loading...</p>
+            </div>
+          ) : entries.length === 0 ? (
+            <div className="py-12 text-center">
+              <p className="text-muted-foreground">
+                No address book entries found.
+                {canCreate && " Click 'New Address' to add your first entry."}
+              </p>
+            </div>
+          ) : (
+            <AddressBookTable
+              entries={entries}
+              privileges={privileges}
+              loading={loading}
+              onCopy={handleCopy}
+              onEdit={(entry) => {
+                // Will implement edit dialog later
+                console.log('Edit:', entry);
+              }}
+              onDelete={handleDelete}
+              onView={(entry) => {
+                // Will implement view dialog later
+                console.log('View:', entry);
+              }}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between py-2">
+          <div className="text-sm text-muted-foreground">
+            Showing {pagination.offset + 1} to{' '}
+            {Math.min(pagination.offset + pagination.limit, pagination.total)} of{' '}
+            {pagination.total} results
+          </div>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => handlePageChange(pagination.selectedPage - 1)}
+              disabled={pagination.selectedPage === 1}
+              size="sm"
+              variant="outline"
+            >
+              Previous
+            </Button>
+            <span className="flex items-center px-3 text-sm">
+              Page {pagination.selectedPage} of {pagination.totalPages}
+            </span>
+            <Button
+              onClick={() => handlePageChange(pagination.selectedPage + 1)}
+              disabled={pagination.selectedPage === pagination.totalPages}
+              size="sm"
+              variant="outline"
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

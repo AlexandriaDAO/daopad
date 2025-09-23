@@ -95,6 +95,15 @@ pub enum CreateRequestResult {
     Err(Error),
 }
 
+// Response type for join_orbit_station method
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub struct JoinMemberResponse {
+    pub request_id: String,
+    pub status: String,
+    pub auto_approved: bool,
+    pub failure_reason: Option<String>,
+}
+
 // Types for verifying admin status
 #[derive(CandidType, Deserialize, Debug, Clone, Serialize)]
 pub struct Error {

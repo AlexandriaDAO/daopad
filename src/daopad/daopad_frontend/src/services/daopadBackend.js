@@ -318,6 +318,21 @@ export class DAOPadBackendService {
     }
   }
 
+  async getUserPendingRequests(tokenCanisterId, userPrincipal) {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.get_user_pending_requests(tokenCanisterId, userPrincipal);
+      if ('Ok' in result) {
+        return { success: true, data: result.Ok };
+      } else {
+        return { success: false, error: result.Err };
+      }
+    } catch (error) {
+      console.error('Failed to get user pending requests:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   // User Management Methods
 
   async addUserToOrbit(tokenCanisterId, userPrincipal, userName, groups = [], status = { 'Active': null }) {

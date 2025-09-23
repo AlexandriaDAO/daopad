@@ -25,10 +25,15 @@ fn label_name(label: &Label) -> Option<String> {
                 1821510295 => "Approved".to_string(),
                 2442362239 => "Rejected".to_string(),
                 3456837432 => "Cancelled".to_string(),
-                1569634545 => "Failed".to_string(),
+                479410653 => "Failed".to_string(), // CORRECTED: This is the actual Failed hash
+                1569634545 => "Failed".to_string(), // Keep old mapping for compatibility
                 1598796536 => "Scheduled".to_string(),
                 1131829668 => "Processing".to_string(),
-                _ => id.to_string(), // Fallback to numeric ID if unknown
+                _ => {
+                    // Log unknown hashes for future mapping
+                    ic_cdk::println!("Unknown status hash: {} (0x{:x})", id, id);
+                    format!("Unknown_{}", id) // More visible fallback
+                }
             })
         },
         Label::Unnamed(idx) => Some(idx.to_string()),

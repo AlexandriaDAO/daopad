@@ -150,7 +150,15 @@ const UnifiedRequests = ({ tokenId, identity }) => {
   // Handle domain change
   const handleDomainChange = (domain) => {
     setSelectedDomain(domain);
-    setFilters(prev => ({ ...prev, page: 0 }));  // Reset pagination
+    // For Users domain, include Completed status to show executed member operations
+    const newStatuses = domain === RequestDomains.Users
+      ? ['Created', 'Approved', 'Processing', 'Scheduled', 'Completed']
+      : ['Created', 'Approved', 'Processing', 'Scheduled'];
+    setFilters(prev => ({
+      ...prev,
+      page: 0,  // Reset pagination
+      statuses: newStatuses
+    }));
   };
 
   // Handle filter changes

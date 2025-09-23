@@ -1,7 +1,7 @@
 use crate::kong_locker::{get_kong_locker_for_user, get_user_locked_tokens};
 use crate::storage::state::TOKEN_ORBIT_STATIONS;
 use crate::types::orbit::{
-    Account, AccountBalance, AccountMetadata, AddAccountOperationInput, Allow, AuthScope,
+    AccountBalance, AccountMetadata, AddAccountOperationInput, Allow, AuthScope,
     FetchAccountBalancesInput, FetchAccountBalancesResult, ListAccountsInput, ListAccountsResult,
 };
 use crate::types::StorablePrincipal;
@@ -52,11 +52,12 @@ pub fn list_all_orbit_stations() -> Vec<(Principal, Principal)> {
 pub async fn join_orbit_station(
     token_canister_id: Principal,
     display_name: String,
-) -> Result<String, String> {
+) -> Result<crate::types::JoinMemberResponse, String> {
+    use crate::api::orbit_users::{ListUsersInput, ListUsersResult};
     use crate::kong_locker::voting::get_user_voting_power_for_token;
     use crate::types::{
-        AddUserOperationInput, CreateRequestInput, CreateRequestResult, RequestExecutionSchedule,
-        RequestOperationInput,
+        AddUserOperationInput, CreateRequestInput, CreateRequestResult, JoinMemberResponse,
+        RequestExecutionSchedule, RequestOperationInput, RequestStatusDTO,
     };
     use ic_cdk::call;
 
@@ -87,6 +88,27 @@ pub async fn join_orbit_station(
         ));
     }
 
+    // NEW: Check if user is already a member first
+    let list_users_input = ListUsersInput {
+        search_term: None,
+        statuses: None,
+        groups: None,
+        paginate: None,
+    };
+
+    let users_result: Result<(ListUsersResult,), _> =
+        call(station_id, "list_users", (list_users_input,)).await;
+
+    if let Ok((ListUsersResult::Ok(users_response),)) = users_result {
+        let is_already_member = users_response.users.iter().any(|user| {
+            user.identities.contains(&caller)
+        });
+
+        if is_already_member {
+            return Err("You are already a member of this treasury".to_string());
+        }
+    }
+
     // Create the AddUser request
     let add_user_input = CreateRequestInput {
         operation: RequestOperationInput::AddUser(AddUserOperationInput {
@@ -109,17 +131,46 @@ pub async fn join_orbit_station(
         call(station_id, "create_request", (add_user_input,)).await;
 
     match result {
-        Ok((CreateRequestResult::Ok(response),)) => Ok(format!(
-            "Successfully created member request. Request ID: {}. Status: {:?}",
-            response.request.id, response.request.status
-        )),
-        Ok((CreateRequestResult::Err(e),)) => {
-            Err(format!("Failed to create member request: {}", e))
+        Ok((CreateRequestResult::Ok(response),)) => {
+            // Parse the actual status properly
+            let (status_str, auto_approved, failure_reason) = match &response.request.status {
+                RequestStatusDTO::Created => ("Created".to_string(), false, None),
+                RequestStatusDTO::Approved => ("Approved".to_string(), true, None),
+                RequestStatusDTO::Completed { .. } => ("Completed".to_string(), true, None),
+                RequestStatusDTO::Failed { reason } => (
+                    "Failed".to_string(),
+                    false,
+                    reason.clone()
+                ),
+                _ => ("Processing".to_string(), false, None),
+            };
+
+            Ok(JoinMemberResponse {
+                request_id: response.request.id,
+                status: status_str,
+                auto_approved,
+                failure_reason,
+            })
         }
-        Err((code, msg)) => Err(format!(
-            "Failed to call Orbit Station: {:?} - {}",
-            code, msg
-        )),
+        Ok((CreateRequestResult::Err(e),)) => {
+            Ok(JoinMemberResponse {
+                request_id: "".to_string(),
+                status: "Failed".to_string(),
+                auto_approved: false,
+                failure_reason: Some(format!("Failed to create member request: {}", e)),
+            })
+        }
+        Err((code, msg)) => {
+            Ok(JoinMemberResponse {
+                request_id: "".to_string(),
+                status: "Failed".to_string(),
+                auto_approved: false,
+                failure_reason: Some(format!(
+                    "Failed to call Orbit Station: {:?} - {}",
+                    code, msg
+                )),
+            })
+        }
     }
 }
 
@@ -327,4 +378,53 @@ pub async fn approve_transfer_request(
         .ok_or("No treasury for this token")?;
 
     approve_transfer_orbit_request(station_id, request_id, caller).await
+}
+
+#[update] // MUST be update, not query (Universal Issue: can't call queries from queries)
+pub async fn get_user_pending_requests(
+    token_canister_id: Principal,
+    _user_principal: Principal // TODO: Use this to filter for specific user's requests
+) -> Result<Vec<crate::api::orbit_requests::OrbitRequestSummary>, String> {
+    use crate::api::orbit_requests::{ListRequestsInput, ListRequestsOperationType, PaginationInput, RequestStatusCode};
+
+    // Get all pending AddUser requests
+    let filters = ListRequestsInput {
+        requester_ids: None,
+        approver_ids: None,
+        statuses: Some(vec![
+            RequestStatusCode::Created,
+            RequestStatusCode::Approved,
+            RequestStatusCode::Scheduled,
+            RequestStatusCode::Processing,
+        ]),
+        operation_types: Some(vec![ListRequestsOperationType::AddUser]),
+        expiration_from_dt: None,
+        expiration_to_dt: None,
+        created_from_dt: None,
+        created_to_dt: None,
+        paginate: Some(PaginationInput {
+            offset: None,
+            limit: Some(50),
+        }),
+        sort_by: None,
+        only_approvable: false,
+        with_evaluation_results: false,
+        deduplication_keys: Some(vec![]), // CRITICAL: Include ALL fields!
+        tags: Some(vec![]),               // Even if empty!
+    };
+
+    // Call list_orbit_requests to get all AddUser requests
+    let response = crate::api::orbit_requests::list_orbit_requests(token_canister_id, filters).await?;
+
+    // Filter for requests containing this user's principal
+    // Note: This is a simple implementation - in production we'd parse operation details
+    let user_requests = response.requests.into_iter()
+        .filter(|_request| {
+            // For now, just return all AddUser requests since we filtered by operation type
+            // A more sophisticated implementation would parse the operation to check the identities
+            true
+        })
+        .collect();
+
+    Ok(user_requests)
 }

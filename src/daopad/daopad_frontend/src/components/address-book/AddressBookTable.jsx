@@ -2,6 +2,22 @@ import React from 'react';
 import { Copy, Eye, Pencil, Trash2, MoreHorizontal } from 'lucide-react';
 import BlockchainIcon from './BlockchainIcon';
 import ShortenedAddress from './ShortenedAddress';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const AddressBookTable = ({
   entries,
@@ -26,141 +42,151 @@ const AddressBookTable = ({
   ];
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-        <thead className="bg-gray-50 dark:bg-gray-900">
-          <tr>
-            {headers.map((header) => (
-              <th
-                key={header.key}
-                style={{ width: header.width }}
-                className={`px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${
-                  header.align === 'right' ? 'text-right' : ''
-                }`}
-              >
-                {header.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+    <div className="relative">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[100px]">Blockchain</TableHead>
+            <TableHead className="w-[200px]">Name</TableHead>
+            <TableHead>Address</TableHead>
+            <TableHead className="w-[200px]">Labels</TableHead>
+            <TableHead className="text-right w-[120px]">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {entries.map((entry) => (
-            <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+            <TableRow key={entry.id}>
               {/* Blockchain */}
-              <td className="px-6 py-4 whitespace-nowrap">
+              <TableCell>
                 <BlockchainIcon blockchain={entry.blockchain} size="sm" showLabel={true} />
-              </td>
+              </TableCell>
 
               {/* Name */}
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-gray-900 dark:text-white">
+              <TableCell>
+                <div className="font-medium">
                   {entry.address_owner}
                 </div>
                 {entry.last_modification_timestamp && (
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                  <div className="text-xs text-muted-foreground">
                     Modified: {new Date(entry.last_modification_timestamp).toLocaleDateString()}
                   </div>
                 )}
-              </td>
+              </TableCell>
 
               {/* Address */}
-              <td className="px-6 py-4">
+              <TableCell>
                 <div className="flex items-center gap-2">
                   <ShortenedAddress
                     address={entry.address}
                     format={entry.address_format}
                     maxLength={20}
                   />
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => onCopy(entry.address)}
-                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    title="Copy address"
+                    className="h-8 w-8 p-0"
                   >
                     <Copy className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <div className="text-xs text-muted-foreground mt-1">
                   Format: {entry.address_format.replace(/_/g, ' ')}
                 </div>
-              </td>
+              </TableCell>
 
               {/* Labels */}
-              <td className="px-6 py-4">
+              <TableCell>
                 <div className="flex flex-wrap gap-1">
                   {entry.labels && entry.labels.length > 0 ? (
                     entry.labels.slice(0, 3).map((label, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
-                      >
+                      <Badge key={index} variant="secondary" className="text-xs">
                         {label}
-                      </span>
+                      </Badge>
                     ))
                   ) : (
-                    <span className="text-sm text-gray-400 dark:text-gray-500">
+                    <span className="text-sm text-muted-foreground">
                       No labels
                     </span>
                   )}
                   {entry.labels && entry.labels.length > 3 && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                    <Badge variant="outline" className="text-xs">
                       +{entry.labels.length - 3}
-                    </span>
+                    </Badge>
                   )}
                 </div>
-              </td>
+              </TableCell>
 
               {/* Actions */}
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-1">
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => onView(entry)}
-                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    title="View details"
+                    className="h-8 w-8 p-0"
                   >
                     <Eye className="h-4 w-4" />
-                  </button>
+                  </Button>
 
                   {hasEditPrivilege(entry.id) && (
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => onEdit(entry)}
-                      className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                      title="Edit entry"
+                      className="h-8 w-8 p-0"
                     >
                       <Pencil className="h-4 w-4" />
-                    </button>
+                    </Button>
                   )}
 
                   {hasDeletePrivilege(entry.id) && (
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => onDelete(entry)}
-                      className="p-1 text-red-400 hover:text-red-600 dark:hover:text-red-300"
-                      title="Delete entry"
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                     >
                       <Trash2 className="h-4 w-4" />
-                    </button>
+                    </Button>
                   )}
 
-                  {/* Dropdown menu for additional actions */}
-                  <div className="relative inline-block text-left">
-                    <button
-                      className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                      title="More actions"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
-                    {/* Dropdown menu content will be implemented later */}
-                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onView(entry)}>
+                        View Details
+                      </DropdownMenuItem>
+                      {hasEditPrivilege(entry.id) && (
+                        <DropdownMenuItem onClick={() => onEdit(entry)}>
+                          Edit Entry
+                        </DropdownMenuItem>
+                      )}
+                      {hasDeletePrivilege(entry.id) && (
+                        <DropdownMenuItem
+                          onClick={() => onDelete(entry)}
+                          className="text-destructive"
+                        >
+                          Delete Entry
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
 
       {/* Loading overlay */}
       {loading && (
-        <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 flex items-center justify-center">
-          <div className="text-gray-500 dark:text-gray-400">Loading...</div>
+        <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center">
+          <div className="text-muted-foreground">Loading...</div>
         </div>
       )}
     </div>

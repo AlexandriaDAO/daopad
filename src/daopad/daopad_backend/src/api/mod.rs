@@ -3,7 +3,7 @@ mod dao_transition;
 mod governance_config;
 mod kong_locker;
 mod orbit;
-mod orbit_requests;
+pub mod orbit_requests;
 mod orbit_transfers;
 mod orbit_users;
 mod proposals;

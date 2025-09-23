@@ -7,7 +7,7 @@ import AccountsTable from './tables/AccountsTable';
 import MembersTable from './tables/MembersTable';
 import RequestsTable from './tables/RequestsTable';
 import UnifiedRequests from './orbit/UnifiedRequests';
-import ExperimentalRequests from './orbit/ExperimentalRequests';
+import AddressBookPage from '../pages/AddressBookPage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,9 +41,6 @@ const TokenDashboard = ({ token, identity, votingPower, lpPositions, onRefresh }
   const [stationId, setStationId] = useState('');
   const [userVotingPower, setUserVotingPower] = useState(null);
   const [loadingVP, setLoadingVP] = useState(false);
-  const [joiningAsMember, setJoiningAsMember] = useState(false);
-  const [memberName, setMemberName] = useState('');
-  const [showJoinForm, setShowJoinForm] = useState(false);
   const [showProposeForm, setShowProposeForm] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [daoStatus, setDaoStatus] = useState(null);
@@ -267,39 +264,6 @@ const TokenDashboard = ({ token, identity, votingPower, lpPositions, onRefresh }
     }
   };
 
-  const handleJoinAsMember = async () => {
-    if (!memberName.trim()) {
-      setError('Please enter your display name');
-      return;
-    }
-
-    if (userVotingPower < 100) {
-      setError(`Insufficient voting power. You have ${userVotingPower} VP but need at least 100 VP to join.`);
-      return;
-    }
-
-    setJoiningAsMember(true);
-    setError('');
-
-    try {
-      const daopadService = new DAOPadBackendService(identity);
-      const tokenPrincipal = Principal.fromText(token.canister_id);
-      const result = await daopadService.joinOrbitStation(tokenPrincipal, memberName.trim());
-
-      if (result.success) {
-        setShowJoinForm(false);
-        setMemberName('');
-        alert('Successfully submitted request to join as a member!');
-      } else {
-        setError(result.error || 'Failed to join as member');
-      }
-    } catch (err) {
-      console.error('Error joining as member:', err);
-      setError(err.message || 'An error occurred while joining');
-    } finally {
-      setJoiningAsMember(false);
-    }
-  };
 
   const formatUsdValue = (value) => {
     return new Intl.NumberFormat('en-US', {
@@ -398,71 +362,30 @@ const TokenDashboard = ({ token, identity, votingPower, lpPositions, onRefresh }
         <>
           {/* Action Toolbar */}
           <div className="flex gap-2">
-            {!showJoinForm && userVotingPower >= 100 && (
-              <Button onClick={() => setShowJoinForm(true)} variant="outline">
-                Join as Member
-              </Button>
-            )}
             <Button variant="outline" onClick={loadTokenStatus}>
               Refresh
             </Button>
           </div>
 
-          {/* Join Member Form */}
-          {showJoinForm && (
-            <Alert>
-              <AlertDescription>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="member-name">Display Name</Label>
-                    <Input
-                      id="member-name"
-                      type="text"
-                      value={memberName}
-                      onChange={(e) => setMemberName(e.target.value)}
-                      placeholder="Your name"
-                      maxLength={50}
-                      disabled={joiningAsMember}
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={handleJoinAsMember}
-                      disabled={joiningAsMember || !memberName.trim()}
-                      size="sm"
-                    >
-                      {joiningAsMember ? 'Joining...' : 'Submit Request'}
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setShowJoinForm(false);
-                        setMemberName('');
-                        setError('');
-                      }}
-                      disabled={joiningAsMember}
-                      variant="outline"
-                      size="sm"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
 
           {/* Tabs for different views */}
           <Tabs defaultValue="accounts" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="accounts">Treasury Accounts</TabsTrigger>
               <TabsTrigger value="transfers">Transfer Requests</TabsTrigger>
               <TabsTrigger value="members">Members & Roles</TabsTrigger>
               <TabsTrigger value="requests">Governance Requests</TabsTrigger>
-              <TabsTrigger value="experimental">Experimental</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="accounts" className="mt-4">
+            <TabsContent value="accounts" className="mt-4 space-y-6">
               <AccountsTable stationId={orbitStation.station_id} identity={identity} tokenId={token.canister_id} />
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Saved Addresses</h3>
+                  <span className="text-sm text-muted-foreground">Manage addresses for easy transfers</span>
+                </div>
+                <AddressBookPage identity={identity} />
+              </div>
             </TabsContent>
 
             <TabsContent value="transfers" className="mt-4">
@@ -477,9 +400,6 @@ const TokenDashboard = ({ token, identity, votingPower, lpPositions, onRefresh }
               <RequestsTable tokenId={token.canister_id} identity={identity} />
             </TabsContent>
 
-            <TabsContent value="experimental" className="mt-4">
-              <ExperimentalRequests />
-            </TabsContent>
           </Tabs>
         </>
       ) : activeProposal ? (

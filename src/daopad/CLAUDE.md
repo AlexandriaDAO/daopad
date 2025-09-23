@@ -1,30 +1,12 @@
-# CLAUDE.md - DAOPad Development Guide
-
-## 🎯 IMPORTANT: New Workflow as of December 2024
-
-**This is now the PRIMARY working directory.** All active development happens in DAOPad. Kong Locker is feature-complete and should only be accessed for read-only operations to understand voting power allocation.
-
-### Key Changes:
-1. **Focus**: All development work is now on DAOPad (governance and voting)
-2. **Kong Locker**: READ-ONLY - Used only to understand locked liquidity voting power
-3. **Deployment**: Use `./deploy.sh` from THIS directory (`src/daopad/`), NOT the root
-4. **Documentation**: This CLAUDE.md is now the main guide (root CLAUDE.md removed)
+1. **Deployment**: Use `./deploy.sh` from THIS directory (`src/daopad/`), NOT the root
 
 ### Workflow Summary:
 ```bash
-# You are here: src/daopad/
-pwd  # Should show: /path/to/project/src/daopad/
-
-# Deploy DAOPad changes (use local deploy script)
-./deploy.sh --network ic              # Deploy everything
-./deploy.sh --network ic --backend-only   # Backend only
-./deploy.sh --network ic --frontend-only  # Frontend only
-
-# Need reference info? (ALL READ-ONLY)
-# Kong Locker: ../kong_locker/CLAUDE.md
-# Orbit Station: ./orbit-reference/ (Dfinity's official repo)
-# Never modify reference code
+./deploy.sh --network ic  # Deploy everything. Use this every time.
 ```
+
+**⚠️ CRITICAL: Always deploy to mainnet using `./deploy.sh --network ic` after making ANY changes. There is no local testing environment - all testing happens on mainnet. This ensures both frontend and backend stay in sync.**
+
 
 ## 📁 Repository Structure
 
@@ -50,18 +32,6 @@ project_root/
 │       └── kong_locker_frontend/
 ```
 
-## 🔗 Understanding the Integration
-
-### Voting Power Flow
-```mermaid
-graph LR
-    A[User locks LP tokens] -->|Kong Locker| B[Lock Canister Created]
-    B -->|Provides Principal| C[User Registers in DAOPad]
-    C -->|Queries Kong Locker| D[Gets Voting Power]
-    D -->|Uses Power| E[Votes on Proposals]
-    E -->|Executes| F[Orbit Station Treasury]
-```
-
 ### When You Need Reference Information:
 - **Kong Locker voting power**: Read `../kong_locker/CLAUDE.md`
 - **Orbit Station architecture**: Read `./orbit-reference/` files
@@ -80,17 +50,41 @@ graph LR
 ### Core Components
 ```
 daopad/
-├── daopad_backend/       # Rust canister - governance logic
+├── daopad_backend/       # Rust canister - governance & treasury management
 │   ├── src/
 │   │   ├── lib.rs       # Main entry point
-│   │   ├── alexandria_dao.rs  # Orbit Station integration
-│   │   └── types.rs     # Type definitions
-│   └── daopad_backend.did  # Auto-generated candid
+│   │   ├── api/         # API modules (NEW modular structure)
+│   │   │   ├── orbit.rs         # Orbit Station core integration
+│   │   │   ├── orbit_requests.rs # Request management (proposals, transfers)
+│   │   │   ├── orbit_users.rs   # Member management & roles
+│   │   │   ├── orbit_transfers.rs # Treasury transfer operations
+│   │   │   ├── address_book.rs  # Address book for easy transfers
+│   │   │   ├── dao_transition.rs # DAO setup & transition logic
+│   │   │   └── kong_locker.rs   # Kong Locker integration
+│   │   └── types/
+│   │       └── orbit.rs # Orbit-specific type definitions
+│   └── daopad_backend.did  # Auto-generated candid (use candid-extractor!)
 │
-├── daopad_frontend/      # React app - voting interface
+├── daopad_frontend/      # React app with shadcn/ui components
 │   ├── src/
 │   │   ├── App.jsx      # Main application
-│   │   └── components/  # UI components
+│   │   ├── components/
+│   │   │   ├── TokenDashboard.jsx # Main token governance interface
+│   │   │   ├── TokenTabs.jsx      # Token selection & navigation
+│   │   │   ├── orbit/             # Orbit Station components
+│   │   │   │   ├── UnifiedRequests.jsx # Transfer & proposal management
+│   │   │   │   └── TransferRequestDialog.jsx # Create transfers
+│   │   │   ├── tables/            # Data display components
+│   │   │   │   ├── AccountsTable.jsx # Treasury accounts & balances
+│   │   │   │   ├── MembersTable.jsx  # DAO members & roles
+│   │   │   │   └── RequestsTable.jsx # Governance requests
+│   │   │   ├── address-book/      # Address book (integrated in Treasury tab)
+│   │   │   └── ui/                # shadcn/ui components (Button, Table, etc.)
+│   │   ├── services/
+│   │   │   ├── daopadBackend.js   # Backend API service
+│   │   │   ├── orbitStation.js    # Direct Orbit Station service
+│   │   │   └── addressBookService.js # Address book service
+│   │   └── declarations/          # CRITICAL: Frontend uses these, not /src/declarations!
 │   └── dist/            # Build output
 │
 ├── orbit_station/        # Orbit Station interface (KEEP THIS!)
@@ -101,75 +95,10 @@ daopad/
 └── orbit-reference/      # Full Orbit source code (reference only, DO NOT MODIFY)
 ```
 
-### Development Workflow
-
-#### Making Changes
-```bash
-# Backend changes
-cd daopad_backend
-vim src/lib.rs
-
-# Frontend changes
-cd daopad_frontend
-vim src/components/SomeComponent.jsx
-
-# Build backend if Rust changed (from project root)
-cd ../..  # Back to project root
-cargo build --target wasm32-unknown-unknown --release -p daopad_backend --locked
-
-# Extract candid if Rust changed
-candid-extractor target/wasm32-unknown-unknown/release/daopad_backend.wasm > src/daopad/daopad_backend/daopad_backend.did
-```
-
-#### ALWAYS DEPLOY TO MAINNET AFTER CHANGES
-```bash
-# From src/daopad/ directory
-cd src/daopad
-./deploy.sh --network ic  # Deploys both backend and frontend
-
-# Note: The --backend-only and --frontend-only flags exist but we typically deploy everything
-```
-
-**⚠️ CRITICAL: Always deploy to mainnet using `./deploy.sh --network ic` after making ANY changes. There is no local testing environment - all testing happens on mainnet. This ensures both frontend and backend stay in sync.**
-
-## 🔑 Key Integration Points
-
-### With Kong Locker (READ-ONLY)
-```rust
-// Users provide their Kong Locker principal as proof
-register_with_lp_principal(kong_locker_principal: Principal) {
-    // DAOPad verifies this principal owns a lock canister
-    // Queries Kong Locker for voting power calculation
-    // Grants governance rights based on locked amount
-}
-
-// Getting voting power (reference only)
-get_voting_power(user: Principal) -> u64 {
-    // Internally queries Kong Locker's data
-    // Returns USD value * 100 of locked LP tokens
-}
-```
-
-### With Orbit Station (ACTIVE DEVELOPMENT)
-```rust
-// DAOPad backend acts as the DAO admin for Orbit Station
-impl OrbitAdmin for DaoPadBackend {
-    // Execute treasury operations after DAO approval
-    async fn execute_request(request_id: u64) -> Result<()>
-}
-```
-
 ## 🏗️ Design Principles
 
 ### Minimal Storage Principle
-**Decision**: Store only essential mappings in the backend canister, avoid storing data that can be queried at runtime.
-
-#### Example: Orbit Station Information
-The backend stores only: `token_canister_id → orbit_station_id`
-The frontend constructs display data using this minimal info.
-
-#### Storage Decision:
-Store only the essential mapping: `token_canister_id → orbit_station_id`
+**Decision**: The ONLY thing we store is the "token_canister_id":"orbit_station_id" mapping. Everything else is dynamically queried and mdoified through Orbit's Core logic. In this way we can freely upgrade and modify on mainnet with breaking changes without fear of data loss. The only data we need to keep is in the daopad_backend is what tokens map to what orbit stations.
 
 #### Why Minimal Storage:
 1. **Upgrade Safety**: Once data is in stable storage, removing it requires complex migrations
@@ -253,58 +182,6 @@ async fn execute_orbit_action() -> Result<()> {
 }
 ```
 
-## 📝 Active Development Areas
-
-### Current Focus
-- [ ] Proposal creation interface
-- [ ] Vote tallying mechanisms
-- [ ] Orbit Station integration
-- [ ] Treasury management UI
-- [ ] Governance analytics dashboard
-
-### Backend Methods (Actively Developed)
-```rust
-// User Management
-register_with_lp_principal(principal: Principal) -> Result<()>
-get_voting_power(user: Principal) -> Result<u64>
-get_user_status(user: Principal) -> Result<UserStatus>
-
-// Voting System
-create_proposal(proposal: ProposalInput) -> Result<u64>
-cast_vote(proposal_id: u64, vote: Vote) -> Result<()>
-execute_proposal(proposal_id: u64) -> Result<()>
-
-// Orbit Integration
-sync_with_orbit_station() -> Result<()>
-get_treasury_status() -> Result<TreasuryStatus>
-```
-
-## 🚀 Deployment
-
-### Identity Management
-```bash
-# For deployments, Claude uses:
-dfx identity use daopad  # No password required
-
-# User's identity (password-protected):
-dfx identity use alex    # Manual password entry
-```
-
-### Deployment Commands (from src/daopad/)
-```bash
-# Full deployment
-./deploy.sh --network ic
-
-# Backend only
-./deploy.sh --network ic --backend-only
-
-# Frontend only  
-./deploy.sh --network ic --frontend-only
-
-# Fresh deployment (local only)
-./deploy.sh --fresh
-```
-
 ## 📦 Canister IDs
 
 | Component | Canister ID | URL |
@@ -325,335 +202,113 @@ dfx identity use alex    # Manual password entry
 | Wrong deploy script | Use `./deploy.sh` from THIS directory |
 | **"is not a function" error** | **CRITICAL: See Declaration Sync Bug section below** |
 
-## 🚨 CRITICAL BUG: Declaration Synchronization Issue
+## 🚨 CRITICAL: Declaration Sync Bug
 
-### The Problem That Wasted Weeks
-If you see errors like:
-- `TypeError: actor.method_name is not a function`
-- `Cannot read property 'method_name' of null`
-- Methods that work in DFX but fail in frontend
+**Error**: `TypeError: actor.method_name is not a function` (works in dfx but not frontend)
 
-**This is likely the Declaration Synchronization Bug!**
+**Root Cause**: Frontend uses `/src/daopad/daopad_frontend/src/declarations/` but dfx generates to `/src/declarations/`. They don't auto-sync!
 
-### Root Cause
-The project has declarations in TWO locations:
-1. **Generated by dfx**: `/src/declarations/daopad_backend/`
-2. **Used by frontend**: `/src/daopad/daopad_frontend/src/declarations/daopad_backend/`
-
-The deploy script runs `dfx generate` which creates declarations in location #1, but the frontend reads from location #2. **They are NOT automatically synced!**
-
-### The Fix (Saves Weeks of Debugging)
-After adding any new backend method:
+**Quick Fix After Backend Changes**:
 ```bash
-# 1. Build backend
+# After any backend method addition:
 cargo build --target wasm32-unknown-unknown --release -p daopad_backend --locked
-
-# 2. Extract candid
 candid-extractor target/wasm32-unknown-unknown/release/daopad_backend.wasm > src/daopad/daopad_backend/daopad_backend.did
-
-# 3. Deploy backend
 ./deploy.sh --network ic --backend-only
 
-# 4. CRITICAL: Copy declarations to frontend location
+# CRITICAL: Sync declarations manually
 cp -r src/declarations/daopad_backend/* src/daopad/daopad_frontend/src/declarations/daopad_backend/
 
-# 5. Deploy frontend
 ./deploy.sh --network ic --frontend-only
 ```
 
-### Why This Bug Is So Insidious
-- Everything appears to work (backend deployed, types generated)
-- DFX commands work perfectly (they use current candid)
-- Error messages are misleading (suggests runtime issues, not build-time)
-- The deploy script does 90% of the work, making you trust it completely
-- Frontend silently uses stale types without warning
-
-### How to Verify This Is Your Problem
-1. **Check if method exists in backend candid:**
-   ```bash
-   grep "your_method_name" src/daopad/daopad_backend/daopad_backend.did
-   ```
-
-2. **Check if method exists in generated declarations:**
-   ```bash
-   grep "your_method_name" src/declarations/daopad_backend/daopad_backend.did.js
-   ```
-
-3. **Check if method exists in frontend declarations:**
-   ```bash
-   grep "your_method_name" src/daopad/daopad_frontend/src/declarations/daopad_backend/daopad_backend.did.js
-   ```
-
-If #1 and #2 show the method but #3 doesn't, **you have the declaration sync bug!**
-
-### Permanent Fix (TODO)
-Update `deploy.sh` to automatically sync declarations:
+**Verify The Bug**: Check if method exists in all 3 places:
 ```bash
-# Add after dfx generate line:
-cp -r src/declarations/daopad_backend/* src/daopad/daopad_frontend/src/declarations/daopad_backend/
+grep "method_name" src/daopad/daopad_backend/daopad_backend.did  # ✓ Backend candid
+grep "method_name" src/declarations/daopad_backend/daopad_backend.did.js  # ✓ Generated
+grep "method_name" src/daopad/daopad_frontend/src/declarations/daopad_backend/daopad_backend.did.js  # ✗ Frontend (stale!)
 ```
 
-## 📚 Quick Reference
+**Why It's Insidious**: DFX works perfectly, deploy succeeds, but frontend silently uses stale types. The error message misleads you into debugging runtime issues when it's actually a build-time declaration mismatch.
 
-### Testing Commands
+
+## ⚠️ Orbit Station Integration Workflow
+
+### 🔑 Test Station Setup
+**Use our admin-enabled test station to verify EVERYTHING before coding:**
+- **Station**: `fec7w-zyaaa-aaaaa-qaffq-cai` (ALEX token)
+- **Identity**: `daopad` (has admin/operator access)
+- **Rule**: NEVER GUESS TYPES - Test with dfx first!
+
+### The Deterministic 4-Step Process
+
+#### 1️⃣ Research in orbit-reference/
 ```bash
-# DAOPad operations
-dfx canister --network ic call daopad_backend get_backend_principal
-dfx canister --network ic call daopad_backend get_cache_status
-dfx canister --network ic call daopad_backend get_alexandria_proposals
-
-# Kong Locker queries (READ-ONLY reference)
-dfx canister --network ic call kong_locker get_all_voting_powers
-dfx canister --network ic call kong_locker get_total_value_locked
+# Find exact types in Orbit source
+grep -r "OperationName" orbit-reference/core/station/ --include="*.rs" --include="*.did"
+# Check: api/spec.did, impl/src/models/, impl/src/mappers/
 ```
 
-## ⚠️ CRITICAL: Orbit Station Integration Workflow
+#### 2️⃣ Test with DFX (CRITICAL - Never Skip!)
+```bash
+export TEST_STATION="fec7w-zyaaa-aaaaa-qaffq-cai"
 
-### The Golden Rule: NEVER GUESS TYPES - ALWAYS VERIFY WITH DFX FIRST
+# Get candid interface
+dfx canister --network ic call $TEST_STATION __get_candid
 
-When implementing ANY Orbit Station functionality, follow this EXACT workflow to guarantee success:
+# Test the EXACT operation
+dfx canister --network ic call $TEST_STATION operation_name '(record { ... })'
 
-### 🔑 Test Environment Setup (ONE-TIME SETUP)
-
-**We have a dedicated test station for development:**
-- **Station ID**: `fec7w-zyaaa-aaaaa-qaffq-cai` (ALEX token test station)
-- **DFX Identity**: `daopad` (already an admin/operator on this station)
-- **Token ID**: `ysy5f-2qaaa-aaaap-qkmmq-cai` (linked to test station)
-
-**Why this matters**: With admin access, we can test EVERY Orbit Station call directly before implementing in code. This eliminates ALL guesswork about types and responses.
-
-### Step 1: Research Phase (MANDATORY - DO THIS FIRST!)
-
-**BEFORE writing any code:**
-
-1. **Study the Orbit Station source code**
-   ```bash
-   # Navigate to reference
-   cd orbit-reference/core/station/
-
-   # Find the exact operation you want to implement
-   grep -r "OperationName" --include="*.rs" --include="*.did"
-
-   # Example for user management:
-   grep -r "AddUser" orbit-reference/core/station/
-   grep -r "EditUser" orbit-reference/core/station/
-   ```
-
-2. **Identify the exact type structures**
-   - Check `orbit-reference/core/station/api/spec.did` for Candid interface
-   - Check `orbit-reference/core/station/impl/src/models/` for Rust types
-   - Check `orbit-reference/core/station/impl/src/mappers/` for type conversions
-   - **COPY THE EXACT FIELD NAMES AND TYPES - DO NOT IMPROVISE**
-
-3. **Test with dfx first (CRITICAL STEP - USE OUR TEST STATION)**
-   ```bash
-   # ALWAYS use our test station where daopad identity is admin
-   export TEST_STATION="fec7w-zyaaa-aaaaa-qaffq-cai"
-
-   # Get the exact type structure
-   dfx canister --network ic call $TEST_STATION __get_candid
-
-   # Test the EXACT operation you want to implement
-   dfx canister --network ic call $TEST_STATION operation_name '(record { ... })'
-
-   # Capture the COMPLETE response - this shows EXACTLY what types to expect
-   # If it works in dfx, it WILL work in code with matching types
-   # If it fails in dfx, it WILL fail in code - fix it here first!
-   ```
-
-### Step 2: Type Definition Phase
-
-1. **Create types EXACTLY as they appear in Orbit**
-   ```rust
-   // COPY from orbit-reference, don't improvise
-   #[derive(CandidType, Deserialize)]
-   pub struct ExactTypeFromOrbit {
-       // Match field names exactly (including underscores vs camelCase)
-       // Match field types exactly
-       // Include ALL fields, even optional ones
-   }
-   ```
-
-2. **Verify types compile before using them**
-   ```bash
-   cargo build --target wasm32-unknown-unknown --release -p daopad_backend
-   ```
-
-### Step 3: Implementation Phase
-
-1. **Write a minimal test function first**
-   ```rust
-   #[update]
-   async fn test_orbit_operation() -> Result<String, String> {
-       // Use EXACT types that worked in dfx testing
-       let test_station = Principal::from_text("fec7w-zyaaa-aaaaa-qaffq-cai").unwrap();
-
-       // Copy the EXACT structure that worked in dfx
-       let result: Result<(ExpectedReturnType,), _> = ic_cdk::call(
-           test_station,
-           "method_name",
-           (params,)
-       ).await;
-   }
-   ```
-
-2. **Test your backend function with dfx**
-   ```bash
-   # Test with our test station first
-   dfx canister --network ic call daopad_backend test_orbit_operation
-
-   # Compare with direct Orbit call - output should match!
-   dfx canister --network ic call $TEST_STATION method_name '(same_params)'
-   ```
-
-3. **Only after both match perfectly, build the full feature**
-
-### Step 4: Common Patterns That Work
-
-**For User Management:**
-```rust
-// These UUIDs are hardcoded in Orbit Station - use them exactly
-const ADMIN_GROUP_ID: &str = "00000000-e400-0000-4d8f-480000000000";
-const OPERATOR_GROUP_ID: &str = "00000000-e400-0000-4d8f-480000000001";
+# If it works in dfx, it WILL work in code with matching types
 ```
 
-**For Request Creation:**
-- Most operations need to create a request, not direct calls
-- Always use `create_request` with the appropriate operation type
-- Check if operation needs approval (most do)
-
-**For Result Handling:**
+#### 3️⃣ Implement with Exact Types
 ```rust
-// Orbit often returns tagged enums
-match result {
-    Ok((CreateRequestResult::Ok(response),)) => {
-        // Success case
-    },
-    Ok((CreateRequestResult::Err(e),)) => {
-        // Orbit returned an error
-    },
-    Err((code, msg)) => {
-        // IC call failed
-    }
+// Copy EXACTLY what worked in dfx - field names, types, structure
+#[update]  // Must be update for cross-canister calls
+async fn orbit_operation(station_id: Principal) -> Result<Response, String> {
+    let result: Result<(ExactTypeFromDfx,), _> = ic_cdk::call(
+        station_id,
+        "method_name",
+        (exact_params_from_dfx,)
+    ).await;
+    // Handle tagged enums: Ok/Err variants inside Result
 }
 ```
 
-### ❌ Common Pitfalls That WILL Cause Failures
+#### 4️⃣ Verify Backend Matches Direct Call
+```bash
+# Your backend method
+dfx canister --network ic call daopad_backend orbit_operation '(...)'
 
-1. **Assuming type names** - Orbit uses specific names, don't guess
-2. **Skipping dfx testing** - Always test manually first WITH OUR TEST STATION
-3. **Creating types before checking source** - Will lead to mismatches
-4. **Not capturing complete responses** - Missing fields = decode errors
-5. **Testing without admin access** - Use daopad identity on test station
-6. **Forgetting operations need requests** - Most changes need approval
-7. **Ignoring permission requirements** - Check what permissions are needed
-8. **Using wrong field formats** - UUIDs as strings, not Principal
-9. **Not comparing dfx outputs** - Backend and direct calls should match
+# Should match direct Orbit call
+dfx canister --network ic call $TEST_STATION method_name '(...)'
+```
 
-### ✅ Why This Workflow Works Every Time
+### Key Patterns
+- **Group UUIDs**: `"00000000-e400-0000-4d8f-480000000000"` (admin), `"...-480000000001"` (operator)
+- **Most operations**: Create requests, not direct calls (need approval)
+- **Result handling**: Orbit returns `Result::Ok(CreateRequestResult::Ok/Err)` - double wrapped!
 
-1. **Test station access** - We have admin rights to test EVERYTHING
-2. **Source code is truth** - Orbit reference shows exact implementation
-3. **dfx testing catches issues early** - Before writing any code
-4. **Exact type matching** - Copy what works in dfx, no guessing
-5. **Permission awareness** - daopad identity has all needed permissions
-6. **Deterministic debugging** - If dfx works, code will work with same types
+### Common Failures & Fixes
+| Issue | Fix |
+|-------|-----|
+| Type mismatch | Copy EXACT types from dfx test, not documentation |
+| Decode error | Remove extra fields, match Orbit's actual response |
+| Permission denied | Use `daopad` identity with test station |
+| Query fails | Use `#[update]` not `#[query]` for cross-canister |
 
-### Real Example: Debugging list_requests (What We Just Fixed)
+### Example: Real Debug Session
+```bash
+# Problem: list_requests decode error
+dfx canister --network ic call $TEST_STATION list_requests '(record {
+  statuses = null;  # ❌ Caused decode error with completed requests
+})'
 
-1. **Problem**: Frontend showed "failed to decode canister response" error
+# Fix: Filter for non-completed only
+statuses = opt vec { variant { Created }; variant { Processing } }  # ✓ Works
+```
 
-2. **Debug with dfx first**:
-   ```bash
-   # Test directly on our station as daopad identity
-   dfx canister --network ic call fec7w-zyaaa-aaaaa-qaffq-cai list_requests '(record {
-     statuses = null;  # This caused decode error!
-     only_approvable = false;
-     with_evaluation_results = false
-   })'
-
-   # Found: Completed requests have complex nested types
-   # Solution: Use statuses = opt vec { variant { Created } } instead
-   ```
-
-3. **Discovered type mismatches**:
-   - Backend had extra fields (deduplication_keys, tags) - REMOVED
-   - Backend had non-existent variant (SystemRestore) - REMOVED
-   - Completed AddUser ops have groups as records, not strings - AVOIDED
-
-4. **Fixed by matching EXACTLY what worked in dfx**:
-   ```rust
-   // Only request non-completed statuses (what worked in dfx)
-   statuses: Some(vec![
-       RequestStatusCode::Created,
-       RequestStatusCode::Processing,
-       RequestStatusCode::Scheduled,
-   ])
-   ```
-
-### Example: Successfully Adding a User
-
-1. **Research:**
-   ```bash
-   grep -r "AddUserOperationInput" orbit-reference/
-   # Found exact type in api/spec.did
-   ```
-
-2. **Verify structure:**
-   ```candid
-   type AddUserOperationInput = record {
-     name: text;
-     identities: vec principal;
-     groups: vec text;  // UUIDs as strings!
-     status: UserStatus;
-   };
-   ```
-
-3. **Test manually first on OUR TEST STATION:**
-   ```bash
-   # Use our test station where we have admin access
-   dfx canister --network ic call fec7w-zyaaa-aaaaa-qaffq-cai create_request '(record {
-     operation = variant { AddUser = record {
-       name = "Test User";
-       identities = vec { principal "aaaaa-aa" };
-       groups = vec {};
-       status = variant { Active }
-     }};
-     title = opt "Add Test User";
-   })'
-   ```
-
-4. **Only then implement in code** - using EXACT types that worked in step 3
-
-### 🎯 The Deterministic Debugging Workflow
-
-**When frontend shows an error:**
-1. **STOP** - Don't guess what's wrong
-2. **REPRODUCE** - Call the same backend method with dfx
-3. **ISOLATE** - Call Orbit directly with same params
-4. **COMPARE** - Find the difference in responses
-5. **FIX** - Adjust types to match what Orbit actually returns
-6. **VERIFY** - Test the fix with dfx before deploying
-
-**This workflow is DETERMINISTIC** - it will ALWAYS find the issue because we can see exactly what Orbit returns vs what our code expects.
-
-## For Claude Code
-
-### Primary Rules:
-1. **Work in DAOPad** - This is the active development area
-2. **Reference repositories are READ-ONLY** - Never modify Kong Locker or Orbit reference code
-3. **Use local deploy.sh** - Always deploy from `src/daopad/` directory
-4. **Extract candid** - After every Rust change
-5. **Test on mainnet** - No local testing, deploy directly to IC
-6. **FOLLOW ORBIT WORKFLOW** - Never skip the research phase when integrating with Orbit
-
-### Reference Repository Usage:
-
-#### Kong Locker Reference (../kong_locker/):
-- Navigate to `../kong_locker/CLAUDE.md`
-- Understand voting power calculation
-- Reference API documentation
-- **Never modify Kong Locker code**
+**Why This Works**: Test station + admin access + exact type matching = deterministic success. If dfx works, code works.
 
 #### Orbit Reference (./orbit-reference/):
 - **🚨 CRITICAL**: This is Dfinity's official Orbit repository - READ-ONLY
@@ -662,23 +317,5 @@ match result {
 - Reference treasury management: `orbit-reference/core/station/src/services/`
 - Check API interfaces: `orbit-reference/core/station/api/`
 - **🚨 NEVER MODIFY - This is not our code, it's reference material only**
-
-### Workflow Checklist:
-- [ ] Currently in `src/daopad/` directory
-- [ ] Using `./deploy.sh` (not root deploy.sh)
-- [ ] All reference repositories treated as read-only
-- [ ] **TESTED WITH DFX ON TEST STATION FIRST** (fec7w-zyaaa-aaaaa-qaffq-cai)
-- [ ] **Captured complete response from dfx test**
-- [ ] **Backend types match EXACTLY what worked in dfx**
-- [ ] Candid extracted after Rust changes
-- [ ] Focusing on governance/voting features
-- [ ] Using Orbit patterns without copying code directly
-
-### When You Need Reference Information:
-1. **Voting Power Logic**: Read Kong Locker reference
-2. **Station Architecture**: Study `orbit-reference/core/station/src/`
-3. **Treasury Patterns**: Check `orbit-reference/apps/station/src/`
-4. **API Design**: Reference `orbit-reference/core/station/api/`
-5. **Frontend Structure**: Study `orbit-reference/apps/station/frontend/`
 
 Remember: DAOPad is where we build. References are where we learn. Never modify reference code.

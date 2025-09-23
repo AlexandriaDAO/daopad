@@ -44,6 +44,7 @@ import {
   Search,
   AlertTriangle,
 } from 'lucide-react';
+import MembershipStatus from '../MembershipStatus';
 
 export default function MembersTable({ stationId, identity, token }) {
   const [members, setMembers] = useState([]);
@@ -52,6 +53,9 @@ export default function MembersTable({ stationId, identity, token }) {
   const [success, setSuccess] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [backendPrincipal, setBackendPrincipal] = useState('');
+  const [userVotingPower, setUserVotingPower] = useState(0);
+  const [loadingVotingPower, setLoadingVotingPower] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
 
   // Add member dialog state
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -75,8 +79,27 @@ export default function MembersTable({ stationId, identity, token }) {
     if (stationId && identity) {
       loadBackendPrincipal();
       loadMembers();
+      loadVotingPower();
     }
   }, [stationId, identity]);
+
+  const loadVotingPower = async () => {
+    if (!identity || !token) return;
+
+    setLoadingVotingPower(true);
+    try {
+      const daopadService = new DAOPadBackendService(identity);
+      const tokenPrincipal = Principal.fromText(token.canister_id);
+      const result = await daopadService.getMyVotingPowerForToken(tokenPrincipal);
+      if (result.success) {
+        setUserVotingPower(result.data);
+      }
+    } catch (err) {
+      console.error('Error loading voting power:', err);
+    } finally {
+      setLoadingVotingPower(false);
+    }
+  };
 
   const loadBackendPrincipal = async () => {
     try {
@@ -170,13 +193,16 @@ export default function MembersTable({ stationId, identity, token }) {
       );
 
       if (result.success) {
-        setSuccess(`Member addition request created: ${result.data}`);
+        // Member operations are auto-approved and executed immediately
+        // since the backend is an admin
+        setSuccess(`Member "${newMemberName.trim()}" successfully added to the Orbit Station.`);
         setShowAddDialog(false);
         setNewMemberPrincipal('');
         setNewMemberName('');
         setNewMemberStatus('Active');
         setNewMemberGroups([]);
-        setTimeout(loadMembers, 3000);
+        // Refresh member list after a short delay to allow Orbit to process
+        setTimeout(loadMembers, 1500);
       } else {
         setError(result.error || 'Failed to add member');
       }
@@ -210,10 +236,15 @@ export default function MembersTable({ stationId, identity, token }) {
       }
 
       if (result.success) {
-        setSuccess(`Member ${modifyAction === 'downgrade' ? 'downgrade' : 'removal'} request created: ${result.data}`);
+        // For member operations, the request is auto-approved and executed immediately
+        // since the backend is an admin. Show success and refresh immediately.
+        const actionText = modifyAction === 'downgrade' ? 'downgraded to Operator role' :
+                          'deactivated (set to Inactive status)';
+        setSuccess(`Member successfully ${actionText}. They no longer have access to the Orbit Station.`);
         setMemberToModify(null);
         setModifyAction('');
-        setTimeout(loadMembers, 3000);
+        // Refresh member list after a short delay to allow Orbit to process
+        setTimeout(loadMembers, 1500);
       } else {
         setError(result.error || 'Failed to modify member');
       }
@@ -225,14 +256,34 @@ export default function MembersTable({ stationId, identity, token }) {
     }
   };
 
-  const filteredMembers = members.filter(member =>
-    member.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.identities?.[0]?.toString().includes(searchQuery) ||
-    member.id?.includes(searchQuery)
-  );
+  const filteredMembers = members
+    .filter(member => {
+      // Filter by search query
+      const matchesSearch = member.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        member.identities?.[0]?.toString().includes(searchQuery) ||
+        member.id?.includes(searchQuery);
+
+      // Filter by active/inactive status
+      const isActive = member.status === 'Active';
+      const shouldShow = showInactive || isActive;
+
+      return matchesSearch && shouldShow;
+    })
+    .sort((a, b) => {
+      // Sort inactive members to the bottom
+      const aActive = a.status === 'Active';
+      const bActive = b.status === 'Active';
+
+      if (aActive && !bActive) return -1;  // Active before inactive
+      if (!aActive && bActive) return 1;   // Inactive after active
+
+      // Within the same status group, sort by name
+      return (a.name || '').localeCompare(b.name || '');
+    });
 
   const daopadCount = members.filter(m => m.is_daopad_backend).length;
   const humanAdmins = members.filter(m => !m.is_daopad_backend && m.groups?.includes('Admin')).length;
+  const inactiveCount = members.filter(m => m.status === 'Inactive').length;
 
   if (!stationId) {
     return (
@@ -248,6 +299,20 @@ export default function MembersTable({ stationId, identity, token }) {
 
   return (
     <>
+      {/* Membership Status */}
+      {!loadingVotingPower && userVotingPower !== null && (
+        <MembershipStatus
+          identity={identity}
+          token={token}
+          members={members}
+          votingPower={userVotingPower}
+          onMembershipChange={() => {
+            loadMembers();
+            loadVotingPower();
+          }}
+        />
+      )}
+
       {/* Status Alert */}
       {!loading && (
         <div className="mb-4">
@@ -305,6 +370,17 @@ export default function MembersTable({ stationId, identity, token }) {
           />
         </div>
         <div className="flex gap-2">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+              className="rounded"
+            />
+            <span className="text-sm">
+              Show inactive {!showInactive && inactiveCount > 0 && `(${inactiveCount})`}
+            </span>
+          </label>
           <Button onClick={loadMembers} size="sm" variant="outline" disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -345,7 +421,7 @@ export default function MembersTable({ stationId, identity, token }) {
               const truncated = principal ? `${principal.slice(0, 6)}...${principal.slice(-4)}` : 'N/A';
 
               return (
-                <TableRow key={member.id}>
+                <TableRow key={member.id} className={member.status === 'Inactive' ? 'opacity-60' : ''}>
                   <TableCell className="font-medium">{member.name}</TableCell>
                   <TableCell>
                     <Badge variant={variant}>{type}</Badge>
@@ -364,7 +440,10 @@ export default function MembersTable({ stationId, identity, token }) {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={member.status === 'Active' ? 'default' : 'secondary'}>
+                    <Badge
+                      variant={member.status === 'Active' ? 'default' : 'secondary'}
+                      className={member.status === 'Inactive' ? 'opacity-60' : ''}
+                    >
                       {member.status}
                     </Badge>
                   </TableCell>
@@ -382,7 +461,7 @@ export default function MembersTable({ stationId, identity, token }) {
                     )}
                   </TableCell>
                   <TableCell>
-                    {!member.is_daopad_backend && (
+                    {!member.is_daopad_backend && member.status === 'Active' && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">
@@ -409,7 +488,7 @@ export default function MembersTable({ stationId, identity, token }) {
                             className="text-red-600"
                           >
                             <UserMinus className="mr-2 h-4 w-4" />
-                            Remove Member
+                            Deactivate Member
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -507,12 +586,12 @@ export default function MembersTable({ stationId, identity, token }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {modifyAction === 'downgrade' ? 'Downgrade Admin' : 'Remove Member'}
+              {modifyAction === 'downgrade' ? 'Downgrade Admin' : 'Deactivate Member'}
             </DialogTitle>
             <DialogDescription>
               {modifyAction === 'downgrade' ?
                 `Downgrade ${memberToModify?.name} from Admin to Operator role?` :
-                `Are you sure you want to remove ${memberToModify?.name} from the Orbit Station?`
+                `This will deactivate ${memberToModify?.name} by setting their status to Inactive. They will lose all access to the Orbit Station but their record will be preserved.`
               }
             </DialogDescription>
           </DialogHeader>
