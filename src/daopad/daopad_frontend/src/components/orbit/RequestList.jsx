@@ -57,30 +57,48 @@ const RequestList = ({ requests, loading, error, onApprove, onReject, onRetry })
   };
 
   const getStatusIcon = (status) => {
-    if (status.Created) return <Clock className="h-4 w-4" />;
-    if (status.Approved) return <CheckCircle2 className="h-4 w-4" />;
-    if (status.Rejected) return <XCircle className="h-4 w-4" />;
-    if (status.Processing) return <RefreshCw className="h-4 w-4 animate-spin" />;
-    if (status.Scheduled) return <Calendar className="h-4 w-4" />;
-    if (status.Completed) return <CheckCircle2 className="h-4 w-4" />;
-    if (status.Failed) return <AlertCircle className="h-4 w-4" />;
-    return <FileText className="h-4 w-4" />;
+    switch (status) {
+      case 'Created':
+        return <Clock className="h-4 w-4" />;
+      case 'Approved':
+        return <CheckCircle2 className="h-4 w-4" />;
+      case 'Rejected':
+        return <XCircle className="h-4 w-4" />;
+      case 'Processing':
+        return <RefreshCw className="h-4 w-4 animate-spin" />;
+      case 'Scheduled':
+        return <Calendar className="h-4 w-4" />;
+      case 'Completed':
+        return <CheckCircle2 className="h-4 w-4" />;
+      case 'Failed':
+        return <AlertCircle className="h-4 w-4" />;
+      default:
+        return <FileText className="h-4 w-4" />;
+    }
   };
 
   const getStatusColor = (status) => {
-    if (status.Created) return 'warning';
-    if (status.Approved) return 'success';
-    if (status.Rejected) return 'destructive';
-    if (status.Processing) return 'secondary';
-    if (status.Scheduled) return 'info';
-    if (status.Completed) return 'default';
-    if (status.Failed) return 'destructive';
-    return 'secondary';
+    switch (status) {
+      case 'Created':
+        return 'warning';
+      case 'Approved':
+        return 'success';
+      case 'Rejected':
+        return 'destructive';
+      case 'Processing':
+        return 'secondary';
+      case 'Scheduled':
+        return 'info';
+      case 'Completed':
+        return 'default';
+      case 'Failed':
+        return 'destructive';
+      default:
+        return 'secondary';
+    }
   };
 
-  const getStatusLabel = (status) => {
-    return Object.keys(status)[0];
-  };
+  const getStatusLabel = (status) => status || 'Unknown';
 
   const formatExpiration = (expirationDt) => {
     const expDate = new Date(expirationDt);
@@ -144,7 +162,16 @@ const RequestList = ({ requests, loading, error, onApprove, onReject, onRetry })
       <div className="space-y-4">
         {requests.map((request) => {
           const expiration = formatExpiration(request.expiration_dt);
-          const canApprove = request.status.Created || request.status.Scheduled;
+          const canApprove = ['Created', 'Scheduled'].includes(request.status);
+          const approvals = request.approvals || [];
+          const approvalCounts = approvals.reduce(
+            (acc, approval) => {
+              if (approval.status === 'Approved') acc.approved += 1;
+              if (approval.status === 'Rejected') acc.rejected += 1;
+              return acc;
+            },
+            { approved: 0, rejected: 0 }
+          );
 
           return (
             <Card key={request.id} className="hover:shadow-lg transition-shadow">
@@ -156,6 +183,11 @@ const RequestList = ({ requests, loading, error, onApprove, onReject, onRetry })
                       <CardDescription className="mt-1">
                         {request.summary}
                       </CardDescription>
+                    )}
+                    {request.status_detail && (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {request.status_detail}
+                      </p>
                     )}
                   </div>
                   <Badge variant={getStatusColor(request.status)} className="ml-4">
@@ -171,7 +203,7 @@ const RequestList = ({ requests, loading, error, onApprove, onReject, onRetry })
                   <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <User className="h-3 w-3" />
-                      <span>Requested by {request.requested_by}</span>
+                      <span>Requested by {request.requester_name || request.requested_by}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
@@ -184,17 +216,17 @@ const RequestList = ({ requests, loading, error, onApprove, onReject, onRetry })
                   </div>
 
                   {/* Approval status */}
-                  {request.approvals && request.approvals.length > 0 && (
+                  {approvals.length > 0 && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">Approvals:</span>
                       <div className="flex gap-1">
-                        {request.approvals.map((approval, idx) => (
+                        {approvals.map((approval, idx) => (
                           <Badge
                             key={idx}
-                            variant={approval.status.Approved ? 'success' : 'destructive'}
+                            variant={approval.status === 'Approved' ? 'success' : 'destructive'}
                             className="text-xs"
                           >
-                            {approval.status.Approved ? (
+                            {approval.status === 'Approved' ? (
                               <ThumbsUp className="h-3 w-3" />
                             ) : (
                               <ThumbsDown className="h-3 w-3" />
@@ -203,7 +235,7 @@ const RequestList = ({ requests, loading, error, onApprove, onReject, onRetry })
                         ))}
                       </div>
                       <span className="text-sm text-muted-foreground">
-                        ({request.approvals.filter(a => a.status.Approved).length} of {request.approvals.length})
+                        ({approvalCounts.approved} of {approvals.length})
                       </span>
                     </div>
                   )}

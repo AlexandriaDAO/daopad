@@ -24,17 +24,12 @@ const UnifiedRequests = ({ tokenId, identity }) => {
   const [error, setError] = useState(null);
   const [selectedDomain, setSelectedDomain] = useState(RequestDomains.All);
   const [filters, setFilters] = useState({
-    statuses: [
-      { Created: null },    // New requests
-      { Approved: null },   // Approved but not executed
-      { Processing: null }, // Currently executing
-      { Scheduled: null }   // Scheduled for future
-    ],
+    statuses: ['Created', 'Approved', 'Processing', 'Scheduled'],
     created_from: null,
     created_to: null,
     expiration_from: null,
     expiration_to: null,
-    sort_by: { ExpirationDt: { Asc: null } },  // Earliest expiration first
+    sort_by: { field: 'ExpirationDt', direction: 'Asc' },  // Earliest expiration first
     only_approvable: false,
     page: 0,
     limit: 20
@@ -50,7 +45,7 @@ const UnifiedRequests = ({ tokenId, identity }) => {
   // Polling interval - 5 seconds like Orbit
   const REFRESH_INTERVAL = 5000;
 
-  // Fetch requests from backend
+  // Fetch requests from backend (which proxies to Orbit Station)
   const fetchRequests = useCallback(async () => {
     if (!tokenId || !identity) return;
 
@@ -58,48 +53,55 @@ const UnifiedRequests = ({ tokenId, identity }) => {
       setLoading(true);
       setError(null);
 
-      // Create backend service
+      // Use backend proxy - it already works!
       const backend = new DAOPadBackendService(identity);
+      const actor = await backend.getActor();
 
-      // Build ListRequestsInput matching EXACTLY how Orbit frontend does it
-      // See orbit-reference/apps/wallet/src/services/station.service.ts line 502-517
+      // Get domain filters
       const domainFilter = REQUEST_DOMAIN_FILTERS[selectedDomain];
-      const input = {
-        requester_ids: [],  // Empty array for None - Orbit uses []
-        approver_ids: [],   // Empty array for None - Orbit uses []
-        statuses: filters.statuses.length > 0 ? [filters.statuses] : [],  // Wrap in array for Some
-        operation_types: domainFilter.types.length > 0 ? [domainFilter.types] : [],  // Wrap in array for Some
+
+      // Prepare ListRequestsInput for backend
+      const statusVariants = filters.statuses.map((status) => ({ [status]: null }));
+
+      const listRequestsInput = {
+        statuses: statusVariants.length > 0 ? [statusVariants] : [],
         created_from_dt: filters.created_from ? [filters.created_from.toISOString()] : [],
         created_to_dt: filters.created_to ? [filters.created_to.toISOString()] : [],
         expiration_from_dt: filters.expiration_from ? [filters.expiration_from.toISOString()] : [],
         expiration_to_dt: filters.expiration_to ? [filters.expiration_to.toISOString()] : [],
+        operation_types: domainFilter.types.length > 0 ? [domainFilter.types] : [],
+        requester_ids: [],
+        approver_ids: [],
         paginate: [{
-          offset: filters.page > 0 ? [filters.page * filters.limit] : [],
-          limit: [filters.limit]
+          limit: [filters.limit],
+          offset: filters.page > 0 ? [BigInt(filters.page * filters.limit)] : []
         }],
-        sort_by: [filters.sort_by],  // Already in correct format
+        sort_by: filters.sort_by ? [{
+          [filters.sort_by.field]: filters.sort_by.direction === 'Asc' ? { Asc: null } : { Desc: null }
+        }] : [],
         only_approvable: filters.only_approvable,
         with_evaluation_results: false,
-        deduplication_keys: [],  // Empty array for None
-        tags: []  // Empty array for None
+        deduplication_keys: [],
+        tags: []
       };
 
-      // Call backend proxy method - need to add this method to the service
-      const actor = await backend.getActor();
+      // Call backend's list_orbit_requests method
       const result = await actor.list_orbit_requests(
         Principal.fromText(tokenId),
-        input
+        listRequestsInput
       );
 
-      if (result.Ok) {
-        setRequests(result.Ok.requests);
+      if ('Ok' in result) {
+        const response = result.Ok;
+        // Backend already returns properly formatted data
+        setRequests(response.requests || []);
         setPagination({
-          total: Number(result.Ok.total),
+          total: Number(response.total || 0),
           page: filters.page,
-          hasMore: result.Ok.next_offset !== null
+          hasMore: response.next_offset && response.next_offset.length > 0,
         });
       } else {
-        throw new Error(result.Err);
+        throw new Error(result.Err || 'Failed to fetch requests');
       }
     } catch (err) {
       console.error('Failed to fetch requests:', err);
@@ -121,18 +123,18 @@ const UnifiedRequests = ({ tokenId, identity }) => {
         Principal.fromText(tokenId),
         requestId,
         { [decision]: null },  // 'Approved' or 'Rejected'
-        reason || null
+        reason ? [reason] : []
       );
 
-      if (result.Ok) {
+      if (result.success) {
         toast.success(`Request ${decision.toLowerCase()} successfully`);
         // Refresh list
         await fetchRequests();
       } else {
-        throw new Error(result.Err);
+        throw new Error(result.error || 'Orbit Station error');
       }
     } catch (err) {
-      toast.error(`Failed to ${decision.toLowerCase()} request`);
+      toast.error(err.message || `Failed to ${decision.toLowerCase()} request`);
     }
   };
 

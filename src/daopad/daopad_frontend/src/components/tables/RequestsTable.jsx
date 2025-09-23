@@ -54,7 +54,26 @@ export default function RequestsTable({ tokenId, identity }) {
       const result = await daopadService.listOrbitRequests(tokenPrincipal, !showOnlyPending);
 
       if (result.success) {
-        setRequests(result.data || []);
+        const response = result.data || {};
+        const normalized = (response.requests || []).map((req) => ({
+          ...req,
+          summary: Array.isArray(req.summary)
+            ? (req.summary[0] ?? null)
+            : req.summary ?? null,
+          requester_name: Array.isArray(req.requester_name)
+            ? (req.requester_name[0] ?? null)
+            : req.requester_name ?? null,
+          status_detail: Array.isArray(req.status_detail)
+            ? (req.status_detail[0] ?? null)
+            : req.status_detail ?? null,
+          approvals: (req.approvals || []).map((approval) => ({
+            ...approval,
+            status_detail: Array.isArray(approval.status_detail)
+              ? (approval.status_detail[0] ?? null)
+              : approval.status_detail ?? null,
+          })),
+        }));
+        setRequests(normalized);
       } else {
         setError(result.error || 'Failed to load requests');
       }
@@ -80,7 +99,7 @@ export default function RequestsTable({ tokenId, identity }) {
       const result = await daopadService.approveOrbitRequest(tokenPrincipal, requestId);
 
       if (result.success) {
-        setSuccess(`Request approved: ${result.data}`);
+        setSuccess(`Request ${requestId} approved successfully`);
         setTimeout(() => loadRequests(), 2000);
       } else {
         setError(result.error || 'Failed to approve request');
@@ -107,7 +126,7 @@ export default function RequestsTable({ tokenId, identity }) {
       const result = await daopadService.rejectOrbitRequest(tokenPrincipal, requestId);
 
       if (result.success) {
-        setSuccess(`Request rejected: ${result.data}`);
+        setSuccess(`Request ${requestId} rejected successfully`);
         setTimeout(() => loadRequests(), 2000);
       } else {
         setError(result.error || 'Failed to reject request');

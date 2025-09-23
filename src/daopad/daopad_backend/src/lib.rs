@@ -4,7 +4,7 @@ mod proposals;
 mod storage;
 mod types;
 
-use candid::{Principal, Nat};
+use candid::{Nat, Principal};
 use ic_cdk::init;
 
 pub use api::*;

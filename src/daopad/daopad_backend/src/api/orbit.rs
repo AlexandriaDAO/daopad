@@ -1,14 +1,16 @@
 use crate::kong_locker::{get_kong_locker_for_user, get_user_locked_tokens};
 use crate::storage::state::TOKEN_ORBIT_STATIONS;
 use crate::types::orbit::{
-    Account, AccountBalance, FetchAccountBalancesInput, FetchAccountBalancesResult,
-    ListAccountsInput, ListAccountsResult, AddAccountOperationInput, Allow, AuthScope,
-    AccountMetadata,
+    Account, AccountBalance, AccountMetadata, AddAccountOperationInput, Allow, AuthScope,
+    FetchAccountBalancesInput, FetchAccountBalancesResult, ListAccountsInput, ListAccountsResult,
 };
 use crate::types::StorablePrincipal;
 use crate::types::TokenInfo;
-use crate::{create_transfer_request_in_orbit, get_transfer_requests_from_orbit, approve_transfer_orbit_request};
-use candid::{Principal, Nat};
+use crate::{
+    approve_transfer_orbit_request, create_transfer_request_in_orbit,
+    get_transfer_requests_from_orbit,
+};
+use candid::{Nat, Principal};
 use ic_cdk::{query, update};
 
 #[update]
@@ -181,7 +183,9 @@ pub async fn create_orbit_treasury_account(
     account_name: String,
     account_type: Option<String>, // e.g., "reserves", "operations", etc.
 ) -> Result<String, String> {
-    use crate::types::{CreateRequestInput, CreateRequestResult, RequestExecutionSchedule, RequestOperationInput};
+    use crate::types::{
+        CreateRequestInput, CreateRequestResult, RequestExecutionSchedule, RequestOperationInput,
+    };
 
     // ICP asset UUID - this is constant in Orbit Station
     const ICP_ASSET_ID: &str = "7802cbab-221d-4e49-b764-a695ea6def1a";
@@ -239,12 +243,10 @@ pub async fn create_orbit_treasury_account(
         ic_cdk::call(station_id, "create_request", (request_input,)).await;
 
     match result {
-        Ok((CreateRequestResult::Ok(response),)) => {
-            Ok(format!(
-                "Successfully created treasury account request. Request ID: {}. Status: {:?}",
-                response.request.id, response.request.status
-            ))
-        }
+        Ok((CreateRequestResult::Ok(response),)) => Ok(format!(
+            "Successfully created treasury account request. Request ID: {}. Status: {:?}",
+            response.request.id, response.request.status
+        )),
         Ok((CreateRequestResult::Err(e),)) => {
             Err(format!("Failed to create treasury account request: {}", e))
         }
@@ -271,12 +273,14 @@ pub async fn create_transfer_request(
     let caller = ic_cdk::caller();
 
     // Get station for this token
-    let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations
-            .borrow()
-            .get(&StorablePrincipal(token_id))
-            .map(|s| s.0)
-    }).ok_or("No treasury for this token")?;
+    let station_id = TOKEN_ORBIT_STATIONS
+        .with(|stations| {
+            stations
+                .borrow()
+                .get(&StorablePrincipal(token_id))
+                .map(|s| s.0)
+        })
+        .ok_or("No treasury for this token")?;
 
     create_transfer_request_in_orbit(
         station_id,
@@ -289,19 +293,20 @@ pub async fn create_transfer_request(
         title,
         description,
         memo,
-    ).await
+    )
+    .await
 }
 
 #[update]
-pub async fn get_transfer_requests(
-    token_id: Principal
-) -> Result<Vec<String>, String> {
-    let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations
-            .borrow()
-            .get(&StorablePrincipal(token_id))
-            .map(|s| s.0)
-    }).ok_or("No treasury for this token")?;
+pub async fn get_transfer_requests(token_id: Principal) -> Result<Vec<String>, String> {
+    let station_id = TOKEN_ORBIT_STATIONS
+        .with(|stations| {
+            stations
+                .borrow()
+                .get(&StorablePrincipal(token_id))
+                .map(|s| s.0)
+        })
+        .ok_or("No treasury for this token")?;
 
     get_transfer_requests_from_orbit(station_id).await
 }
@@ -312,12 +317,14 @@ pub async fn approve_transfer_request(
     token_id: Principal,
 ) -> Result<(), String> {
     let caller = ic_cdk::caller();
-    let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations
-            .borrow()
-            .get(&StorablePrincipal(token_id))
-            .map(|s| s.0)
-    }).ok_or("No treasury for this token")?;
+    let station_id = TOKEN_ORBIT_STATIONS
+        .with(|stations| {
+            stations
+                .borrow()
+                .get(&StorablePrincipal(token_id))
+                .map(|s| s.0)
+        })
+        .ok_or("No treasury for this token")?;
 
     approve_transfer_orbit_request(station_id, request_id, caller).await
 }

@@ -1,4 +1,5 @@
 use candid::{CandidType, Deserialize, Principal};
+use serde::Serialize;
 use std::fmt;
 
 // Types needed for joining Orbit Station
@@ -95,7 +96,7 @@ pub enum CreateRequestResult {
 }
 
 // Types for verifying admin status
-#[derive(CandidType, Deserialize, Debug, Clone)]
+#[derive(CandidType, Deserialize, Debug, Clone, Serialize)]
 pub struct Error {
     pub code: String,
     pub message: Option<String>,
@@ -185,7 +186,7 @@ pub struct AccountAddress {
 #[derive(CandidType, Deserialize, Debug, Clone)]
 pub struct AccountBalance {
     pub account_id: String, // UUID
-    pub asset_id: String,    // UUID
+    pub asset_id: String,   // UUID
     pub balance: candid::Nat,
     pub decimals: u32,
     pub last_update_timestamp: String, // RFC3339 timestamp
@@ -224,14 +225,14 @@ pub enum RequestPolicyRule {
 
 #[derive(CandidType, Deserialize, Debug, Clone)]
 pub struct Account {
-    pub id: String,                                         // UUID
+    pub id: String, // UUID
     pub assets: Vec<AccountAsset>,
     pub addresses: Vec<AccountAddress>,
     pub name: String,
     pub metadata: Vec<AccountMetadata>,
     pub transfer_request_policy: Option<RequestPolicyRule>,
     pub configs_request_policy: Option<RequestPolicyRule>,
-    pub last_modification_timestamp: String,                // RFC3339 timestamp
+    pub last_modification_timestamp: String, // RFC3339 timestamp
 }
 
 #[derive(CandidType, Deserialize, Debug, Clone)]
@@ -242,7 +243,7 @@ pub struct AccountCallerPrivileges {
 }
 
 // List accounts input/output
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct PaginationInput {
     pub limit: Option<u64>,
     pub offset: Option<u64>,

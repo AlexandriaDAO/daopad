@@ -1,8 +1,11 @@
 import { Actor, HttpAgent } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
+import { idlFactory as generatedIdlFactory, canisterId as generatedCanisterId } from '../../../../declarations/daopad_backend';
+import { idlFactory as orbitStationIdlFactory } from './orbitStation.did.js';
 
 // DAOPad Backend Canister ID
-const DAOPAD_BACKEND_ID = 'lwsav-iiaaa-aaaap-qp2qq-cai';
+const DEFAULT_BACKEND_CANISTER_ID = 'lwsav-iiaaa-aaaap-qp2qq-cai';
+const DAOPAD_BACKEND_ID = generatedCanisterId ?? DEFAULT_BACKEND_CANISTER_ID;
 
 // ICRC1 Token Metadata IDL
 const icrc1MetadataIDL = ({ IDL }) => {
@@ -19,304 +22,48 @@ const icrc1MetadataIDL = ({ IDL }) => {
 };
 
 // IDL Factory for DAOPad Backend - Clean Kong Locker Integration Interface
-const idlFactory = ({ IDL }) => {
-  const Result = IDL.Variant({
-    'Ok': IDL.Text,
-    'Err': IDL.Text,
-  });
+// Use generated candid interface to stay in sync with the deployed backend
+const idlFactory = generatedIdlFactory;
 
-  const TokenInfo = IDL.Record({
-    'canister_id': IDL.Text,
-    'symbol': IDL.Text,
-    'chain': IDL.Text,
-  });
+const orbitErrorMessage = (errorRecord) => {
+  if (!errorRecord || typeof errorRecord !== 'object') {
+    return 'Orbit Station error';
+  }
 
-  // Proposal System Types
-  const ProposalStatus = IDL.Variant({
-    'Active': IDL.Null,
-    'Approved': IDL.Null,
-    'Rejected': IDL.Null,
-    'Expired': IDL.Null,
-  });
+  const message = Array.isArray(errorRecord.message) && errorRecord.message.length > 0
+    ? errorRecord.message[0]
+    : errorRecord.code;
 
-  const OrbitLinkProposal = IDL.Record({
-    'id': IDL.Nat64,
-    'token_canister_id': IDL.Principal,
-    'station_id': IDL.Principal,
-    'proposer': IDL.Principal,
-    'created_at': IDL.Nat64,
-    'expires_at': IDL.Nat64,
-    'yes_votes': IDL.Nat64,
-    'no_votes': IDL.Nat64,
-    'total_voting_power': IDL.Nat64,
-    'voters': IDL.Vec(IDL.Principal),
-    'status': ProposalStatus,
-  });
+  const detailsVector = Array.isArray(errorRecord.details) && errorRecord.details.length > 0
+    ? errorRecord.details[0]
+    : [];
 
-  const TokenResult = IDL.Variant({
-    'Ok': IDL.Vec(TokenInfo),
-    'Err': IDL.Text,
-  });
+  if (Array.isArray(detailsVector) && detailsVector.length > 0) {
+    const rendered = detailsVector
+      .map((entry) => {
+        if (Array.isArray(entry) && entry.length === 2) {
+          const [key, value] = entry;
+          return `${key}: ${value}`;
+        }
+        if (entry && typeof entry === 'object') {
+          const keys = Object.keys(entry);
+          if (keys.length === 2) {
+            return keys.map((k) => `${k}: ${entry[k]}`).join(', ');
+          }
+        }
+        return null;
+      })
+      .filter(Boolean)
+      .join('; ');
 
-  const ProposalResult = IDL.Variant({
-    'Ok': IDL.Nat64,
-    'Err': IDL.Text,
-  });
+    if (rendered) {
+      return `${message} (${rendered})`;
+    }
+  }
 
-  const VoteResult = IDL.Variant({
-    'Ok': IDL.Null,
-    'Err': IDL.Text,
-  });
-
-  const CleanupResult = IDL.Variant({
-    'Ok': IDL.Nat32,
-    'Err': IDL.Text,
-  });
-
-  // User management types
-  const UserStatus = IDL.Variant({
-    'Active': IDL.Null,
-    'Inactive': IDL.Null,
-  });
-
-  const UserInfo = IDL.Record({
-    'id': IDL.Text,
-    'name': IDL.Text,
-    'identities': IDL.Vec(IDL.Principal),
-    'status': IDL.Text,
-    'groups': IDL.Vec(IDL.Text),
-  });
-
-  const UserGroupInfo = IDL.Record({
-    'id': IDL.Text,
-    'name': IDL.Text,
-  });
-
-  const UserManagementResult = IDL.Variant({
-    'Ok': IDL.Text,
-    'Err': IDL.Text,
-  });
-
-  const ListUsersResult = IDL.Variant({
-    'Ok': IDL.Vec(UserInfo),
-    'Err': IDL.Text,
-  });
-
-  const ListUserGroupsResult = IDL.Variant({
-    'Ok': IDL.Vec(UserGroupInfo),
-    'Err': IDL.Text,
-  });
-
-  // DAO Transition Types
-  const PermissionStatus = IDL.Record({
-    'is_admin': IDL.Bool,
-    'has_user_management': IDL.Bool,
-    'has_system_management': IDL.Bool,
-    'user_name': IDL.Text,
-    'user_id': IDL.Text,
-    'groups': IDL.Vec(IDL.Text),
-    'privileges': IDL.Vec(IDL.Text),
-  });
-
-  const AdminInfo = IDL.Record({
-    'id': IDL.Text,
-    'name': IDL.Text,
-    'identities': IDL.Vec(IDL.Principal),
-    'status': IDL.Text,
-    'is_daopad_backend': IDL.Bool,
-  });
-
-  const AdminCount = IDL.Record({
-    'total': IDL.Nat32,
-    'daopad_backend': IDL.Nat32,
-    'human_admins': IDL.Nat32,
-    'admin_list': IDL.Vec(AdminInfo),
-  });
-
-  const PermissionResult = IDL.Variant({
-    'Ok': PermissionStatus,
-    'Err': IDL.Text,
-  });
-
-  const AdminCountResult = IDL.Variant({
-    'Ok': AdminCount,
-    'Err': IDL.Text,
-  });
-
-  const AdminListResult = IDL.Variant({
-    'Ok': IDL.Vec(AdminInfo),
-    'Err': IDL.Text,
-  });
-
-  // Treasury Account Types
-  const AccountMetadata = IDL.Record({
-    'key': IDL.Text,
-    'value': IDL.Text,
-  });
-
-  const AccountAddress = IDL.Record({
-    'address': IDL.Text,
-    'format': IDL.Text,
-  });
-
-  const AccountBalance = IDL.Record({
-    'account_id': IDL.Text,
-    'asset_id': IDL.Text,
-    'balance': IDL.Nat,
-    'decimals': IDL.Nat32,
-    'last_update_timestamp': IDL.Text,
-    'query_state': IDL.Text,
-  });
-
-  const AccountAsset = IDL.Record({
-    'asset_id': IDL.Text,
-    'balance': IDL.Opt(AccountBalance),
-  });
-
-  const RequestPolicyRule = IDL.Rec();
-  RequestPolicyRule.fill(
-    IDL.Variant({
-      'AutoApproved': IDL.Null,
-      'QuorumPercentage': IDL.Record({ 'min_approved': IDL.Nat32 }),
-      'Quorum': IDL.Record({ 'min_approved': IDL.Nat32 }),
-      'AllowListedByMetadata': AccountMetadata,
-      'AllowListed': IDL.Null,
-      'AnyOf': IDL.Vec(RequestPolicyRule),
-      'AllOf': IDL.Vec(RequestPolicyRule),
-      'Not': RequestPolicyRule,
-      'NamedRule': IDL.Text,
-    })
-  );
-
-  const Account = IDL.Record({
-    'id': IDL.Text,
-    'assets': IDL.Vec(AccountAsset),
-    'addresses': IDL.Vec(AccountAddress),
-    'name': IDL.Text,
-    'metadata': IDL.Vec(AccountMetadata),
-    'transfer_request_policy': IDL.Opt(RequestPolicyRule),
-    'configs_request_policy': IDL.Opt(RequestPolicyRule),
-    'last_modification_timestamp': IDL.Text,
-  });
-
-  const AccountCallerPrivileges = IDL.Record({
-    'id': IDL.Text,
-    'can_edit': IDL.Bool,
-    'can_transfer': IDL.Bool,
-  });
-
-  const Error = IDL.Record({
-    'code': IDL.Text,
-    'message': IDL.Opt(IDL.Text),
-  });
-
-  const ListAccountsResult = IDL.Variant({
-    'Ok': IDL.Record({
-      'accounts': IDL.Vec(Account),
-      'privileges': IDL.Vec(AccountCallerPrivileges),
-      'total': IDL.Nat64,
-      'next_offset': IDL.Opt(IDL.Nat64),
-    }),
-    'Err': Error,
-  });
-
-  const FetchAccountBalancesResult = IDL.Variant({
-    'Ok': IDL.Vec(IDL.Opt(AccountBalance)),
-    'Err': IDL.Text,
-  });
-
-  const BoolResult = IDL.Variant({
-    'Ok': IDL.Bool,
-    'Err': IDL.Text,
-  });
-
-  const StringVecResult = IDL.Variant({
-    'Ok': IDL.Vec(IDL.Text),
-    'Err': IDL.Text,
-  });
-
-  // Request Management Types
-  const SimplifiedRequest = IDL.Record({
-    'id': IDL.Text,
-    'title': IDL.Text,
-    'summary': IDL.Opt(IDL.Text),
-    'operation_type': IDL.Text,
-    'status': IDL.Text,
-    'requester_name': IDL.Text,
-    'created_at': IDL.Text,
-    'approval_count': IDL.Nat32,
-    'rejection_count': IDL.Nat32,
-  });
-
-  const SimplifiedRequestVecResult = IDL.Variant({
-    'Ok': IDL.Vec(SimplifiedRequest),
-    'Err': IDL.Text,
-  });
-
-  return IDL.Service({
-    // Kong Locker Integration
-    'register_with_kong_locker': IDL.Func([IDL.Principal], [Result], []),
-    'get_my_kong_locker_canister': IDL.Func([], [IDL.Opt(IDL.Principal)], ['query']),
-    'get_my_voting_power_for_token': IDL.Func([IDL.Principal], [IDL.Variant({ 'Ok': IDL.Nat64, 'Err': IDL.Text })], []),
-    'unregister_kong_locker': IDL.Func([], [Result], []),
-    'list_all_kong_locker_registrations': IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Principal))], ['query']),
-
-    // Proposal System Methods
-    'propose_orbit_station_link': IDL.Func([IDL.Principal, IDL.Principal], [ProposalResult], []),
-    'vote_on_orbit_proposal': IDL.Func([IDL.Nat64, IDL.Bool], [VoteResult], []),
-    'get_active_proposal_for_token': IDL.Func([IDL.Principal], [IDL.Opt(OrbitLinkProposal)], ['query']),
-    'list_active_proposals': IDL.Func([], [IDL.Vec(OrbitLinkProposal)], ['query']),
-    'cleanup_expired_proposals': IDL.Func([], [CleanupResult], []),
-
-    // Orbit Station Methods (existing stations)
-    'get_my_locked_tokens': IDL.Func([], [TokenResult], []),
-    'get_orbit_station_for_token': IDL.Func([IDL.Principal], [IDL.Opt(IDL.Principal)], ['query']),
-    'list_all_orbit_stations': IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Principal))], ['query']),
-    'join_orbit_station': IDL.Func([IDL.Principal, IDL.Text], [Result], []),
-
-    // User Management Methods
-    'add_user_to_orbit': IDL.Func([IDL.Principal, IDL.Principal, IDL.Text, IDL.Vec(IDL.Text), UserStatus], [UserManagementResult], []),
-    'remove_user_from_orbit': IDL.Func([IDL.Principal, IDL.Text], [UserManagementResult], []),
-    'list_orbit_users': IDL.Func([IDL.Principal], [ListUsersResult], []),
-    'list_orbit_user_groups': IDL.Func([IDL.Principal], [ListUserGroupsResult], []),
-    'get_predefined_groups': IDL.Func([], [IDL.Vec(UserGroupInfo)], ['query']),
-
-    // DAO Transition Methods
-    'list_all_admins': IDL.Func([IDL.Principal], [AdminListResult], []),
-    'remove_admin_role': IDL.Func([IDL.Principal, IDL.Text], [UserManagementResult], []),
-    'downgrade_to_operator': IDL.Func([IDL.Principal, IDL.Text], [UserManagementResult], []),
-    'verify_sole_admin': IDL.Func([IDL.Principal], [BoolResult], []),
-    'get_admin_count': IDL.Func([IDL.Principal], [AdminCountResult], []),
-
-    // Request Management Methods
-    'list_orbit_requests': IDL.Func([IDL.Principal, IDL.Bool], [SimplifiedRequestVecResult], []),
-    'approve_orbit_request': IDL.Func([IDL.Principal, IDL.Text, IDL.Opt(IDL.Text)], [Result], []),
-    'reject_orbit_request': IDL.Func([IDL.Principal, IDL.Text, IDL.Opt(IDL.Text)], [Result], []),
-    'batch_approve_requests': IDL.Func([IDL.Principal, IDL.Vec(IDL.Text)], [StringVecResult], []),
-
-    // Treasury Account Methods
-    'list_orbit_accounts': IDL.Func([IDL.Principal, IDL.Opt(IDL.Text), IDL.Opt(IDL.Nat64), IDL.Opt(IDL.Nat64)], [IDL.Variant({ 'Ok': ListAccountsResult, 'Err': IDL.Text })], []),
-    'fetch_orbit_account_balances': IDL.Func([IDL.Principal, IDL.Vec(IDL.Text)], [IDL.Variant({ 'Ok': IDL.Vec(IDL.Opt(AccountBalance)), 'Err': IDL.Text })], []),
-
-    // Transfer Request Methods
-    'create_transfer_request': IDL.Func([
-      IDL.Text,        // from_account_id
-      IDL.Text,        // from_asset_id
-      IDL.Text,        // to_address
-      IDL.Nat,         // amount
-      IDL.Text,        // title
-      IDL.Text,        // description
-      IDL.Opt(IDL.Text), // memo
-      IDL.Principal,   // token_id
-    ], [Result], []),
-
-    // Utility Functions
-    'get_backend_principal': IDL.Func([], [IDL.Principal], ['query']),
-    'get_kong_locker_factory_principal': IDL.Func([], [IDL.Principal], ['query']),
-    'health_check': IDL.Func([], [IDL.Text], ['query']),
-
-  });
+  return message || 'Orbit Station error';
 };
+
 
 export const getBackendActor = async (identity) => {
   const isLocal = import.meta.env.VITE_DFX_NETWORK === 'local';
@@ -518,8 +265,12 @@ export class DAOPadBackendService {
   async getOrbitStationForToken(tokenCanisterId) {
     try {
       const actor = await this.getActor();
-      const result = await actor.get_orbit_station_for_token(tokenCanisterId);
-      return { success: true, data: result[0] || null };
+      // Convert string to Principal if needed
+      const principal = typeof tokenCanisterId === 'string'
+        ? Principal.fromText(tokenCanisterId)
+        : tokenCanisterId;
+      const result = await actor.get_orbit_station_for_token(principal);
+      return { success: true, data: result[0]?.toText() || null };
     } catch (error) {
       console.error('Failed to get any orbit station for token:', error);
       return { success: false, error: error.message };
@@ -678,11 +429,36 @@ export class DAOPadBackendService {
   async listOrbitRequests(tokenCanisterId, includeCompleted = false) {
     try {
       const actor = await this.getActor();
-      const result = await actor.list_orbit_requests(tokenCanisterId, includeCompleted);
+      const input = {
+        requester_ids: [],
+        approver_ids: [],
+        statuses: includeCompleted
+          ? []
+          : [[
+              { Created: null },
+              { Approved: null },
+              { Processing: null },
+              { Scheduled: null },
+            ]],
+        operation_types: [],
+        expiration_from_dt: [],
+        expiration_to_dt: [],
+        created_from_dt: [],
+        created_to_dt: [],
+        paginate: [{ offset: [], limit: [] }],
+        sort_by: [{ CreatedAt: { Desc: null } }],
+        only_approvable: false,
+        with_evaluation_results: false,
+        deduplication_keys: [],
+        tags: [],
+      };
+
+      const result = await actor.list_orbit_requests(tokenCanisterId, input);
+
       if ('Ok' in result) {
         return { success: true, data: result.Ok };
       } else {
-        return { success: false, error: result.Err };
+        return { success: false, error: orbitErrorMessage(result.Err) };
       }
     } catch (error) {
       console.error('Failed to list orbit requests:', error);
@@ -693,12 +469,16 @@ export class DAOPadBackendService {
   async approveOrbitRequest(tokenCanisterId, requestId) {
     try {
       const actor = await this.getActor();
-      const result = await actor.approve_orbit_request(tokenCanisterId, requestId, []);
+      const result = await actor.submit_request_approval(
+        tokenCanisterId,
+        requestId,
+        { Approved: null },
+        [],
+      );
       if ('Ok' in result) {
-        return { success: true, data: result.Ok };
-      } else {
-        return { success: false, error: result.Err };
+        return { success: true };
       }
+      return { success: false, error: orbitErrorMessage(result.Err) };
     } catch (error) {
       console.error('Failed to approve orbit request:', error);
       return { success: false, error: error.message };
@@ -708,12 +488,16 @@ export class DAOPadBackendService {
   async rejectOrbitRequest(tokenCanisterId, requestId) {
     try {
       const actor = await this.getActor();
-      const result = await actor.reject_orbit_request(tokenCanisterId, requestId, []);
+      const result = await actor.submit_request_approval(
+        tokenCanisterId,
+        requestId,
+        { Rejected: null },
+        [],
+      );
       if ('Ok' in result) {
-        return { success: true, data: result.Ok };
-      } else {
-        return { success: false, error: result.Err };
+        return { success: true };
       }
+      return { success: false, error: orbitErrorMessage(result.Err) };
     } catch (error) {
       console.error('Failed to reject orbit request:', error);
       return { success: false, error: error.message };
@@ -723,12 +507,25 @@ export class DAOPadBackendService {
   async batchApproveRequests(tokenCanisterId, requestIds) {
     try {
       const actor = await this.getActor();
-      const result = await actor.batch_approve_requests(tokenCanisterId, requestIds);
-      if ('Ok' in result) {
-        return { success: true, data: result.Ok };
-      } else {
-        return { success: false, error: result.Err };
+      const outcomes = [];
+      for (const requestId of requestIds) {
+        try {
+          const response = await actor.submit_request_approval(
+            tokenCanisterId,
+            requestId,
+            { Approved: null },
+            [],
+          );
+          if ('Ok' in response) {
+            outcomes.push(`✓ ${requestId}: approved`);
+          } else {
+            outcomes.push(`✗ ${requestId}: ${orbitErrorMessage(response.Err)}`);
+          }
+        } catch (err) {
+          outcomes.push(`✗ ${requestId}: ${err.message || 'approval failed'}`);
+        }
       }
+      return { success: true, data: outcomes };
     } catch (error) {
       console.error('Failed to batch approve requests:', error);
       return { success: false, error: error.message };
@@ -1036,6 +833,57 @@ export class DAOPadBackendService {
                 success: false,
                 error: error.message || 'Failed to reject transfer request'
             };
+        }
+    }
+
+    // Direct Orbit Station calls using their exact IDL factory
+    async getOrbitStationId(tokenCanisterId) {
+        try {
+            const actor = await this.getActor();
+            const result = await actor.get_orbit_station_for_token(Principal.fromText(tokenCanisterId));
+            // Method returns opt principal (array in JS: [] for None, [principal] for Some)
+            if (result && result.length > 0) {
+                return result[0].toText();
+            }
+            throw new Error('No Orbit Station found for token');
+        } catch (error) {
+            throw new Error(`Failed to get Orbit Station ID: ${error.message}`);
+        }
+    }
+
+    async createOrbitStationActor(stationId) {
+        const agent = new HttpAgent({
+            host: this.isDevelopment ? 'http://localhost:4943' : 'https://icp0.io',
+            identity: this.identity,
+        });
+
+        if (this.isDevelopment) {
+            await agent.fetchRootKey();
+        }
+
+        return Actor.createActor(orbitStationIdlFactory, {
+            agent,
+            canisterId: stationId,
+        });
+    }
+
+    // Call Orbit Station directly using their exact types
+    async listOrbitRequestsDirect(tokenCanisterId, filters = {}) {
+        try {
+            const stationId = await this.getOrbitStationId(tokenCanisterId);
+            const orbitActor = await this.createOrbitStationActor(stationId);
+
+            // Pass filters directly - UnifiedRequests already formats them correctly
+            const result = await orbitActor.list_requests(filters);
+
+            if ('Ok' in result) {
+                return { success: true, data: result.Ok };
+            } else {
+                return { success: false, error: result.Err };
+            }
+        } catch (error) {
+            console.error('Error calling Orbit Station directly:', error);
+            return { success: false, error: error.message || 'Failed to fetch requests from Orbit Station' };
         }
     }
 

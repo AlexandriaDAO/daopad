@@ -2,12 +2,14 @@ import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { DAOPadBackendService } from '../services/daopadBackend';
 import { KongLockerService } from '../services/kongLockerService';
 import TokenDashboard from './TokenDashboard';
+import AddressBookPage from '../pages/AddressBookPage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
+import { BookOpen } from 'lucide-react';
 
 const TokenTabs = ({ identity }) => {
   const [tokens, setTokens] = useState([]);
@@ -16,6 +18,7 @@ const TokenTabs = ({ identity }) => {
   const [error, setError] = useState('');
   const [tokenVotingPowers, setTokenVotingPowers] = useState({});
   const [userLPPositions, setUserLPPositions] = useState([]);
+  const [showAddressBook, setShowAddressBook] = useState(false);
 
   useEffect(() => {
     loadTokensAndPowers();
@@ -172,10 +175,37 @@ const TokenTabs = ({ identity }) => {
     );
   }
 
+  // If showing address book, render it instead
+  if (showAddressBook) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-3xl font-display text-executive-ivory">Address Book</h2>
+          <Button
+            variant="outline"
+            onClick={() => setShowAddressBook(false)}
+            className="border-executive-gold/30 text-executive-goldLight hover:bg-executive-gold/10"
+          >
+            ← Back to Tokens
+          </Button>
+        </div>
+        <AddressBookPage identity={identity} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center justify-between">
         <h2 className="text-3xl font-display text-executive-ivory">Token Governance</h2>
+        <Button
+          variant="outline"
+          onClick={() => setShowAddressBook(true)}
+          className="border-executive-gold/30 text-executive-goldLight hover:bg-executive-gold/10 flex items-center gap-2"
+        >
+          <BookOpen className="h-4 w-4" />
+          Address Book
+        </Button>
       </div>
 
       {showOrbitDebugPanels && OrbitStationTest && ReactQueryDemo && (

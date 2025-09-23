@@ -175,7 +175,29 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "frontend" ]; then
     # Generate declarations for backend
     echo "Generating backend declarations..."
     dfx generate daopad_backend || echo "Warning: Failed to generate backend declarations"
-    
+
+    # Sync declarations to frontend location
+    echo "🔄 Syncing declarations to frontend..."
+    GENERATED_DIR="$ROOT_DIR/src/declarations/daopad_backend"
+    FRONTEND_DIR="$SCRIPT_DIR/daopad_frontend/src/declarations/daopad_backend"
+
+    if [ -d "$GENERATED_DIR" ] && [ -d "$(dirname "$FRONTEND_DIR")" ]; then
+        mkdir -p "$FRONTEND_DIR"
+        cp -r "$GENERATED_DIR"/* "$FRONTEND_DIR"/ 2>/dev/null || true
+        echo "✅ Declarations synced successfully"
+
+        # Verify sync worked
+        if [ -f "$GENERATED_DIR/daopad_backend.did.js" ] && [ -f "$FRONTEND_DIR/daopad_backend.did.js" ]; then
+            if diff -q "$GENERATED_DIR/daopad_backend.did.js" "$FRONTEND_DIR/daopad_backend.did.js" > /dev/null; then
+                echo "✅ Declaration sync verified"
+            else
+                echo "⚠️  Warning: Declaration sync may have failed"
+            fi
+        fi
+    else
+        echo "⚠️  Warning: Could not sync declarations (directories not found)"
+    fi
+
     if ! npm run build; then
         echo "❌ Frontend build failed!"
         cd "$ROOT_DIR"

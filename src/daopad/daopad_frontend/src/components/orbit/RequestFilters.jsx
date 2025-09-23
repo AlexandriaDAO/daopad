@@ -30,10 +30,10 @@ const RequestFilters = ({ filters, onFilterChange }) => {
   ];
 
   const sortOptions = [
-    { value: { CreatedAt: 'Desc' }, label: 'Newest First' },
-    { value: { CreatedAt: 'Asc' }, label: 'Oldest First' },
-    { value: { ExpirationDt: 'Asc' }, label: 'Expiring Soon' },
-    { value: { ExpirationDt: 'Desc' }, label: 'Expiring Later' },
+    { value: { field: 'CreatedAt', direction: 'Desc' }, label: 'Newest First' },
+    { value: { field: 'CreatedAt', direction: 'Asc' }, label: 'Oldest First' },
+    { value: { field: 'ExpirationDt', direction: 'Asc' }, label: 'Expiring Soon' },
+    { value: { field: 'ExpirationDt', direction: 'Desc' }, label: 'Expiring Later' },
   ];
 
   const handleStatusChange = (status, checked) => {
@@ -59,7 +59,7 @@ const RequestFilters = ({ filters, onFilterChange }) => {
       created_to: null,
       expiration_from: null,
       expiration_to: null,
-      sort_by: { ExpirationDt: 'Asc' },
+      sort_by: { field: 'ExpirationDt', direction: 'Asc' },
       only_approvable: false,
     });
   };

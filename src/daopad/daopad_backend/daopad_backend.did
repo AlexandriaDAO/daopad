@@ -24,6 +24,30 @@ type AccountCallerPrivileges = record {
   can_edit : bool;
 };
 type AccountMetadata = record { key : text; value : text };
+type AddAddressBookEntryOperationInput = record {
+  metadata : vec MetadataItem;
+  labels : vec text;
+  blockchain : text;
+  address : text;
+  address_format : text;
+  address_owner : text;
+};
+type AddressBookEntry = record {
+  id : text;
+  metadata : vec MetadataItem;
+  labels : vec text;
+  blockchain : text;
+  address : text;
+  last_modification_timestamp : text;
+  address_format : text;
+  address_owner : text;
+};
+type AddressBookEntryCallerPrivileges = record {
+  id : text;
+  can_delete : bool;
+  can_edit : bool;
+};
+type AddressBookRequest = record { id : text; status : text; title : text };
 type AdminCount = record {
   human_admins : nat32;
   total : nat32;
@@ -37,16 +61,39 @@ type AdminInfo = record {
   is_daopad_backend : bool;
   identities : vec principal;
 };
-type DisplayUser = record { id : text; groups : vec text; name : text };
+type ChangeMetadata = variant {
+  OverrideSpecifiedBy : vec MetadataItem;
+  RemoveKeys : vec text;
+  ReplaceAllBy : vec MetadataItem;
+};
+type CreateRequestInput = record {
+  title : opt text;
+  execution_plan : opt RequestExecutionPlan;
+  summary : opt text;
+  operation : RequestOperationInput;
+};
+type CreateRequestResult = variant {
+  Ok : record { request : AddressBookRequest };
+  Err : Error;
+};
+type EditAddressBookEntryOperationInput = record {
+  labels : opt vec text;
+  change_metadata : opt ChangeMetadata;
+  address_book_entry_id : text;
+  address_owner : opt text;
+};
 type Error = record {
   code : text;
   message : opt text;
   details : opt vec record { text; text };
 };
-type GetRequestResponse = record {
-  privileges : RequestCallerPrivileges;
-  request : Request;
-  additional_info : RequestAdditionalInfo;
+type GetAddressBookEntryInput = record { address_book_entry_id : text };
+type GetAddressBookEntryResult = variant {
+  Ok : record {
+    privileges : AddressBookEntryCallerPrivileges;
+    address_book_entry : AddressBookEntry;
+  };
+  Err : Error;
 };
 type GovernanceStats = record {
   active_proposals : nat64;
@@ -66,6 +113,30 @@ type ListAccountsResult = variant {
   };
   Err : Error;
 };
+type ListAddressBookEntriesInput = record {
+  ids : opt vec text;
+  address_formats : opt vec text;
+  labels : opt vec text;
+  blockchain : opt text;
+  addresses : opt vec text;
+  paginate : opt PaginationInput;
+  search_term : opt text;
+};
+type ListAddressBookEntriesResponse = record {
+  total : nat64;
+  privileges : vec AddressBookEntryCallerPrivileges;
+  address_book_entries : vec AddressBookEntry;
+  next_offset : opt nat64;
+};
+type ListAddressBookEntriesResult = variant {
+  Ok : ListAddressBookEntriesResponse;
+  Err : Error;
+};
+type ListOrbitRequestsResponse = record {
+  total : nat64;
+  requests : vec OrbitRequestSummary;
+  next_offset : opt nat64;
+};
 type ListRequestsInput = record {
   sort_by : opt ListRequestsSortBy;
   deduplication_keys : opt vec text;
@@ -76,7 +147,7 @@ type ListRequestsInput = record {
   statuses : opt vec RequestStatusCode;
   approver_ids : opt vec text;
   expiration_to_dt : opt text;
-  paginate : opt PaginationInput;
+  paginate : opt PaginationInput_1;
   requester_ids : opt vec text;
   operation_types : opt vec ListRequestsOperationType;
   only_approvable : bool;
@@ -101,6 +172,7 @@ type ListRequestsOperationType = variant {
   AddAsset;
   SystemUpgrade;
   RemoveAddressBookEntry;
+  SystemRestore;
   CreateExternalCanister;
   EditAddressBookEntry;
   FundExternalCanister : opt principal;
@@ -117,17 +189,17 @@ type ListRequestsOperationType = variant {
   RestoreExternalCanister : opt principal;
   AddAccount;
 };
-type ListRequestsResponse = record {
-  total : nat64;
-  privileges : vec RequestCallerPrivileges;
-  requests : vec Request;
-  next_offset : opt nat64;
-  additional_info : vec RequestAdditionalInfo;
-};
 type ListRequestsSortBy = variant {
   ExpirationDt : SortByDirection;
   LastModificationDt : SortByDirection;
   CreatedAt : SortByDirection;
+};
+type MetadataItem = record { key : text; value : text };
+type OrbitApprovalSummary = record {
+  status : text;
+  status_detail : opt text;
+  approver_id : text;
+  decided_at : text;
 };
 type OrbitLinkProposal = record {
   id : nat64;
@@ -142,7 +214,20 @@ type OrbitLinkProposal = record {
   no_votes : nat64;
   expires_at : nat64;
 };
-type PaginationInput = record { offset : opt nat64; limit : opt nat16 };
+type OrbitRequestSummary = record {
+  id : text;
+  status : text;
+  status_detail : opt text;
+  title : text;
+  expiration_dt : text;
+  created_at : text;
+  requested_by : text;
+  summary : opt text;
+  requester_name : opt text;
+  approvals : vec OrbitApprovalSummary;
+};
+type PaginationInput = record { offset : opt nat64; limit : opt nat64 };
+type PaginationInput_1 = record { offset : opt nat64; limit : opt nat16 };
 type PermissionStatus = record {
   user_name : text;
   groups : vec text;
@@ -168,35 +253,18 @@ type ProposalType = variant {
   TransferFunds;
 };
 type Quorum = record { min_approved : nat32 };
-type Request = record {
-  id : text;
-  status : RequestStatus;
-  title : text;
-  execution_plan : RequestExecutionSchedule;
-  expiration_dt : text;
-  created_at : text;
-  requested_by : text;
-  summary : opt text;
-  operation : reserved;
-  approvals : vec RequestApproval;
-};
-type RequestAdditionalInfo = record {
-  id : text;
-  evaluation_result : opt reserved;
-  requester_name : text;
-  approvers : vec DisplayUser;
-};
-type RequestApproval = record {
-  status : RequestApprovalStatus;
-  approver_id : text;
-  status_reason : opt text;
-  decided_at : text;
+type RemoveAddressBookEntryOperationInput = record {
+  address_book_entry_id : text;
 };
 type RequestApprovalStatus = variant { Approved; Rejected };
-type RequestCallerPrivileges = record { id : text; can_approve : bool };
-type RequestExecutionSchedule = variant {
+type RequestExecutionPlan = variant {
   Immediate;
   Scheduled : record { execution_time : text };
+};
+type RequestOperationInput = variant {
+  RemoveAddressBookEntry : RemoveAddressBookEntryOperationInput;
+  EditAddressBookEntry : EditAddressBookEntryOperationInput;
+  AddAddressBookEntry : AddAddressBookEntryOperationInput;
 };
 type RequestPolicyRule = variant {
   Not : RequestPolicyRule;
@@ -208,16 +276,6 @@ type RequestPolicyRule = variant {
   AnyOf : vec RequestPolicyRule;
   AllowListedByMetadata : AccountMetadata;
   NamedRule : text;
-};
-type RequestStatus = variant {
-  Failed : record { reason : opt text };
-  Approved;
-  Rejected;
-  Scheduled : record { scheduled_at : text };
-  Cancelled : record { reason : opt text };
-  Processing : record { started_at : text };
-  Created;
-  Completed : record { completed_at : text };
 };
 type RequestStatusCode = variant {
   Failed;
@@ -237,7 +295,7 @@ type Result_12 = variant { Ok : VotingThresholds; Err : text };
 type Result_13 = variant { Ok : bool; Err : text };
 type Result_14 = variant { Ok : vec AdminInfo; Err : text };
 type Result_15 = variant { Ok : ListAccountsResult; Err : text };
-type Result_16 = variant { Ok : ListRequestsResponse; Err : text };
+type Result_16 = variant { Ok : ListOrbitRequestsResponse; Err : text };
 type Result_17 = variant { Ok : vec UserGroupInfo; Err : text };
 type Result_18 = variant { Ok : vec UserInfo; Err : text };
 type Result_19 = variant { Ok : PermissionStatus; Err : text };
@@ -248,7 +306,8 @@ type Result_5 = variant { Ok : AdminCount; Err : text };
 type Result_6 = variant { Ok : GovernanceStats; Err : text };
 type Result_7 = variant { Ok : vec TokenInfo; Err : text };
 type Result_8 = variant { Ok : nat64; Err : text };
-type Result_9 = variant { Ok : GetRequestResponse; Err : text };
+type Result_9 = variant { Ok : vec SimpleRequest; Err : text };
+type SimpleRequest = record { id : text; status : text; title : text };
 type SortByDirection = variant { Asc; Desc };
 type TokenInfo = record { chain : text; canister_id : text; symbol : text };
 type UserGroupInfo = record { id : text; name : text };
@@ -273,6 +332,7 @@ service : () -> {
     );
   approve_transfer_request : (text, principal) -> (Result_1);
   cleanup_expired_proposals : () -> (Result_2);
+  create_address_book_request : (CreateRequestInput) -> (CreateRequestResult);
   create_orbit_treasury_account : (principal, text, opt text) -> (Result);
   create_transfer_request : (
       text,
@@ -288,6 +348,9 @@ service : () -> {
   fetch_orbit_account_balances : (principal, vec text) -> (Result_3);
   get_active_proposal_for_token : (principal) -> (opt OrbitLinkProposal) query;
   get_actual_group_ids : (principal) -> (Result_4);
+  get_address_book_entry : (GetAddressBookEntryInput) -> (
+      GetAddressBookEntryResult,
+    ) query;
   get_admin_count : (principal) -> (Result_5);
   get_backend_principal : () -> (principal) query;
   get_default_voting_thresholds : () -> (VotingThresholds) query;
@@ -296,8 +359,10 @@ service : () -> {
   get_my_kong_locker_canister : () -> (opt principal) query;
   get_my_locked_tokens : () -> (Result_7);
   get_my_voting_power_for_token : (principal) -> (Result_8);
-  // Get a single request by ID
-  get_orbit_request : (principal, text) -> (Result_9);
+  // Get a single request by ID (deprecated - kept for compatibility)
+  get_orbit_request : (principal, text) -> (Result);
+  // EXPERIMENTAL: Ultra-simple request fetching - returns basic info only
+  get_orbit_requests_simple : () -> (Result_9);
   get_orbit_station_for_token : (principal) -> (opt principal) query;
   get_predefined_groups : () -> (vec UserGroupInfo) query;
   get_proposal_config : (principal, ProposalType) -> (Result_10) query;
@@ -311,6 +376,9 @@ service : () -> {
   initialize_default_thresholds : (principal) -> (Result);
   join_orbit_station : (principal, text) -> (Result);
   list_active_proposals : () -> (vec OrbitLinkProposal) query;
+  list_address_book_entries : (ListAddressBookEntriesInput) -> (
+      ListAddressBookEntriesResult,
+    ) query;
   list_all_admins : (principal) -> (Result_14);
   list_all_kong_locker_registrations : () -> (
       vec record { principal; principal },
@@ -337,7 +405,7 @@ service : () -> {
       text,
       RequestApprovalStatus,
       opt text,
-    ) -> (Result_9);
+    ) -> (Result_1);
   unregister_kong_locker : () -> (Result);
   verify_permissions : (principal) -> (Result_19);
   verify_sole_admin : (principal) -> (Result_13);

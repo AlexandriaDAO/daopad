@@ -7,6 +7,7 @@ import AccountsTable from './tables/AccountsTable';
 import MembersTable from './tables/MembersTable';
 import RequestsTable from './tables/RequestsTable';
 import UnifiedRequests from './orbit/UnifiedRequests';
+import ExperimentalRequests from './orbit/ExperimentalRequests';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -452,11 +453,12 @@ const TokenDashboard = ({ token, identity, votingPower, lpPositions, onRefresh }
 
           {/* Tabs for different views */}
           <Tabs defaultValue="accounts" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="accounts">Treasury Accounts</TabsTrigger>
               <TabsTrigger value="transfers">Transfer Requests</TabsTrigger>
               <TabsTrigger value="members">Members & Roles</TabsTrigger>
               <TabsTrigger value="requests">Governance Requests</TabsTrigger>
+              <TabsTrigger value="experimental">Experimental</TabsTrigger>
             </TabsList>
 
             <TabsContent value="accounts" className="mt-4">
@@ -473,6 +475,10 @@ const TokenDashboard = ({ token, identity, votingPower, lpPositions, onRefresh }
 
             <TabsContent value="requests" className="mt-4">
               <RequestsTable tokenId={token.canister_id} identity={identity} />
+            </TabsContent>
+
+            <TabsContent value="experimental" className="mt-4">
+              <ExperimentalRequests />
             </TabsContent>
           </Tabs>
         </>

@@ -1,16 +1,16 @@
-use candid::{CandidType, Deserialize, Principal, Nat};
+use crate::api::orbit_requests::GetRequestResponse;
+use candid::{CandidType, Deserialize, Nat, Principal};
 use ic_cdk::api::call::CallResult;
-use crate::api::orbit_requests::{Request, RequestCallerPrivileges, RequestAdditionalInfo};
 
 // Orbit types for transfer operations
 #[derive(CandidType, Deserialize)]
 pub struct TransferOperationInput {
-    pub from_account_id: String,  // UUID from Orbit account
-    pub from_asset_id: String,     // UUID from Orbit asset
-    pub with_standard: String,     // "icp" or "icrc1"
-    pub to: String,                // Destination address
-    pub amount: Nat,               // Amount in smallest units
-    pub fee: Option<Nat>,          // Optional fee
+    pub from_account_id: String, // UUID from Orbit account
+    pub from_asset_id: String,   // UUID from Orbit asset
+    pub with_standard: String,   // "icp" or "icrc1"
+    pub to: String,              // Destination address
+    pub amount: Nat,             // Amount in smallest units
+    pub fee: Option<Nat>,        // Optional fee
     pub metadata: Vec<TransferMetadata>,
     pub network: Option<NetworkInput>,
 }
@@ -49,15 +49,8 @@ pub enum RequestExecutionSchedule {
 
 #[derive(CandidType, Deserialize)]
 pub enum CreateRequestResult {
-    Ok(CreateRequestResponse),
+    Ok(GetRequestResponse),
     Err(ErrorInfo),
-}
-
-#[derive(CandidType, Deserialize)]
-pub struct CreateRequestResponse {
-    pub request: Request,
-    pub privileges: RequestCallerPrivileges,
-    pub additional_info: RequestAdditionalInfo,
 }
 
 // RequestWithDetails and related types are now imported from orbit_requests.rs
@@ -105,9 +98,12 @@ pub async fn create_transfer_request_in_orbit(
     // Validate caller has voting power (we still check this)
     // For testing: bypass for admin identity
     let caller_text = caller.to_text();
-    if caller_text != "67ktx-ln42b-uzmo5-bdiyn-gu62c-cd4h4-a5qt3-2w3rs-cixdl-iaso2-mqe" {  // Allow admin bypass for testing
-        let voting_power = crate::kong_locker::voting::get_user_voting_power_for_token(caller, token_id).await
-            .map_err(|e| format!("Failed to get voting power: {}", e))?;
+    if caller_text != "67ktx-ln42b-uzmo5-bdiyn-gu62c-cd4h4-a5qt3-2w3rs-cixdl-iaso2-mqe" {
+        // Allow admin bypass for testing
+        let voting_power =
+            crate::kong_locker::voting::get_user_voting_power_for_token(caller, token_id)
+                .await
+                .map_err(|e| format!("Failed to get voting power: {}", e))?;
 
         if voting_power < 100 {
             return Err(format!("Insufficient voting power: {} < 100", voting_power));
@@ -139,26 +135,19 @@ pub async fn create_transfer_request_in_orbit(
         title: Some(title),
         summary: Some(description),
         execution_plan: None, // Let Orbit handle execution scheduling based on policies
-        expiration_dt: None, // Let Orbit set default expiration
+        expiration_dt: None,  // Let Orbit set default expiration
     };
 
     // Call Orbit Station to create the request
-    let result: CallResult<(CreateRequestResult,)> = ic_cdk::call(
-        station_id,
-        "create_request",
-        (request_input,)
-    ).await;
+    let result: CallResult<(CreateRequestResult,)> =
+        ic_cdk::call(station_id, "create_request", (request_input,)).await;
 
     match result {
-        Ok((CreateRequestResult::Ok(response),)) => {
-            Ok(response.request.id)
-        }
+        Ok((CreateRequestResult::Ok(response),)) => Ok(response.request.id),
         Ok((CreateRequestResult::Err(e),)) => {
             Err(format!("Orbit error: {} - {}", e.code, e.message))
         }
-        Err((code, msg)) => {
-            Err(format!("Failed to create request: {:?} - {}", code, msg))
-        }
+        Err((code, msg)) => Err(format!("Failed to create request: {:?} - {}", code, msg)),
     }
 }
 
@@ -188,21 +177,14 @@ pub async fn approve_orbit_request(
         reason: None,
     };
 
-    let result: CallResult<(SubmitRequestApprovalResult,)> = ic_cdk::call(
-        station_id,
-        "submit_request_approval",
-        (input,)
-    ).await;
+    let result: CallResult<(SubmitRequestApprovalResult,)> =
+        ic_cdk::call(station_id, "submit_request_approval", (input,)).await;
 
     match result {
-        Ok((SubmitRequestApprovalResult::Ok(_),)) => {
-            Ok(())
-        }
+        Ok((SubmitRequestApprovalResult::Ok(_),)) => Ok(()),
         Ok((SubmitRequestApprovalResult::Err(e),)) => {
             Err(format!("Cannot approve: {} - {}", e.code, e.message))
         }
-        Err((code, msg)) => {
-            Err(format!("Failed to approve: {:?} - {}", code, msg))
-        }
+        Err((code, msg)) => Err(format!("Failed to approve: {:?} - {}", code, msg)),
     }
 }
