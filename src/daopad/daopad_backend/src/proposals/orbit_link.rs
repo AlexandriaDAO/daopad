@@ -286,7 +286,26 @@ async fn verify_backend_is_admin(station_id: Principal) -> Result<bool, String> 
         }
         Ok((MeResult::Err(e),)) => {
             let error_msg = e.message.unwrap_or_else(|| e.code.clone());
-            Err(format!("Failed to verify admin status: {}", error_msg))
+            // Check if the error is because we're not a member
+            if e.code.contains("USER_NOT_FOUND") || error_msg.contains("not exist as a user") {
+                Err(format!(
+                    "DAOPad backend is not a member of the Orbit Station. \
+                    Please add principal {} as a member with Admin role to station {} first. \
+                    Go to https://{}.icp0.io > Members > Add Member",
+                    backend_id, station_id, station_id
+                ))
+            } else {
+                Err(format!("Failed to verify admin status: {}", error_msg))
+            }
+        }
+        Err((_code, msg)) if msg.contains("does not exist as a user") => {
+            // The trap error we're seeing
+            Err(format!(
+                "DAOPad backend is not a member of the Orbit Station. \
+                Please add principal {} as a member with Admin role to station {} first. \
+                Go to https://{}.icp0.io > Members > Add Member",
+                backend_id, station_id, station_id
+            ))
         }
         Err((code, msg)) => Err(format!(
             "Failed to call Orbit Station: {:?} - {}",

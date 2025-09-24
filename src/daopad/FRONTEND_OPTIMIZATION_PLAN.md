@@ -1,355 +1,520 @@
-# Frontend State Management & Performance Optimization Plan
+# DAOPad Frontend Code Optimization Plan
 
 ## Executive Summary
+This plan outlines a systematic approach to reduce the DAOPad frontend codebase by ~25% (800-1000 lines) while improving maintainability and performance. The optimization focuses on eliminating duplication, consolidating services, and removing dead code without losing any functionality.
 
-The DAOPad frontend currently suffers from excessive polling, redundant data fetching, and uncoordinated state management. Multiple components independently poll the backend every 2-5 seconds, causing unnecessary Inter-Canister calls and poor user experience. This document outlines a comprehensive optimization strategy.
+## Current Frontend Structure
 
-## Current State Analysis
+```
+src/
+├── components/           (60+ files, ~3500 lines)
+├── services/            (8 files, ~900 lines)
+├── hooks/               (9 files, ~300 lines)
+├── features/            (3 slices, ~400 lines)
+├── state/               (2 files, ~150 lines)
+├── pages/               (3 files, ~250 lines)
+├── providers/           (2 files, ~150 lines)
+├── declarations/        (auto-generated)
+├── utils/               (4 files, ~200 lines)
+└── ui/                  (22 files, ~500 lines)
 
-### 🔴 Critical Issues
-
-#### 1. Uncoordinated Polling Chaos
-| Component | Interval | Impact |
-|-----------|----------|--------|
-| App.jsx | 30s | Public dashboard refresh |
-| AccountsTable | 30s/60s | Accounts + balances polling |
-| UnifiedRequests | **5s** | Aggressive request polling |
-| AddressBookPage | **5s** | Address book polling |
-| RequestsTable | 2s delays | Post-action refreshes |
-| MembersTable | 1.5s delays | Post-action refreshes |
-
-**Problem**: A single user with TokenDashboard open triggers **10+ backend calls every 5 seconds**.
-
-#### 2. Redundant Data Fetching
-- `loadVotingPower()` called in **both** TokenDashboard and MembersTable
-- `loadTokenStatus()` → `validateDaoStatus()` creates cascading calls
-- Each tab fetches data independently, even when hidden
-- No request deduplication or shared cache
-
-#### 3. Architectural Anti-Patterns
-```javascript
-// Current: Every component creates its own service instance
-const daopadService = new DAOPadBackendService(identity); // Created 15+ times
-
-// Current: Mixed state management
-dispatch(upsertStationMapping(...));  // Redux for some data
-setOrbitStation(stationData);         // Local state for most
+Total: 131 files, ~6500 lines of code
 ```
 
-#### 4. Inter-Canister Call Overhead
-- Backend forced to use `#[update]` methods (not `#[query]`) due to IC limitations
-- Each call takes 2-4 seconds and costs cycles
-- No batching of related requests
-- No backend caching (per CLAUDE.md design)
+## Identified Issues
 
-### 📊 Performance Impact
+### 1. Service Layer Duplication
+- **orbitStation.js** (150 lines): Direct IC calls to Orbit
+- **orbitStationService.js** (120 lines): Wrapper around orbitStation.js
+- **orbit/stationClient.js** (180 lines): Another Orbit client implementation
+- **orbit/stationService.js** (250 lines): High-level Orbit operations
+- **orbit/stationQueries.js** (200 lines): React Query hooks for Orbit
 
-**Initial Page Load**
-- ~15 backend calls within 2 seconds
-- 3 separate voting power queries
-- 4 Orbit Station validations
+**Total redundancy**: ~500 lines of overlapping functionality
 
-**Ongoing Operations**
-- 10+ backend calls every 5 seconds (worst case)
-- Full data reload on tab switches
-- 3-5 additional calls per user action
+### 2. Component Code Duplication
+- Table logic repeated in AccountsTable, MembersTable, RequestsTable
+- Status badge logic duplicated across 5+ components
+- Loading states implemented separately in 10+ components
+- Action button patterns repeated in 8+ components
 
-## Optimization Strategy
+### 3. State Management Fragmentation
+- Redux for auth, dao, station, balance
+- React Query for some server state
+- Local component state scattered throughout
+- No clear separation of concerns
 
-### Phase 1: Quick Wins (Week 1)
-**Goal**: Reduce polling frequency by 60% with minimal code changes
+### 4. Unused/Dead Code
+- testOrbitCall.jsx (35 lines)
+- ReactQueryDemo.jsx (45 lines)
+- OrbitStationTest.jsx (40 lines)
+- lp_lock_frontend/ directory (20 lines)
+- daopad_frontend/src/ duplicate structure (10 lines)
+- setupTests.js (5 lines - no tests exist)
+- tests/App.test.jsx (15 lines - not maintained)
 
-#### 1.1 Implement Lazy Tab Loading
-```jsx
-// TokenDashboard.jsx
-<TabsContent value="accounts" className="mt-4">
-  {activeTab === 'accounts' && (
-    <AccountsTable stationId={orbitStation.station_id} />
-  )}
-</TabsContent>
+### 5. Redundant UI Components
+- calendar.jsx (45 lines) - never used
+- popover.jsx (35 lines) - used once, can use tooltip
+- radio-group.jsx (40 lines) - never used
+- separator.jsx (15 lines) - used twice, can use CSS
+- progress.jsx (30 lines) - used once, can use skeleton
+
+---
+
+## Optimization Plan
+
+### 1. Service Layer Consolidation
+**Target: ~300 lines reduction**
+
+#### Current Structure
+```
+services/
+├── orbitStation.js          (150 lines)
+├── orbitStationService.js   (120 lines)
+├── orbit/
+│   ├── stationClient.js     (180 lines)
+│   ├── stationQueries.js    (200 lines)
+│   └── stationService.js    (250 lines)
 ```
 
-#### 1.2 Adjust Polling Intervals
-```javascript
-// UnifiedRequests.jsx
-const REFRESH_INTERVAL = 15000;  // Was 5000
-
-// AccountsTable.jsx
-refetchInterval: 60000,  // Was 30000
-
-// AddressBookPage.jsx
-setInterval(fetchList, 30000);  // Was 5000
+#### Proposed Structure
+```
+services/
+├── orbit.js                 (400 lines - unified service)
+└── orbit/
+    └── queries.js           (150 lines - React Query hooks only)
 ```
 
-#### 1.3 Implement Visibility API
+#### Pseudocode Implementation
 ```javascript
-// App.jsx
-useEffect(() => {
-  const handleVisibilityChange = () => {
-    if (document.hidden) {
-      clearInterval(intervalRef.current);
-    } else {
-      startPolling();
-    }
-  };
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-}, []);
+// services/orbit.js - Unified Orbit Service
+class OrbitService {
+  constructor() {
+    this.actor = null
+    this.stationId = null
+  }
+
+  // Low-level API calls (from orbitStation.js)
+  async call(method, args) {
+    if (!this.actor) throw new Error('Not initialized')
+    return await this.actor[method](...args)
+  }
+
+  // High-level operations (from stationService.js)
+  async createTransfer(data) {
+    validateTransferData(data)
+    const request = transformToOrbitRequest(data)
+    return await this.call('create_request', [request])
+  }
+
+  // Station management (from orbitStationService.js)
+  async setActiveStation(stationId) {
+    this.stationId = stationId
+    this.actor = await createActor(stationId)
+  }
+
+  // Common queries (deduplicated)
+  async listRequests(filters) {
+    return await this.call('list_requests', [filters])
+  }
+
+  async listAccounts() {
+    return await this.call('list_accounts', [{}])
+  }
+}
+
+export const orbitService = new OrbitService()
+
+// services/orbit/queries.js - React Query Hooks
+export function useOrbitRequests(stationId) {
+  return useQuery({
+    queryKey: ['orbit', 'requests', stationId],
+    queryFn: () => orbitService.listRequests({ stationId }),
+    staleTime: 30000
+  })
+}
+
+export function useOrbitAccounts(stationId) {
+  return useQuery({
+    queryKey: ['orbit', 'accounts', stationId],
+    queryFn: () => orbitService.listAccounts({ stationId }),
+    staleTime: 60000
+  })
+}
 ```
 
-**Expected Impact**: 60% reduction in backend calls
+**Functionality Impact**: ✅ NONE - All capabilities preserved
 
-### Phase 2: React Query Integration (Week 2)
-**Goal**: Centralized caching and request deduplication
+---
 
-#### 2.1 Configure React Query
+### 2. Component Decomposition
+**Target: ~200 lines reduction through reusability**
+
+#### A. Common DataTable Component
 ```javascript
-// queryClient.js
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30000,        // Data fresh for 30s
-      cacheTime: 5 * 60 * 1000, // Cache for 5 minutes
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
+// components/common/DataTable.jsx
+function DataTable({
+  columns,      // Column definitions
+  data,         // Data array
+  loading,      // Loading state
+  onRowClick,   // Row click handler
+  actions,      // Action buttons config
+  emptyMessage  // Empty state message
+}) {
+  if (loading) return <TableSkeleton columns={columns} />
+  if (!data?.length) return <EmptyState message={emptyMessage} />
+
+  return (
+    <Table>
+      <TableHeader>
+        {columns.map(col => (
+          <TableHead key={col.key}>{col.label}</TableHead>
+        ))}
+      </TableHeader>
+      <TableBody>
+        {data.map(row => (
+          <TableRow onClick={() => onRowClick?.(row)}>
+            {columns.map(col => (
+              <TableCell>
+                {col.render ? col.render(row) : row[col.key]}
+              </TableCell>
+            ))}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+}
+
+// Usage in AccountsTable.jsx (reduces from 150 to 50 lines)
+function AccountsTable({ accounts }) {
+  const columns = [
+    { key: 'name', label: 'Account' },
+    { key: 'balance', label: 'Balance', render: row => formatBalance(row.balance) },
+    { key: 'actions', label: '', render: row => <TransferButton account={row} /> }
+  ]
+
+  return <DataTable columns={columns} data={accounts} />
+}
+```
+
+#### B. StatusBadge Component
+```javascript
+// components/common/StatusBadge.jsx
+const STATUS_CONFIGS = {
+  created: { color: 'blue', label: 'Created' },
+  processing: { color: 'yellow', label: 'Processing' },
+  completed: { color: 'green', label: 'Completed' },
+  failed: { color: 'red', label: 'Failed' },
+  rejected: { color: 'gray', label: 'Rejected' }
+}
+
+function StatusBadge({ status, size = 'sm' }) {
+  const config = STATUS_CONFIGS[status] || { color: 'gray', label: status }
+  return (
+    <Badge variant={config.color} size={size}>
+      {config.label}
+    </Badge>
+  )
+}
+```
+
+#### C. ActionBar Component
+```javascript
+// components/common/ActionBar.jsx
+function ActionBar({
+  title,
+  actions = [],  // [{ label, onClick, icon, variant }]
+  filters,       // Optional filter component
+  search         // Optional search config
+}) {
+  return (
+    <div className="flex justify-between items-center mb-4">
+      <h2>{title}</h2>
+      <div className="flex gap-2">
+        {search && <SearchInput {...search} />}
+        {filters}
+        {actions.map(action => (
+          <Button
+            key={action.label}
+            onClick={action.onClick}
+            variant={action.variant}
+          >
+            {action.icon} {action.label}
+          </Button>
+        ))}
+      </div>
+    </div>
+  )
+}
+```
+
+**Functionality Impact**: ✅ NONE - Enhanced reusability and consistency
+
+---
+
+### 3. State Management Simplification
+**Target: ~150 lines reduction**
+
+#### Current State Management
+```javascript
+// Redux: auth, dao, station, balance slices (400 lines)
+// React Query: Some server state
+// Local State: Scattered throughout components
+```
+
+#### Proposed Architecture
+```javascript
+// Remove balance slice entirely - use React Query
+// balanceSlice.js - DELETE (80 lines)
+// balanceThunks.js - DELETE (70 lines)
+
+// Simplify station slice
+// features/station/stationSlice.js
+const stationSlice = createSlice({
+  name: 'station',
+  initialState: {
+    activeStationId: null  // Only UI state
   },
-});
-```
-
-#### 2.2 Create Shared Hooks
-```javascript
-// hooks/useOrbitData.js
-export const useVotingPower = (tokenId, identity) => {
-  return useQuery({
-    queryKey: ['votingPower', tokenId, identity?.getPrincipal()?.toString()],
-    queryFn: () => fetchVotingPower(tokenId, identity),
-    enabled: !!tokenId && !!identity,
-    staleTime: 60000,  // VP doesn't change often
-  });
-};
-
-export const useOrbitMembers = (stationId) => {
-  return useQuery({
-    queryKey: ['orbitMembers', stationId],
-    queryFn: () => fetchOrbitMembers(stationId),
-    enabled: !!stationId,
-  });
-};
-```
-
-#### 2.3 Remove Duplicate Fetches
-```javascript
-// TokenDashboard.jsx & MembersTable.jsx
-const { data: votingPower } = useVotingPower(token.canister_id, identity);
-// No more duplicate loadVotingPower() calls
-```
-
-**Expected Impact**: 40% reduction in redundant calls
-
-### Phase 3: Backend Optimization (Week 3)
-**Goal**: Reduce cross-canister call overhead
-
-#### 3.1 Create Composite Endpoints
-```rust
-// daopad_backend/src/api/dashboard.rs
-#[update]
-async fn get_dashboard_data(token_id: Principal) -> DashboardData {
-    let futures = vec![
-        get_orbit_station(token_id),
-        get_treasury_balance(token_id),
-        get_members_summary(token_id),
-        get_pending_requests(token_id),
-    ];
-
-    let results = futures::future::join_all(futures).await;
-    DashboardData { ... }
-}
-```
-
-#### 3.2 Implement Request Batching
-```rust
-#[update]
-async fn batch_operations(operations: Vec<Operation>) -> Vec<Result> {
-    // Process multiple operations in single IC round
-}
-```
-
-#### 3.3 Add Short-lived Cache
-```rust
-// Despite CLAUDE.md preference, add 10s cache for expensive queries
-static CACHE: RefCell<HashMap<CacheKey, (Timestamp, Data)>> = RefCell::new(HashMap::new());
-
-fn get_cached_or_fetch(key: CacheKey) -> Data {
-    let now = ic_cdk::api::time();
-    if let Some((timestamp, data)) = CACHE.borrow().get(&key) {
-        if now - timestamp < 10_000_000_000 { // 10 seconds in nanos
-            return data.clone();
-        }
+  reducers: {
+    setActiveStation: (state, action) => {
+      state.activeStationId = action.payload
     }
-    // Fetch and cache
+  }
+})
+
+// Use React Query for all server state
+function useBalance(accountId) {
+  return useQuery({
+    queryKey: ['balance', accountId],
+    queryFn: () => orbitService.getBalance(accountId),
+    staleTime: 10000  // Refresh every 10s
+  })
 }
 ```
 
-**Expected Impact**: 50% reduction in IC cycles usage
+**Functionality Impact**:
+- ❌ **Lost**: Redux DevTools time-travel for balance state
+- ✅ **Gained**: Automatic cache invalidation
+- ✅ **Gained**: Built-in loading/error states from React Query
+- ✅ **Gained**: Simpler data flow
 
-### Phase 4: Smart Refresh Strategy (Week 4)
-**Goal**: Only refresh what changes
+---
 
-#### 4.1 Implement Optimistic Updates
+### 4. Dead Code Removal
+**Target: ~170 lines immediate removal**
+
+| File | Lines | Functionality Loss |
+|------|-------|-------------------|
+| `testOrbitCall.jsx` | 35 | ✅ NONE - Test file not used |
+| `ReactQueryDemo.jsx` | 45 | ✅ NONE - Demo component |
+| `OrbitStationTest.jsx` | 40 | ✅ NONE - Test component |
+| `lp_lock_frontend/` | 20 | ✅ NONE - Unused directory |
+| `daopad_frontend/src/` | 10 | ✅ NONE - Duplicate structure |
+| `setupTests.js` | 5 | ⚠️ Jest test setup (no tests exist) |
+| `tests/App.test.jsx` | 15 | ⚠️ Single test file (not maintained) |
+
+**Total**: 170 lines removed
+**Functionality Impact**: No production functionality lost. Testing infrastructure removed but wasn't being used.
+
+---
+
+### 5. Hook Consolidation
+**Target: ~50 lines reduction**
+
+#### Current Hooks
 ```javascript
-// On user action
-const optimisticUpdate = (cache, result) => {
-  cache.setQueryData(['members'], old => {
-    return [...old, newMember]; // Update immediately
-  });
-};
-
-useMutation(addMember, {
-  onMutate: optimisticUpdate,
-  onError: (err, vars, rollback) => rollback(),
-});
+// hooks/useActiveStation.js (20 lines)
+// hooks/useStationService.js (25 lines)
+// hooks/useOrbitData.js (30 lines)
 ```
 
-#### 4.2 Event-Driven Updates
+#### Consolidated Hook
 ```javascript
-// Create event emitter for cross-component communication
-const eventBus = new EventTarget();
+// hooks/useOrbit.js - Single unified hook
+function useOrbit() {
+  const { activeStationId } = useSelector(state => state.station)
+  const queryClient = useQueryClient()
 
-// Component A: Emit event after action
-eventBus.dispatchEvent(new CustomEvent('memberAdded', { detail: member }));
+  // Combine all Orbit-related queries
+  const requests = useQuery({
+    queryKey: ['orbit', 'requests', activeStationId],
+    queryFn: () => orbitService.listRequests(activeStationId),
+    enabled: !!activeStationId
+  })
 
-// Component B: Listen and update
-eventBus.addEventListener('memberAdded', (e) => {
-  queryClient.invalidateQueries(['members']);
-});
+  const accounts = useQuery({
+    queryKey: ['orbit', 'accounts', activeStationId],
+    queryFn: () => orbitService.listAccounts(activeStationId),
+    enabled: !!activeStationId
+  })
+
+  // Combine all mutations
+  const createTransfer = useMutation({
+    mutationFn: (data) => orbitService.createTransfer(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['orbit', 'requests'])
+      queryClient.invalidateQueries(['orbit', 'accounts'])
+    }
+  })
+
+  return {
+    stationId: activeStationId,
+    requests,
+    accounts,
+    createTransfer,
+    isReady: !!activeStationId,
+    refetchAll: () => queryClient.invalidateQueries(['orbit'])
+  }
+}
+
+// Usage - Much simpler!
+function MyComponent() {
+  const { requests, createTransfer, isReady } = useOrbit()
+  // ...
+}
 ```
 
-#### 4.3 Differential Updates
-```javascript
-// Only fetch changes since last update
-const fetchRequestUpdates = async (lastTimestamp) => {
-  const updates = await backend.getRequestsSince(lastTimestamp);
-  return mergeUpdates(currentData, updates);
-};
+**Functionality Impact**: ✅ NONE - Enhanced developer experience
+
+---
+
+### 6. UI Component Library Audit
+**Target: ~165 lines reduction**
+
+| Component | Used In | Lines | Remove? | Impact if Removed |
+|-----------|---------|-------|---------|-------------------|
+| `calendar.jsx` | NONE | 45 | ✅ Yes | ✅ NONE |
+| `popover.jsx` | 1 component | 35 | ✅ Yes | Use Tooltip instead (slightly less positioning options) |
+| `radio-group.jsx` | NONE | 40 | ✅ Yes | ✅ NONE |
+| `separator.jsx` | 2 places | 15 | ✅ Yes | Use CSS borders (no semantic HTML) |
+| `progress.jsx` | 1 place | 30 | ✅ Yes | Use skeleton loader (different visual) |
+| `switch.jsx` | 2 places | 25 | ❌ No | Would need checkbox refactor |
+| `textarea.jsx` | 3 places | 20 | ❌ No | Forms would break |
+
+**Total Removal**: 165 lines
+**Functionality Impact**:
+- Popover → Tooltip: Slightly less flexible positioning
+- Separator → CSS: Loss of semantic HTML divider
+- Progress → Skeleton: Different loading visualization
+
+---
+
+## Implementation Priority
+
+### Phase 1: Quick Wins (1 day)
+```bash
+# 1. Delete dead code
+rm src/testOrbitCall.jsx
+rm src/ReactQueryDemo.jsx
+rm src/OrbitStationTest.jsx
+rm -rf src/lp_lock_frontend/
+rm -rf src/daopad_frontend/src/
+rm src/setupTests.js
+rm -rf src/tests/
+
+# 2. Remove unused UI components
+rm src/components/ui/calendar.jsx
+rm src/components/ui/popover.jsx
+rm src/components/ui/radio-group.jsx
+rm src/components/ui/separator.jsx
+rm src/components/ui/progress.jsx
+
+# 3. Update imports where needed
 ```
+**Impact**: ~335 lines removed immediately
 
-**Expected Impact**: 70% reduction in data transfer
+### Phase 2: Hook Consolidation (1 day)
+```javascript
+// 1. Create hooks/useOrbit.js
+// 2. Update all components to use unified hook
+// 3. Delete old hooks
+```
+**Impact**: ~50 lines removed, cleaner imports
 
-## Implementation Timeline
+### Phase 3: Service Layer (2 days)
+```javascript
+// 1. Create services/orbit.js
+// 2. Move React Query hooks to services/orbit/queries.js
+// 3. Update all imports
+// 4. Delete old service files
+```
+**Impact**: ~300 lines removed, cleaner architecture
 
-### Week 1: Quick Wins
-- [ ] Implement lazy tab loading
-- [ ] Adjust polling intervals
-- [ ] Add visibility API support
-- [ ] Deploy and measure impact
+### Phase 4: Component Refactor (3 days)
+```javascript
+// 1. Create components/common/ directory
+// 2. Implement DataTable, StatusBadge, ActionBar
+// 3. Refactor existing components to use common ones
+// 4. Remove duplication
+```
+**Impact**: ~200 lines removed, better maintainability
 
-### Week 2: React Query
-- [ ] Install and configure React Query
-- [ ] Create shared data hooks
-- [ ] Migrate components to use hooks
-- [ ] Remove duplicate fetches
+### Phase 5: State Management (2 days)
+```javascript
+// 1. Remove balance state management
+// 2. Simplify Redux usage
+// 3. Migrate to React Query for server state
+```
+**Impact**: ~150 lines removed, simpler data flow
 
-### Week 3: Backend Optimization
-- [ ] Design composite endpoints
-- [ ] Implement batch operations
-- [ ] Add strategic caching
-- [ ] Update frontend to use new endpoints
-
-### Week 4: Smart Refresh
-- [ ] Implement optimistic updates
-- [ ] Add event-driven communication
-- [ ] Create differential update system
-- [ ] Performance testing and tuning
+---
 
 ## Success Metrics
 
-### Performance KPIs
-- **Backend calls/minute**: Reduce from 120+ to <20
-- **Initial load time**: Reduce from 6s to <2s
-- **Tab switch latency**: Reduce from 2s to instant
-- **IC cycles/user**: Reduce by 60%
+| Metric | Current | Target | Improvement |
+|--------|---------|--------|-------------|
+| Total Lines | ~6500 | ~5500 | -15% |
+| File Count | 131 | 100 | -24% |
+| Service Files | 8 | 2 | -75% |
+| Component Files | 60+ | 45 | -25% |
+| Duplicate Code | ~15% | <5% | -67% |
+| Bundle Size | ~800KB | ~650KB | -19% |
 
-### User Experience KPIs
-- **Perceived responsiveness**: Instant UI updates
-- **Loading states**: Minimize spinner time
-- **Data freshness**: Max 30s staleness for non-critical data
-- **Error recovery**: Graceful degradation
-
-## Code Examples
-
-### Before: Uncoordinated Polling
-```javascript
-// Multiple components doing this independently
-useEffect(() => {
-  const interval = setInterval(() => {
-    fetchData();  // Every component fetches its own data
-  }, 5000);
-  return () => clearInterval(interval);
-}, []);
-```
-
-### After: Coordinated React Query
-```javascript
-// Single source of truth
-const { data, refetch } = useQuery({
-  queryKey: ['sharedData', params],
-  queryFn: fetchData,
-  refetchInterval: 30000,  // Coordinated refresh
-  staleTime: 15000,        // Serve from cache when fresh
-});
-```
-
-### Before: Duplicate Service Instantiation
-```javascript
-// Created 15+ times across components
-const daopadService = new DAOPadBackendService(identity);
-const result = await daopadService.getVotingPower();
-```
-
-### After: Shared Service Hook
-```javascript
-// Single service instance, cached results
-const { votingPower } = useVotingPower();
-```
+---
 
 ## Risk Mitigation
 
-### Potential Issues & Solutions
+1. **Testing**: Test each phase independently before moving to next
+2. **Version Control**: Create branch for each phase
+3. **Rollback Plan**: Keep old code commented for 1 week
+4. **Documentation**: Update docs as changes are made
+5. **Team Review**: Get approval before major consolidations
 
-1. **Stale Data Concerns**
-   - Solution: Implement smart invalidation on user actions
-   - Use stale-while-revalidate pattern
+---
 
-2. **Complex State Dependencies**
-   - Solution: Normalize Redux store
-   - Use React Query for server state only
+## Expected Benefits
 
-3. **Breaking Changes**
-   - Solution: Implement behind feature flags
-   - Gradual rollout with monitoring
+### Developer Experience
+- 🚀 Faster development with reusable components
+- 🎯 Clear service boundaries
+- 📚 Less code to maintain
+- 🔍 Easier to find functionality
 
-## Monitoring & Rollback Plan
+### Performance
+- ⚡ Smaller bundle size
+- 🏃 Faster build times
+- 💾 Better caching with React Query
+- 🔄 Reduced re-renders
 
-### Monitoring
-- Track backend call frequency per user
-- Monitor IC cycles consumption
-- Log cache hit/miss ratios
-- Measure user-perceived latency
+### Maintainability
+- 📦 Single source of truth for Orbit operations
+- 🧩 Modular component architecture
+- 🎨 Consistent UI patterns
+- 🐛 Easier debugging with simplified state
 
-### Rollback Strategy
-1. Feature flags for each optimization phase
-2. Keep old code paths available for 2 weeks
-3. A/B testing with subset of users
-4. Automated rollback on error spike
+---
 
 ## Conclusion
 
-The current frontend architecture creates an unsustainable load on the IC network and poor user experience. This phased optimization plan will reduce backend calls by 80%, improve responsiveness, and cut IC cycles usage by 60% while maintaining data freshness requirements.
+This optimization plan will reduce the codebase by ~1000 lines (15%) while improving maintainability and developer experience. The phased approach ensures minimal disruption and allows for course correction. All changes preserve existing functionality except where explicitly noted (test infrastructure that wasn't being used).
 
-**Estimated Total Impact**:
-- 80% reduction in backend calls
-- 60% reduction in IC cycles
-- 70% improvement in perceived performance
-- 50% reduction in code complexity
+The biggest wins come from:
+1. Service layer consolidation (-300 lines)
+2. Component decomposition (-200 lines)
+3. Dead code removal (-170 lines)
+4. UI component audit (-165 lines)
+5. State management simplification (-150 lines)
 
-The plan is designed to be implemented incrementally with measurable results at each phase, allowing for course correction and minimal disruption to users.
+Total estimated reduction: **985 lines** with significantly improved code organization.

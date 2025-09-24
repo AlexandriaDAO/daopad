@@ -34,7 +34,7 @@ type AddAddressBookEntryOperationInput = record {
 };
 type AddressBookEntry = record {
   id : text;
-  metadata : vec MetadataItem;
+  metadata : vec AccountMetadata;
   labels : vec text;
   blockchain : text;
   address : text;
@@ -61,10 +61,48 @@ type AdminInfo = record {
   is_daopad_backend : bool;
   identities : vec principal;
 };
+type Allow = record {
+  user_groups : vec text;
+  auth_scope : AuthScope;
+  users : vec text;
+};
+type Asset = record {
+  id : text;
+  decimals : nat32;
+  metadata : vec AccountMetadata;
+  name : text;
+  blockchain : text;
+  standard : text;
+  symbol : text;
+};
+type AuthScope = variant { Authenticated; Public; Restricted };
+type BackendStatusCheck = record {
+  backend_principal : principal;
+  instructions : opt vec text;
+  error : opt text;
+  station_id : principal;
+  is_member : bool;
+};
 type ChangeMetadata = variant {
   OverrideSpecifiedBy : vec MetadataItem;
   RemoveKeys : vec text;
   ReplaceAllBy : vec MetadataItem;
+};
+type CreateAccountConfig = record {
+  configs_request_policy : opt RequestPolicyRule;
+  read_permission : Allow;
+  configs_permission : Allow;
+  metadata : vec AccountMetadata;
+  name : text;
+  transfer_request_policy : opt RequestPolicyRule;
+  asset_ids : vec text;
+  transfer_permission : Allow;
+};
+type CreateAccountResponse = record {
+  request_id : text;
+  status : text;
+  auto_approved : bool;
+  error : opt text;
 };
 type CreateRequestInput = record {
   title : opt text;
@@ -75,6 +113,22 @@ type CreateRequestInput = record {
 type CreateRequestResult = variant {
   Ok : record { request : AddressBookRequest };
   Err : Error;
+};
+type CycleObtainStrategy = variant {
+  Disabled;
+  MintFromNativeToken : record { account_id : text; account_name : opt text };
+  WithdrawFromCyclesLedger : record {
+    account_id : text;
+    account_name : opt text;
+  };
+};
+type DisasterRecovery = record {
+  user_group_name : opt text;
+  committee : DisasterRecoveryCommittee;
+};
+type DisasterRecoveryCommittee = record {
+  user_group_id : text;
+  quorum : nat16;
 };
 type EditAddressBookEntryOperationInput = record {
   labels : opt vec text;
@@ -87,6 +141,13 @@ type Error = record {
   message : opt text;
   details : opt vec record { text; text };
 };
+type ExternalCanisterAction = variant {
+  Fund : ResourceSpecifier;
+  List;
+  Read : ResourceSpecifier;
+  Create;
+  Change : ResourceSpecifier;
+};
 type GetAddressBookEntryInput = record { address_book_entry_id : text };
 type GetAddressBookEntryResult = variant {
   Ok : record {
@@ -94,6 +155,10 @@ type GetAddressBookEntryResult = variant {
     address_book_entry : AddressBookEntry;
   };
   Err : Error;
+};
+type GetPermissionResponse = record {
+  permission : Permission;
+  privileges : PermissionCallerPrivileges;
 };
 type GovernanceStats = record {
   active_proposals : nat64;
@@ -138,10 +203,20 @@ type ListAddressBookEntriesResult = variant {
   Ok : ListAddressBookEntriesResponse;
   Err : Error;
 };
+type ListAssetsResult = variant {
+  Ok : record { assets : vec Asset };
+  Err : Error;
+};
 type ListOrbitRequestsResponse = record {
   total : nat64;
   requests : vec OrbitRequestSummary;
   next_offset : opt nat64;
+};
+type ListPermissionsResponse = record {
+  permissions : vec Permission;
+  total : nat64;
+  privileges : vec PermissionCallerPrivileges;
+  user_groups : vec UserGroup;
 };
 type ListRequestsInput = record {
   sort_by : opt ListRequestsSortBy;
@@ -200,7 +275,20 @@ type ListRequestsSortBy = variant {
   LastModificationDt : SortByDirection;
   CreatedAt : SortByDirection;
 };
+type ListUserGroupsResponse = record {
+  total : nat64;
+  privileges : vec UserGroupCallerPrivileges;
+  user_groups : vec UserGroup;
+};
 type MetadataItem = record { key : text; value : text };
+type NotificationAction = variant {
+  List;
+  Read;
+  MarkRead;
+  Delete;
+  Create;
+  Update;
+};
 type OrbitApprovalSummary = record {
   status : text;
   status_detail : opt text;
@@ -234,6 +322,12 @@ type OrbitRequestSummary = record {
 };
 type PaginationInput = record { offset : opt nat64; limit : opt nat64 };
 type PaginationInput_1 = record { offset : opt nat64; limit : opt nat16 };
+type Permission = record { resource : Resource; allow : Allow };
+type PermissionAction = variant { Read; Update };
+type PermissionCallerPrivileges = record {
+  resource : Resource;
+  can_edit : bool;
+};
 type PermissionStatus = record {
   user_name : text;
   groups : vec text;
@@ -258,10 +352,11 @@ type ProposalType = variant {
   GeneralOperation;
   TransferFunds;
 };
-type Quorum = record { min_approved : nat32 };
+type Quorum = record { min_approved : nat16; approvers : UserSpecifier };
 type RemoveAddressBookEntryOperationInput = record {
   address_book_entry_id : text;
 };
+type RequestAction = variant { List; Read : ResourceSpecifier };
 type RequestApprovalStatus = variant { Approved; Rejected };
 type RequestExecutionPlan = variant {
   Immediate;
@@ -293,31 +388,94 @@ type RequestStatusCode = variant {
   Created;
   Completed;
 };
+type Resource = variant {
+  Request : RequestAction;
+  Notification : NotificationAction;
+  System : SystemAction;
+  User : UserAction;
+  ExternalCanister : ExternalCanisterAction;
+  Account : ResourceAction;
+  AddressBook : ResourceAction;
+  Asset : ResourceAction;
+  NamedRule : ResourceAction;
+  UserGroup : ResourceAction;
+  Permission : PermissionAction;
+  RequestPolicy : ResourceAction;
+};
+type ResourceAction = variant {
+  List;
+  Read : ResourceSpecifier;
+  Delete : ResourceSpecifier;
+  Create;
+  Transfer : ResourceSpecifier;
+  Update : ResourceSpecifier;
+};
+type ResourceSpecifier = variant { Id : text; Any };
 type Result = variant { Ok : text; Err : text };
 type Result_1 = variant { Ok; Err : text };
-type Result_10 = variant { Ok : ProposalConfig; Err : text };
-type Result_11 = variant { Ok : vec text; Err : text };
-type Result_12 = variant { Ok : vec OrbitRequestSummary; Err : text };
-type Result_13 = variant { Ok : VotingThresholds; Err : text };
-type Result_14 = variant { Ok : bool; Err : text };
-type Result_15 = variant { Ok : JoinMemberResponse; Err : text };
-type Result_16 = variant { Ok : vec AdminInfo; Err : text };
-type Result_17 = variant { Ok : ListAccountsResult; Err : text };
-type Result_18 = variant { Ok : ListOrbitRequestsResponse; Err : text };
-type Result_19 = variant { Ok : vec UserGroupInfo; Err : text };
-type Result_2 = variant { Ok : nat32; Err : text };
-type Result_20 = variant { Ok : vec UserInfo; Err : text };
-type Result_21 = variant { Ok : PermissionStatus; Err : text };
-type Result_3 = variant { Ok : vec opt AccountBalance; Err : text };
-type Result_4 = variant { Ok : GroupIds; Err : text };
-type Result_5 = variant { Ok : AdminCount; Err : text };
-type Result_6 = variant { Ok : GovernanceStats; Err : text };
-type Result_7 = variant { Ok : vec TokenInfo; Err : text };
-type Result_8 = variant { Ok : nat64; Err : text };
-type Result_9 = variant { Ok : vec SimpleRequest; Err : text };
+type Result_10 = variant { Ok : vec TokenInfo; Err : text };
+type Result_11 = variant { Ok : nat64; Err : text };
+type Result_12 = variant { Ok : vec SimpleRequest; Err : text };
+type Result_13 = variant { Ok : SystemInfoResponse; Err : text };
+type Result_14 = variant { Ok : GetPermissionResponse; Err : text };
+type Result_15 = variant { Ok : ProposalConfig; Err : text };
+type Result_16 = variant { Ok : vec text; Err : text };
+type Result_17 = variant { Ok : vec OrbitRequestSummary; Err : text };
+type Result_18 = variant { Ok : VotingThresholds; Err : text };
+type Result_19 = variant { Ok : bool; Err : text };
+type Result_2 = variant { Ok : BackendStatusCheck; Err : text };
+type Result_20 = variant { Ok : JoinMemberResponse; Err : text };
+type Result_21 = variant { Ok : vec AdminInfo; Err : text };
+type Result_22 = variant { Ok : ListAccountsResult; Err : text };
+type Result_23 = variant { Ok : ListOrbitRequestsResponse; Err : text };
+type Result_24 = variant { Ok : vec UserGroupInfo; Err : text };
+type Result_25 = variant { Ok : vec UserInfo; Err : text };
+type Result_26 = variant { Ok : ListPermissionsResponse; Err : text };
+type Result_27 = variant { Ok : ListUserGroupsResponse; Err : text };
+type Result_28 = variant { Ok : PermissionStatus; Err : text };
+type Result_3 = variant { Ok : nat32; Err : text };
+type Result_4 = variant { Ok : CreateAccountResponse; Err : text };
+type Result_5 = variant { Ok : vec opt AccountBalance; Err : text };
+type Result_6 = variant { Ok : GroupIds; Err : text };
+type Result_7 = variant { Ok : AdminCount; Err : text };
+type Result_8 = variant { Ok : GovernanceStats; Err : text };
+type Result_9 = variant { Ok : vec principal; Err : text };
 type SimpleRequest = record { id : text; status : text; title : text };
 type SortByDirection = variant { Asc; Desc };
+type SystemAction = variant {
+  Upgrade;
+  ManageSystemInfo;
+  SystemInfo;
+  Capabilities;
+};
+type SystemInfo = record {
+  disaster_recovery : opt DisasterRecovery;
+  upgrader_cycles : opt nat64;
+  name : text;
+  last_upgrade_timestamp : text;
+  raw_rand_successful : bool;
+  version : text;
+  cycles : nat64;
+  upgrader_id : principal;
+  cycle_obtain_strategy : CycleObtainStrategy;
+};
+type SystemInfoResponse = record {
+  system_info : SystemInfo;
+  station_id : principal;
+};
 type TokenInfo = record { chain : text; canister_id : text; symbol : text };
+type UserAction = variant {
+  List;
+  Read : ResourceSpecifier;
+  Create;
+  Update : ResourceSpecifier;
+};
+type UserGroup = record { id : text; name : text };
+type UserGroupCallerPrivileges = record {
+  id : text;
+  can_delete : bool;
+  can_edit : bool;
+};
 type UserGroupInfo = record { id : text; name : text };
 type UserInfo = record {
   id : text;
@@ -326,6 +484,7 @@ type UserInfo = record {
   name : text;
   identities : vec principal;
 };
+type UserSpecifier = variant { Id : vec text; Any; Group : vec text };
 type UserStatus = variant { Inactive; Active };
 type VotingThresholds = record {
   transfer_funds : nat32;
@@ -339,7 +498,8 @@ service : () -> {
       Result,
     );
   approve_transfer_request : (text, principal) -> (Result_1);
-  cleanup_expired_proposals : () -> (Result_2);
+  check_backend_status : (principal) -> (Result_2);
+  cleanup_expired_proposals : () -> (Result_3);
   create_address_book_request : (CreateRequestInput) -> (CreateRequestResult);
   create_orbit_treasury_account : (principal, text, opt text) -> (Result);
   create_transfer_request : (
@@ -352,61 +512,75 @@ service : () -> {
       opt text,
       principal,
     ) -> (Result);
+  create_treasury_account : (principal, CreateAccountConfig) -> (Result_4);
   downgrade_to_operator : (principal, text) -> (Result);
-  fetch_orbit_account_balances : (principal, vec text) -> (Result_3);
+  fetch_orbit_account_balances : (principal, vec text) -> (Result_5);
   get_active_proposal_for_token : (principal) -> (opt OrbitLinkProposal) query;
-  get_actual_group_ids : (principal) -> (Result_4);
+  get_actual_group_ids : (principal) -> (Result_6);
   get_address_book_entry : (GetAddressBookEntryInput) -> (
       GetAddressBookEntryResult,
     ) query;
-  get_admin_count : (principal) -> (Result_5);
+  get_admin_count : (principal) -> (Result_7);
+  get_available_assets : (principal) -> (ListAssetsResult);
   get_backend_principal : () -> (principal) query;
   get_default_voting_thresholds : () -> (VotingThresholds) query;
-  get_governance_stats : (principal) -> (Result_6) query;
+  get_governance_stats : (principal) -> (Result_8) query;
+  get_high_vp_members : (principal, nat64) -> (Result_9);
   get_kong_locker_factory_principal : () -> (principal) query;
   get_my_kong_locker_canister : () -> (opt principal) query;
-  get_my_locked_tokens : () -> (Result_7);
-  get_my_voting_power_for_token : (principal) -> (Result_8);
+  get_my_locked_tokens : () -> (Result_10);
+  get_my_voting_power_for_token : (principal) -> (Result_11);
   // Get a single request by ID (deprecated - kept for compatibility)
   get_orbit_request : (principal, text) -> (Result);
   // EXPERIMENTAL: Ultra-simple request fetching - returns basic info only
-  get_orbit_requests_simple : () -> (Result_9);
+  get_orbit_requests_simple : () -> (Result_12);
   get_orbit_station_for_token : (principal) -> (opt principal) query;
+  get_orbit_system_info : (principal) -> (Result_13);
+  get_permission : (principal, Resource) -> (Result_14);
   get_predefined_groups : () -> (vec UserGroupInfo) query;
-  get_proposal_config : (principal, ProposalType) -> (Result_10) query;
-  get_transfer_requests : (principal) -> (Result_11);
-  get_user_pending_requests : (principal, principal) -> (Result_12);
-  get_voting_thresholds : (principal) -> (Result_13) query;
+  get_proposal_config : (principal, ProposalType) -> (Result_15) query;
+  get_transfer_requests : (principal) -> (Result_16);
+  get_user_pending_requests : (principal, principal) -> (Result_17);
+  get_voting_thresholds : (principal) -> (Result_18) query;
   grant_self_permissions : (principal) -> (Result);
   has_proposal_passed : (principal, ProposalType, nat64, nat64, nat64) -> (
-      Result_14,
+      Result_19,
     ) query;
   health_check : () -> (text) query;
   initialize_default_thresholds : (principal) -> (Result);
-  join_orbit_station : (principal, text) -> (Result_15);
+  join_orbit_station : (principal, text) -> (Result_20);
   list_active_proposals : () -> (vec OrbitLinkProposal) query;
   list_address_book_entries : (ListAddressBookEntriesInput) -> (
       ListAddressBookEntriesResult,
     ) query;
-  list_all_admins : (principal) -> (Result_16);
+  list_all_admins : (principal) -> (Result_21);
   list_all_kong_locker_registrations : () -> (
       vec record { principal; principal },
     ) query;
   list_all_orbit_stations : () -> (vec record { principal; principal }) query;
   list_orbit_accounts : (principal, opt text, opt nat64, opt nat64) -> (
-      Result_17,
+      Result_22,
     );
   // List all requests from Orbit Station with domain filtering
   // 
   // This method acts as an admin proxy, allowing DAOPad to query
   // all requests regardless of user permissions.
-  list_orbit_requests : (principal, ListRequestsInput) -> (Result_18);
-  list_orbit_user_groups : (principal) -> (Result_19);
-  list_orbit_users : (principal) -> (Result_20);
-  propose_orbit_station_link : (principal, principal) -> (Result_8);
+  list_orbit_requests : (principal, ListRequestsInput) -> (Result_23);
+  list_orbit_user_groups : (principal) -> (Result_24);
+  list_orbit_users : (principal) -> (Result_25);
+  list_permissions : (principal, opt vec Resource) -> (Result_26);
+  list_user_groups : (principal, opt PaginationInput) -> (Result_27);
+  propose_orbit_station_link : (principal, principal) -> (Result_11);
   register_with_kong_locker : (principal) -> (Result);
   remove_admin_role : (principal, text) -> (Result);
   remove_user_from_orbit : (principal, text) -> (Result);
+  request_permission_change : (
+      principal,
+      Resource,
+      opt AuthScope,
+      opt vec text,
+      opt vec text,
+    ) -> (Result);
   set_voting_thresholds : (principal, VotingThresholds) -> (Result);
   // Submit approval decision for a request
   submit_request_approval : (
@@ -416,7 +590,8 @@ service : () -> {
       opt text,
     ) -> (Result_1);
   unregister_kong_locker : () -> (Result);
-  verify_permissions : (principal) -> (Result_21);
-  verify_sole_admin : (principal) -> (Result_14);
+  validate_account_name : (principal, text) -> (Result_19);
+  verify_permissions : (principal) -> (Result_28);
+  verify_sole_admin : (principal) -> (Result_19);
   vote_on_orbit_proposal : (nat64, bool) -> (Result_1);
 }

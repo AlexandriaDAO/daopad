@@ -164,7 +164,7 @@ async fn get_address_book_entry(_input: GetAddressBookEntryInput) -> GetAddressB
 }
 
 #[query]
-async fn list_address_book_entries(_input: ListAddressBookEntriesInput) -> ListAddressBookEntriesResult {
+pub async fn list_address_book_entries(_input: ListAddressBookEntriesInput) -> ListAddressBookEntriesResult {
     // For now, return an empty list
     // In a real implementation, we'd query Orbit Station for address book entries
 

@@ -195,52 +195,15 @@ const TokenTabs = ({ identity }) => {
         </Suspense>
       )}
 
-      <Card className="bg-executive-darkGray border-executive-gold/20">
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row md:items-center gap-4">
-            <div className="flex-1">
-              <Label htmlFor="token-select" className="text-sm font-medium mb-2 block">
-                Select Token:
-              </Label>
-              <Select
-                value={activeTab.toString()}
-                onValueChange={(value) => setActiveTab(Number(value))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {tokens.map((token, index) => (
-                    <SelectItem key={token.canister_id} value={index.toString()}>
-                      {token.symbol} ({token.chain}) - {(tokenVotingPowers[token.canister_id] || 0).toLocaleString()} VP
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {tokens[activeTab] && (
-              <div className="flex items-center gap-4">
-                <div className="flex gap-2">
-                  <Badge variant="default">{tokens[activeTab].symbol}</Badge>
-                  <Badge variant="outline">{tokens[activeTab].chain}</Badge>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm text-muted-foreground">Voting Power</div>
-                  <div className="text-xl font-bold font-mono">
-                    {(tokenVotingPowers[tokens[activeTab].canister_id] || 0).toLocaleString()}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
       <div>
         {tokens[activeTab] && (
           <TokenDashboard
             token={tokens[activeTab]}
+            tokens={tokens}
+            activeTokenIndex={activeTab}
+            onTokenChange={setActiveTab}
+            tokenVotingPowers={tokenVotingPowers}
             identity={identity}
             votingPower={tokenVotingPowers[tokens[activeTab].canister_id] || 0}
             lpPositions={userLPPositions.filter(pos =>

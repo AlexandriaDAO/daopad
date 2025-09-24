@@ -902,4 +902,230 @@ export class DAOPadBackendService {
         }
     }
 
+    // Check if backend is a member of the Orbit Station
+    async checkBackendStatus(tokenId) {
+        try {
+            const actor = await this.getActor();
+            const tokenPrincipal = Principal.fromText(tokenId);
+            const result = await actor.check_backend_status(tokenPrincipal);
+
+            if ('Ok' in result) {
+                return {
+                    success: true,
+                    data: {
+                        is_member: result.Ok.is_member,
+                        backend_principal: result.Ok.backend_principal.toText(),
+                        station_id: result.Ok.station_id.toText(),
+                        instructions: result.Ok.instructions?.[0] || null,
+                        error: result.Ok.error?.[0] || null
+                    }
+                };
+            } else {
+                return {
+                    success: false,
+                    error: result.Err || 'Failed to check backend status'
+                };
+            }
+        } catch (error) {
+            console.error('Error checking backend status:', error);
+            return {
+                success: false,
+                error: error.message || 'Failed to check backend status'
+            };
+        }
+    }
+
+    // Account management methods
+    async createTreasuryAccount(tokenId, accountConfig) {
+        try {
+            const actor = await this.getActor();
+
+            // Build permission objects with correct encoding
+            const encodePermission = (permission) => ({
+                auth_scope: permission.authScope,  // Already a variant object
+                users: permission.users || [],
+                user_groups: permission.userGroups || []
+            });
+
+            // Build rule objects with CORRECT Quorum structure
+            const encodeRule = (rule) => {
+                if (!rule) return null;
+
+                if (rule.type === 'AutoApproved') {
+                    return { AutoApproved: null };
+                }
+
+                if (rule.type === 'Quorum') {
+                    return {
+                        Quorum: {
+                            approvers: { Any: null },  // REQUIRED field!
+                            min_approved: rule.minApproved
+                        }
+                    };
+                }
+
+                if (rule.type === 'QuorumPercentage') {
+                    return {
+                        QuorumPercentage: {
+                            approvers: { Any: null },  // REQUIRED field!
+                            min_approved: rule.minPercent
+                        }
+                    };
+                }
+
+                return null;
+            };
+
+            const config = {
+                name: accountConfig.name,
+                asset_ids: accountConfig.assetIds,
+                metadata: accountConfig.metadata || [],
+                read_permission: encodePermission(accountConfig.readPermission),
+                configs_permission: encodePermission(accountConfig.configsPermission),
+                transfer_permission: encodePermission(accountConfig.transferPermission),
+                configs_request_policy: accountConfig.configsRule
+                    ? [encodeRule(accountConfig.configsRule)] : [],  // Wrap in array for Option
+                transfer_request_policy: accountConfig.transferRule
+                    ? [encodeRule(accountConfig.transferRule)] : []  // Wrap in array for Option
+            };
+
+            const result = await actor.create_treasury_account(
+                Principal.fromText(tokenId),
+                config
+            );
+
+            if ('Ok' in result) {
+                return {
+                    success: true,
+                    data: result.Ok
+                };
+            } else {
+                return {
+                    success: false,
+                    error: result.Err || 'Failed to create account'
+                };
+            }
+        } catch (error) {
+            console.error('Error creating treasury account:', error);
+            return {
+                success: false,
+                error: error.message || 'Failed to create account'
+            };
+        }
+    }
+
+    async getAvailableAssets(tokenId) {
+        try {
+            const actor = await this.getActor();
+            const result = await actor.get_available_assets(Principal.fromText(tokenId));
+
+            if ('Ok' in result) {
+                return {
+                    success: true,
+                    data: result.Ok.assets || []
+                };
+            } else {
+                return {
+                    success: false,
+                    error: result.Err?.message || result.Err?.code || 'Failed to get assets'
+                };
+            }
+        } catch (error) {
+            console.error('Error getting available assets:', error);
+            return {
+                success: false,
+                error: error.message || 'Failed to get assets'
+            };
+        }
+    }
+
+    async validateAccountName(tokenId, name) {
+        try {
+            const actor = await this.getActor();
+            const result = await actor.validate_account_name(
+                Principal.fromText(tokenId),
+                name
+            );
+
+            if ('Ok' in result) {
+                return {
+                    success: true,
+                    isValid: result.Ok
+                };
+            } else {
+                return {
+                    success: false,
+                    error: result.Err || 'Failed to validate name'
+                };
+            }
+        } catch (error) {
+            console.error('Error validating account name:', error);
+            return {
+                success: false,
+                error: error.message || 'Failed to validate name'
+            };
+        }
+    }
+
+    async getHighVpMembers(tokenId, minVp = 100) {
+        try {
+            const actor = await this.getActor();
+            const result = await actor.get_high_vp_members(
+                Principal.fromText(tokenId),
+                minVp
+            );
+
+            if ('Ok' in result) {
+                return {
+                    success: true,
+                    data: result.Ok.map(p => p.toText())
+                };
+            } else {
+                return {
+                    success: false,
+                    error: result.Err || 'Failed to get high VP members'
+                };
+            }
+        } catch (error) {
+            console.error('Error getting high VP members:', error);
+            return {
+                success: false,
+                error: error.message || 'Failed to get high VP members'
+            };
+        }
+    }
+
+    static async getOrbitSystemInfo(tokenCanisterId) {
+        try {
+            // Create a static actor without identity (for public read-only calls)
+            const agent = new HttpAgent({ host: 'https://ic0.app' });
+            const actor = Actor.createActor(idlFactory, {
+                agent,
+                canisterId: DAOPAD_BACKEND_ID,
+            });
+
+            const result = await actor.get_orbit_system_info(
+                Principal.fromText(tokenCanisterId)
+            );
+
+            if ('Ok' in result) {
+                return {
+                    success: true,
+                    data: result.Ok
+                };
+            } else {
+                return {
+                    success: false,
+                    error: result.Err || 'Failed to get system info'
+                };
+            }
+        } catch (error) {
+            console.error('Error getting orbit system info:', error);
+            return {
+                success: false,
+                error: error.message || 'Failed to get system info'
+            };
+        }
+    }
+
 }

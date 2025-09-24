@@ -83,10 +83,10 @@ const AddressBookPage = ({ identity }) => {
     }
   }, [searchTerm, pagination.offset, pagination.limit, canList]);
 
-  // Auto-refresh every 5 seconds - Line 35 in Vue component
+  // Auto-refresh every 30 seconds - adjusted for performance
   useEffect(() => {
     if (!disableRefresh) {
-      const interval = setInterval(fetchList, 5000);
+      const interval = setInterval(fetchList, 30000);
       return () => clearInterval(interval);
     }
   }, [fetchList, disableRefresh]);

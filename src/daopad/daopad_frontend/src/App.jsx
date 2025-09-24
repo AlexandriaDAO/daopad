@@ -53,29 +53,49 @@ function App() {
     dispatch(setAuthInitialized(true));
   }, [identity, dispatch]);
 
-  // Load public data for logged-out users with proper cleanup
+  // Load public data for logged-out users with proper cleanup and visibility handling
   useEffect(() => {
-    if (!isAuthenticated) {
-      // Initial load
-      dispatch(fetchPublicDashboard());
-
-      // Setup auto-refresh
-      intervalRef.current = setInterval(() => {
+    const startPolling = () => {
+      if (!isAuthenticated && !document.hidden) {
         dispatch(fetchPublicDashboard());
-      }, 30000);
-    } else {
-      // Clear interval when authenticated
+
+        intervalRef.current = setInterval(() => {
+          dispatch(fetchPublicDashboard());
+        }, 30000);
+      }
+    };
+
+    const stopPolling = () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+    };
+
+    // Handle visibility changes
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else if (!isAuthenticated) {
+        // Resume polling when tab becomes visible
+        stopPolling(); // Clear any existing interval first
+        startPolling();
+      }
+    };
+
+    if (!isAuthenticated) {
+      startPolling();
+    } else {
+      stopPolling();
     }
+
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Cleanup on unmount
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isAuthenticated, dispatch]);
 

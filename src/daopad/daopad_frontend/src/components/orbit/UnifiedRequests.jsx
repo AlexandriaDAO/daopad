@@ -42,8 +42,8 @@ const UnifiedRequests = ({ tokenId, identity }) => {
 
   const { toast } = useToast();
 
-  // Polling interval - 5 seconds like Orbit
-  const REFRESH_INTERVAL = 5000;
+  // Polling interval - adjusted to 15 seconds for performance
+  const REFRESH_INTERVAL = 15000;
 
   // Fetch requests from backend (which proxies to Orbit Station)
   const fetchRequests = useCallback(async () => {

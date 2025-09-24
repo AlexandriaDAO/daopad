@@ -8,6 +8,7 @@ import MembersTable from './tables/MembersTable';
 import RequestsTable from './tables/RequestsTable';
 import UnifiedRequests from './orbit/UnifiedRequests';
 import AddressBookPage from '../pages/AddressBookPage';
+import DAOSettings from './DAOSettings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +18,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -29,7 +31,17 @@ import { upsertStationMapping } from '../features/dao/daoSlice';
 import { useActiveStation } from '../hooks/useActiveStation';
 import OrbitStationPlaceholder from './orbit/OrbitStationPlaceholder';
 
-const TokenDashboard = ({ token, identity, votingPower, lpPositions, onRefresh }) => {
+const TokenDashboard = ({
+  token,
+  tokens = null,
+  activeTokenIndex = 0,
+  onTokenChange = null,
+  tokenVotingPowers = null,
+  identity,
+  votingPower,
+  lpPositions,
+  onRefresh
+}) => {
   const dispatch = useDispatch();
   const activeStation = useActiveStation(token?.canister_id);
   const [orbitStation, setOrbitStation] = useState(null);
@@ -46,6 +58,7 @@ const TokenDashboard = ({ token, identity, votingPower, lpPositions, onRefresh }
   const [daoStatus, setDaoStatus] = useState(null);
   const [tokenMetadata, setTokenMetadata] = useState(null);
   const [loadingMetadata, setLoadingMetadata] = useState(false);
+  const [activeTab, setActiveTab] = useState('accounts');
 
   const toPrincipalText = (value) => {
     if (!value) return null;
@@ -289,65 +302,89 @@ const TokenDashboard = ({ token, identity, votingPower, lpPositions, onRefresh }
 
   return (
     <div className="space-y-6">
-      {/* Header Section - Flat design with inline metrics */}
-      <header className="flex justify-between items-center pb-4 border-b">
-        <div className="flex items-center gap-4">
-          {/* Token Logo */}
-          {token.canister_id === 'ysy5f-2qaaa-aaaap-qkmmq-cai' ? (
-            <img
-              src="/alex.png"
-              alt="ALEX"
-              className="w-12 h-12 rounded-lg object-contain"
-            />
-          ) : tokenMetadata?.logo && tokenMetadata.logo !== 'data:image/svg+xml;base64,' ? (
-            <img
-              src={tokenMetadata.logo}
-              alt={tokenMetadata?.symbol || token.symbol}
-              className="w-12 h-12 rounded-lg object-contain"
-              onError={(e) => {
-                e.target.style.display = 'none';
-              }}
-            />
-          ) : (
-            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-              <span className="text-xl font-bold">
-                {(tokenMetadata?.symbol || token.symbol)?.charAt(0) || '?'}
-              </span>
-            </div>
-          )}
+      {/* Compact Unified Header */}
+      <header className="flex items-center gap-4 pb-4 border-b">
+        {/* Token Logo */}
+        {token.canister_id === 'ysy5f-2qaaa-aaaap-qkmmq-cai' ? (
+          <img
+            src="/alex.png"
+            alt="ALEX"
+            className="w-12 h-12 rounded-lg object-contain flex-shrink-0"
+          />
+        ) : tokenMetadata?.logo && tokenMetadata.logo !== 'data:image/svg+xml;base64,' ? (
+          <img
+            src={tokenMetadata.logo}
+            alt={tokenMetadata?.symbol || token.symbol}
+            className="w-12 h-12 rounded-lg object-contain flex-shrink-0"
+            onError={(e) => {
+              e.target.style.display = 'none';
+            }}
+          />
+        ) : (
+          <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+            <span className="text-xl font-bold">
+              {(tokenMetadata?.symbol || token.symbol)?.charAt(0) || '?'}
+            </span>
+          </div>
+        )}
 
-          <div>
+        {/* Token Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">{tokenMetadata?.name || token.symbol}</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant="outline">{tokenMetadata?.symbol || token.symbol}</Badge>
-              <Badge variant="outline">{token.chain}</Badge>
-              <code className="text-xs bg-muted px-2 py-1 rounded">{token.canister_id}</code>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(token.canister_id);
-                    setCopyFeedback(true);
-                    setTimeout(() => setCopyFeedback(false), 2000);
-                  } catch (err) {
-                    console.error('Failed to copy:', err);
-                  }
-                }}
-                className="h-6 w-6 p-0"
-                title="Copy canister ID"
+            {tokens && tokens.length > 1 && (
+              <Select
+                value={activeTokenIndex?.toString() || "0"}
+                onValueChange={(value) => onTokenChange && onTokenChange(Number(value))}
               >
-                {copyFeedback ? '✓' : '⧉'}
-              </Button>
-            </div>
+                <SelectTrigger className="w-[180px] h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {tokens.map((t, index) => (
+                    <SelectItem key={t.canister_id} value={index.toString()}>
+                      <div className="flex items-center justify-between gap-2 w-full">
+                        <span>{t.symbol}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {((tokenVotingPowers && tokenVotingPowers[t.canister_id]) || 0).toLocaleString()} VP
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge variant="outline">{tokenMetadata?.symbol || token.symbol}</Badge>
+            <Badge variant="outline">{token.chain}</Badge>
+            <code className="text-xs bg-muted px-2 py-1 rounded">{token.canister_id}</code>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(token.canister_id);
+                  setCopyFeedback(true);
+                  setTimeout(() => setCopyFeedback(false), 2000);
+                } catch (err) {
+                  console.error('Failed to copy:', err);
+                }
+              }}
+              className="h-6 w-6 p-0"
+              title="Copy canister ID"
+            >
+              {copyFeedback ? '✓' : '⧉'}
+            </Button>
           </div>
         </div>
 
-        <div className="text-right">
+        {/* Voting Power */}
+        <div className="text-right flex-shrink-0">
           <div className="text-2xl font-mono font-bold">{votingPower.toLocaleString()}</div>
           <div className="text-xs text-muted-foreground">Voting Power</div>
           <div className="text-sm text-muted-foreground">{formatUsdValue(totalUsdValue)} LP Value</div>
-          {orbitStation && (
+          {orbitStation && daoStatus && (
             <div className="mt-2">
               {daoStatus === 'real' && <Badge className="bg-green-100 text-green-800">✓ Decentralized</Badge>}
               {daoStatus === 'pseudo' && <Badge className="bg-yellow-100 text-yellow-800">⚠️ Pseudo-DAO</Badge>}
@@ -369,35 +406,58 @@ const TokenDashboard = ({ token, identity, votingPower, lpPositions, onRefresh }
 
 
           {/* Tabs for different views */}
-          <Tabs defaultValue="accounts" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+          <Tabs defaultValue="accounts" className="w-full" onValueChange={(value) => setActiveTab(value)}>
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="accounts">Treasury Accounts</TabsTrigger>
               <TabsTrigger value="transfers">Transfer Requests</TabsTrigger>
               <TabsTrigger value="members">Members & Roles</TabsTrigger>
               <TabsTrigger value="requests">Governance Requests</TabsTrigger>
+              <TabsTrigger value="settings">DAO Settings</TabsTrigger>
             </TabsList>
 
             <TabsContent value="accounts" className="mt-4 space-y-6">
-              <AccountsTable stationId={orbitStation.station_id} identity={identity} tokenId={token.canister_id} />
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Saved Addresses</h3>
-                  <span className="text-sm text-muted-foreground">Manage addresses for easy transfers</span>
-                </div>
-                <AddressBookPage identity={identity} />
-              </div>
+              {activeTab === 'accounts' && (
+                <>
+                  <AccountsTable
+                    stationId={orbitStation.station_id}
+                    identity={identity}
+                    tokenId={token.canister_id}
+                    tokenSymbol={token.symbol}
+                    votingPower={votingPower}
+                  />
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold">Saved Addresses</h3>
+                      <span className="text-sm text-muted-foreground">Manage addresses for easy transfers</span>
+                    </div>
+                    <AddressBookPage identity={identity} />
+                  </div>
+                </>
+              )}
             </TabsContent>
 
             <TabsContent value="transfers" className="mt-4">
-              <UnifiedRequests tokenId={token.canister_id} identity={identity} />
+              {activeTab === 'transfers' && (
+                <UnifiedRequests tokenId={token.canister_id} identity={identity} />
+              )}
             </TabsContent>
 
             <TabsContent value="members" className="mt-4">
-              <MembersTable stationId={orbitStation.station_id} identity={identity} token={token} />
+              {activeTab === 'members' && (
+                <MembersTable stationId={orbitStation.station_id} identity={identity} token={token} />
+              )}
             </TabsContent>
 
             <TabsContent value="requests" className="mt-4">
-              <RequestsTable tokenId={token.canister_id} identity={identity} />
+              {activeTab === 'requests' && (
+                <RequestsTable tokenId={token.canister_id} identity={identity} />
+              )}
+            </TabsContent>
+
+            <TabsContent value="settings" className="mt-4">
+              {activeTab === 'settings' && (
+                <DAOSettings tokenCanisterId={token.canister_id} />
+              )}
             </TabsContent>
 
           </Tabs>

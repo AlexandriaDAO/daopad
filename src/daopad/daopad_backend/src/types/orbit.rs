@@ -2,7 +2,7 @@ use candid::{CandidType, Deserialize, Principal};
 use serde::Serialize;
 use std::fmt;
 
-// Types needed for joining Orbit Station
+// Types needed for joining Orbit Station and permissions management
 
 #[derive(CandidType, Deserialize, Debug, Clone)]
 pub enum UserStatus {
@@ -32,7 +32,7 @@ pub struct EditUserOperationInput {
 pub enum RequestOperationInput {
     AddUser(AddUserOperationInput),
     EditUser(EditUserOperationInput),
-    // EditPermission(EditPermissionOperationInput), // TODO: Define this type
+    EditPermission(EditPermissionOperationInput),
     AddAccount(AddAccountOperationInput),
 }
 
@@ -124,13 +124,13 @@ impl fmt::Display for Error {
 }
 
 // User type for the me() call
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
 pub struct UserGroup {
     pub id: String, // UUID
     pub name: String,
 }
 
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug, Clone)]
 pub struct User {
     pub id: String, // UUID
     pub name: String,
@@ -138,6 +138,39 @@ pub struct User {
     pub groups: Vec<UserGroup>,
     pub identities: Vec<Principal>,
     pub last_modification_timestamp: String, // RFC3339 timestamp
+}
+
+// List users types
+#[derive(CandidType, Deserialize)]
+pub struct ListUsersInput {
+    pub paginate: Option<PaginationInput>,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct UserDTO {
+    pub id: String, // UUID
+    pub name: String,
+    pub status: UserStatus,
+    pub groups: Vec<UserGroup>,
+    pub identities: Vec<(Principal,)>, // Note: wrapped in tuple per Orbit API
+    pub last_modification_timestamp: String,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct UserCallerPrivileges {
+    pub id: String,
+    pub can_edit: bool,
+}
+
+#[derive(CandidType, Deserialize)]
+pub enum ListUsersResult {
+    Ok {
+        users: Vec<UserDTO>,
+        privileges: Vec<UserCallerPrivileges>,
+        total: u64,
+        next_offset: Option<u64>,
+    },
+    Err(Error),
 }
 
 // Admin privileges enum - must match Orbit Station candid exactly
@@ -208,15 +241,25 @@ pub struct AccountAsset {
     pub balance: Option<AccountBalance>,
 }
 
+// User specifier for approval rules
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub enum UserSpecifier {
+    Any,
+    Id(Vec<String>),     // User UUIDs
+    Group(Vec<String>),  // Group UUIDs
+}
+
 // Request policy rules for accounts
 #[derive(CandidType, Deserialize, Debug, Clone)]
 pub struct QuorumPercentage {
-    pub min_approved: u32,
+    pub approvers: UserSpecifier,  // The users that are required to approve
+    pub min_approved: u16,         // nat16 in candid, not u32!
 }
 
 #[derive(CandidType, Deserialize, Debug, Clone)]
 pub struct Quorum {
-    pub min_approved: u32,
+    pub approvers: UserSpecifier,  // The users that can approve
+    pub min_approved: u16,         // nat16 in candid, not u32!
 }
 
 #[derive(CandidType, Deserialize, Debug, Clone)]
@@ -290,14 +333,14 @@ pub enum FetchAccountBalancesResult {
 }
 
 // Authorization types for account permissions
-#[derive(CandidType, Deserialize, Debug, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
 pub enum AuthScope {
     Public,
     Authenticated,
     Restricted,
 }
 
-#[derive(CandidType, Deserialize, Debug, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
 pub struct Allow {
     pub auth_scope: AuthScope,
     pub users: Vec<String>,       // UUIDs
@@ -315,4 +358,230 @@ pub struct AddAccountOperationInput {
     pub transfer_permission: Allow,
     pub configs_request_policy: Option<RequestPolicyRule>,
     pub transfer_request_policy: Option<RequestPolicyRule>,
+}
+
+// System Info types for DAO Settings
+#[derive(CandidType, Serialize, Deserialize, Debug)]
+pub struct SystemInfo {
+    pub name: String,
+    pub version: String,
+    pub upgrader_id: Principal,
+    pub cycles: u64,
+    pub upgrader_cycles: Option<u64>,
+    pub last_upgrade_timestamp: String, // RFC3339 timestamp
+    pub raw_rand_successful: bool,
+    pub disaster_recovery: Option<DisasterRecovery>,
+    pub cycle_obtain_strategy: CycleObtainStrategy,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Debug)]
+pub struct DisasterRecovery {
+    pub committee: DisasterRecoveryCommittee,
+    pub user_group_name: Option<String>,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Debug)]
+pub struct DisasterRecoveryCommittee {
+    pub user_group_id: String, // UUID as string
+    pub quorum: u16,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Debug)]
+pub enum CycleObtainStrategy {
+    Disabled,
+    MintFromNativeToken {
+        account_id: String, // UUID as string
+        account_name: Option<String>,
+    },
+    WithdrawFromCyclesLedger {
+        account_id: String, // UUID as string
+        account_name: Option<String>,
+    },
+}
+
+#[derive(CandidType, Serialize, Deserialize, Debug)]
+pub enum SystemInfoResult {
+    Ok { system: SystemInfo },
+    Err(Error),
+}
+
+#[derive(CandidType, Serialize, Deserialize, Debug)]
+pub struct SystemInfoResponse {
+    pub station_id: Principal,
+    pub system_info: SystemInfo,
+}
+
+// Permission Management Types
+
+// UUID type for user/group IDs (standard format)
+pub type UUID = String; // Format: "00000000-0000-4000-8000-000000000000"
+
+// Resource specifier for permissions
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub enum ResourceSpecifier {
+    Any,
+    Id(UUID),
+}
+
+// Resource actions - validated from actual station
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub enum ResourceAction {
+    Create,
+    Update(ResourceSpecifier),
+    Delete(ResourceSpecifier),
+    Read(ResourceSpecifier),
+    Transfer(ResourceSpecifier), // For accounts only
+    List,
+}
+
+// Specialized actions for certain resources
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub enum ExternalCanisterAction {
+    Create,
+    Change(ResourceSpecifier),
+    Fund(ResourceSpecifier),
+    Read(ResourceSpecifier),
+    List,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub enum PermissionAction {
+    Read,
+    Update,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub enum SystemAction {
+    ManageSystemInfo,
+    Upgrade,
+    Capabilities,
+    SystemInfo,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub enum RequestAction {
+    Read(ResourceSpecifier),
+    List,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub enum UserAction {
+    Create,
+    Update(ResourceSpecifier),
+    Read(ResourceSpecifier),
+    List,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub enum NotificationAction {
+    Create,
+    Update,
+    Delete,
+    Read,
+    List,
+    MarkRead,
+}
+
+// Complete Resource enum based on empirical testing
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub enum Resource {
+    Account(ResourceAction),
+    AddressBook(ResourceAction),
+    Asset(ResourceAction),
+    ExternalCanister(ExternalCanisterAction),
+    NamedRule(ResourceAction),
+    Notification(NotificationAction),
+    Permission(PermissionAction),
+    Request(RequestAction),
+    RequestPolicy(ResourceAction),
+    System(SystemAction),
+    User(UserAction),
+    UserGroup(ResourceAction),
+}
+
+// Permission structure matching Orbit
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub struct Permission {
+    pub resource: Resource,
+    pub allow: Allow,
+}
+
+// Input types for API calls
+#[derive(CandidType, Deserialize, Debug)]
+pub struct ListPermissionsInput {
+    pub resources: Option<Vec<Resource>>,
+    pub paginate: Option<PaginationInput>,
+}
+
+#[derive(CandidType, Deserialize, Debug)]
+pub struct GetPermissionInput {
+    pub resource: Resource,
+}
+
+// EditPermission operation input
+#[derive(CandidType, Deserialize, Debug)]
+pub struct EditPermissionOperationInput {
+    pub resource: Resource,
+    pub auth_scope: Option<AuthScope>,
+    pub users: Option<Vec<UUID>>,
+    pub user_groups: Option<Vec<UUID>>,
+}
+
+// Response types for permissions
+#[derive(CandidType, Deserialize, Serialize, Debug)]
+pub struct PermissionCallerPrivileges {
+    pub resource: Resource,
+    pub can_edit: bool,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug)]
+pub struct ListPermissionsResponse {
+    pub permissions: Vec<Permission>,
+    pub privileges: Vec<PermissionCallerPrivileges>,
+    pub total: u64,
+    pub user_groups: Vec<UserGroup>,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug)]
+pub enum ListPermissionsResult {
+    Ok(ListPermissionsResponse),
+    Err(Error),
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug)]
+pub struct GetPermissionResponse {
+    pub permission: Permission,
+    pub privileges: PermissionCallerPrivileges,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug)]
+pub enum GetPermissionResult {
+    Ok(GetPermissionResponse),
+    Err(Error),
+}
+
+// List user groups
+#[derive(CandidType, Deserialize, Debug)]
+pub struct ListUserGroupsInput {
+    pub paginate: Option<PaginationInput>,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug)]
+pub struct ListUserGroupsResponse {
+    pub user_groups: Vec<UserGroup>,
+    pub total: u64,
+    pub privileges: Vec<UserGroupCallerPrivileges>,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug)]
+pub struct UserGroupCallerPrivileges {
+    pub id: String,
+    pub can_edit: bool,
+    pub can_delete: bool,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug)]
+pub enum ListUserGroupsResult {
+    Ok(ListUserGroupsResponse),
+    Err(Error),
 }

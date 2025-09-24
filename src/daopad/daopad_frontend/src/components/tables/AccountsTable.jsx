@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Copy, CheckCircle2, ExternalLink, RefreshCw, Search, Send } from 'lucide-react';
+import { Copy, CheckCircle2, ExternalLink, RefreshCw, Search, Send, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -18,10 +18,12 @@ import { usePagination } from '@/hooks/usePagination';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Principal } from '@dfinity/principal';
 import TransferRequestDialog from '@/components/orbit/TransferRequestDialog';
+import CreateAccountDialog from '@/components/orbit/CreateAccountDialog';
 
-export default function AccountsTable({ stationId, identity, tokenId }) {
+export default function AccountsTable({ stationId, identity, tokenId, tokenSymbol, votingPower }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedAddress, setCopiedAddress] = useState(null);
+  const [createAccountDialogOpen, setCreateAccountDialogOpen] = useState(false);
   const [transferDialog, setTransferDialog] = useState({
     open: false,
     account: null,
@@ -70,7 +72,7 @@ export default function AccountsTable({ stationId, identity, tokenId }) {
       }
     },
     enabled: !!stationId && !!backendService,
-    refetchInterval: 30000,
+    refetchInterval: 60000,  // Adjusted from 30s to 60s for performance
     retry: 1,
   });
 
@@ -181,15 +183,27 @@ export default function AccountsTable({ stationId, identity, tokenId }) {
             className="pl-10"
           />
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          disabled={isFetching}
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          {votingPower >= 100 && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setCreateAccountDialogOpen(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create Account
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <Table>
@@ -355,6 +369,17 @@ export default function AccountsTable({ stationId, identity, tokenId }) {
           }}
         />
       )}
+
+      <CreateAccountDialog
+        open={createAccountDialogOpen}
+        onClose={() => setCreateAccountDialogOpen(false)}
+        tokenId={tokenId}
+        tokenSymbol={tokenSymbol}
+        onSuccess={(data) => {
+          console.log('Account creation request created:', data);
+          refetch();
+        }}
+      />
     </>
   );
 }

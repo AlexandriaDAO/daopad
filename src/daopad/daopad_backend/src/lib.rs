@@ -9,7 +9,11 @@ use ic_cdk::init;
 
 pub use api::*;
 pub use proposals::orbit_link::{OrbitLinkProposal, ProposalStatus};
-pub use types::orbit::{AccountBalance, ListAccountsResult};
+pub use types::orbit::{
+    AccountBalance, AuthScope, GetPermissionResponse, ListAccountsResult,
+    ListPermissionsResponse, ListUserGroupsResponse, PaginationInput,
+    Resource, SystemInfoResponse
+};
 pub use types::{TokenInfo, UserStatus, VotingThresholds};
 
 #[init]

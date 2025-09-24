@@ -3,6 +3,7 @@ use crate::storage::state::TOKEN_ORBIT_STATIONS;
 use crate::types::orbit::{
     AccountBalance, AccountMetadata, AddAccountOperationInput, Allow, AuthScope,
     FetchAccountBalancesInput, FetchAccountBalancesResult, ListAccountsInput, ListAccountsResult,
+    SystemInfoResult, SystemInfoResponse,
 };
 use crate::types::StorablePrincipal;
 use crate::types::TokenInfo;
@@ -46,6 +47,39 @@ pub fn list_all_orbit_stations() -> Vec<(Principal, Principal)> {
             .map(|(token, station)| (token.0, station.0))
             .collect()
     })
+}
+
+#[update] // MUST be update, not query for cross-canister calls
+pub async fn get_orbit_system_info(token_canister_id: Principal) -> Result<SystemInfoResponse, String> {
+    // Get station ID for token
+    let station_id = get_orbit_station_for_token(token_canister_id)
+        .ok_or_else(|| format!("No Orbit Station found for token {}", token_canister_id))?;
+
+    // Call system_info on the station (we have admin access)
+    let result: Result<(SystemInfoResult,), _> = ic_cdk::call(
+        station_id,
+        "system_info",
+        ()
+    ).await;
+
+    match result {
+        Ok((system_info_result,)) => {
+            match system_info_result {
+                SystemInfoResult::Ok { system } => {
+                    Ok(SystemInfoResponse {
+                        station_id,
+                        system_info: system,
+                    })
+                },
+                SystemInfoResult::Err(e) => {
+                    Err(format!("Orbit Station error: {:?}", e))
+                }
+            }
+        },
+        Err((code, msg)) => {
+            Err(format!("Failed to call system_info: {:?} - {}", code, msg))
+        }
+    }
 }
 
 #[update]
