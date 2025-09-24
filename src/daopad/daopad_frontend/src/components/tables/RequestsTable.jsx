@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Principal } from '@dfinity/principal';
 import { DAOPadBackendService } from '@/services/daopadBackend';
+import { EmptyStates } from '../ui/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -279,9 +280,7 @@ export default function RequestsTable({ tokenId, identity }) {
       </div>
 
       {requests.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          No requests found
-        </div>
+        <EmptyStates.NoRequests />
       ) : (
         <Table>
           <TableHeader>

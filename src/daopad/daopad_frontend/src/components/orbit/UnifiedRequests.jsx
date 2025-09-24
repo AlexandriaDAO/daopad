@@ -2,19 +2,16 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Principal } from '@dfinity/principal';
 import {
   Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
+  CardContent
 } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { useToast } from '../../hooks/use-toast';
 import { DAOPadBackendService } from '../../services/daopadBackend';
-import RequestDomainTabs from './RequestDomainTabs';
+import RequestDomainSelector from './RequestDomainSelector';
 import RequestList from './RequestList';
-import RequestFilters from './RequestFilters';
+import RequestFiltersCompact from './RequestFiltersCompact';
 import { REQUEST_DOMAIN_FILTERS, RequestDomains } from '../../utils/requestDomains';
 
 const UnifiedRequests = ({ tokenId, identity }) => {
@@ -177,72 +174,59 @@ const UnifiedRequests = ({ tokenId, identity }) => {
 
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>Orbit Station Requests</span>
-          <Badge variant="secondary">
-            {pagination.total} total
-          </Badge>
-        </CardTitle>
-        <CardDescription>
-          Manage proposals and requests for your DAO treasury
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Domain tabs for filtering */}
-        <RequestDomainTabs
-          selectedDomain={selectedDomain}
-          onDomainChange={handleDomainChange}
-          requestCounts={getRequestCountsByDomain(requests)}
-        />
-
-        {/* Main content area */}
-        <div className="flex gap-6">
-          {/* Request list */}
-          <div className="flex-1">
-            <RequestList
-              requests={requests}
-              loading={loading}
-              error={error}
-              onApprove={(id) => handleApprovalDecision(id, 'Approved', null)}
-              onReject={(id, reason) => handleApprovalDecision(id, 'Rejected', reason)}
-              onRetry={fetchRequests}
+      <CardContent className="pt-6 space-y-4">
+        {/* Filter controls and domain selector in compact header */}
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+          <div className="flex gap-2 items-center">
+            <RequestDomainSelector
+              selectedDomain={selectedDomain}
+              onDomainChange={handleDomainChange}
+              requestCounts={getRequestCountsByDomain(requests)}
             />
-
-            {/* Pagination */}
-            {!loading && requests.length > 0 && (
-              <div className="mt-4 flex justify-center">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(filters.page - 1)}
-                  disabled={filters.page === 0}
-                >
-                  Previous
-                </Button>
-                <span className="mx-4 flex items-center">
-                  Page {filters.page + 1} of {Math.ceil(pagination.total / filters.limit)}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(filters.page + 1)}
-                  disabled={!pagination.hasMore}
-                >
-                  Next
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {/* Filters sidebar */}
-          <div className="w-80">
-            <RequestFilters
+            <RequestFiltersCompact
               filters={filters}
               onFilterChange={handleFilterChange}
             />
           </div>
+          <div className="text-sm text-muted-foreground">
+            Showing {requests.length} of {pagination.total} requests
+          </div>
         </div>
+
+        {/* Request list - now takes full width */}
+        <RequestList
+          requests={requests}
+          loading={loading}
+          error={error}
+          onApprove={(id) => handleApprovalDecision(id, 'Approved', null)}
+          onReject={(id, reason) => handleApprovalDecision(id, 'Rejected', reason)}
+          onRetry={fetchRequests}
+        />
+
+        {/* Pagination */}
+        {!loading && requests.length > 0 && (
+          <div className="flex justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(filters.page - 1)}
+              disabled={filters.page === 0}
+            >
+              Previous
+            </Button>
+            <span className="mx-4 flex items-center">
+              Page {filters.page + 1} of {Math.ceil(pagination.total / filters.limit)}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(filters.page + 1)}
+              disabled={!pagination.hasMore}
+            >
+              Next
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

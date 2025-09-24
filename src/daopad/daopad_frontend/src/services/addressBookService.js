@@ -1,6 +1,7 @@
 import { Principal } from '@dfinity/principal';
 import { v4 as uuidv4 } from 'uuid';
 import { DAOPadBackendService } from './daopadBackend';
+import { OrbitServiceBase } from './OrbitServiceBase';
 
 // Constants from address_book.rs Lines 36-37
 const DEFAULT_ENTRIES_LIMIT = 100;
@@ -18,10 +19,9 @@ const AddressBookErrorCodes = {
   VALIDATION_ERROR: 'ValidationError'
 };
 
-class AddressBookService {
+class AddressBookService extends OrbitServiceBase {
   constructor() {
-    this.cache = new Map();
-    this.cacheTimeout = 5000; // 5 seconds cache
+    super(null, 'AddressBook');
     this.daopadService = null;
     this.identity = null;
   }
@@ -38,7 +38,10 @@ class AddressBookService {
     if (!this.daopadService) {
       throw new Error('AddressBookService not initialized. Call setIdentity first.');
     }
-    return await this.daopadService.getActor();
+    if (!this.actor) {
+      this.actor = await this.daopadService.getActor();
+    }
+    return this.actor;
   }
 
   /**
@@ -73,39 +76,30 @@ class AddressBookService {
 
         // Each field inside PaginationInput is also optional and needs array wrapping
         paginateInput = {
-          // offset: opt nat64 - wrap in array for Some, empty array for None
-          offset: input.paginate.offset !== undefined ? [input.paginate.offset] : [],
-          // limit: opt nat64 - wrap in array for Some
-          limit: [limit]
+          offset: this.encodeOptional(input.paginate.offset || 0),
+          limit: this.encodeOptional(limit)
         };
       } else {
         // Default pagination with proper optional encoding
-        paginateInput = {
-          offset: [0],                      // opt nat64 as [0]
-          limit: [DEFAULT_ENTRIES_LIMIT]    // opt nat64 as [100]
-        };
+        paginateInput = this.encodePagination();
       }
 
       // Convert undefined to null for Candid - wrap in arrays for opt types
       const candid_input = {
-        ids: input.ids ? [input.ids] : [],
-        addresses: input.addresses ? [input.addresses] : [],
-        blockchain: input.blockchain ? [input.blockchain] : [],
-        labels: input.labels ? [input.labels] : [],
-        paginate: [paginateInput],  // opt PaginationInput - wrapped
-        address_formats: input.address_formats ? [input.address_formats] : [],
-        search_term: input.search_term ? [input.search_term] : []
+        ids: this.encodeOptionalArray(input.ids),
+        addresses: this.encodeOptionalArray(input.addresses),
+        blockchain: this.encodeOptional(input.blockchain),
+        labels: this.encodeOptionalArray(input.labels),
+        paginate: [paginateInput],
+        address_formats: this.encodeOptionalArray(input.address_formats),
+        search_term: this.encodeOptional(input.search_term)
       };
 
-      const actor = await this.getBackendActor();
-      const result = await actor.list_address_book_entries(candid_input);
-
-      if (result.Err) {
-        throw this.handleError(result.Err);
-      }
+      await this.getBackendActor();
+      const rawResult = await this.handleOrbitCall('list_address_book_entries', candid_input);
 
       // Process search_term client-side if needed - services/address_book.rs Lines 93-99
-      let entries = result.Ok.address_book_entries;
+      let entries = rawResult.address_book_entries;
       if (input.search_term) {
         const searchLower = input.search_term.toLowerCase();
         entries = entries.filter(entry =>
@@ -117,9 +111,9 @@ class AddressBookService {
       return {
         Ok: {
           address_book_entries: entries,
-          privileges: result.Ok.privileges,
-          total: Number(result.Ok.total),
-          next_offset: result.Ok.next_offset ? Number(result.Ok.next_offset[0]) : null
+          privileges: rawResult.privileges,
+          total: Number(rawResult.total),
+          next_offset: rawResult.next_offset ? Number(rawResult.next_offset[0]) : null
         }
       };
     } catch (error) {
@@ -142,16 +136,12 @@ class AddressBookService {
         throw new Error('Invalid UUID format');
       }
 
-      const actor = await this.getBackendActor();
-      const result = await actor.get_address_book_entry({
+      await this.getBackendActor();
+      const result = await this.handleOrbitCall('get_address_book_entry', {
         address_book_entry_id: id
       });
 
-      if (result.Err) {
-        throw this.handleError(result.Err);
-      }
-
-      return result;
+      return { Ok: result };
     } catch (error) {
       console.error('Error getting address book entry:', error);
       return { Err: error };
@@ -176,23 +166,14 @@ class AddressBookService {
       // Validate input - models/address_book.rs Lines 52-118
       this.validateAddressBookInput(input);
 
-      const request_input = {
-        operation: {
-          AddAddressBookEntry: input
-        },
-        title: [`Add address book entry: ${input.address_owner}`],
-        summary: [],
-        execution_plan: []
-      };
+      const request_input = this.buildRequestInput(
+        { AddAddressBookEntry: input },
+        `Add address book entry: ${input.address_owner}`
+      );
 
-      const actor = await this.getBackendActor();
-      const result = await actor.create_address_book_request(request_input);
-
-      if (result.Err) {
-        throw this.handleError(result.Err);
-      }
-
-      return result;
+      await this.getBackendActor();
+      const result = await this.handleOrbitCall('create_address_book_request', request_input);
+      return { Ok: result };
     } catch (error) {
       console.error('Error creating address book entry:', error);
       return { Err: error };
@@ -217,31 +198,22 @@ class AddressBookService {
         throw new Error('Invalid UUID format');
       }
 
-      // Convert to candid format with optional fields
+      // Use base class encoding
       const editInput = {
         address_book_entry_id: input.address_book_entry_id,
-        address_owner: input.address_owner ? [input.address_owner] : [],
-        labels: input.labels ? [input.labels] : [],
-        change_metadata: input.change_metadata ? [input.change_metadata] : []
+        address_owner: this.encodeOptional(input.address_owner),
+        labels: this.encodeOptionalArray(input.labels),
+        change_metadata: this.encodeOptional(input.change_metadata)
       };
 
-      const request_input = {
-        operation: {
-          EditAddressBookEntry: editInput
-        },
-        title: [`Edit address book entry`],
-        summary: [],
-        execution_plan: []
-      };
+      const request_input = this.buildRequestInput(
+        { EditAddressBookEntry: editInput },
+        'Edit address book entry'
+      );
 
-      const actor = await this.getBackendActor();
-      const result = await actor.create_address_book_request(request_input);
-
-      if (result.Err) {
-        throw this.handleError(result.Err);
-      }
-
-      return result;
+      await this.getBackendActor();
+      const result = await this.handleOrbitCall('create_address_book_request', request_input);
+      return { Ok: result };
     } catch (error) {
       console.error('Error editing address book entry:', error);
       return { Err: error };
@@ -262,25 +234,14 @@ class AddressBookService {
         throw new Error('Invalid UUID format');
       }
 
-      const request_input = {
-        operation: {
-          RemoveAddressBookEntry: {
-            address_book_entry_id: id
-          }
-        },
-        title: [`Remove address book entry`],
-        summary: [],
-        execution_plan: []
-      };
+      const request_input = this.buildRequestInput(
+        { RemoveAddressBookEntry: { address_book_entry_id: id } },
+        'Remove address book entry'
+      );
 
-      const actor = await this.getBackendActor();
-      const result = await actor.create_address_book_request(request_input);
-
-      if (result.Err) {
-        throw this.handleError(result.Err);
-      }
-
-      return result;
+      await this.getBackendActor();
+      const result = await this.handleOrbitCall('create_address_book_request', request_input);
+      return { Ok: result };
     } catch (error) {
       console.error('Error removing address book entry:', error);
       return { Err: error };
@@ -302,8 +263,8 @@ class AddressBookService {
       throw new Error(`Address must be between 1 and 255 characters`);
     }
 
-    // Blockchain validation - models/blockchain.rs Lines 9-13
-    if (!['icp', 'eth', 'btc'].includes(input.blockchain)) {
+    // Use base class validation
+    if (!this.isValidBlockchain(input.blockchain)) {
       throw new Error(`Unknown blockchain: ${input.blockchain}`);
     }
 
@@ -336,102 +297,18 @@ class AddressBookService {
 
   /**
    * Validate address format based on blockchain
-   * Reference: models/account.rs Lines 86-117
+   * Delegates to base class detection
    */
   validateAddress(address, format, blockchain) {
-    switch(format) {
-      case 'icp_account_identifier':
-        // 64 character hex string
-        if (!/^[0-9a-f]{64}$/i.test(address)) {
-          return false;
-        }
-        break;
-
-      case 'icrc1_account':
-        // Principal-subaccount format
-        if (!address.includes('-') || address.split('-').length !== 2) {
-          return false;
-        }
-        break;
-
-      case 'ethereum_address':
-        // 0x + 40 hex characters
-        if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
-          return false;
-        }
-        break;
-
-      case 'bitcoin_address_p2wpkh':
-        // bc1 + 40 characters
-        if (!address.startsWith('bc1') || address.length !== 42) {
-          return false;
-        }
-        break;
-
-      case 'bitcoin_address_p2tr':
-        // bc1p + 58 characters
-        if (!address.startsWith('bc1p') || address.length !== 62) {
-          return false;
-        }
-        break;
-
-      default:
-        return false;
-    }
-
-    return true;
+    const detectedFormat = this.detectAddressFormat(address, blockchain);
+    return detectedFormat === format;
   }
 
-  /**
-   * Detect address format automatically
-   */
-  detectAddressFormat(address, blockchain) {
-    // Implementation based on patterns from models/account.rs Lines 86-117
-    if (blockchain === 'icp') {
-      if (address.length === 64 && /^[0-9a-f]{64}$/i.test(address)) {
-        return 'icp_account_identifier';
-      }
-      if (address.includes('-') && address.split('-').length === 2) {
-        return 'icrc1_account';
-      }
-    } else if (blockchain === 'eth') {
-      if (/^0x[0-9a-fA-F]{40}$/.test(address)) {
-        return 'ethereum_address';
-      }
-    } else if (blockchain === 'btc') {
-      if (address.startsWith('bc1') && address.length === 42) {
-        return 'bitcoin_address_p2wpkh';
-      }
-      if (address.startsWith('bc1p') && address.length === 62) {
-        return 'bitcoin_address_p2tr';
-      }
-    }
-    return '';
-  }
+  // Inherit detectAddressFormat from base class
 
-  /**
-   * Check if a string is a valid UUID
-   */
-  isValidUUID(str) {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(str);
-  }
+  // Inherit isValidUUID from base class
 
-  /**
-   * Handle error responses
-   */
-  handleError(error) {
-    if (typeof error === 'object' && error.code) {
-      // It's already a structured error
-      return error;
-    }
-    // Convert string errors to structured format
-    return {
-      code: 'UNKNOWN_ERROR',
-      message: error.toString(),
-      details: []
-    };
-  }
+  // Inherit handleError from base class
 
   /**
    * Generate a new UUID

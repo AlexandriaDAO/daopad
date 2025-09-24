@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Copy, CheckCircle2, ExternalLink, RefreshCw, Search, Send, Plus } from 'lucide-react';
+import { Copy, CheckCircle2, ExternalLink, RefreshCw, Search, Send, Plus, Wallet } from 'lucide-react';
+import { EmptyState, EmptyStates } from '../ui/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -153,17 +154,19 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
 
   if (!stationId) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        No treasury station configured
-      </div>
+      <EmptyState
+        icon={Wallet}
+        title="No treasury station configured"
+        description="A treasury station needs to be set up to manage accounts"
+      />
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-8 text-destructive">
-        Failed to load accounts: {error.message}
-      </div>
+      <EmptyStates.Error
+        message={`Failed to load accounts: ${error.message}`}
+      />
     );
   }
 
@@ -219,8 +222,8 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
         <TableBody>
           {accounts.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                No treasury accounts found
+              <TableCell colSpan={5}>
+                <EmptyStates.NoAccounts />
               </TableCell>
             </TableRow>
           ) : (
