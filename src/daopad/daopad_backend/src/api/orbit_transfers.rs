@@ -1,51 +1,10 @@
 use crate::api::orbit_requests::GetRequestResponse;
+use crate::types::orbit::{
+    TransferOperationInput, TransferMetadata, NetworkInput,
+    RequestExecutionSchedule, RequestOperation,
+};
 use candid::{CandidType, Deserialize, Nat, Principal};
 use ic_cdk::api::call::CallResult;
-
-// Orbit types for transfer operations
-#[derive(CandidType, Deserialize)]
-pub struct TransferOperationInput {
-    pub from_account_id: String, // UUID from Orbit account
-    pub from_asset_id: String,   // UUID from Orbit asset
-    pub with_standard: String,   // "icp" or "icrc1"
-    pub to: String,              // Destination address
-    pub amount: Nat,             // Amount in smallest units
-    pub fee: Option<Nat>,        // Optional fee
-    pub metadata: Vec<TransferMetadata>,
-    pub network: Option<NetworkInput>,
-}
-
-#[derive(CandidType, Deserialize)]
-pub struct TransferMetadata {
-    pub key: String,
-    pub value: String,
-}
-
-#[derive(CandidType, Deserialize)]
-pub struct NetworkInput {
-    pub id: String,
-    pub name: String,
-}
-
-#[derive(CandidType, Deserialize)]
-pub enum RequestOperationInput {
-    Transfer(TransferOperationInput),
-}
-
-#[derive(CandidType, Deserialize)]
-pub struct CreateRequestInput {
-    pub operation: RequestOperationInput,
-    pub title: Option<String>,
-    pub summary: Option<String>,
-    pub execution_plan: Option<RequestExecutionSchedule>,
-    pub expiration_dt: Option<String>,
-}
-
-#[derive(CandidType, Deserialize)]
-pub enum RequestExecutionSchedule {
-    Immediate,
-    Scheduled(String),
-}
 
 #[derive(CandidType, Deserialize)]
 pub enum CreateRequestResult {
@@ -129,13 +88,12 @@ pub async fn create_transfer_request_in_orbit(
         network: None, // Use default network
     };
 
-    // Create the request input
-    let request_input = CreateRequestInput {
-        operation: RequestOperationInput::Transfer(transfer_op),
+    // Create the request input using SubmitRequestInput
+    let request_input = crate::types::orbit::SubmitRequestInput {
+        operation: RequestOperation::Transfer(transfer_op),
         title: Some(title),
         summary: Some(description),
         execution_plan: None, // Let Orbit handle execution scheduling based on policies
-        expiration_dt: None,  // Let Orbit set default expiration
     };
 
     // Call Orbit Station to create the request

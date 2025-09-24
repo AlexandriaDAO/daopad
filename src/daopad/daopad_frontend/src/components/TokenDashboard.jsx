@@ -9,6 +9,8 @@ import RequestsTable from './tables/RequestsTable';
 import UnifiedRequests from './orbit/UnifiedRequests';
 import AddressBookPage from '../pages/AddressBookPage';
 import DAOSettings from './DAOSettings';
+import CanistersTab from './canisters/CanistersTab';
+import SecurityDashboard from './security/SecurityDashboard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -407,12 +409,14 @@ const TokenDashboard = ({
 
           {/* Tabs for different views */}
           <Tabs defaultValue="accounts" className="w-full" onValueChange={(value) => setActiveTab(value)}>
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="accounts">Treasury Accounts</TabsTrigger>
-              <TabsTrigger value="transfers">Transfer Requests</TabsTrigger>
-              <TabsTrigger value="members">Members & Roles</TabsTrigger>
-              <TabsTrigger value="requests">Governance Requests</TabsTrigger>
-              <TabsTrigger value="settings">DAO Settings</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-7">
+              <TabsTrigger value="accounts">Treasury</TabsTrigger>
+              <TabsTrigger value="transfers">Transfers</TabsTrigger>
+              <TabsTrigger value="members">Members</TabsTrigger>
+              <TabsTrigger value="requests">Requests</TabsTrigger>
+              <TabsTrigger value="canisters">Canisters</TabsTrigger>
+              <TabsTrigger value="security">Security</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
             </TabsList>
 
             <TabsContent value="accounts" className="mt-4 space-y-6">
@@ -451,6 +455,22 @@ const TokenDashboard = ({
             <TabsContent value="requests" className="mt-4">
               {activeTab === 'requests' && (
                 <RequestsTable tokenId={token.canister_id} identity={identity} />
+              )}
+            </TabsContent>
+
+            <TabsContent value="canisters" className="mt-4">
+              {activeTab === 'canisters' && (
+                <CanistersTab token={token} stationId={orbitStation?.station_id} />
+              )}
+            </TabsContent>
+
+            <TabsContent value="security" className="mt-4">
+              {activeTab === 'security' && (
+                <SecurityDashboard
+                  stationId={orbitStation.station_id}
+                  tokenSymbol={token.symbol}
+                  identity={identity}
+                />
               )}
             </TabsContent>
 

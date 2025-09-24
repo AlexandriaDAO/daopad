@@ -12,7 +12,15 @@ pub use proposals::orbit_link::{OrbitLinkProposal, ProposalStatus};
 pub use types::orbit::{
     AccountBalance, AuthScope, GetPermissionResponse, ListAccountsResult,
     ListPermissionsResponse, ListUserGroupsResponse, PaginationInput,
-    Resource, SystemInfoResponse
+    Resource, SystemInfoResponse,
+    // External canister types
+    ChangeExternalCanisterOperationInput, ConfigureExternalCanisterOperationInput,
+    CreateExternalCanisterOperationInput, ExternalCanister, ExternalCanisterCallerMethodCallInput,
+    ExternalCanisterIdInput, FundExternalCanisterOperationInput, GetExternalCanisterInput,
+    GetExternalCanisterResult, ListExternalCanistersInput, ListExternalCanistersResult,
+    MonitorExternalCanisterOperationInput, PruneExternalCanisterOperationInput,
+    RestoreExternalCanisterOperationInput, SnapshotExternalCanisterOperationInput,
+    SubmitRequestInput, SubmitRequestResult,
 };
 pub use types::{TokenInfo, UserStatus, VotingThresholds};
 

@@ -552,7 +552,10 @@ pub async fn list_user_groups(
 ) -> Result<ListUserGroupsResponse, String> {
     let station_id = get_station_for_token(token_id).await?;
 
-    let input = ListUserGroupsInput { paginate };
+    let input = ListUserGroupsInput {
+        search_term: None,
+        paginate
+    };
 
     let args = encode_args((input,))
         .map_err(|e| format!("Failed to encode arguments: {:?}", e))?;

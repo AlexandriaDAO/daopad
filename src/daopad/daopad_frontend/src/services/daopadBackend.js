@@ -1128,4 +1128,47 @@ export class DAOPadBackendService {
         }
     }
 
+    async performSecurityCheck(stationId) {
+        try {
+            const actor = await this.getActor();
+            // Convert string to Principal if needed
+            const stationPrincipal = typeof stationId === 'string'
+                ? Principal.fromText(stationId)
+                : stationId;
+            const result = await actor.perform_security_check(stationPrincipal);
+
+            if ('Ok' in result) {
+                const dashboard = result.Ok;
+                return {
+                    success: true,
+                    data: {
+                        station_id: dashboard.station_id,
+                        overall_status: dashboard.overall_status,
+                        last_checked: dashboard.last_checked,
+                        checks: dashboard.checks.map(check => ({
+                            category: check.category,
+                            name: check.name,
+                            status: Object.keys(check.status)[0], // Extract variant key
+                            message: check.message,
+                            severity: check.severity[0] ? Object.keys(check.severity[0])[0] : null,
+                            details: check.details[0] || null,
+                            recommendation: check.recommendation[0] || null
+                        }))
+                    }
+                };
+            } else {
+                return {
+                    success: false,
+                    message: result.Err
+                };
+            }
+        } catch (error) {
+            console.error('Security check error:', error);
+            return {
+                success: false,
+                message: 'Failed to perform security check'
+            };
+        }
+    }
+
 }
