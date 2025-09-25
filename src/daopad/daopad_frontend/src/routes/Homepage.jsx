@@ -30,14 +30,39 @@ function Homepage() {
             </h1>
 
             {/* One-liner */}
-            <p className="text-2xl text-executive-goldLight font-serif mb-12">
-              The goldilocks solution for DAO treasury management
+            <p className="text-2xl text-executive-goldLight font-serif mb-6">
+              Small Business. Big Corporation Advantages. One Platform.
             </p>
+
+            {/* Visual Equation */}
+            <div className="flex items-center justify-center gap-4 mb-12 text-3xl">
+              <div className="text-center">
+                <span className="text-4xl">☕</span>
+                <p className="text-xs text-executive-lightGray/60 mt-1">Your Business</p>
+              </div>
+              <span className="text-executive-gold">+</span>
+              <div className="text-center">
+                <span className="text-executive-gold font-display text-2xl">DAOPad</span>
+              </div>
+              <span className="text-executive-gold">=</span>
+              <div className="text-center">
+                <span className="text-4xl">🏦</span>
+                <p className="text-xs text-executive-lightGray/60 mt-1">Corp Powers</p>
+              </div>
+              <span className="text-executive-gold">+</span>
+              <div className="text-center">
+                <span className="text-4xl">🪙</span>
+                <p className="text-xs text-executive-lightGray/60 mt-1">Investable</p>
+              </div>
+            </div>
 
             {/* Three-way Comparison */}
             <div className="grid md:grid-cols-3 gap-6 mb-12">
               {/* Team Wallets */}
               <div className="bg-executive-darkGray/50 border border-executive-gold/20 rounded-lg p-6">
+                <div className="text-center mb-2">
+                  <span className="text-2xl">👤</span>
+                </div>
                 <h3 className="text-executive-lightGray text-lg font-bold mb-4">
                   Team Wallets
                 </h3>
@@ -47,16 +72,12 @@ function Homepage() {
                     <span className="text-executive-lightGray/70">Simple setup</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray/70">Full control</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray/70">Trust-based</span>
-                  </div>
-                  <div className="flex items-center gap-2">
                     <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
                     <span className="text-executive-lightGray/70">No transparency</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <span className="text-executive-lightGray/70">Personal liability</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
@@ -70,6 +91,9 @@ function Homepage() {
 
               {/* SNS/Full DAO */}
               <div className="bg-executive-darkGray/50 border border-executive-gold/20 rounded-lg p-6">
+                <div className="text-center mb-2">
+                  <span className="text-2xl">🏛️</span>
+                </div>
                 <h3 className="text-executive-lightGray text-lg font-bold mb-4">
                   SNS / Full DAO
                 </h3>
@@ -79,20 +103,16 @@ function Homepage() {
                     <span className="text-executive-lightGray/70">Fully decentralized</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray/70">Token voting</span>
+                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <span className="text-executive-lightGray/70">$100K+ to setup</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray/70">Complex setup</span>
+                    <span className="text-executive-lightGray/70">6+ months to launch</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray/70">Rigid structure</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray/70">High overhead</span>
+                    <span className="text-executive-lightGray/70">Kills innovation</span>
                   </div>
                 </div>
                 <div className="mt-4 pt-4 border-t border-executive-gold/10">
@@ -102,14 +122,16 @@ function Homepage() {
 
               {/* DAOPad */}
               <div className="bg-gradient-to-br from-executive-gold/10 to-executive-darkGray/50 border-2 border-executive-gold/50 rounded-lg p-6">
-                <h3 className="text-executive-gold text-lg font-bold mb-4 flex items-center justify-center">
-                  <span className="text-2xl mr-2">✨</span>
+                <div className="text-center mb-2">
+                  <span className="text-2xl">⚖️</span>
+                </div>
+                <h3 className="text-executive-gold text-lg font-bold mb-4 text-center">
                   DAOPad
                 </h3>
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray">Easy to start</span>
+                    <span className="text-executive-lightGray">5 minute setup</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
@@ -117,15 +139,11 @@ function Homepage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray">LP-based voting</span>
+                    <span className="text-executive-lightGray">Real bank accounts</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray">Transparent</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray">Flexible</span>
+                    <span className="text-executive-lightGray">Scale as you grow</span>
                   </div>
                 </div>
                 <div className="mt-4 pt-4 border-t border-executive-gold/30">
@@ -145,6 +163,68 @@ function Homepage() {
         </div>
       </section>
 
+      {/* Transformation Diagram - New Section */}
+      <section className="py-16 border-t border-executive-gold/20">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center justify-between gap-8">
+              {/* Before */}
+              <div className="flex-1 bg-executive-darkGray/50 border border-executive-gold/20 rounded-lg p-6">
+                <h3 className="text-center text-executive-lightGray/60 text-sm uppercase tracking-wider mb-4">Your Business Today</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-executive-gold/30">•</span>
+                    <span className="text-executive-lightGray/70">Local only</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-executive-gold/30">•</span>
+                    <span className="text-executive-lightGray/70">Bank dependent</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-executive-gold/30">•</span>
+                    <span className="text-executive-lightGray/70">No investors</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-executive-gold/30">•</span>
+                    <span className="text-executive-lightGray/70">Solo decisions</span>
+                  </div>
+                </div>
+                <div className="mt-4 text-center text-xs text-red-400/60 uppercase tracking-wider">Limited</div>
+              </div>
+
+              {/* Arrow */}
+              <div className="flex-shrink-0 text-executive-gold text-3xl animate-pulse">
+                →
+              </div>
+
+              {/* After */}
+              <div className="flex-1 bg-gradient-to-br from-executive-gold/10 to-executive-darkGray/50 border-2 border-executive-gold/50 rounded-lg p-6">
+                <h3 className="text-center text-executive-gold text-sm uppercase tracking-wider mb-4">With DAOPad</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-400">•</span>
+                    <span className="text-executive-lightGray">Global reach</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-400">•</span>
+                    <span className="text-executive-lightGray">Crypto native</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-400">•</span>
+                    <span className="text-executive-lightGray">Open investment</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-400">•</span>
+                    <span className="text-executive-lightGray">Community led</span>
+                  </div>
+                </div>
+                <div className="mt-4 text-center text-xs text-green-400 uppercase tracking-wider">Unlimited</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Great Inventions Animation */}
       <section className="py-20 border-t border-executive-gold/20 bg-executive-darkGray/20">
         <div className="container mx-auto px-4">
@@ -158,8 +238,7 @@ function Homepage() {
               <div className="relative flex items-center mb-12 animate-fade-in-1">
                 <div className="w-1/2 text-right pr-8">
                   <h3 className="text-2xl font-serif text-executive-ivory mb-2">Fair Launch</h3>
-                  <p className="text-sm text-executive-gold/60 uppercase tracking-wider">Decentralized</p>
-                  <p className="text-executive-lightGray/60 mt-2">Groups create shared ventures</p>
+                  <p className="text-executive-lightGray/60 mt-2">Communities fund together</p>
                 </div>
                 <div className="absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-executive-gold border-4 border-executive-charcoal"></div>
                 <div className="w-1/2 pl-8">
@@ -175,8 +254,7 @@ function Homepage() {
                 <div className="absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-executive-gold border-4 border-executive-charcoal"></div>
                 <div className="w-1/2 pl-8">
                   <h3 className="text-2xl font-serif text-executive-ivory mb-2">Smart Contract</h3>
-                  <p className="text-sm text-executive-gold/60 uppercase tracking-wider">Autonomous</p>
-                  <p className="text-executive-lightGray/60 mt-2">Software as living entity</p>
+                  <p className="text-executive-lightGray/60 mt-2">Automated trust</p>
                 </div>
               </div>
 
@@ -184,8 +262,7 @@ function Homepage() {
               <div className="relative flex items-center mb-12 animate-fade-in-3">
                 <div className="w-1/2 text-right pr-8">
                   <h3 className="text-2xl font-serif text-executive-ivory mb-2">LLC</h3>
-                  <p className="text-sm text-executive-gold/60 uppercase tracking-wider">Organization</p>
-                  <p className="text-executive-lightGray/60 mt-2">Ventures with limited risk</p>
+                  <p className="text-executive-lightGray/60 mt-2">Legal protection</p>
                 </div>
                 <div className="absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-executive-gold border-4 border-executive-charcoal"></div>
                 <div className="w-1/2 pl-8">
@@ -210,7 +287,7 @@ function Homepage() {
                         <span className="text-executive-gold">=</span>
                         <span className="text-2xl animate-pulse">❓</span>
                       </div>
-                      <p className="text-xs text-executive-gold/50 mt-2 italic">Currently unfulfilled...</p>
+                      <p className="text-xs text-executive-gold mt-2 font-serif">DAOPad makes it real</p>
                     </div>
                   </div>
                 </div>
@@ -282,41 +359,48 @@ function Homepage() {
                   <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Live Now</Badge>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="text-executive-gold text-sm uppercase tracking-wider mb-3">Treasury Operations</h4>
-                    <ul className="space-y-2 text-sm text-executive-lightGray">
-                      <li className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-400" />
-                        <span>Multi-signature treasury management</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-400" />
-                        <span>Transparent salary distributions</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-400" />
-                        <span>Automated recurring payments</span>
-                      </li>
-                    </ul>
+                <div className="grid grid-cols-3 gap-4 md:gap-6">
+                  {/* Icon Grid - 2x3 */}
+                  <div className="text-center group cursor-pointer">
+                    <div className="bg-executive-darkGray/50 rounded-lg p-4 border border-executive-gold/20 group-hover:border-executive-gold/40 transition-colors">
+                      <div className="text-3xl mb-2">💰</div>
+                      <div className="text-xs text-executive-lightGray">Multi-sig</div>
+                    </div>
                   </div>
 
-                  <div>
-                    <h4 className="text-executive-gold text-sm uppercase tracking-wider mb-3">Governance & Growth</h4>
-                    <ul className="space-y-2 text-sm text-executive-lightGray">
-                      <li className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-400" />
-                        <span>TVL incentive mechanisms</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-400" />
-                        <span>Community proposal system</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-400" />
-                        <span>Automated canister management</span>
-                      </li>
-                    </ul>
+                  <div className="text-center group cursor-pointer">
+                    <div className="bg-executive-darkGray/50 rounded-lg p-4 border border-executive-gold/20 group-hover:border-executive-gold/40 transition-colors">
+                      <div className="text-3xl mb-2">🗳️</div>
+                      <div className="text-xs text-executive-lightGray">Community</div>
+                    </div>
+                  </div>
+
+                  <div className="text-center group cursor-pointer">
+                    <div className="bg-executive-darkGray/50 rounded-lg p-4 border border-executive-gold/20 group-hover:border-executive-gold/40 transition-colors">
+                      <div className="text-3xl mb-2">💳</div>
+                      <div className="text-xs text-executive-lightGray">Auto-pay</div>
+                    </div>
+                  </div>
+
+                  <div className="text-center group cursor-pointer">
+                    <div className="bg-executive-darkGray/50 rounded-lg p-4 border border-executive-gold/20 group-hover:border-executive-gold/40 transition-colors">
+                      <div className="text-3xl mb-2">📈</div>
+                      <div className="text-xs text-executive-lightGray">TVL Growth</div>
+                    </div>
+                  </div>
+
+                  <div className="text-center group cursor-pointer">
+                    <div className="bg-executive-darkGray/50 rounded-lg p-4 border border-executive-gold/20 group-hover:border-executive-gold/40 transition-colors">
+                      <div className="text-3xl mb-2">📋</div>
+                      <div className="text-xs text-executive-lightGray">Proposals</div>
+                    </div>
+                  </div>
+
+                  <div className="text-center group cursor-pointer">
+                    <div className="bg-executive-darkGray/50 rounded-lg p-4 border border-executive-gold/20 group-hover:border-executive-gold/40 transition-colors">
+                      <div className="text-3xl mb-2">🖥️</div>
+                      <div className="text-xs text-executive-lightGray">Canisters</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -338,53 +422,58 @@ function Homepage() {
                   <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">At 100% DAO</Badge>
                 </div>
 
+                {/* Transformation Visual */}
+                <div className="bg-executive-darkGray/30 rounded-lg p-6 mb-6">
+                  <div className="flex items-center justify-between gap-8">
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">💬</div>
+                      <p className="text-xs text-executive-lightGray/60">Discord Group</p>
+                    </div>
+                    <div className="text-executive-gold text-2xl animate-pulse">━━━▶</div>
+                    <div className="flex gap-4">
+                      <div className="text-center">
+                        <div className="text-3xl">🏦</div>
+                        <p className="text-xs text-executive-lightGray/60">Bank</p>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-3xl">💳</div>
+                        <p className="text-xs text-executive-lightGray/60">Cards</p>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-3xl">📄</div>
+                        <p className="text-xs text-executive-lightGray/60">LLC</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-center mt-4 text-xs text-executive-gold/70 italic">
+                    From chat group to real corporation
+                  </div>
+                </div>
+
                 {/* Three Visual Cards */}
                 <div className="grid md:grid-cols-3 gap-6 mb-6">
                   {/* Corporate Card */}
-                  <div className="bg-gradient-to-br from-executive-gold/20 to-executive-darkGray/50 rounded-lg p-6">
-                    <CreditCard className="w-12 h-12 text-executive-gold mb-3" />
-                    <h4 className="text-executive-ivory font-serif mb-1">Team Cards</h4>
-                    <p className="text-xs text-executive-lightGray/60">Physical cards for team spending</p>
+                  <div className="bg-gradient-to-br from-executive-gold/20 to-executive-darkGray/50 rounded-lg p-6 text-center">
+                    <CreditCard className="w-12 h-12 text-executive-gold mb-3 mx-auto" />
+                    <h4 className="text-executive-ivory font-serif">Team Cards</h4>
                   </div>
 
                   {/* Bank Account */}
-                  <div className="bg-gradient-to-br from-executive-gold/20 to-executive-darkGray/50 rounded-lg p-6">
-                    <Banknote className="w-12 h-12 text-executive-gold mb-3" />
-                    <h4 className="text-executive-ivory font-serif mb-1">Corporate Banking</h4>
-                    <p className="text-xs text-executive-lightGray/60">Real bank accounts for DAOs</p>
+                  <div className="bg-gradient-to-br from-executive-gold/20 to-executive-darkGray/50 rounded-lg p-6 text-center">
+                    <Banknote className="w-12 h-12 text-executive-gold mb-3 mx-auto" />
+                    <h4 className="text-executive-ivory font-serif">Corporate Banking</h4>
                   </div>
 
                   {/* Legal Entity */}
-                  <div className="bg-gradient-to-br from-executive-gold/20 to-executive-darkGray/50 rounded-lg p-6">
-                    <Building2 className="w-12 h-12 text-executive-gold mb-3" />
-                    <h4 className="text-executive-ivory font-serif mb-1">Legal Entity</h4>
-                    <p className="text-xs text-executive-lightGray/60">LLC wrapper for contracts</p>
+                  <div className="bg-gradient-to-br from-executive-gold/20 to-executive-darkGray/50 rounded-lg p-6 text-center">
+                    <Building2 className="w-12 h-12 text-executive-gold mb-3 mx-auto" />
+                    <h4 className="text-executive-ivory font-serif">Legal Entity</h4>
                   </div>
                 </div>
 
-                {/* Additional Features */}
-                <div className="grid md:grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full border border-executive-gold/50" />
-                    <span className="text-executive-lightGray/70">Sign legal contracts</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full border border-executive-gold/50" />
-                    <span className="text-executive-lightGray/70">Own real property</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full border border-executive-gold/50" />
-                    <span className="text-executive-lightGray/70">File corporate taxes</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full border border-executive-gold/50" />
-                    <span className="text-executive-lightGray/70">Crypto-to-fiat revenue bridge</span>
-                  </div>
-                </div>
-
-                <div className="mt-6 pt-6 border-t border-executive-gold/10 text-center">
+                <div className="text-center">
                   <p className="text-xs text-executive-lightGray/50 italic">
-                    Transform from a crypto entity to a legitimate corporation
+                    Unlock at 100% DAO maturity
                   </p>
                 </div>
               </div>
