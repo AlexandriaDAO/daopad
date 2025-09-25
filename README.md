@@ -15,6 +15,7 @@ DAOPad makes the backend canister THE administrator of Orbit Station, with all a
 ## 🚀 Key Innovation
 
 This project solves a fundamental challenge in the IC ecosystem:
+
 - **Before DAOPad**: Orbit Stations need trusted human admins → centralization risk
 - **With DAOPad**: Admin operations executed by smart contract after DAO approval → true decentralization
 
@@ -24,7 +25,7 @@ We've also navigated complex IC architectural limitations (inter-canister query 
 
 ```
 Token Holders ($ALEX)
-        ↓ 
+        ↓
    Vote on Proposals
         ↓
   DAOPad Backend
@@ -37,6 +38,7 @@ Token Holders ($ALEX)
 ```
 
 ### Components
+
 - **DAOPad Backend** (`lwsav-iiaaa-aaaap-qp2qq-cai`): The admin canister that executes operations
 - **DAOPad Frontend** (`l7rlj-6aaaa-aaaaa-qaffq-cai`): Interface for viewing proposals
 - **Alexandria Orbit Station** (`fec7w-zyaaa-aaaaa-qaffq-cai`): The Orbit instance we're governing
@@ -44,6 +46,7 @@ Token Holders ($ALEX)
 ## 🛠️ Quick Deployment
 
 ### Prerequisites
+
 ```bash
 # Install required tools
 cargo install candid-extractor
@@ -83,11 +86,13 @@ dfx canister --network ic call daopad_backend health_check
 ## 🎮 Demo
 
 ### Current Capabilities
+
 1. **Backend Integration**: Successfully deployed and registered with Alexandria's Orbit Station
 2. **Configuration Management**: Backend provides Orbit Station details to frontend
 3. **Identity Management**: Backend principal can be registered as Orbit admin
 
 ### In Development
+
 - Token-weighted voting mechanism
 - Proposal execution queue
 - Frontend voting interface
@@ -95,12 +100,14 @@ dfx canister --network ic call daopad_backend health_check
 ## 📊 Current Status
 
 ✅ **Completed:**
+
 - Backend canister deployed to mainnet
 - Integration with Alexandria Orbit Station
 - Navigation of IC's inter-canister call limitations
 - Deployment automation scripts
 
 🚧 **In Progress:**
+
 - $ALEX token integration for voting
 - Proposal execution logic
 - Frontend interface for governance
@@ -108,12 +115,15 @@ dfx canister --network ic call daopad_backend health_check
 ## 🔮 Future Vision
 
 ### Phase 1 (Current)
+
 Testing with Alexandria's Orbit Station and $ALEX token governance
 
 ### Phase 2
+
 Generic DAO framework where any Orbit Station can be governed by any token
 
 ### Phase 3
+
 Multi-chain governance through IC's Chain Fusion capabilities
 
 ## 🏆 Why This Matters
@@ -126,12 +136,15 @@ Multi-chain governance through IC's Chain Fusion capabilities
 ## 💻 Technical Details
 
 ### IC Architecture Challenge
+
 We discovered and worked around a fundamental IC limitation: query methods cannot make inter-canister calls. Our solution:
+
 - Frontend reads data directly from Orbit Station
 - Backend executes update operations after DAO approval
 - Clean separation of concerns maintaining security
 
 ### Smart Contract Security
+
 - Backend canister can only execute operations approved by token holders
 - All operations logged on-chain
 - Emergency pause mechanisms (coming soon)
