@@ -4,7 +4,7 @@ use std::fmt;
 
 // Types needed for joining Orbit Station and permissions management
 
-#[derive(CandidType, Deserialize, Debug, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
 pub enum UserStatus {
     Active,
     Inactive,
@@ -427,14 +427,14 @@ pub struct SystemInfoResponse {
 pub type UUID = String; // Format: "00000000-0000-4000-8000-000000000000"
 
 // Resource specifier for permissions
-#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub enum ResourceSpecifier {
     Any,
     Id(UUID),
 }
 
 // Resource actions - validated from actual station
-#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub enum ResourceAction {
     Create,
     Update(ResourceSpecifier),
@@ -445,22 +445,29 @@ pub enum ResourceAction {
 }
 
 // Specialized actions for certain resources
-#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub enum ExternalCanisterAction {
     Create,
-    Change(ResourceSpecifier),
-    Fund(ResourceSpecifier),
-    Read(ResourceSpecifier),
+    Change(ExternalCanisterSpecifier),
+    Fund(ExternalCanisterSpecifier),
+    Read(ExternalCanisterSpecifier),
     List,
 }
 
-#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub enum ExternalCanisterSpecifier {
+    Any,
+    Id(String),
+    Canister(Principal),  // Missing variant causing decode failures
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub enum PermissionAction {
     Read,
     Update,
 }
 
-#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub enum SystemAction {
     ManageSystemInfo,
     Upgrade,
@@ -468,13 +475,13 @@ pub enum SystemAction {
     SystemInfo,
 }
 
-#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub enum RequestAction {
     Read(ResourceSpecifier),
     List,
 }
 
-#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub enum UserAction {
     Create,
     Update(ResourceSpecifier),
@@ -482,7 +489,7 @@ pub enum UserAction {
     List,
 }
 
-#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub enum NotificationAction {
     Create,
     Update,
@@ -493,7 +500,7 @@ pub enum NotificationAction {
 }
 
 // Complete Resource enum based on empirical testing
-#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub enum Resource {
     Account(ResourceAction),
     AddressBook(ResourceAction),
@@ -554,7 +561,14 @@ pub struct ListPermissionsResponse {
 
 #[derive(CandidType, Deserialize, Serialize, Debug)]
 pub enum ListPermissionsResult {
-    Ok(ListPermissionsResponse),
+    Ok {
+        permissions: Vec<Permission>,
+        privileges: Vec<PermissionCallerPrivileges>,
+        total: u64,
+        user_groups: Vec<UserGroup>,
+        users: Vec<UserDTO>,  // Missing field causing decode failure
+        next_offset: Option<u64>,
+    },
     Err(Error),
 }
 
@@ -590,6 +604,27 @@ pub enum ListUserGroupsResult {
     Ok(ListUserGroupsResponse),
     Err(Error),
 }
+
+// New types for get_user_group endpoint
+#[derive(CandidType, Deserialize, Serialize, Debug)]
+pub struct GetUserGroupInput {
+    pub user_group_id: String,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug)]
+pub struct GetUserGroupResponse {
+    pub user_group: UserGroupDetail,
+    pub privileges: Option<UserGroupCallerPrivileges>,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug)]
+pub struct UserGroupDetail {
+    pub id: String,
+    pub name: String,
+    pub users: Vec<String>, // User IDs
+}
+
+// TODO: Add user group operation types when available in Orbit Station
 
 // ===== EXTERNAL CANISTER TYPES =====
 
@@ -959,7 +994,7 @@ pub struct ListUsersInput {
 }
 
 // Updated UserDTO to match actual Orbit response
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Serialize, Debug)]
 pub struct UserDTO {
     pub id: String,
     pub name: String,
@@ -991,32 +1026,60 @@ pub struct RequestPolicy {
 }
 
 #[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub enum IdListSpecifier {
+    Ids(Vec<String>),
+    Any,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
 pub enum RequestSpecifier {
     AddUser,
-    EditUser,
+    EditUser(ResourceSpecifier),
     RemoveUser,
-    Transfer,
+    Transfer(IdListSpecifier),
     AddAccount,
-    EditAccount,
+    EditAccount(IdListSpecifier),
     RemoveAccount,
     AddAsset,
-    EditAsset,
-    RemoveAsset,
+    EditAsset(ResourceSpecifier),
+    RemoveAsset(ResourceSpecifier),
     ChangeCanister,
     SetDisasterRecovery,
-    ChangeExternalCanister(Principal),
-    CreateExternalCanister(Principal),
+    ChangeExternalCanister(ResourceSpecifier),
+    CreateExternalCanister,
     CallExternalCanister(Principal),
-    EditPermission,
-    EditRequestPolicy,
-    RemoveRequestPolicy,
+    EditPermission(ResourceSpecifier),
+    EditRequestPolicy(ResourceSpecifier),
+    RemoveRequestPolicy(ResourceSpecifier),
     ManageSystemInfo,
+    // Missing variants from actual Orbit responses:
+    AddUserGroup,
+    RemoveUserGroup(ResourceSpecifier),
+    AddNamedRule,
+    EditNamedRule(ResourceSpecifier),
+    RemoveNamedRule(ResourceSpecifier),
+    EditAddressBookEntry(ResourceSpecifier),
+    RemoveAddressBookEntry(ResourceSpecifier),
+    FundExternalCanister(ResourceSpecifier),
+    SystemUpgrade,
+    AddRequestPolicy,
+    EditUserGroup(ResourceSpecifier),
+    AddAddressBookEntry,
+}
+
+
+#[derive(CandidType, Deserialize)]
+pub struct RequestPolicyCallerPrivileges {
+    pub id: String,
+    pub can_edit: bool,
+    pub can_delete: bool,
 }
 
 #[derive(CandidType, Deserialize)]
 pub enum ListRequestPoliciesResult {
     Ok {
         policies: Vec<RequestPolicy>,
+        privileges: Vec<RequestPolicyCallerPrivileges>,
         total: u64,
         next_offset: Option<u64>,
     },

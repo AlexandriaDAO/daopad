@@ -12,6 +12,7 @@ mod orbit_transfers;
 mod orbit_users;
 mod proposals;
 mod utils;
+mod voting_permissions;
 
 pub use address_book::*;
 pub use dao_transition::*;
@@ -30,3 +31,4 @@ pub use orbit_transfers::{
 pub use orbit_users::*;
 pub use proposals::*;
 pub use utils::*;
+pub use voting_permissions::*;

@@ -470,6 +470,7 @@ const TokenDashboard = ({
                   stationId={orbitStation.station_id}
                   tokenSymbol={token.symbol}
                   identity={identity}
+                  tokenId={token.canister_id}
                 />
               )}
             </TabsContent>

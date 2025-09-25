@@ -253,15 +253,15 @@ async fn verify_no_non_admin_permissions(station_id: Principal) -> Result<Securi
     ).await.map_err(|e| format!("Failed to list permissions: {:?}", e))?;
 
     match (groups_result.0, perms_result.0) {
-        (ListUserGroupsResult::Ok(groups_resp), ListPermissionsResult::Ok(perms_resp)) => {
+        (ListUserGroupsResult::Ok(_groups_resp), ListPermissionsResult::Ok { permissions, user_groups, .. }) => {
             let mut violations = Vec::new();
 
             // Check write permissions for non-admin groups
-            for perm in &perms_resp.permissions {
+            for perm in &permissions {
                 if is_write_permission(&perm.resource) {
                     for group_id in &perm.allow.user_groups {
                         if group_id != ADMIN_GROUP_ID {
-                            let group_name = groups_resp.user_groups.iter()
+                            let group_name = user_groups.iter()
                                 .find(|g| &g.id == group_id)
                                 .map(|g| g.name.clone())
                                 .unwrap_or_else(|| group_id.clone());

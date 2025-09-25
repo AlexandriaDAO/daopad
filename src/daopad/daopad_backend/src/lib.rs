@@ -10,8 +10,8 @@ use ic_cdk::init;
 pub use api::*;
 pub use proposals::orbit_link::{OrbitLinkProposal, ProposalStatus};
 pub use types::orbit::{
-    AccountBalance, AuthScope, GetPermissionResponse, ListAccountsResult,
-    ListPermissionsResponse, ListUserGroupsResponse, PaginationInput,
+    AccountBalance, AuthScope, GetPermissionResponse, GetUserGroupResponse, ListAccountsResult,
+    ListPermissionsResponse, ListUserGroupsResponse, PaginationInput, Permission,
     Resource, SystemInfoResponse,
     // External canister types
     ChangeExternalCanisterOperationInput, ConfigureExternalCanisterOperationInput,

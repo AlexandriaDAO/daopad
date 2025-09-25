@@ -240,15 +240,15 @@ fn parse_external_canister_action(value: &IDLValue) -> Option<ExternalCanisterAc
             "Create" => Some(ExternalCanisterAction::Create),
             "List" => Some(ExternalCanisterAction::List),
             "Change" => {
-                let spec = parse_resource_specifier(&variant.0.val)?;
+                let spec = parse_external_canister_specifier(&variant.0.val)?;
                 Some(ExternalCanisterAction::Change(spec))
             },
             "Fund" => {
-                let spec = parse_resource_specifier(&variant.0.val)?;
+                let spec = parse_external_canister_specifier(&variant.0.val)?;
                 Some(ExternalCanisterAction::Fund(spec))
             },
             "Read" => {
-                let spec = parse_resource_specifier(&variant.0.val)?;
+                let spec = parse_external_canister_specifier(&variant.0.val)?;
                 Some(ExternalCanisterAction::Read(spec))
             },
             _ => None
@@ -348,6 +348,32 @@ fn parse_resource_specifier(value: &IDLValue) -> Option<ResourceSpecifier> {
             "Id" => {
                 if let IDLValue::Text(id) = &variant.0.val {
                     Some(ResourceSpecifier::Id(id.clone()))
+                } else {
+                    None
+                }
+            },
+            _ => None
+        }
+    } else {
+        None
+    }
+}
+
+fn parse_external_canister_specifier(value: &IDLValue) -> Option<ExternalCanisterSpecifier> {
+    if let IDLValue::Variant(variant) = value {
+        let spec_type = label_name(&variant.0.id)?;
+        match spec_type.as_str() {
+            "Any" => Some(ExternalCanisterSpecifier::Any),
+            "Id" => {
+                if let IDLValue::Text(id) = &variant.0.val {
+                    Some(ExternalCanisterSpecifier::Id(id.clone()))
+                } else {
+                    None
+                }
+            },
+            "Canister" => {
+                if let IDLValue::Principal(principal) = &variant.0.val {
+                    Some(ExternalCanisterSpecifier::Canister(*principal))
                 } else {
                     None
                 }
@@ -701,4 +727,217 @@ fn parse_create_request_response(value: &IDLValue) -> Result<String, String> {
     }
 
     Err("Failed to parse create request response".to_string())
+}
+
+// New endpoint: Get user group details
+#[ic_cdk::update] // Must be update for cross-canister calls
+pub async fn get_user_group(
+    token_id: Principal,
+    group_id: String,
+) -> Result<GetUserGroupResponse, String> {
+    let station_id = get_station_for_token(token_id).await?;
+
+    let input = GetUserGroupInput {
+        user_group_id: group_id,
+    };
+
+    let args = encode_args((input,))
+        .map_err(|e| format!("Failed to encode: {:?}", e))?;
+
+    let result = call_raw(
+        station_id,
+        "get_user_group",
+        &args,
+        0
+    ).await
+    .map_err(|e| format!("Failed to call: {:?}", e))?;
+
+    let decoded: (IDLValue,) = decode_args(&result)
+        .map_err(|e| format!("Failed to decode: {:?}", e))?;
+
+    parse_get_user_group_response(&decoded.0)
+}
+
+fn parse_get_user_group_response(value: &IDLValue) -> Result<GetUserGroupResponse, String> {
+    if let IDLValue::Variant(variant) = value {
+        if let Some(label) = label_name(&variant.0.id) {
+            if label == "Ok" {
+                if let IDLValue::Record(fields) = &variant.0.val {
+                    let user_group = field(fields, "user_group")
+                        .and_then(parse_user_group_detail)
+                        .ok_or("Failed to parse user group")?;
+
+                    let privileges = field(fields, "privileges")
+                        .and_then(parse_user_group_privilege);
+
+                    return Ok(GetUserGroupResponse {
+                        user_group,
+                        privileges,
+                    });
+                }
+            } else if label == "Err" {
+                return Err(parse_error_message(&variant.0.val));
+            }
+        }
+    }
+
+    Err("Invalid response format".to_string())
+}
+
+fn parse_user_group_detail(value: &IDLValue) -> Option<UserGroupDetail> {
+    if let IDLValue::Record(fields) = value {
+        let id = field(fields, "id").and_then(idl_to_string)?;
+        let name = field(fields, "name").and_then(idl_to_string)?;
+
+        let user_ids = field(fields, "users")
+            .and_then(parse_string_vec)
+            .unwrap_or_default();
+
+        return Some(UserGroupDetail {
+            id,
+            name,
+            users: user_ids,
+        });
+    }
+    None
+}
+
+// New endpoint: Get user's effective permissions
+#[ic_cdk::update]
+pub async fn get_user_permissions(
+    token_id: Principal,
+    user_id: String,
+) -> Result<Vec<Permission>, String> {
+    let station_id = get_station_for_token(token_id).await?;
+
+    // First, get all permissions
+    let list_input = ListPermissionsInput {
+        resources: None,
+        paginate: None,
+    };
+
+    let args = encode_args((list_input,))
+        .map_err(|e| format!("Failed to encode: {:?}", e))?;
+
+    let result = call_raw(
+        station_id,
+        "list_permissions",
+        &args,
+        0
+    ).await
+    .map_err(|e| format!("Failed to call: {:?}", e))?;
+
+    let decoded: (IDLValue,) = decode_args(&result)
+        .map_err(|e| format!("Failed to decode: {:?}", e))?;
+
+    let all_permissions = parse_list_permissions_response(&decoded.0)?;
+
+    // Get user's groups
+    let user_groups = get_user_group_memberships(station_id, user_id.clone()).await?;
+
+    // Filter permissions based on user ID and group memberships
+    let effective_permissions: Vec<Permission> = all_permissions.permissions
+        .into_iter()
+        .filter(|perm| {
+            // Check if permission applies to user
+            match &perm.allow.auth_scope {
+                AuthScope::Public => true,
+                AuthScope::Authenticated => true, // User is authenticated
+                AuthScope::Restricted => {
+                    // Check if user is in allowed users
+                    perm.allow.users.contains(&user_id) ||
+                    // Check if user's groups are in allowed groups
+                    perm.allow.user_groups.iter().any(|group_id|
+                        user_groups.contains(group_id)
+                    )
+                },
+            }
+        })
+        .collect();
+
+    Ok(effective_permissions)
+}
+
+// Helper function to get user's group memberships
+async fn get_user_group_memberships(
+    station_id: Principal,
+    user_id: String,
+) -> Result<Vec<String>, String> {
+    // List all user groups
+    let input = ListUserGroupsInput {
+        search_term: None,
+        paginate: None,
+    };
+
+    let args = encode_args((input,))
+        .map_err(|e| format!("Failed to encode: {:?}", e))?;
+
+    let result = call_raw(
+        station_id,
+        "list_user_groups",
+        &args,
+        0
+    ).await
+    .map_err(|e| format!("Failed to call: {:?}", e))?;
+
+    let decoded: (IDLValue,) = decode_args(&result)
+        .map_err(|e| format!("Failed to decode: {:?}", e))?;
+
+    let all_groups_response = parse_list_user_groups_response(&decoded.0)?;
+
+    // For each group, check if user is a member
+    let mut user_groups = Vec::new();
+    for group in all_groups_response.user_groups {
+        // Get detailed group info to see members
+        let group_detail = get_user_group_detail(station_id, group.id.clone()).await?;
+        if group_detail.users.contains(&user_id) {
+            user_groups.push(group.id);
+        }
+    }
+
+    Ok(user_groups)
+}
+
+// Helper to get group detail
+async fn get_user_group_detail(
+    station_id: Principal,
+    group_id: String,
+) -> Result<UserGroupDetail, String> {
+    let input = GetUserGroupInput {
+        user_group_id: group_id,
+    };
+
+    let args = encode_args((input,))
+        .map_err(|e| format!("Failed to encode: {:?}", e))?;
+
+    let result = call_raw(
+        station_id,
+        "get_user_group",
+        &args,
+        0
+    ).await
+    .map_err(|e| format!("Failed to call: {:?}", e))?;
+
+    let decoded: (IDLValue,) = decode_args(&result)
+        .map_err(|e| format!("Failed to decode: {:?}", e))?;
+
+    let response = parse_get_user_group_response(&decoded.0)?;
+    Ok(response.user_group)
+}
+
+// New endpoint: Check if user has specific permission
+#[ic_cdk::update]
+pub async fn check_user_permission(
+    token_id: Principal,
+    user_id: String,
+    resource: Resource,
+) -> Result<bool, String> {
+    let effective_permissions = get_user_permissions(token_id, user_id).await?;
+
+    // Check if user has the specific permission
+    let has_permission = effective_permissions.iter().any(|perm|
+        perm.resource == resource
+    );
+
+    Ok(has_permission)
 }
