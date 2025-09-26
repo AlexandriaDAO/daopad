@@ -477,7 +477,7 @@ const TokenDashboard = ({
 
             <TabsContent value="settings" className="mt-4">
               {activeTab === 'settings' && (
-                <DAOSettings tokenCanisterId={token.canister_id} />
+                <DAOSettings tokenCanisterId={token.canister_id} identity={identity} />
               )}
             </TabsContent>
 

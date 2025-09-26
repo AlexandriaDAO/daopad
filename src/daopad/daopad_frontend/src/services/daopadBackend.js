@@ -1171,4 +1171,98 @@ export class DAOPadBackendService {
         }
     }
 
+    // Permissions Management Methods
+
+    async listPermissions(tokenCanisterId, resources = null) {
+        try {
+            const actor = await this.getActor();
+            const result = await actor.list_permissions(
+                Principal.fromText(tokenCanisterId),
+                resources === null ? [] : [resources]  // Wrap in Option properly
+            );
+
+            if ('Ok' in result) {
+                return { success: true, data: result.Ok };
+            } else {
+                return {
+                    success: false,
+                    error: orbitErrorMessage(result.Err)
+                };
+            }
+        } catch (error) {
+            console.error('Error listing permissions:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    async getPermission(tokenCanisterId, resource) {
+        try {
+            const actor = await this.getActor();
+            const result = await actor.get_permission(
+                Principal.fromText(tokenCanisterId),
+                resource
+            );
+
+            if ('Ok' in result) {
+                return { success: true, data: result.Ok };
+            } else {
+                return {
+                    success: false,
+                    error: orbitErrorMessage(result.Err)
+                };
+            }
+        } catch (error) {
+            console.error('Error getting permission:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    async requestPermissionChange(tokenCanisterId, resource, authScope, users, userGroups) {
+        try {
+            const actor = await this.getActor();
+            // Backend expects Option types, frontend must wrap
+            const result = await actor.request_permission_change(
+                Principal.fromText(tokenCanisterId),
+                resource,
+                authScope ? [authScope] : [],      // Wrap for Option<AuthScope>
+                users?.length > 0 ? [users] : [],  // Wrap for Option<Vec<String>>
+                userGroups?.length > 0 ? [userGroups] : []  // Wrap for Option<Vec<String>>
+            );
+
+            if ('Ok' in result) {
+                return { success: true, requestId: result.Ok };
+            } else {
+                return {
+                    success: false,
+                    error: orbitErrorMessage(result.Err)
+                };
+            }
+        } catch (error) {
+            console.error('Error requesting permission change:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    async listUserGroups(tokenCanisterId, paginate = null) {
+        try {
+            const actor = await this.getActor();
+            const result = await actor.list_user_groups(
+                Principal.fromText(tokenCanisterId),
+                paginate
+            );
+
+            if ('Ok' in result) {
+                return { success: true, data: result.Ok };
+            } else {
+                return {
+                    success: false,
+                    error: orbitErrorMessage(result.Err)
+                };
+            }
+        } catch (error) {
+            console.error('Error listing user groups:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
 }

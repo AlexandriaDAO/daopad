@@ -30,14 +30,53 @@ fn label_name(field_id: &Label) -> Option<String> {
     match field_id {
         Label::Named(name) => Some(name.clone()),
         Label::Id(id) => {
-            // Check for common variants
-            if *id == candid_hash("Ok") {
-                Some("Ok".to_string())
-            } else if *id == candid_hash("Err") {
-                Some("Err".to_string())
-            } else {
-                None
+            // Check for common variants and resource types
+            let mappings = [
+                ("Ok", candid_hash("Ok")),
+                ("Err", candid_hash("Err")),
+                // Resource types
+                ("Account", candid_hash("Account")),
+                ("AddressBook", candid_hash("AddressBook")),
+                ("Asset", candid_hash("Asset")),
+                ("ExternalCanister", candid_hash("ExternalCanister")),
+                ("NamedRule", candid_hash("NamedRule")),
+                ("Notification", candid_hash("Notification")),
+                ("Permission", candid_hash("Permission")),
+                ("Request", candid_hash("Request")),
+                ("RequestPolicy", candid_hash("RequestPolicy")),
+                ("System", candid_hash("System")),
+                ("User", candid_hash("User")),
+                ("UserGroup", candid_hash("UserGroup")),
+                // Resource actions
+                ("List", candid_hash("List")),
+                ("Read", candid_hash("Read")),
+                ("Create", candid_hash("Create")),
+                ("Update", candid_hash("Update")),
+                ("Delete", candid_hash("Delete")),
+                ("Transfer", candid_hash("Transfer")),
+                ("Call", candid_hash("Call")),
+                ("Change", candid_hash("Change")),
+                ("Fund", candid_hash("Fund")),
+                ("Approve", candid_hash("Approve")),
+                ("Info", candid_hash("Info")),
+                ("Capabilities", candid_hash("Capabilities")),
+                ("ManageSystemInfo", candid_hash("ManageSystemInfo")),
+                ("Upgrade", candid_hash("Upgrade")),
+                ("Any", candid_hash("Any")),
+                ("Specific", candid_hash("Specific")),
+                // Auth scopes
+                ("Public", candid_hash("Public")),
+                ("Authenticated", candid_hash("Authenticated")),
+                ("Restricted", candid_hash("Restricted")),
+            ];
+
+            for (name, hash) in mappings.iter() {
+                if *id == *hash {
+                    return Some(name.to_string());
+                }
             }
+
+            None
         },
         _ => None,
     }
@@ -128,24 +167,57 @@ fn parse_list_permissions_response(value: &IDLValue) -> Result<ListPermissionsRe
 
 fn parse_permissions_vec(value: &IDLValue) -> Option<Vec<Permission>> {
     if let IDLValue::Vec(items) = value {
-        return Some(items.iter().filter_map(parse_permission).collect());
+        ic_cdk::print(format!("Parsing {} permission items", items.len()));
+        let parsed: Vec<Permission> = items.iter().filter_map(|item| {
+            let result = parse_permission(item);
+            if result.is_none() {
+                ic_cdk::print(format!("Failed to parse permission item"));
+            }
+            result
+        }).collect();
+        ic_cdk::print(format!("Successfully parsed {} permissions", parsed.len()));
+        return Some(parsed);
     }
+    ic_cdk::print("Value is not a Vec, returning None");
     None
 }
 
 fn parse_permission(value: &IDLValue) -> Option<Permission> {
     if let IDLValue::Record(fields) = value {
-        let resource = field(fields, "resource").and_then(parse_resource)?;
-        let allow = field(fields, "allow").and_then(parse_allow)?;
+        let resource = field(fields, "resource").and_then(|v| {
+            let result = parse_resource(v);
+            if result.is_none() {
+                ic_cdk::print("Failed to parse resource");
+            }
+            result
+        });
 
-        return Some(Permission { resource, allow });
+        let allow = field(fields, "allow").and_then(|v| {
+            let result = parse_allow(v);
+            if result.is_none() {
+                ic_cdk::print("Failed to parse allow");
+            }
+            result
+        });
+
+        if let (Some(res), Some(alw)) = (resource, allow) {
+            return Some(Permission { resource: res, allow: alw });
+        }
+        ic_cdk::print("Missing resource or allow field");
+        return None;
     }
+    ic_cdk::print("Value is not a Record");
     None
 }
 
 fn parse_resource(value: &IDLValue) -> Option<Resource> {
     if let IDLValue::Variant(variant) = value {
-        let resource_type = label_name(&variant.0.id)?;
+        let resource_type = label_name(&variant.0.id);
+        if resource_type.is_none() {
+            ic_cdk::print(format!("Failed to get label name for variant id"));
+        }
+        let resource_type = resource_type?;
+        ic_cdk::print(format!("Resource type: {}", resource_type));
         let action_value = &variant.0.val;
 
         match resource_type.as_str() {

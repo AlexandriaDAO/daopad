@@ -3,19 +3,27 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   ArrowRight, Users, Lock, Vote, Shield,
   Banknote, FileText, CreditCard, Building2,
   CheckCircle, XCircle, TrendingUp, DollarSign
 } from 'lucide-react';
 
 function Homepage() {
+  const [showMaturityImage, setShowMaturityImage] = useState(false);
 
   return (
+    <TooltipProvider>
     <div className="min-h-screen bg-executive-charcoal text-executive-lightGray">
       {/* Gold trim */}
       <div className="h-1 bg-gradient-to-r from-transparent via-executive-gold to-transparent"></div>
 
-      {/* Hero - Direct Value Prop */}
+      {/* Hero - The DAO Illusion */}
       <section className="relative py-20">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-5xl mx-auto">
@@ -29,204 +37,19 @@ function Homepage() {
               DAOPad
             </h1>
 
-            {/* One-liner */}
-            <p className="text-2xl text-executive-goldLight font-serif mb-6">
-              Small Business. Big Corporation Advantages. One Platform.
+            {/* The truth about DAOs */}
+            <p className="text-2xl text-executive-goldLight font-serif mb-2">
+              DAOs Don't Actually Exist
             </p>
-
-            {/* Visual Equation */}
-            <div className="flex items-center justify-center gap-4 mb-12 text-3xl">
-              <div className="text-center">
-                <span className="text-4xl">☕</span>
-                <p className="text-xs text-executive-lightGray/60 mt-1">Your Business</p>
-              </div>
-              <span className="text-executive-gold">+</span>
-              <div className="text-center">
-                <span className="text-executive-gold font-display text-2xl">DAOPad</span>
-              </div>
-              <span className="text-executive-gold">=</span>
-              <div className="text-center">
-                <span className="text-4xl">🏦</span>
-                <p className="text-xs text-executive-lightGray/60 mt-1">Corp Powers</p>
-              </div>
-              <span className="text-executive-gold">+</span>
-              <div className="text-center">
-                <span className="text-4xl">🪙</span>
-                <p className="text-xs text-executive-lightGray/60 mt-1">Investable</p>
-              </div>
-            </div>
-
-            {/* Three-way Comparison */}
-            <div className="grid md:grid-cols-3 gap-6 mb-12">
-              {/* Team Wallets */}
-              <div className="bg-executive-darkGray/50 border border-executive-gold/20 rounded-lg p-6">
-                <div className="text-center mb-2">
-                  <span className="text-2xl">👤</span>
-                </div>
-                <h3 className="text-executive-lightGray text-lg font-bold mb-4">
-                  Team Wallets
-                </h3>
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray/70">Simple setup</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray/70">No transparency</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray/70">Personal liability</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray/70">No community input</span>
-                  </div>
-                </div>
-                <div className="mt-4 pt-4 border-t border-executive-gold/10">
-                  <span className="text-xs text-yellow-500">Too Centralized</span>
-                </div>
-              </div>
-
-              {/* SNS/Full DAO */}
-              <div className="bg-executive-darkGray/50 border border-executive-gold/20 rounded-lg p-6">
-                <div className="text-center mb-2">
-                  <span className="text-2xl">🏛️</span>
-                </div>
-                <h3 className="text-executive-lightGray text-lg font-bold mb-4">
-                  SNS / Full DAO
-                </h3>
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray/70">Fully decentralized</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray/70">$100K+ to setup</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray/70">6+ months to launch</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray/70">Kills innovation</span>
-                  </div>
-                </div>
-                <div className="mt-4 pt-4 border-t border-executive-gold/10">
-                  <span className="text-xs text-yellow-500">Too Complex</span>
-                </div>
-              </div>
-
-              {/* DAOPad */}
-              <div className="bg-gradient-to-br from-executive-gold/10 to-executive-darkGray/50 border-2 border-executive-gold/50 rounded-lg p-6">
-                <div className="text-center mb-2">
-                  <span className="text-2xl">⚖️</span>
-                </div>
-                <h3 className="text-executive-gold text-lg font-bold mb-4 text-center">
-                  DAOPad
-                </h3>
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray">5 minute setup</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray">Community governed</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray">Real bank accounts</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray">Scale as you grow</span>
-                  </div>
-                </div>
-                <div className="mt-4 pt-4 border-t border-executive-gold/30">
-                  <span className="text-xs text-green-400">Just Right</span>
-                </div>
-              </div>
-            </div>
-
-            {/* CTA */}
-            <Link to="/app">
-              <Button size="lg" className="bg-executive-gold text-executive-charcoal hover:bg-executive-goldLight font-serif px-8 py-6 text-lg">
-                Launch Your DAO
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
+            <p className="text-lg text-executive-lightGray/70 mb-8">
+              We have D. A. O. in isolation, but never together
+            </p>
           </div>
         </div>
       </section>
 
-      {/* Transformation Diagram - New Section */}
-      <section className="py-16 border-t border-executive-gold/20">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center justify-between gap-8">
-              {/* Before */}
-              <div className="flex-1 bg-executive-darkGray/50 border border-executive-gold/20 rounded-lg p-6">
-                <h3 className="text-center text-executive-lightGray/60 text-sm uppercase tracking-wider mb-4">Your Business Today</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="text-executive-gold/30">•</span>
-                    <span className="text-executive-lightGray/70">Local only</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-executive-gold/30">•</span>
-                    <span className="text-executive-lightGray/70">Bank dependent</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-executive-gold/30">•</span>
-                    <span className="text-executive-lightGray/70">No investors</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-executive-gold/30">•</span>
-                    <span className="text-executive-lightGray/70">Solo decisions</span>
-                  </div>
-                </div>
-                <div className="mt-4 text-center text-xs text-red-400/60 uppercase tracking-wider">Limited</div>
-              </div>
-
-              {/* Arrow */}
-              <div className="flex-shrink-0 text-executive-gold text-3xl animate-pulse">
-                →
-              </div>
-
-              {/* After */}
-              <div className="flex-1 bg-gradient-to-br from-executive-gold/10 to-executive-darkGray/50 border-2 border-executive-gold/50 rounded-lg p-6">
-                <h3 className="text-center text-executive-gold text-sm uppercase tracking-wider mb-4">With DAOPad</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="text-green-400">•</span>
-                    <span className="text-executive-lightGray">Global reach</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-green-400">•</span>
-                    <span className="text-executive-lightGray">Crypto native</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-green-400">•</span>
-                    <span className="text-executive-lightGray">Open investment</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-green-400">•</span>
-                    <span className="text-executive-lightGray">Community led</span>
-                  </div>
-                </div>
-                <div className="mt-4 text-center text-xs text-green-400 uppercase tracking-wider">Unlimited</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Great Inventions Animation */}
-      <section className="py-20 border-t border-executive-gold/20 bg-executive-darkGray/20">
+      {/* Great Inventions Animation - The Missing Convergence */}
+      <section className="py-16 bg-executive-darkGray/20">
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto">
             {/* Animated Timeline */}
@@ -238,7 +61,7 @@ function Homepage() {
               <div className="relative flex items-center mb-12 animate-fade-in-1">
                 <div className="w-1/2 text-right pr-8">
                   <h3 className="text-2xl font-serif text-executive-ivory mb-2">Fair Launch</h3>
-                  <p className="text-executive-lightGray/60 mt-2">Communities fund together</p>
+                  <p className="text-executive-lightGray/60 mt-2 text-sm">Community funded</p>
                 </div>
                 <div className="absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-executive-gold border-4 border-executive-charcoal"></div>
                 <div className="w-1/2 pl-8">
@@ -254,7 +77,7 @@ function Homepage() {
                 <div className="absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-executive-gold border-4 border-executive-charcoal"></div>
                 <div className="w-1/2 pl-8">
                   <h3 className="text-2xl font-serif text-executive-ivory mb-2">Smart Contract</h3>
-                  <p className="text-executive-lightGray/60 mt-2">Automated trust</p>
+                  <p className="text-executive-lightGray/60 mt-2 text-sm">Automated trust</p>
                 </div>
               </div>
 
@@ -262,7 +85,7 @@ function Homepage() {
               <div className="relative flex items-center mb-12 animate-fade-in-3">
                 <div className="w-1/2 text-right pr-8">
                   <h3 className="text-2xl font-serif text-executive-ivory mb-2">LLC</h3>
-                  <p className="text-executive-lightGray/60 mt-2">Legal protection</p>
+                  <p className="text-executive-lightGray/60 mt-2 text-sm">Legal protection</p>
                 </div>
                 <div className="absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-executive-gold border-4 border-executive-charcoal"></div>
                 <div className="w-1/2 pl-8">
@@ -337,146 +160,474 @@ function Homepage() {
         `}</style>
       </section>
 
-      {/* How DAOPad Delivers - The Complete Package */}
+      {/* The Current State - Three Approaches */}
+      <section className="py-16 border-t border-executive-gold/20">
+        <div className="container mx-auto px-4">
+          <div className="text-center max-w-5xl mx-auto">
+            {/* Three-way Comparison */}
+            <div className="grid md:grid-cols-3 gap-6 mb-12">
+              {/* Team Wallets */}
+              <div className="bg-executive-darkGray/50 border border-executive-gold/20 rounded-lg p-6">
+                <div className="text-center mb-2">
+                  <span className="text-2xl">👤</span>
+                </div>
+                <h3 className="text-executive-lightGray text-lg font-bold mb-4">
+                  Team Wallets
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <span className="text-executive-lightGray/70">Personal liability</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <span className="text-executive-lightGray/70">No transparency</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <span className="text-executive-lightGray/70">Trust crisis</span>
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-executive-gold/10">
+                  <span className="text-xs text-yellow-500">Too Centralized</span>
+                </div>
+              </div>
+
+              {/* SNS/Full DAO */}
+              <div className="bg-executive-darkGray/50 border border-executive-gold/20 rounded-lg p-6">
+                <div className="text-center mb-2">
+                  <span className="text-2xl">🏛️</span>
+                </div>
+                <h3 className="text-executive-lightGray text-lg font-bold mb-4">
+                  SNS / Full DAO
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <span className="text-executive-lightGray/70">$100K+ to setup</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <span className="text-executive-lightGray/70">6+ months launch</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <span className="text-executive-lightGray/70">Too complex</span>
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-executive-gold/10">
+                  <span className="text-xs text-yellow-500">Too Complex</span>
+                </div>
+              </div>
+
+              {/* DAOPad */}
+              <div className="bg-gradient-to-br from-executive-gold/10 to-executive-darkGray/50 border-2 border-executive-gold/50 rounded-lg p-6">
+                <div className="text-center mb-2">
+                  <span className="text-2xl">⚖️</span>
+                </div>
+                <h3 className="text-executive-gold text-lg font-bold mb-4 text-center">
+                  DAOPad
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                    <span className="text-executive-lightGray">5 minute setup</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                    <span className="text-executive-lightGray">Transparent treasury</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                    <span className="text-executive-lightGray">Corp banking</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                    <span className="text-executive-lightGray">Protected founders</span>
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-executive-gold/30">
+                  <span className="text-xs text-green-400">Just Right</span>
+                </div>
+              </div>
+            </div>
+
+            {/* CTA */}
+            <Link to="/app">
+              <Button size="lg" className="bg-executive-gold text-executive-charcoal hover:bg-executive-goldLight font-serif px-8 py-6 text-lg">
+                Launch Your DAO
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Real World Examples - New Section */}
+      <section className="py-16 border-t border-executive-gold/20">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-display text-executive-gold mb-4">
+                Real People, Real Solutions
+              </h2>
+              <p className="text-executive-lightGray/70">
+                See how DAOPad transforms businesses across every industry
+              </p>
+            </div>
+
+            <div className="space-y-12">
+              {/* Bill's Farmstand */}
+              <div className="flex items-center justify-between gap-8">
+                {/* Before */}
+                <div className="flex-1 bg-executive-darkGray/50 border border-executive-gold/20 rounded-lg p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-3xl">🌾</span>
+                    <h3 className="text-executive-ivory font-serif">Bill's Farmstand Idea</h3>
+                  </div>
+                  <p className="text-xs text-executive-lightGray/60 mb-3">The Problem:</p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-start gap-2">
+                      <span className="text-executive-gold/30 mt-1">•</span>
+                      <span className="text-executive-lightGray/70">Can't meet weekend demand</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-executive-gold/30 mt-1">•</span>
+                      <span className="text-executive-lightGray/70">Needs $50K for new stand</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-executive-gold/30 mt-1">•</span>
+                      <span className="text-executive-lightGray/70">Bank wants whole farm as collateral</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-executive-gold/30 mt-1">•</span>
+                      <span className="text-executive-lightGray/70">Customers want to help</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center text-xs text-red-400/60 uppercase tracking-wider">Stuck</div>
+                </div>
+
+                {/* Arrow */}
+                <div className="flex-shrink-0 text-executive-gold text-3xl animate-pulse">
+                  →
+                </div>
+
+                {/* After */}
+                <div className="flex-1 bg-gradient-to-br from-executive-gold/10 to-executive-darkGray/50 border-2 border-executive-gold/50 rounded-lg p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-3xl">🌾</span>
+                    <h3 className="text-executive-gold font-serif">Farmstand DAO</h3>
+                  </div>
+                  <p className="text-xs text-executive-gold/80 mb-3">The Solution:</p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-400 mt-1">✓</span>
+                      <span className="text-executive-lightGray">Subplot & stand owned by DAO</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-400 mt-1">✓</span>
+                      <span className="text-executive-lightGray">Customers buy $STAND tokens</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-400 mt-1">✓</span>
+                      <span className="text-executive-lightGray">Revenue shares to holders</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-400 mt-1">✓</span>
+                      <span className="text-executive-lightGray">Bill keeps main farm</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center text-xs text-green-400 uppercase tracking-wider">Funded</div>
+                </div>
+              </div>
+
+              {/* Joe's New Coffee Shop */}
+              <div className="flex items-center justify-between gap-8">
+                {/* Before */}
+                <div className="flex-1 bg-executive-darkGray/50 border border-executive-gold/20 rounded-lg p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-3xl">☕</span>
+                    <h3 className="text-executive-ivory font-serif">Cup O' Joe Dream</h3>
+                  </div>
+                  <p className="text-xs text-executive-lightGray/60 mb-3">The Problem:</p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-start gap-2">
+                      <span className="text-executive-gold/30 mt-1">•</span>
+                      <span className="text-executive-lightGray/70">$100K to open new shop</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-executive-gold/30 mt-1">•</span>
+                      <span className="text-executive-lightGray/70">Friends want to invest</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-executive-gold/30 mt-1">•</span>
+                      <span className="text-executive-lightGray/70">Complex partnership docs</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-executive-gold/30 mt-1">•</span>
+                      <span className="text-executive-lightGray/70">Manual profit splitting</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center text-xs text-red-400/60 uppercase tracking-wider">Blocked</div>
+                </div>
+
+                {/* Arrow */}
+                <div className="flex-shrink-0 text-executive-gold text-3xl animate-pulse">
+                  →
+                </div>
+
+                {/* After */}
+                <div className="flex-1 bg-gradient-to-br from-executive-gold/10 to-executive-darkGray/50 border-2 border-executive-gold/50 rounded-lg p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-3xl">☕</span>
+                    <h3 className="text-executive-gold font-serif">Cup O' Joe DAO</h3>
+                  </div>
+                  <p className="text-xs text-executive-gold/80 mb-3">The Solution:</p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-400 mt-1">✓</span>
+                      <span className="text-executive-lightGray">$JOE token sale</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-400 mt-1">✓</span>
+                      <span className="text-executive-lightGray">CC payments → crypto treasury</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-400 mt-1">✓</span>
+                      <span className="text-executive-lightGray">Auto revenue share</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-400 mt-1">✓</span>
+                      <span className="text-executive-lightGray">Shop owned by DAO</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center text-xs text-green-400 uppercase tracking-wider">Launched</div>
+                </div>
+              </div>
+
+              {/* Alexandria Crypto Project */}
+              <div className="flex items-center justify-between gap-8">
+                {/* Before */}
+                <div className="flex-1 bg-executive-darkGray/50 border border-executive-gold/20 rounded-lg p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-3xl">📚</span>
+                    <h3 className="text-executive-ivory font-serif">Alexandria Project</h3>
+                  </div>
+                  <p className="text-xs text-executive-lightGray/60 mb-3">The Problem:</p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-start gap-2">
+                      <span className="text-executive-gold/30 mt-1">•</span>
+                      <span className="text-executive-lightGray/70">$ALEX token centralized</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-executive-gold/30 mt-1">•</span>
+                      <span className="text-executive-lightGray/70">Can't pay salaries legally</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-executive-gold/30 mt-1">•</span>
+                      <span className="text-executive-lightGray/70">Tax authorities confused</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-executive-gold/30 mt-1">•</span>
+                      <span className="text-executive-lightGray/70">Community doesn't trust</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center text-xs text-red-400/60 uppercase tracking-wider">Risky</div>
+                </div>
+
+                {/* Arrow */}
+                <div className="flex-shrink-0 text-executive-gold text-3xl animate-pulse">
+                  →
+                </div>
+
+                {/* After */}
+                <div className="flex-1 bg-gradient-to-br from-executive-gold/10 to-executive-darkGray/50 border-2 border-executive-gold/50 rounded-lg p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-3xl">📚</span>
+                    <h3 className="text-executive-gold font-serif">Alexandria DAO</h3>
+                  </div>
+                  <p className="text-xs text-executive-gold/80 mb-3">The Solution:</p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-400 mt-1">✓</span>
+                      <span className="text-executive-lightGray">Community controls treasury</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-400 mt-1">✓</span>
+                      <span className="text-executive-lightGray">Fiat salaries via LLC</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-400 mt-1">✓</span>
+                      <span className="text-executive-lightGray">IRS compliant payroll</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-400 mt-1">✓</span>
+                      <span className="text-executive-lightGray">100% transparent ops</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center text-xs text-green-400 uppercase tracking-wider">Legitimate</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-12 text-center">
+              <p className="text-executive-lightGray/60 text-sm italic">
+                DAOPad provides the payment rails and entity structure for any business
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works - Gradual Transition */}
       <section className="py-20 border-t border-executive-gold/20">
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-display text-executive-gold mb-4">
-                DAOPad Delivers The Complete Package
+                Start Your DAO Journey Today
               </h2>
-              <p className="text-executive-lightGray/70">
-                Finally, all three great inventions working together
+              <p className="text-executive-lightGray/70 mb-2">
+                Anyone can start - just lock liquidity and begin the transition
+              </p>
+              <p className="text-executive-lightGray/50 text-sm">
+                No founders needed. No permission required. Just participation.
               </p>
             </div>
 
-            {/* Phase 1 & 2 Professional Features */}
-            <div className="space-y-8">
-              {/* Phase 1 */}
-              <div className="bg-gradient-to-br from-executive-gold/5 to-transparent rounded-lg p-8 border border-executive-gold/30">
+            {/* Tiered Services */}
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Community DAO */}
+              <div className="bg-executive-darkGray/50 rounded-lg p-8 border border-executive-gold/30">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-serif text-executive-ivory">Phase 1: Launch Today</h3>
-                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Live Now</Badge>
+                  <h3 className="text-xl font-serif text-executive-ivory">Community DAO</h3>
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">Start Today</Badge>
                 </div>
-
-                <div className="grid grid-cols-3 gap-4 md:gap-6">
-                  {/* Icon Grid - 2x3 */}
-                  <div className="text-center group cursor-pointer">
-                    <div className="bg-executive-darkGray/50 rounded-lg p-4 border border-executive-gold/20 group-hover:border-executive-gold/40 transition-colors">
-                      <div className="text-3xl mb-2">💰</div>
-                      <div className="text-xs text-executive-lightGray">Multi-sig</div>
+                <p className="text-sm text-executive-lightGray/60 mb-6">
+                  Anyone can initiate by locking liquidity
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-executive-lightGray">Multi-sig Treasury</span>
+                      <p className="text-xs text-executive-lightGray/50 mt-1">Transparent on-chain management</p>
                     </div>
                   </div>
-
-                  <div className="text-center group cursor-pointer">
-                    <div className="bg-executive-darkGray/50 rounded-lg p-4 border border-executive-gold/20 group-hover:border-executive-gold/40 transition-colors">
-                      <div className="text-3xl mb-2">🗳️</div>
-                      <div className="text-xs text-executive-lightGray">Community</div>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-executive-lightGray">Token Voting</span>
+                      <p className="text-xs text-executive-lightGray/50 mt-1">Weighted by locked liquidity</p>
                     </div>
                   </div>
-
-                  <div className="text-center group cursor-pointer">
-                    <div className="bg-executive-darkGray/50 rounded-lg p-4 border border-executive-gold/20 group-hover:border-executive-gold/40 transition-colors">
-                      <div className="text-3xl mb-2">💳</div>
-                      <div className="text-xs text-executive-lightGray">Auto-pay</div>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-executive-lightGray">Proposal System</span>
+                      <p className="text-xs text-executive-lightGray/50 mt-1">Community-driven decisions</p>
                     </div>
                   </div>
-
-                  <div className="text-center group cursor-pointer">
-                    <div className="bg-executive-darkGray/50 rounded-lg p-4 border border-executive-gold/20 group-hover:border-executive-gold/40 transition-colors">
-                      <div className="text-3xl mb-2">📈</div>
-                      <div className="text-xs text-executive-lightGray">TVL Growth</div>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-executive-lightGray">Auto Payments</span>
+                      <p className="text-xs text-executive-lightGray/50 mt-1">Recurring team compensation</p>
                     </div>
                   </div>
-
-                  <div className="text-center group cursor-pointer">
-                    <div className="bg-executive-darkGray/50 rounded-lg p-4 border border-executive-gold/20 group-hover:border-executive-gold/40 transition-colors">
-                      <div className="text-3xl mb-2">📋</div>
-                      <div className="text-xs text-executive-lightGray">Proposals</div>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-executive-lightGray">TVL Incentives</span>
+                      <p className="text-xs text-executive-lightGray/50 mt-1">Grow treasury with rewards</p>
                     </div>
                   </div>
-
-                  <div className="text-center group cursor-pointer">
-                    <div className="bg-executive-darkGray/50 rounded-lg p-4 border border-executive-gold/20 group-hover:border-executive-gold/40 transition-colors">
-                      <div className="text-3xl mb-2">🖥️</div>
-                      <div className="text-xs text-executive-lightGray">Canisters</div>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-executive-lightGray">Canister Management</span>
+                      <p className="text-xs text-executive-lightGray/50 mt-1">Deploy and control IC apps</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* DAO Percentage Image */}
-              <div className="my-12 flex justify-center">
-                <img
-                  src="/dao-percent.png"
-                  alt="DAO Maturity Scale"
-                  className="max-w-full h-auto rounded-lg shadow-2xl border border-executive-gold/20"
-                  style={{ maxWidth: '800px' }}
-                />
-              </div>
-
-              {/* Phase 2 */}
-              <div className="bg-gradient-to-br from-executive-gold/5 to-transparent rounded-lg p-8 border border-executive-gold/20 opacity-90">
+              {/* Official DAO */}
+              <div className="bg-gradient-to-br from-executive-gold/10 to-executive-darkGray/50 rounded-lg p-8 border-2 border-executive-gold/50">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-serif text-executive-ivory">Phase 2: Real-World Integration</h3>
-                  <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">At 100% DAO</Badge>
+                  <h3 className="text-xl font-serif text-executive-gold">Official DAO</h3>
+                  <Badge className="bg-executive-gold/20 text-executive-goldLight border-executive-gold/30 text-xs">100% Mature</Badge>
                 </div>
-
-                {/* Transformation Visual */}
-                <div className="bg-executive-darkGray/30 rounded-lg p-6 mb-6">
-                  <div className="flex items-center justify-between gap-8">
-                    <div className="text-center">
-                      <div className="text-4xl mb-2">💬</div>
-                      <p className="text-xs text-executive-lightGray/60">Discord Group</p>
-                    </div>
-                    <div className="text-executive-gold text-2xl animate-pulse">━━━▶</div>
-                    <div className="flex gap-4">
-                      <div className="text-center">
-                        <div className="text-3xl">🏦</div>
-                        <p className="text-xs text-executive-lightGray/60">Bank</p>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-3xl">💳</div>
-                        <p className="text-xs text-executive-lightGray/60">Cards</p>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-3xl">📄</div>
-                        <p className="text-xs text-executive-lightGray/60">LLC</p>
-                      </div>
+                <p className="text-sm text-executive-lightGray/60 mb-6">
+                  Achieved through community participation
+                </p>
+                <div className="space-y-3">
+                  <div className="text-xs text-executive-gold/70 uppercase tracking-wider mb-2">Everything in Community DAO plus:</div>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-executive-gold mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-executive-ivory">Legal Entity (LLC)</span>
+                      <p className="text-xs text-executive-lightGray/50 mt-1">Real-world corporate structure</p>
                     </div>
                   </div>
-                  <div className="text-center mt-4 text-xs text-executive-gold/70 italic">
-                    From chat group to real corporation
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-executive-gold mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-executive-ivory">Corporate Banking</span>
+                      <p className="text-xs text-executive-lightGray/50 mt-1">Traditional finance integration</p>
+                    </div>
                   </div>
-                </div>
-
-                {/* Three Visual Cards */}
-                <div className="grid md:grid-cols-3 gap-6 mb-6">
-                  {/* Corporate Card */}
-                  <div className="bg-gradient-to-br from-executive-gold/20 to-executive-darkGray/50 rounded-lg p-6 text-center">
-                    <CreditCard className="w-12 h-12 text-executive-gold mb-3 mx-auto" />
-                    <h4 className="text-executive-ivory font-serif">Team Cards</h4>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-executive-gold mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-executive-ivory">Team Cards</span>
+                      <p className="text-xs text-executive-lightGray/50 mt-1">Physical cards for spending</p>
+                    </div>
                   </div>
-
-                  {/* Bank Account */}
-                  <div className="bg-gradient-to-br from-executive-gold/20 to-executive-darkGray/50 rounded-lg p-6 text-center">
-                    <Banknote className="w-12 h-12 text-executive-gold mb-3 mx-auto" />
-                    <h4 className="text-executive-ivory font-serif">Corporate Banking</h4>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-executive-gold mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-executive-ivory">IRS Compliant Payroll</span>
+                      <p className="text-xs text-executive-lightGray/50 mt-1">Legal salary payments in fiat</p>
+                    </div>
                   </div>
-
-                  {/* Legal Entity */}
-                  <div className="bg-gradient-to-br from-executive-gold/20 to-executive-darkGray/50 rounded-lg p-6 text-center">
-                    <Building2 className="w-12 h-12 text-executive-gold mb-3 mx-auto" />
-                    <h4 className="text-executive-ivory font-serif">Legal Entity</h4>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-executive-gold mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-executive-ivory">Investment Ready</span>
+                      <p className="text-xs text-executive-lightGray/50 mt-1">Accept VC and institutional funds</p>
+                    </div>
                   </div>
-                </div>
-
-                <div className="text-center">
-                  <p className="text-xs text-executive-lightGray/50 italic">
-                    Unlock at 100% DAO maturity
-                  </p>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-executive-gold mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-executive-ivory">Legal Protection</span>
+                      <p className="text-xs text-executive-lightGray/50 mt-1">Limited liability for members</p>
+                    </div>
+                  </div>
                 </div>
               </div>
+            </div>
+
+            {/* DAO Journey Visual - Hidden by default */}
+            <div className="mt-12 text-center">
+              <button
+                onClick={() => setShowMaturityImage(!showMaturityImage)}
+                className="text-executive-gold/70 hover:text-executive-gold text-sm underline decoration-dotted underline-offset-4 transition-colors"
+              >
+                {showMaturityImage ? 'Hide' : 'View'} DAO Maturity Journey →
+              </button>
+
+              {showMaturityImage && (
+                <div className="mt-8 flex justify-center animate-fade-in">
+                  <img
+                    src="/dao-percent.png"
+                    alt="DAO Maturity Scale"
+                    className="max-w-full h-auto rounded-lg shadow-2xl border border-executive-gold/20"
+                    style={{ maxWidth: '800px' }}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -513,6 +664,7 @@ function Homepage() {
         </div>
       </footer>
     </div>
+    </TooltipProvider>
   );
 }
 
