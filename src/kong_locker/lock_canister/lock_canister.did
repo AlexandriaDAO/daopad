@@ -8,6 +8,4 @@ service : (principal) -> {
   // Register with KongSwap if ICP is available
   // Anyone can call this - ICP requirement prevents spam
   register_if_funded : () -> (Result);
-  // Get the version of this lock canister code
-  version : () -> (text) query;
 }

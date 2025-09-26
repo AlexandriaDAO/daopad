@@ -128,6 +128,7 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
     if command -v candid-extractor &> /dev/null; then
         candid-extractor target/wasm32-unknown-unknown/release/kong_locker.wasm > src/kong_locker/kong_locker/kong_locker.did
         echo "✓ Candid interface extracted"
+        echo "NOTE: lock_canister.did is NOT auto-generated to preserve module hash"
     else
         echo "❌ ERROR: candid-extractor not found!"
         echo "Please install with: cargo install candid-extractor"
