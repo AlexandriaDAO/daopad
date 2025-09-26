@@ -19,3 +19,103 @@ Each NFT has:
 
 Can be stolen:
 - Battle (with money on the line)
+
+
+
+
+
+
+# Orbit
+
+-Dashboard
+--Requests (we have in governance)
+--Availible Assets (we have in treasury)
+-Accounts
+--Totally redundant imo except it adds CREATE ACCOUNT
+-Transfer Requests
+--has all the complex filtering which we have but should fix up.
+-Address book.
+--Simple but we should add. Just not as its own tab.
+-Canisters
+--Need all this from scratch.
+-Settings
+--Administration (need from scratch)
+--user (done)
+--user groups & permissions (need from scratch)
+--approval rules (need from scatch_)
+--requests (done)
+--Assets (done)
+
+
+
+We need 
+-CREATE ACCOUNT
+
+-CANISTERs
+-Settings. Need all this from scratch
+--user groups & permissions.
+--Approval Rules
+
+
+-Fix up for the transfer reqeusts.
+-Simple existing address book information.
+
+
+The ability to add an asset.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Main Pitch: 
+
+
+Fair Launch (Decentralized) = Great Invention
+- Groups can create a shared venture.
+
+Smart Contract (Autonomous) = Great Invention
+- Software becomes its own breathing entity. 
+
+LLC (Organization) = Great Invention
+- Individuals can start a venture with minimal personal risk.
+
+DAOs = Great Invention (unfullfilled)
+
+
+
+Problem: Today, all exist in isolation.
+
+Solution: Provide the rails to bring them all together.
+
+
+
+
+
+Phase 1 (availible for any token project team member):
+
+Current ICP Project Team Memebers:
+- You want treasury allocations to be allocated by group decisions.
+- You'd like to increase TVL
+- You'd like to add community participation.
+- You'd like to pay yourself a salary that is transparent and auditable.
+- You'd like autonomous canister management, backups and peace of mind.
+
+
+Phase 2 (availible for those who have migrated to true DAOs):
+- Transfer investment earnings into fiat expendatures.
+- Legal entity that can sign contracts, own property, and engange in buisiness.
+- The ability to get corporate bank accounts.
+- Team member credit cards.
+- Crypto/fiat onramp/offramp rails for your revenue/expenses model.
+- File taxes as a company instead of a crypto entity.

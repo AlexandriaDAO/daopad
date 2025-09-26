@@ -95,15 +95,18 @@
     analyticsError = '';
 
     try {
+      // First get the canister list
       canisterList = await analyticsService.getCanisterList();
+
+      // Calculate system stats - this loads all canister details and updates the cache
       systemStats = await analyticsService.calculateSystemStats(20);
 
       if (systemStats?.tokenBreakdown) {
         tokenBreakdown = systemStats.tokenBreakdown;
       }
 
-      // Preload popular canisters in background
-      analyticsService.preloadTopCanisters(10);
+      // Now refresh the canister list to get updated statuses from the cache
+      canisterList = await analyticsService.getCanisterList();
     } catch (err) {
       console.error('Failed to load analytics:', err);
       analyticsError = err instanceof Error ? err.message : 'Failed to load analytics data';
@@ -577,10 +580,13 @@
           <!-- Canister List Table -->
           <div class="bg-gray-900/30 border border-gray-800/40 rounded-xl p-6 space-y-4">
             <div class="flex items-center justify-between">
-              <h4 class="text-lg font-semibold text-kong-text-primary flex items-center">
-                <Users class="w-5 h-5 mr-2 text-kong-accent-blue" />
-                All Lock Canisters ({canisterList.length})
-              </h4>
+              <div>
+                <h4 class="text-lg font-semibold text-kong-text-primary flex items-center">
+                  <Users class="w-5 h-5 mr-2 text-kong-accent-blue" />
+                  All Lock Canisters ({canisterList.length})
+                </h4>
+                <p class="text-xs text-kong-text-secondary mt-1">Click any row to view detailed LP positions</p>
+              </div>
               <button
                 on:click={() => showCanisterTable = !showCanisterTable}
                 class="flex items-center gap-1 px-3 py-1 text-xs text-kong-text-secondary hover:text-kong-text-primary transition-colors"
@@ -602,18 +608,24 @@
                       <th class="text-left py-3 px-4 text-kong-text-secondary">User</th>
                       <th class="text-left py-3 px-4 text-kong-text-secondary">Lock Canister</th>
                       <th class="text-left py-3 px-4 text-kong-text-secondary">Status</th>
-                      <th class="text-left py-3 px-4 text-kong-text-secondary">Value</th>
-                      <th class="text-left py-3 px-4 text-kong-text-secondary">Action</th>
+                      <th class="text-left py-3 px-4 text-kong-text-secondary">Value ↓</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {#each canisterList as canister}
-                      <tr class="border-b border-kong-border/50 hover:bg-kong-bg-secondary/30 transition-colors">
+                    {#each canisterList.sort((a, b) => (b.cachedValue || 0) - (a.cachedValue || 0)) as canister}
+                      <tr
+                        class="border-b border-kong-border/50 hover:bg-kong-bg-secondary/30 transition-colors cursor-pointer"
+                        on:click={() => openCanisterDetails(canister)}
+                      >
                         <td class="py-3 px-4">
                           <div class="flex items-center space-x-2">
-                            <code class="text-kong-text-primary font-mono text-xs">{canister.userDisplay}</code>
-                            <button 
-                              on:click={() => copyPrincipal(canister.userPrincipal.toString(), `user-${canister.userPrincipal.toString()}`)}
+                            {#if canister.username}
+                              <span class="text-kong-text-primary text-sm font-medium">@{canister.username}</span>
+                            {:else}
+                              <code class="text-kong-text-primary font-mono text-xs">{canister.userDisplay}</code>
+                            {/if}
+                            <button
+                              on:click|stopPropagation={() => copyPrincipal(canister.userPrincipal.toString(), `user-${canister.userPrincipal.toString()}`)}
                               class="flex items-center justify-center w-6 h-6 text-xs text-kong-accent-green hover:bg-kong-accent-green/10 rounded transition-all duration-200"
                               title="Copy full principal"
                             >
@@ -628,8 +640,8 @@
                         <td class="py-3 px-4">
                           <div class="flex items-center space-x-2">
                             <code class="text-kong-text-primary font-mono text-xs">{canister.canisterDisplay}</code>
-                            <button 
-                              on:click={() => copyPrincipal(canister.lockCanister.toString(), `canister-${canister.lockCanister.toString()}`)}
+                            <button
+                              on:click|stopPropagation={() => copyPrincipal(canister.lockCanister.toString(), `canister-${canister.lockCanister.toString()}`)}
                               class="flex items-center justify-center w-6 h-6 text-xs text-kong-accent-green hover:bg-kong-accent-green/10 rounded transition-all duration-200"
                               title="Copy full principal"
                             >
@@ -653,15 +665,6 @@
                           {:else}
                             <span class="text-kong-text-secondary">—</span>
                           {/if}
-                        </td>
-                        <td class="py-3 px-4">
-                          <button
-                            on:click={() => openCanisterDetails(canister)}
-                            class="flex items-center space-x-1 px-3 py-1 bg-kong-accent-blue/20 text-kong-accent-blue border border-kong-accent-blue/30 rounded-md hover:bg-kong-accent-blue/30 transition-colors text-xs"
-                          >
-                            <Eye class="w-3 h-3" />
-                            <span>View</span>
-                          </button>
                         </td>
                       </tr>
                     {/each}

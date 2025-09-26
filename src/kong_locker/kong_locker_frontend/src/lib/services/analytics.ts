@@ -1,6 +1,7 @@
 import { HttpAgent, Actor } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
 import { kongSwapService, type LPReply } from './kongSwapDirect';
+import { alexandriaUsersService } from './alexandriaUsers';
 
 // Kong Locker canister ID
 const KONG_LOCKER_ID = 'eazgb-giaaa-aaaap-qqc2q-cai';
@@ -17,6 +18,7 @@ export interface CanisterListItem {
   lockCanister: Principal;
   userDisplay: string;        // Truncated for display
   canisterDisplay: string;    // Truncated for display
+  username?: string;          // Alexandria username if available
   status: 'unknown' | 'loading' | 'active' | 'empty' | 'error';
   lastQueried?: number;       // Timestamp when last checked
   cachedPositions?: LPReply[];
@@ -131,15 +133,23 @@ export class AnalyticsService {
   // Convert overview to display-friendly list
   async getCanisterList(): Promise<CanisterListItem[]> {
     const overview = await this.getAnalyticsOverview();
-    
+
+    // Extract all user principals
+    const userPrincipals = overview.participants.map(([user, _]) => user);
+
+    // Fetch usernames in parallel
+    const usernameMap = await alexandriaUsersService.getUsernames(userPrincipals);
+
     return overview.participants.map(([user, lockCanister]) => {
       const cached = this.cache.get(lockCanister.toText());
-      
+      const username = usernameMap.get(user.toText());
+
       return {
         userPrincipal: user,
         lockCanister: lockCanister,
         userDisplay: this.truncatePrincipal(user.toText()),
         canisterDisplay: this.truncatePrincipal(lockCanister.toText()),
+        username: username || undefined,
         status: cached ? 'active' : 'unknown',
         lastQueried: cached?.timestamp,
         cachedPositions: cached?.data,
