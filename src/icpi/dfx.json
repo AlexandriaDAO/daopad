@@ -1,0 +1,47 @@
+{
+  "canisters": {
+    "icpi_backend": {
+      "candid": "src/icpi_backend/icpi_backend.did",
+      "package": "icpi_backend",
+      "type": "rust",
+      "remote": {
+        "id": {
+          "ic": "ehyav-lqaaa-aaaap-qqc2a-cai"
+        }
+      }
+    },
+    "icpi_frontend": {
+      "dependencies": [
+        "icpi_backend"
+      ],
+      "source": [
+        "src/icpi_frontend/dist"
+      ],
+      "type": "assets",
+      "workspace": "icpi_frontend",
+      "remote": {
+        "id": {
+          "ic": "qhlmp-5aaaa-aaaam-qd4jq-cai"
+        }
+      }
+    },
+    "ICPI": {
+      "type": "custom",
+      "candid": "icrc1-ledger.did",
+      "wasm": "icrc1-ledger.wasm.gz",
+      "remote": {
+        "id": {
+          "ic": "es7ry-kyaaa-aaaap-qqczq-cai"
+        }
+      }
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

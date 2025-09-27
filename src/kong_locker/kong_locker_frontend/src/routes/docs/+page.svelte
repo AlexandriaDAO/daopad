@@ -44,6 +44,7 @@
     { id: 'query-functions', title: 'Query Functions', icon: '🔎' },
     { id: 'update-functions', title: 'Update Functions', icon: '✏️' },
     { id: 'kongswap-integration', title: 'KongSwap Direct Queries', icon: '🔗' },
+    { id: 'canister-verification', title: 'Lock Canister Verification', icon: '🔒' },
     { id: 'lp-position-demo', title: 'LP Position Breakdown Demo', icon: '🎮' },
     { id: 'types', title: 'Data Types', icon: '📊' },
     { id: 'examples', title: 'Integration Examples', icon: '💡' },
@@ -1623,6 +1624,138 @@ const totalLocked = await kongSwap.getTotalValueLocked(lockCanisters.map(c => c[
               </div>
             {/if}
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Lock Canister Verification Section -->
+    <section id="canister-verification" class="mb-12 bg-[#1a1b1f] rounded-2xl border border-gray-800">
+      <!-- Sticky Section Header -->
+      <div class="sticky top-0 z-10 bg-[#1a1b1f] rounded-t-2xl p-6 border-b border-gray-800">
+        <h2 class="text-3xl font-bold text-white flex items-center gap-3">
+          <span class="text-2xl">🔒</span>
+          <span>Lock Canister Verification</span>
+          <span class="text-sm font-normal text-gray-400 ml-auto">Verify authenticity before sending LP tokens</span>
+        </h2>
+      </div>
+      <div class="p-8 pt-6">
+
+        <!-- Critical Warning -->
+        <div class="mb-6 bg-red-900/20 border border-red-600 rounded-lg p-4">
+          <div class="flex items-start gap-3">
+            <span class="text-2xl">⚠️</span>
+            <div>
+              <h3 class="text-lg font-bold text-red-400 mb-2">CRITICAL: Always Verify Before Sending Tokens</h3>
+              <p class="text-red-200 text-sm">
+                Never trust a canister claiming to be a Kong Locker without verification.
+                Always check the module hash before sending LP tokens. Tokens sent to unverified canisters may be lost forever.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expected Module Hash -->
+        <div class="mb-6 bg-green-900/20 border border-green-600 rounded-lg p-6">
+          <h3 class="text-xl font-bold text-green-400 mb-3">✅ Expected Module Hash</h3>
+          <p class="text-green-200 mb-3">All legitimate Kong Locker lock canisters have this exact module hash:</p>
+          <div class="bg-black/50 rounded-lg p-4 font-mono text-sm text-green-300 break-all">
+            0x8a4e009fbb6fa0aa5b92cc3fa623cc9d2fea1a0c7ca679a7d589fe1fa96b37f4
+          </div>
+        </div>
+
+        <!-- Quick Verification -->
+        <div class="mb-6 bg-gray-900/50 rounded-lg border border-gray-700 p-6">
+          <h3 class="text-xl font-bold text-white mb-4">🔍 Quick Verification</h3>
+
+          <div class="mb-4">
+            <h4 class="text-base font-semibold text-gray-300 mb-2">Check any lock canister's module hash:</h4>
+            <pre class="bg-black rounded-lg p-4 overflow-x-auto text-sm">
+<code class="text-gray-300"><span class="text-gray-500"># Check your lock canister's module hash</span>
+<span class="text-green-400">dfx</span> canister <span class="text-blue-400">--network</span> ic info <span class="text-yellow-400">YOUR-CANISTER-ID</span>
+
+<span class="text-gray-500"># Expected output:</span>
+Controllers:                    <span class="text-gray-500"># Should be empty (blackholed)</span>
+Module hash: <span class="text-green-400">0x8a4e009f...</span>      <span class="text-gray-500"># Should match hash above</span></code></pre>
+          </div>
+        </div>
+
+        <!-- Verify Against GitHub Source -->
+        <div class="mb-6 bg-gray-900/50 rounded-lg border border-gray-700 p-6">
+          <h3 class="text-xl font-bold text-white mb-4">🛠️ Verify Against GitHub Source</h3>
+          <p class="text-gray-300 mb-4">Build from source to confirm the hash matches:</p>
+
+          <pre class="bg-black rounded-lg p-4 overflow-x-auto text-sm mb-4">
+<code class="text-gray-300"><span class="text-gray-500"># Clone and build from GitHub</span>
+<span class="text-green-400">git</span> clone https://github.com/AlexandriaDAO/daopad.git
+<span class="text-green-400">cd</span> daopad
+<span class="text-green-400">cargo</span> build <span class="text-blue-400">--target</span> wasm32-unknown-unknown <span class="text-blue-400">--release</span> \
+  <span class="text-blue-400">-p</span> lock_canister <span class="text-blue-400">--locked</span>
+
+<span class="text-gray-500"># Check the SHA256 hash</span>
+<span class="text-green-400">sha256sum</span> target/wasm32-unknown-unknown/release/lock_canister.wasm
+
+<span class="text-gray-500"># Expected: 8a4e009fbb6fa0aa5b92cc3fa623cc9d2fea1a0c7ca679a7d589fe1fa96b37f4</span></code></pre>
+        </div>
+
+        <!-- Security Guarantees -->
+        <div class="mb-6">
+          <h3 class="text-xl font-bold text-white mb-4">🛡️ Security Guarantees</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div class="bg-blue-900/20 border border-blue-600 rounded-lg p-4 text-center">
+              <div class="text-2xl mb-2">📖</div>
+              <h4 class="font-bold text-blue-400 text-sm mb-1">Open Source</h4>
+              <p class="text-xs text-gray-400">Runs exact GitHub code</p>
+            </div>
+            <div class="bg-purple-900/20 border border-purple-600 rounded-lg p-4 text-center">
+              <div class="text-2xl mb-2">🔒</div>
+              <h4 class="font-bold text-purple-400 text-sm mb-1">Immutable</h4>
+              <p class="text-xs text-gray-400">Blackholed, no changes</p>
+            </div>
+            <div class="bg-red-900/20 border border-red-600 rounded-lg p-4 text-center">
+              <div class="text-2xl mb-2">🚫</div>
+              <h4 class="font-bold text-red-400 text-sm mb-1">No Backdoors</h4>
+              <p class="text-xs text-gray-400">No unlock functions</p>
+            </div>
+            <div class="bg-yellow-900/20 border border-yellow-600 rounded-lg p-4 text-center">
+              <div class="text-2xl mb-2">♾️</div>
+              <h4 class="font-bold text-yellow-400 text-sm mb-1">Permanent</h4>
+              <p class="text-xs text-gray-400">Tokens locked forever</p>
+            </div>
+            <div class="bg-green-900/20 border border-green-600 rounded-lg p-4 text-center">
+              <div class="text-2xl mb-2">✅</div>
+              <h4 class="font-bold text-green-400 text-sm mb-1">Verifiable</h4>
+              <p class="text-xs text-gray-400">Hash proves integrity</p>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- Red Flags -->
+        <div class="bg-red-900/20 border border-red-600 rounded-lg p-6">
+          <h3 class="text-xl font-bold text-red-400 mb-4">⚠️ Red Flags to Watch For</h3>
+          <p class="text-red-200 mb-3">Never interact with a lock canister that:</p>
+          <ul class="space-y-2 text-red-200">
+            <li class="flex items-start gap-2">
+              <span class="text-red-400">•</span>
+              <span>Has a different module hash than expected</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-red-400">•</span>
+              <span>Still has controllers (not blackholed)</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-red-400">•</span>
+              <span>Claims to have unlock functionality</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-red-400">•</span>
+              <span>Asks for permissions beyond receiving tokens</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-red-400">•</span>
+              <span>Was not created through the official Kong Locker factory</span>
+            </li>
+          </ul>
         </div>
       </div>
     </section>
