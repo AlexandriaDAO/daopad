@@ -3,12 +3,7 @@
     "icpi_backend": {
       "candid": "src/icpi_backend/icpi_backend.did",
       "package": "icpi_backend",
-      "type": "rust",
-      "remote": {
-        "id": {
-          "ic": "ehyav-lqaaa-aaaap-qqc2a-cai"
-        }
-      }
+      "type": "rust"
     },
     "icpi_frontend": {
       "dependencies": [
@@ -18,22 +13,12 @@
         "src/icpi_frontend/dist"
       ],
       "type": "assets",
-      "workspace": "icpi_frontend",
-      "remote": {
-        "id": {
-          "ic": "qhlmp-5aaaa-aaaam-qd4jq-cai"
-        }
-      }
+      "workspace": "icpi_frontend"
     },
     "ICPI": {
       "type": "custom",
       "candid": "icrc1-ledger.did",
-      "wasm": "icrc1-ledger.wasm.gz",
-      "remote": {
-        "id": {
-          "ic": "es7ry-kyaaa-aaaap-qqczq-cai"
-        }
-      }
+      "wasm": "icrc1-ledger.wasm.gz"
     }
   },
   "defaults": {

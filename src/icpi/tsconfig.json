@@ -6,6 +6,11 @@
         "strictPropertyInitialization": false,
         "moduleResolution": "node",
         "allowJs": true,
-        "outDir": "HACK_BECAUSE_OF_ALLOW_JS"
+        "outDir": "HACK_BECAUSE_OF_ALLOW_JS",
+        "jsx": "react-jsx",
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["src/icpi_frontend/src/*"]
+        }
     }
 }

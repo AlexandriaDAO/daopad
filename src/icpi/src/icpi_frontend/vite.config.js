@@ -10,6 +10,20 @@ dotenv.config({ path: '../../.env' });
 export default defineConfig({
   build: {
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'ui-vendor': ['@radix-ui/react-alert-dialog', '@radix-ui/react-slot', '@radix-ui/react-tabs', '@radix-ui/react-tooltip', '@radix-ui/react-switch', '@radix-ui/react-progress', '@radix-ui/react-separator', '@radix-ui/react-scroll-area'],
+          'chart-vendor': ['recharts'],
+          'query-vendor': ['@tanstack/react-query', '@tanstack/react-virtual'],
+          'dfinity': ['@dfinity/agent', '@dfinity/auth-client', '@dfinity/principal'],
+        },
+      },
+    },
+    minify: 'terser',
+    sourcemap: false,
+    chunkSizeWarningLimit: 1000,
   },
   optimizeDeps: {
     esbuildOptions: {
@@ -17,6 +31,7 @@ export default defineConfig({
         global: "globalThis",
       },
     },
+    include: ['react', 'react-dom', 'recharts'],
   },
   server: {
     proxy: {
@@ -41,6 +56,12 @@ export default defineConfig({
         find: "declarations",
         replacement: fileURLToPath(
           new URL("../declarations", import.meta.url)
+        ),
+      },
+      {
+        find: "@",
+        replacement: fileURLToPath(
+          new URL("./src", import.meta.url)
         ),
       },
     ],

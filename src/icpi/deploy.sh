@@ -294,7 +294,7 @@ if [ -n "$CANISTERS_TO_DEPLOY" ]; then
             echo ""
             print_info "Backend Canister (Candid UI):"
             if [ "$NETWORK" = "ic" ]; then
-                echo "  🔧 https://a4gq6-oaaaa-aaaah-qaa3q-cai.raw.icp0.io/?id=ehyav-lqaaa-aaaap-qqc2a-cai"
+                echo "  🔧 https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=ehyav-lqaaa-aaaap-qqc2a-cai"
             else
                 echo "  🔧 http://127.0.0.1:4943/?canisterId=$CANDID_UI&id=ehyav-lqaaa-aaaap-qqc2a-cai"
             fi
@@ -305,7 +305,7 @@ if [ -n "$CANISTERS_TO_DEPLOY" ]; then
             echo ""
             print_info "ICPI Token Canister (Candid UI):"
             if [ "$NETWORK" = "ic" ]; then
-                echo "  💰 https://a4gq6-oaaaa-aaaah-qaa3q-cai.raw.icp0.io/?id=es7ry-kyaaa-aaaap-qqczq-cai"
+                echo "  💰 https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=es7ry-kyaaa-aaaap-qqczq-cai"
             else
                 echo "  💰 http://127.0.0.1:4943/?canisterId=$CANDID_UI&id=es7ry-kyaaa-aaaap-qqczq-cai"
             fi
