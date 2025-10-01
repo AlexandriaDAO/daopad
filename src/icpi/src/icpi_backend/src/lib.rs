@@ -7,8 +7,13 @@ mod balance_tracker;
 mod index_state;
 mod rebalancer;
 mod icpi_math;
+mod icrc_types;
+mod precision;
+mod icpi_token;
+mod minting;
+mod burning;
 
-use types::{IndexState, HealthStatus, RebalanceAction};
+use types::{IndexState, HealthStatus, RebalanceAction, TrackedToken};
 use rebalancer::{RebalancerStatus, start_rebalancing};
 use candid::Principal;
 
@@ -18,6 +23,9 @@ fn init() {
     ic_cdk::println!("ICPI Backend initialized");
     // Start the hourly rebalancing timer
     start_rebalancing();
+    // Start cleanup timers for mint/burn operations
+    minting::start_cleanup_timer();
+    burning::start_cleanup_timer();
 }
 
 // Post-upgrade hook
@@ -26,6 +34,9 @@ fn post_upgrade() {
     ic_cdk::println!("ICPI Backend upgraded");
     // Restart the hourly rebalancing timer
     start_rebalancing();
+    // Restart cleanup timers
+    minting::start_cleanup_timer();
+    burning::start_cleanup_timer();
 }
 
 // ===== Public Query Endpoints =====
@@ -35,6 +46,18 @@ fn post_upgrade() {
 async fn get_index_state() -> Result<IndexState, String> {
     ic_cdk::println!("Getting index state...");
     index_state::get_index_state().await
+}
+
+// Simple test endpoint that doesn't make inter-canister calls
+#[ic_cdk::query]
+fn get_simple_test() -> String {
+    format!("Backend is responding at {}", ic_cdk::api::time())
+}
+
+// Test update call (to isolate issue)
+#[ic_cdk::update]
+fn test_simple_update() -> String {
+    format!("Update call succeeded at {}", ic_cdk::api::time())
 }
 
 // Get rebalancing recommendation
@@ -118,7 +141,7 @@ fn start_rebalancing_timer() -> String {
 fn get_health_status() -> HealthStatus {
     HealthStatus {
         version: "1.0.0".to_string(),
-        tracked_tokens: vec!["ALEX".to_string(), "ZERO".to_string(), "KONG".to_string(), "BOB".to_string()],
+        tracked_tokens: TrackedToken::all().iter().map(|t| t.to_symbol().to_string()).collect(),
         last_rebalance: rebalancer::get_last_rebalance_time(),
         cycles_balance: ic_cdk::api::canister_balance128(),
     }
@@ -169,6 +192,29 @@ fn get_cache_stats() -> String {
     )
 }
 
+// Get tracked tokens list
+#[ic_cdk::query]
+fn get_tracked_tokens() -> Vec<String> {
+    TrackedToken::all().iter().map(|t| t.to_symbol().to_string()).collect()
+}
+
+// Get token metadata for frontend balance queries
+#[ic_cdk::query]
+fn get_token_metadata() -> Result<Vec<types::TokenMetadata>, String> {
+
+    let tokens: Vec<types::TokenMetadata> = TrackedToken::all()
+        .iter()
+        .map(|token| {
+            Ok(types::TokenMetadata {
+                symbol: token.to_symbol().to_string(),
+                canister_id: token.get_canister_id()?,
+                decimals: token.get_decimals(),
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(tokens)
+}
+
 // ===== Utility Functions =====
 
 // Get canister ID
@@ -187,4 +233,47 @@ fn get_cycles_balance() -> u128 {
 #[ic_cdk::query]
 fn greet(name: String) -> String {
     format!("Hello, {}! Welcome to ICPI.", name)
+}
+
+// ===== ICRC1 Token Endpoints =====
+
+// Re-export ICRC1 methods
+pub use icpi_token::{
+    icrc1_name, icrc1_symbol, icrc1_decimals, icrc1_total_supply,
+    icrc1_balance_of, icrc1_fee, icrc1_metadata, icrc1_supported_standards,
+    get_all_balances,
+};
+
+// ===== Minting Endpoints =====
+
+#[ic_cdk::update]
+async fn initiate_mint(ckusdt_amount: candid::Nat) -> Result<String, String> {
+    minting::initiate_mint(ckusdt_amount).await
+}
+
+#[ic_cdk::update]
+async fn complete_mint(mint_id: String) -> Result<candid::Nat, String> {
+    minting::complete_mint(mint_id).await
+}
+
+#[ic_cdk::query]
+fn check_mint_status(mint_id: String) -> Result<minting::MintStatus, String> {
+    minting::check_mint_status(mint_id)
+}
+
+// ===== Burning Endpoints =====
+
+#[ic_cdk::update]
+async fn initiate_burn(icpi_amount: candid::Nat) -> Result<String, String> {
+    burning::initiate_burn(icpi_amount).await
+}
+
+#[ic_cdk::update]
+async fn complete_burn(burn_id: String) -> Result<burning::BurnResult, String> {
+    burning::complete_burn(burn_id).await
+}
+
+#[ic_cdk::query]
+fn check_burn_status(burn_id: String) -> Result<burning::BurnStatus, String> {
+    burning::check_burn_status(burn_id)
 }

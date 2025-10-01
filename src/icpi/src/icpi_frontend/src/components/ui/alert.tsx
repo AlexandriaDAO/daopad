@@ -3,17 +3,19 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const alertVariants = cva(
-  "relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground",
+  "relative w-full p-3 border-l-4 border-y border-r flex items-start gap-3 [&>svg]:w-5 [&>svg]:h-5 [&>svg]:flex-shrink-0 [&>svg]:mt-0.5",
   {
     variants: {
       variant: {
-        default: "bg-background text-foreground",
+        default: "border-l-[#00FF41] border-y-[#00FF4160] border-r-[#00FF4160] bg-[#00FF4120] [&>svg]:text-[#00FF41]",
         destructive:
-          "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
+          "border-l-[#FF0055] border-y-[#FF005540] border-r-[#FF005540] bg-[#FF005520] [&>svg]:text-[#FF0055]",
         success:
-          "border-success/50 bg-success/5 text-success dark:border-success [&>svg]:text-success",
+          "border-l-[#00FF41] border-y-[#00FF4160] border-r-[#00FF4160] bg-[#00FF4120] [&>svg]:text-[#00FF41]",
         warning:
-          "border-warning/50 bg-warning/5 text-warning dark:border-warning [&>svg]:text-warning",
+          "border-l-[#FFE600] border-y-[#FFE60040] border-r-[#FFE60040] bg-[#FFE60020] [&>svg]:text-[#FFE600]",
+        info:
+          "border-l-[#00D9FF] border-y-[#00D9FF40] border-r-[#00D9FF40] bg-[#00D9FF20] [&>svg]:text-[#00D9FF]",
       },
     },
     defaultVariants: {
@@ -41,7 +43,7 @@ const AlertTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <h5
     ref={ref}
-    className={cn("mb-1 font-medium leading-none tracking-tight", className)}
+    className={cn("text-white text-sm font-sans font-semibold", className)}
     {...props}
   />
 ))
@@ -53,7 +55,7 @@ const AlertDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("text-sm [&_p]:leading-relaxed", className)}
+    className={cn("text-[#999999] text-xs font-sans leading-relaxed", className)}
     {...props}
   />
 ))

@@ -64,4 +64,10 @@ Development workflow - always deploy and test on mainnet:
 - After implementing features, deploy with: `./deploy.sh --network ic`
 - Test all functions directly on mainnet using dfx commands
 - No need for local testing - we're experimenting with small amounts
-- This enables real integration testing with kong_locker and Kongswap 
+- This enables real integration testing with kong_locker and Kongswap
+
+Debugging principles:
+- Candid .did files must match Rust structs exactly (field names, types) - test with `dfx canister call --network ic` to catch deserialization errors before deploying frontend
+- Frontend must unwrap Result types: `if ('Ok' in result) { const data = result.Ok }` - never access fields on the Result wrapper directly
+- Parallelize independent inter-canister calls with `futures::future::join_all` - never await in loops
+- When debugging hangs/failures, add logging at each step to isolate the exact failure point instead of guessing

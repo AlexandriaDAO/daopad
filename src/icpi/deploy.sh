@@ -215,13 +215,16 @@ if [ "$DEPLOY_TOKEN" = true ]; then
     # Convert SVG logo to base64
     TOKEN_LOGO=$(base64 -w 0 token-logo.svg 2>/dev/null || base64 token-logo.svg)
 
-    # Deploy token with initialization arguments for cycles-ledger format
+    # Deploy token with initialization arguments for ICRC1 ledger format
     dfx deploy ICPI $DEPLOY_ARGS --argument "(variant { Init =
     record {
+         minting_account = record { owner = principal \"ehyav-lqaaa-aaaap-qqc2a-cai\"; subaccount = null };
+         fee_collector_account = null;
+         transfer_fee = 10_000;
+         decimals = opt 8;
+         max_memo_length = opt 32;
          token_symbol = \"ICPI\";
          token_name = \"Internet Computer Portfolio Index\";
-         minting_account = record { owner = principal \"ehyav-lqaaa-aaaap-qqc2a-cai\" };
-         transfer_fee = 10_000;
          metadata = vec {
             record { \"icrc1:symbol\"; variant { Text = \"ICPI\" } };
             record { \"icrc1:name\"; variant { Text = \"Internet Computer Portfolio Index\" } };
@@ -231,20 +234,19 @@ if [ "$DEPLOY_TOKEN" = true ]; then
             record { \"icrc1:logo\"; variant { Text = \"data:image/svg+xml;base64,${TOKEN_LOGO}\" } };
          };
          initial_balances = vec {};
-         archive_options = record {
-             num_blocks_to_archive = 3000;
-             trigger_threshold = 6000;
-             max_blocks_per_request = 100;
-             controller_id = principal \"ehyav-lqaaa-aaaap-qqc2a-cai\";
-             cycles_for_archive_creation = opt 10000000000000;
-         };
          feature_flags = opt record {
             icrc2 = true;
-            icrc3 = true;
          };
-         maximum_number_of_accounts = opt 10_000_000;
-         accounts_overflow_trim_quantity = opt 100_000;
-         max_memo_length = opt 32;
+         archive_options = record {
+             num_blocks_to_archive = 1000;
+             trigger_threshold = 2000;
+             max_message_size_bytes = null;
+             controller_id = principal \"ehyav-lqaaa-aaaap-qqc2a-cai\";
+             more_controller_ids = null;
+             cycles_for_archive_creation = null;
+             node_max_memory_size_bytes = null;
+             max_transactions_per_response = null;
+         };
      }
     })"
 

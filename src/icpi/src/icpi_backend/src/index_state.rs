@@ -228,12 +228,7 @@ pub fn validate_index_state(state: &IndexState) -> Result<(), String> {
     }
 
     // Verify all tracked tokens are present
-    let required_tokens = vec![
-        TrackedToken::ALEX,
-        TrackedToken::ZERO,
-        TrackedToken::KONG,
-        TrackedToken::BOB,
-    ];
+    let required_tokens = TrackedToken::all_vec();
 
     for token in required_tokens {
         if !state.target_allocations.iter().any(|t| t.token == token) {

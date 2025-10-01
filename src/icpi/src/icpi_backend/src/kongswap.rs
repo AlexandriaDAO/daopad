@@ -3,7 +3,8 @@ use ic_cdk::api::call::CallResult;
 use crate::types::{
     KONGSWAP_BACKEND_ID, validate_principal,
     LPBalancesReply, UserBalancesReply, UserBalancesResult,
-    SwapAmountsReply, SwapAmountsResult, TrackedToken
+    SwapAmountsReply, SwapAmountsResult, TrackedToken,
+    SwapArgs, SwapReply, TxId
 };
 use rust_decimal::Decimal;
 use std::str::FromStr;
@@ -109,38 +110,94 @@ pub async fn execute_swap(
     pay_amount: Nat,
     receive_symbol: String,
     max_slippage: Option<f64>,
-) -> Result<SwapAmountsReply, String> {
+) -> Result<SwapReply, String> {
     let kongswap = validate_principal(KONGSWAP_BACKEND_ID)?;
 
     ic_cdk::println!("Executing swap: {} {} -> {}", pay_amount, pay_symbol, receive_symbol);
 
-    // First get the swap quote
+    // Step 1: Get quote to verify swap is viable
     let quote_result: CallResult<(SwapAmountsResult,)> =
         ic_cdk::call(kongswap, "swap_amounts",
             (pay_symbol.clone(), pay_amount.clone(), receive_symbol.clone())).await;
 
-    match quote_result {
-        Ok((SwapAmountsResult::Ok(quote),)) => {
-            // Check slippage if specified
-            if let Some(max_slip) = max_slippage {
-                if quote.slippage > max_slip {
-                    return Err(format!("Slippage {} exceeds max {}", quote.slippage, max_slip));
-                }
+    let quote = match quote_result {
+        Ok((SwapAmountsResult::Ok(q),)) => q,
+        Ok((SwapAmountsResult::Err(e),)) => {
+            return Err(format!("Swap quote error: {}", e));
+        },
+        Err((code, msg)) => {
+            return Err(format!("Swap quote call failed: {:?} - {}", code, msg));
+        }
+    };
+
+    // Step 2: Check slippage
+    let actual_slippage = quote.slippage;
+    let max_slip = max_slippage.unwrap_or(2.0); // Default 2% max slippage
+
+    if actual_slippage > max_slip {
+        return Err(format!("Slippage {:.2}% exceeds max {:.2}%",
+            actual_slippage, max_slip));
+    }
+
+    ic_cdk::println!("Quote OK: slippage={:.2}%, price={}",
+        actual_slippage, quote.price);
+
+    // Step 3: Determine if we need approval (for non-ICP tokens)
+    let needs_approval = pay_symbol != "ICP";
+
+    if needs_approval {
+        // Get token canister ID for approval
+        let pay_token = TrackedToken::from_symbol(&pay_symbol)?;
+        let pay_token_canister = pay_token.get_canister_id()?;
+
+        // Step 4: Approve Kongswap to spend tokens
+        ic_cdk::println!("Approving Kongswap to spend {} {}", pay_amount, pay_symbol);
+
+        // Include gas fee in the approval amount
+        let gas_fee = Nat::from(10000u64); // Standard gas fee
+        let total_amount = pay_amount.clone() + gas_fee;
+
+        crate::icrc_types::approve_kongswap_spending(pay_token_canister, total_amount).await
+            .map_err(|e| format!("Approval failed: {}", e))?;
+    }
+
+    // Step 5: Execute the swap
+    let swap_args = SwapArgs {
+        pay_token: pay_symbol.clone(),
+        pay_amount: pay_amount.clone(),
+        pay_tx_id: None,  // Use ICRC2 flow (approve + transfer_from)
+        receive_token: receive_symbol.clone(),
+        receive_amount: None,  // Let Kongswap calculate based on current price
+        receive_address: None,  // Send to caller (ICPI canister)
+        max_slippage: Some(max_slip),
+        referred_by: None,
+    };
+
+    ic_cdk::println!("Calling Kongswap swap method...");
+    let swap_result: CallResult<(Result<SwapReply, String>,)> =
+        ic_cdk::call(kongswap, "swap", (swap_args,)).await;
+
+    match swap_result {
+        Ok((Ok(reply),)) => {
+            ic_cdk::println!("Swap successful!");
+            ic_cdk::println!("  TX ID: {}", reply.tx_id);
+            ic_cdk::println!("  Paid: {} {}", reply.pay_amount, reply.pay_symbol);
+            ic_cdk::println!("  Received: {} {}", reply.receive_amount, reply.receive_symbol);
+            ic_cdk::println!("  Price: {}, Slippage: {:.2}%", reply.price, reply.slippage);
+            ic_cdk::println!("  Status: {}", reply.status);
+
+            // Verify the swap completed
+            if reply.status != "SUCCESS" && reply.status != "PENDING" {
+                return Err(format!("Swap status not successful: {}", reply.status));
             }
 
-            // TODO: Execute the actual swap
-            // For now, return the quote as the swap would use a different method
-            ic_cdk::println!("Swap quote successful: {} {} for {} {}",
-                quote.pay_amount, quote.pay_symbol,
-                quote.receive_amount, quote.receive_symbol);
-
-            Ok(quote)
+            Ok(reply)
         },
-        Ok((SwapAmountsResult::Err(e),)) => {
-            Err(format!("Swap quote error: {}", e))
+        Ok((Err(e),)) => {
+            Err(format!("Swap failed: {}", e))
         },
-        Err(e) => {
-            Err(format!("Swap call failed: {:?}", e))
+        Err((code, msg)) => {
+            Err(format!("Swap call failed: {:?} - {}", code, msg))
         }
     }
 }

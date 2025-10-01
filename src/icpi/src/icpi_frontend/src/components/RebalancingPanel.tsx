@@ -54,7 +54,7 @@ const CountdownTimer: React.FC<{ targetTime: Date }> = ({ targetTime }) => {
     return () => clearInterval(timer)
   }, [targetTime])
 
-  return <span className="font-mono text-primary">{timeLeft}</span>
+  return <span className="font-mono text-[#00FF41]">{timeLeft}</span>
 }
 
 const RebalanceHistoryItem: React.FC<RebalanceHistoryItem> = ({
@@ -114,84 +114,82 @@ export const RebalancingPanel: React.FC<RebalancingPanelProps> = ({
   autoRebalanceEnabled,
 }) => {
   return (
-    <Card className="glass-effect">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>Rebalancing Engine</span>
+    <Card className="border-[#1f1f1f]">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center justify-between">
+          <span>REBALANCING</span>
           <Switch
             checked={autoRebalanceEnabled}
             onCheckedChange={onToggleAutoRebalance}
-            className="data-[state=checked]:bg-primary"
           />
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="p-3 space-y-2">
         {nextAction && (
-          <Alert className="border-primary/20 bg-primary/5">
-            <Activity className="h-4 w-4" />
-            <AlertTitle>Next Rebalance Action</AlertTitle>
-            <AlertDescription>
-              <div className="mt-2 space-y-1">
-                <div className="flex justify-between">
-                  <span>Action:</span>
-                  <Badge variant={nextAction.type === 'buy' ? 'success' : 'warning'}>
-                    {nextAction.type.toUpperCase()} {nextAction.token}
-                  </Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span>Amount:</span>
-                  <span className="font-mono">{nextAction.usdtAmount.toFixed(2)} ckUSDT</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Executes in:</span>
-                  <CountdownTimer targetTime={nextRebalance} />
-                </div>
-              </div>
-            </AlertDescription>
-          </Alert>
+          <div className="p-2 border-l-4 border-l-[#00FF41] border-y border-r border-[#00FF4160] bg-[#00FF4120] space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-[#666666]">ACTION</span>
+              <Badge variant={nextAction.type === 'buy' ? 'success' : 'warning'} className="text-[10px] px-1 py-0">
+                {nextAction.type.toUpperCase()} {nextAction.token}
+              </Badge>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-[#666666]">AMOUNT</span>
+              <span className="font-mono text-white">{nextAction.usdtAmount.toFixed(2)} USDT</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-[#666666]">NEXT</span>
+              <CountdownTimer targetTime={nextRebalance} />
+            </div>
+          </div>
         )}
 
-        <div className="flex gap-2">
-          <Button
-            variant="default"
-            className="flex-1 bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-500/90"
-            onClick={onManualRebalance}
-            disabled={isRebalancing}
-          >
-            {isRebalancing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Rebalancing...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Execute Now
-              </>
-            )}
-          </Button>
-          <Button variant="outline" size="icon">
-            <Info className="h-4 w-4" />
-          </Button>
-        </div>
+        <Button
+          variant="primary"
+          size="sm"
+          className="w-full"
+          onClick={onManualRebalance}
+          disabled={isRebalancing}
+        >
+          {isRebalancing ? (
+            <>
+              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+              Rebalancing...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="mr-2 h-3 w-3" />
+              EXECUTE NOW
+            </>
+          )}
+        </Button>
 
-        <Separator className="my-4" />
-        
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium">Recent Activity</h4>
-          <ScrollArea className="h-[200px] pr-4">
+        <Separator />
+
+        <div className="space-y-1">
+          <h4 className="text-[10px] text-[#666666] uppercase">Recent Activity</h4>
+          <div className="space-y-1 max-h-[150px] overflow-y-auto">
             {rebalanceHistory.length > 0 ? (
-              <div className="space-y-2">
-                {rebalanceHistory.map((item, idx) => (
-                  <RebalanceHistoryItem key={idx} {...item} />
-                ))}
-              </div>
+              rebalanceHistory.slice(0, 5).map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between py-1 text-xs border-b border-[#1f1f1f] last:border-0">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-1.5 h-1.5 ${
+                      item.status === 'success' ? 'bg-[#00FF41]' : 'bg-[#FF0055]'
+                    }`} />
+                    <span className="text-[#999999]">{item.action.type.toUpperCase()}</span>
+                    <span className="text-white font-sans">{item.action.token}</span>
+                  </div>
+                  <span className="text-[#666666] font-mono text-[10px]">
+                    {new Date(item.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+              ))
             ) : (
-              <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-                No rebalancing activity yet
+              <div className="text-[10px] text-[#666666] py-2 text-center">
+                No activity yet
               </div>
             )}
-          </ScrollArea>
+          </div>
         </div>
       </CardContent>
     </Card>

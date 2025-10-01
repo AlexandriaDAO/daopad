@@ -7,6 +7,7 @@ use crate::types::{
 use crate::kongswap::get_token_price_in_usdt;
 use rust_decimal::Decimal;
 use std::str::FromStr;
+use futures::future;
 
 // Query token balance using ICRC1 standard
 pub async fn get_token_balance(token: &TrackedToken) -> Result<Nat, String> {
@@ -64,25 +65,41 @@ pub async fn get_ckusdt_balance() -> Result<Nat, String> {
 
 // Get all current balances with USD values
 pub async fn get_current_positions() -> Result<Vec<CurrentPosition>, String> {
+    let tokens = TrackedToken::all();
+
+    // Launch all balance and price queries in parallel
+    let balance_futures: Vec<_> = tokens.iter()
+        .map(|token| get_token_balance(token))
+        .collect();
+
+    let price_futures: Vec<_> = tokens.iter()
+        .map(|token| get_token_price_in_usdt(token))
+        .collect();
+
+    // Await all balance queries in parallel
+    let balances = futures::future::join_all(balance_futures).await;
+
+    // Await all price queries in parallel
+    let prices = futures::future::join_all(price_futures).await;
+
+    // Process results
     let mut positions = Vec::new();
     let mut total_value = Decimal::ZERO;
 
-    // Query balances sequentially (Principle 2)
-    for token in [TrackedToken::ALEX, TrackedToken::ZERO,
-                  TrackedToken::KONG, TrackedToken::BOB].iter() {
-        let balance = match get_token_balance(token).await {
-            Ok(bal) => bal,
+    for (i, token) in tokens.iter().enumerate() {
+        let balance = match &balances[i] {
+            Ok(bal) => bal.clone(),
             Err(e) => {
                 ic_cdk::println!("Error getting balance for {:?}: {}", token, e);
-                Nat::from(0u64) // Use zero if balance query fails
+                Nat::from(0u64)
             }
         };
 
-        let price = match get_token_price_in_usdt(token).await {
-            Ok(p) => p,
+        let price = match &prices[i] {
+            Ok(p) => *p,
             Err(e) => {
                 ic_cdk::println!("Error getting price for {:?}: {}", token, e);
-                Decimal::ZERO // Use zero price if query fails
+                Decimal::ZERO
             }
         };
 

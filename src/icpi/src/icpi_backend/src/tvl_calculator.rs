@@ -4,6 +4,7 @@ use crate::types::{TrackedToken, LPBalancesReply, decimal_to_f64, f64_to_decimal
 use rust_decimal::Decimal;
 use std::collections::HashMap;
 use std::str::FromStr;
+use futures::future;
 
 // Calculate total locked TVL for tracked tokens
 pub async fn calculate_locked_tvl() -> Result<HashMap<TrackedToken, Decimal>, String> {
@@ -11,19 +12,25 @@ pub async fn calculate_locked_tvl() -> Result<HashMap<TrackedToken, Decimal>, St
     let mut tvl_by_token: HashMap<TrackedToken, Decimal> = HashMap::new();
 
     // Initialize tracked tokens with zero
-    tvl_by_token.insert(TrackedToken::ALEX, Decimal::ZERO);
-    tvl_by_token.insert(TrackedToken::ZERO, Decimal::ZERO);
-    tvl_by_token.insert(TrackedToken::KONG, Decimal::ZERO);
-    tvl_by_token.insert(TrackedToken::BOB, Decimal::ZERO);
+    for token in TrackedToken::all() {
+        tvl_by_token.insert(token.clone(), Decimal::ZERO);
+    }
 
     ic_cdk::println!("Processing {} lock canisters for TVL calculation", lock_canisters.len());
+
+    // Query all lock canisters in parallel
+    let position_futures: Vec<_> = lock_canisters.iter()
+        .map(|(_user, lock_canister)| get_lp_positions(*lock_canister))
+        .collect();
+
+    let position_results = future::join_all(position_futures).await;
 
     let mut processed = 0;
     let mut errors = 0;
 
-    // Process each lock canister sequentially (Principle 2)
-    for (_user, lock_canister) in lock_canisters.iter() {
-        match get_lp_positions(*lock_canister).await {
+    // Process results
+    for result in position_results {
+        match result {
             Ok(positions) => {
                 for lp in positions {
                     process_lp_position(&lp, &mut tvl_by_token)?;
@@ -31,8 +38,7 @@ pub async fn calculate_locked_tvl() -> Result<HashMap<TrackedToken, Decimal>, St
                 processed += 1;
             },
             Err(e) => {
-                // Log error but continue processing other canisters
-                ic_cdk::println!("Error querying {}: {}", lock_canister, e);
+                ic_cdk::println!("Error querying lock canister: {}", e);
                 errors += 1;
             }
         }
@@ -122,7 +128,7 @@ pub async fn get_tvl_summary() -> Result<TVLSummary, String> {
 
     let mut token_summaries = Vec::new();
 
-    for token in [TrackedToken::ALEX, TrackedToken::ZERO, TrackedToken::KONG, TrackedToken::BOB] {
+    for token in TrackedToken::all() {
         let tvl = tvl_by_token.get(&token).unwrap_or(&Decimal::ZERO);
         let percentage = percentages.get(&token).unwrap_or(&Decimal::ZERO);
 
@@ -203,4 +209,71 @@ pub async fn get_cached_or_calculate_tvl() -> Result<HashMap<TrackedToken, Decim
     });
 
     Ok(tvl)
+}
+
+// Calculate TVL in ckUSDT (for minting calculations)
+// This includes both locked liquidity value AND current canister holdings
+use candid::Nat;
+use crate::balance_tracker::get_token_balance;
+use crate::kongswap::get_token_price_in_usdt;
+use crate::icrc_types::query_icrc1_balance;
+
+pub async fn calculate_tvl_in_ckusdt() -> Result<Nat, String> {
+    let mut total_value_decimal = Decimal::ZERO;
+
+    // 1. Get ckUSDT balance directly (already in USD value)
+    let ckusdt_canister = candid::Principal::from_text(crate::types::CKUSDT_CANISTER_ID)
+        .map_err(|e| format!("Invalid ckUSDT principal: {}", e))?;
+
+    let ckusdt_balance = query_icrc1_balance(ckusdt_canister, ic_cdk::api::id()).await?;
+
+    // Convert ckUSDT e6 to decimal USD
+    let ckusdt_str = ckusdt_balance.to_string();
+    let ckusdt_decimal = Decimal::from_str(&ckusdt_str)
+        .map_err(|e| format!("Decimal conversion error: {}", e))?;
+    let ckusdt_value = ckusdt_decimal / Decimal::from(1_000_000); // e6 to USD
+
+    total_value_decimal += ckusdt_value;
+
+    // 2. Get value of each tracked token holding
+    for token in TrackedToken::all() {
+        let balance = get_token_balance(&token).await
+            .unwrap_or_else(|e| {
+                ic_cdk::println!("Warning: Failed to get {} balance: {}", token.to_symbol(), e);
+                Nat::from(0u32)
+            });
+
+        if balance > Nat::from(0u32) {
+            // Query price from Kongswap
+            let price_decimal = get_token_price_in_usdt(&token).await
+                .unwrap_or_else(|e| {
+                    ic_cdk::println!("Warning: Failed to get {} price: {}", token.to_symbol(), e);
+                    Decimal::ZERO
+                });
+
+            // Convert balance to decimal (considering token decimals)
+            let balance_str = balance.to_string();
+            let balance_decimal = Decimal::from_str(&balance_str)
+                .unwrap_or(Decimal::ZERO);
+            let decimals = Decimal::from(10u64.pow(token.get_decimals() as u32));
+            let balance_in_tokens = balance_decimal / decimals;
+
+            let token_value = balance_in_tokens * price_decimal;
+            total_value_decimal += token_value;
+
+            ic_cdk::println!("{} balance: {}, price: ${}, value: ${}",
+                token.to_symbol(), balance_in_tokens, price_decimal, token_value);
+        }
+    }
+
+    ic_cdk::println!("Total canister TVL: ${}", total_value_decimal);
+
+    // Convert back to ckUSDT e6 format (Nat)
+    let tvl_in_e6 = total_value_decimal * Decimal::from(1_000_000);
+    let tvl_str = tvl_in_e6.to_string();
+
+    // Parse as integer (truncate decimals)
+    let tvl_int = tvl_str.split('.').next().unwrap_or("0");
+
+    Ok(Nat::from_str(tvl_int).unwrap_or_else(|_| Nat::from(0u32)))
 }

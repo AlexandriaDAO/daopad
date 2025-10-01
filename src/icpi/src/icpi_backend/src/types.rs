@@ -14,6 +14,22 @@ pub enum TrackedToken {
 }
 
 impl TrackedToken {
+    // Single source of truth for all tracked tokens
+    pub const ALL: [TrackedToken; 4] = [
+        TrackedToken::ALEX,
+        TrackedToken::ZERO,
+        TrackedToken::KONG,
+        TrackedToken::BOB,
+    ];
+
+    pub fn all() -> &'static [TrackedToken] {
+        &Self::ALL
+    }
+
+    pub fn all_vec() -> Vec<TrackedToken> {
+        Self::ALL.to_vec()
+    }
+
     pub fn to_symbol(&self) -> &str {
         match self {
             TrackedToken::ALEX => "ALEX",
@@ -23,23 +39,33 @@ impl TrackedToken {
         }
     }
 
+    pub fn from_symbol(symbol: &str) -> Result<Self, String> {
+        match symbol {
+            "ALEX" => Ok(TrackedToken::ALEX),
+            "ZERO" => Ok(TrackedToken::ZERO),
+            "KONG" => Ok(TrackedToken::KONG),
+            "BOB" => Ok(TrackedToken::BOB),
+            _ => Err(format!("Unknown tracked token symbol: {}", symbol)),
+        }
+    }
+
     pub fn get_canister_id(&self) -> Result<Principal, String> {
         match self {
             TrackedToken::ALEX => Principal::from_text("ysy5f-2qaaa-aaaap-qkmmq-cai")
-                .map_err(|e| format!("Invalid principal: {}", e)),
-            TrackedToken::ZERO => Principal::from_text("onuey-xaaaa-aaaah-qcqbq-cai")
-                .map_err(|e| format!("Invalid principal: {}", e)),
-            TrackedToken::KONG => Principal::from_text("xnjld-hqaaa-aaaar-qah4q-cai")
-                .map_err(|e| format!("Invalid principal: {}", e)),
+                .map_err(|e| format!("Invalid ALEX principal: {}", e)),
+            TrackedToken::ZERO => Principal::from_text("b3d2q-ayaaa-aaaap-qqcfq-cai")
+                .map_err(|e| format!("Invalid ZERO principal: {}", e)),
+            TrackedToken::KONG => Principal::from_text("o7oak-iyaaa-aaaaq-aadzq-cai")
+                .map_err(|e| format!("Invalid KONG principal: {}", e)),
             TrackedToken::BOB => Principal::from_text("7pail-xaaaa-aaaas-aabmq-cai")
-                .map_err(|e| format!("Invalid principal: {}", e)),
+                .map_err(|e| format!("Invalid BOB principal: {}", e)),
         }
     }
 
     pub fn get_decimals(&self) -> u8 {
         match self {
             TrackedToken::ALEX => 8,
-            TrackedToken::ZERO => 12,
+            TrackedToken::ZERO => 8,
             TrackedToken::KONG => 8,
             TrackedToken::BOB => 8,
         }
@@ -104,6 +130,92 @@ pub enum SwapAmountsResult {
     Err(String),
 }
 
+// TxId type from kong_backend.did line 148-151
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub enum TxId {
+    BlockIndex(Nat),
+    TransactionId(String),
+}
+
+// SwapArgs from kong_backend.did lines 488-497
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub struct SwapArgs {
+    pub pay_token: String,           // Token symbol like "ICP", "ckUSDT"
+    pub pay_amount: Nat,
+    pub pay_tx_id: Option<TxId>,    // None for ICRC2 flow, Some for ICRC1
+    pub receive_token: String,      // Token symbol
+    pub receive_amount: Option<Nat>,
+    pub receive_address: Option<String>,
+    pub max_slippage: Option<f64>,
+    pub referred_by: Option<String>,
+}
+
+// SwapTxReply from kong_backend.did lines 498-512
+// CRITICAL: Must include ALL fields including 'ts'!
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub struct SwapTxReply {
+    pub pool_symbol: String,
+    pub pay_chain: String,
+    pub pay_address: String,
+    pub pay_symbol: String,
+    pub pay_amount: Nat,
+    pub receive_chain: String,
+    pub receive_address: String,
+    pub receive_symbol: String,
+    pub receive_amount: Nat,
+    pub price: f64,
+    pub lp_fee: Nat,
+    pub gas_fee: Nat,
+    pub ts: u64,  // IMPORTANT: This field was missing in previous attempt!
+}
+
+// ICTransferReply from kong_backend.did lines 153-160
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub struct ICTransferReply {
+    pub chain: String,
+    pub symbol: String,
+    pub is_send: bool,
+    pub amount: Nat,
+    pub canister_id: String,
+    pub block_index: Nat,
+}
+
+// TransferReply from kong_backend.did lines 161-163
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub enum TransferReply {
+    IC(ICTransferReply),
+}
+
+// TransferIdReply from kong_backend.did lines 164-167
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub struct TransferIdReply {
+    pub transfer_id: u64,
+    pub transfer: TransferReply,
+}
+
+// SwapReply from kong_backend.did lines 513-532
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub struct SwapReply {
+    pub tx_id: u64,
+    pub request_id: u64,
+    pub status: String,
+    pub pay_chain: String,
+    pub pay_address: String,
+    pub pay_symbol: String,
+    pub pay_amount: Nat,
+    pub receive_chain: String,
+    pub receive_address: String,
+    pub receive_symbol: String,
+    pub receive_amount: Nat,
+    pub mid_price: f64,
+    pub price: f64,
+    pub slippage: f64,
+    pub txs: Vec<SwapTxReply>,
+    pub transfer_ids: Vec<TransferIdReply>,
+    pub claim_ids: Vec<u64>,
+    pub ts: u64,
+}
+
 // Current holdings with precision handling
 #[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
 pub struct CurrentPosition {
@@ -160,6 +272,14 @@ pub struct HealthStatus {
     pub cycles_balance: u128,
 }
 
+// Token metadata for frontend queries
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub struct TokenMetadata {
+    pub symbol: String,
+    pub canister_id: Principal,
+    pub decimals: u8,
+}
+
 // Error recovery types
 #[derive(Debug)]
 pub enum PriceResult {
@@ -187,7 +307,7 @@ pub const ALLOWED_CANISTERS: &[&str] = &[
     "eazgb-giaaa-aaaap-qqc2q-cai",  // kong_locker
     "2ipq2-uqaaa-aaaar-qailq-cai",  // kongswap
     "ysy5f-2qaaa-aaaap-qkmmq-cai",  // ALEX
-    "onuey-xaaaa-aaaah-qcqbq-cai",  // ZERO
+    "b3d2q-ayaaa-aaaap-qqcfq-cai",  // ZERO
     "xnjld-hqaaa-aaaar-qah4q-cai",  // KONG
     "7pail-xaaaa-aaaas-aabmq-cai",  // BOB
     "cngnf-vqaaa-aaaar-qag4q-cai",  // ckUSDT
