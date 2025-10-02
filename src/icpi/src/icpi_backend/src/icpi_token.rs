@@ -98,13 +98,12 @@ pub fn total_supply() -> Nat {
     TOTAL_SUPPLY.with(|supply| supply.borrow().clone())
 }
 
-// Mint tokens (internal - only callable by canister)
+// Mint tokens (internal - only callable by canister's own code)
+// NOTE: This is an internal function called from within update methods like complete_mint.
+// When called from an update method, ic_cdk::caller() returns the user who triggered the update,
+// not the canister itself. This is expected behavior - the authorization happens in the calling
+// function (complete_mint), which validates the user's mint request before calling this.
 pub fn mint_tokens(to: Principal, amount: Nat) -> Result<(), String> {
-    // Verify caller is the canister itself
-    if ic_cdk::caller() != ic_cdk::api::id() {
-        return Err("Unauthorized: only canister can mint".to_string());
-    }
-
     // Update balance
     BALANCES.with(|balances| {
         let mut balances = balances.borrow_mut();
@@ -122,13 +121,9 @@ pub fn mint_tokens(to: Principal, amount: Nat) -> Result<(), String> {
     Ok(())
 }
 
-// Burn tokens (internal - only callable by canister)
+// Burn tokens (internal - only callable by canister's own code)
+// NOTE: Same authorization pattern as mint_tokens - called from within update methods
 pub fn burn_tokens(from: Principal, amount: Nat) -> Result<(), String> {
-    // Verify caller is the canister itself
-    if ic_cdk::caller() != ic_cdk::api::id() {
-        return Err("Unauthorized: only canister can burn".to_string());
-    }
-
     // Check balance
     let current_balance = get_balance(from);
     if current_balance < amount {
@@ -203,13 +198,13 @@ pub fn get_all_balances() -> Vec<(Principal, Nat)> {
 }
 
 // Initialize with seed supply (only callable once during init)
-pub fn initialize_seed_supply(amount: Nat) -> Result<(), String> {
+pub fn initialize_seed_supply(to: Principal, amount: Nat) -> Result<(), String> {
     let current_supply = total_supply();
     if current_supply > Nat::from(0u32) {
         return Err("Supply already initialized".to_string());
     }
 
-    // Mint seed supply to canister itself
+    // Mint seed supply to specified principal
     TOTAL_SUPPLY.with(|supply| {
         let mut supply = supply.borrow_mut();
         *supply = amount.clone();
@@ -217,7 +212,7 @@ pub fn initialize_seed_supply(amount: Nat) -> Result<(), String> {
 
     BALANCES.with(|balances| {
         let mut balances = balances.borrow_mut();
-        balances.insert(ic_cdk::api::id(), amount);
+        balances.insert(to, amount);
     });
 
     Ok(())

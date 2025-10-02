@@ -16,16 +16,53 @@ mod burning;
 use types::{IndexState, HealthStatus, RebalanceAction, TrackedToken};
 use rebalancer::{RebalancerStatus, start_rebalancing};
 use candid::Principal;
+use std::cell::RefCell;
+
+// In-memory cache for index state (simple, no stable structures)
+thread_local! {
+    static INDEX_STATE_CACHE: RefCell<Option<IndexState>> = RefCell::new(None);
+}
+
+// Background refresh timer for index state cache
+fn start_cache_refresh_timer() {
+    ic_cdk::println!("Starting index state cache refresh timer (every 5 minutes)");
+    ic_cdk_timers::set_timer_interval(
+        std::time::Duration::from_secs(300), // 5 minutes
+        || {
+            ic_cdk::spawn(async {
+                ic_cdk::println!("Refreshing index state cache...");
+                match get_index_state().await {
+                    Ok(_) => ic_cdk::println!("✓ Cache refreshed"),
+                    Err(e) => ic_cdk::println!("✗ Cache refresh failed: {}", e),
+                }
+            });
+        }
+    );
+}
 
 // Initialize the canister
 #[ic_cdk::init]
 fn init() {
     ic_cdk::println!("ICPI Backend initialized");
+
+    // Seed initial supply: 1 ICPI to deployer
+    let seed_principal = Principal::from_text("eurew-qh72r-pxmst-k7hft-b4kku-fd7gu-mbrlg-3zwi4-t4o5t-tq3wi-cqe")
+        .expect("Invalid seed principal");
+    let seed_amount = candid::Nat::from(100_000_000u64); // 1 ICPI (8 decimals)
+
+    if let Err(e) = icpi_token::initialize_seed_supply(seed_principal, seed_amount) {
+        ic_cdk::println!("Warning: Failed to initialize seed supply: {}", e);
+    } else {
+        ic_cdk::println!("✓ Seeded 1 ICPI to {}", seed_principal);
+    }
+
     // Start the hourly rebalancing timer
     start_rebalancing();
     // Start cleanup timers for mint/burn operations
     minting::start_cleanup_timer();
     burning::start_cleanup_timer();
+    // Start cache refresh timer
+    start_cache_refresh_timer();
 }
 
 // Post-upgrade hook
@@ -37,15 +74,34 @@ fn post_upgrade() {
     // Restart cleanup timers
     minting::start_cleanup_timer();
     burning::start_cleanup_timer();
+    // Restart cache refresh timer
+    start_cache_refresh_timer();
 }
 
 // ===== Public Query Endpoints =====
 
-// Get complete index state
+// Get complete index state (cached, fast)
+#[ic_cdk::query]
+fn get_index_state_cached() -> Result<IndexState, String> {
+    INDEX_STATE_CACHE.with(|cache| {
+        cache.borrow()
+            .clone()
+            .ok_or_else(|| "Cache not initialized".to_string())
+    })
+}
+
+// Get complete index state (slow, populates cache)
 #[ic_cdk::update]  // Must be update for inter-canister calls
 async fn get_index_state() -> Result<IndexState, String> {
     ic_cdk::println!("Getting index state...");
-    index_state::get_index_state().await
+    let state = index_state::get_index_state().await?;
+
+    // Populate cache
+    INDEX_STATE_CACHE.with(|cache| {
+        *cache.borrow_mut() = Some(state.clone());
+    });
+
+    Ok(state)
 }
 
 // Simple test endpoint that doesn't make inter-canister calls

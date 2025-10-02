@@ -49,6 +49,7 @@ type TrackedToken = variant {
     ZERO;
     KONG;
     BOB;
+    ckUSDT;
 };
 
 type CurrentPosition = record {
@@ -100,11 +101,24 @@ type TokenMetadata = record {
     decimals : nat8;
 };
 
+type RebalanceAction = variant {
+    Buy : record { token : TrackedToken; usdt_amount : float64 };
+    Sell : record { token : TrackedToken; usdt_value : float64 };
+    None;
+};
+
+type RebalanceRecord = record {
+    timestamp : nat64;
+    action : RebalanceAction;
+    success : bool;
+    details : text;
+};
+
 type RebalancerStatus = record {
     timer_active : bool;
     last_rebalance : opt nat64;
     next_rebalance : opt nat64;
-    recent_history : vec record { nat64; text };
+    recent_history : vec RebalanceRecord;
 };
 
 service : {
@@ -131,6 +145,7 @@ service : {
 
     // Index State & Data
     get_index_state : () -> (variant { Ok : IndexState; Err : text });
+    get_index_state_cached : () -> (variant { Ok : IndexState; Err : text }) query;
     get_tvl_summary : () -> (variant { Ok : TVLSummary; Err : text });
     get_token_metadata : () -> (variant { Ok : vec TokenMetadata; Err : text }) query;
     get_tracked_tokens : () -> (vec text) query;

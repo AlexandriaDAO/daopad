@@ -86,7 +86,7 @@ pub enum TransferError {
 
 // Constants
 // Fee constants (ckUSDT uses 6 decimals, not 8 like ICP)
-pub const FEE_AMOUNT: u64 = 1_000_000; // 1.0 ckUSDT = 1 * 10^6 (6 decimals)
+pub const FEE_AMOUNT: u64 = 100_000; // 0.1 ckUSDT = 0.1 * 10^6 (6 decimals)
 pub const FEE_RECIPIENT: &str = "e454q-riaaa-aaaap-qqcyq-cai";
 pub const CKUSDT_CANISTER: &str = "cngnf-vqaaa-aaaar-qag4q-cai";
 pub const CKUSDT_DECIMALS: u8 = 6;     // ckUSDT has 6 decimal places
@@ -135,6 +135,14 @@ pub async fn collect_deposit(
     let ckusdt = Principal::from_text(CKUSDT_CANISTER)
         .map_err(|e| format!("Invalid CKUSDT principal: {}", e))?;
 
+    // Truncate memo to max 32 bytes (strictest token limit - ALEX)
+    let memo_bytes = memo.as_bytes();
+    let truncated_memo = if memo_bytes.len() > 32 {
+        &memo_bytes[..32]
+    } else {
+        memo_bytes
+    };
+
     let args = TransferFromArgs {
         spender_subaccount: None,
         from: Account {
@@ -147,7 +155,7 @@ pub async fn collect_deposit(
         },
         amount: amount.clone(),
         fee: None,
-        memo: Some(memo.as_bytes().to_vec()),
+        memo: Some(truncated_memo.to_vec()),
         created_at_time: Some(ic_cdk::api::time()),
     };
 
@@ -168,6 +176,14 @@ pub async fn transfer_to_user(
     amount: Nat,
     memo: String,
 ) -> Result<Nat, String> {
+    // Truncate memo to max 32 bytes (strictest token limit - ALEX)
+    let memo_bytes = memo.as_bytes();
+    let truncated_memo = if memo_bytes.len() > 32 {
+        &memo_bytes[..32]
+    } else {
+        memo_bytes
+    };
+
     let args = TransferArgs {
         from_subaccount: None,
         to: Account {
@@ -176,7 +192,7 @@ pub async fn transfer_to_user(
         },
         amount: amount.clone(),
         fee: None,
-        memo: Some(memo.as_bytes().to_vec()),
+        memo: Some(truncated_memo.to_vec()),
         created_at_time: Some(ic_cdk::api::time()),
     };
 

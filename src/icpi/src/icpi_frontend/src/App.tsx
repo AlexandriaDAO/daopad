@@ -8,13 +8,13 @@ import { canisterId as icpiCanisterId } from 'declarations/icpi_backend';
 
 import { Button } from './components/ui/button';
 import { Dashboard } from './components/Dashboard';
+import { Documentation } from './components/Documentation';
 import { FullPageSkeleton } from './components/LoadingStates';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import {
   useIndexState,
   useRebalancerStatus,
   useTVLData,
-  useUserBalance,
   useHoldings,
   useAllocation,
   useActualAllocations,
@@ -23,6 +23,7 @@ import {
   useManualRebalance,
   useUserWalletBalances,
   useTransferToken,
+  useTotalSupply,
   UserTokenBalance,
   QUERY_KEYS
 } from './hooks/useICPI';
@@ -46,22 +47,27 @@ function AppContent() {
   const [identity, setIdentity] = useState<Identity | null>(null);
   const [principal, setPrincipal] = useState<string>('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [balance, setBalance] = useState('0');
   const [actor, setActor] = useState<Actor | null>(null);
   const [agent, setAgent] = useState<HttpAgent | null>(null);
   const [autoRebalance, setAutoRebalance] = useState(true);
   const [sendModalToken, setSendModalToken] = useState<UserTokenBalance | null>(null);
+  const [currentView, setCurrentView] = useState<'dashboard' | 'docs'>('dashboard');
+
+  // Performance timing - mark page load start
+  useEffect(() => {
+    performance.mark('app-start');
+  }, []);
 
   // Use React Query hooks
   const { data: indexState, isLoading: indexLoading } = useIndexState(actor);
   const { data: rebalancerStatus } = useRebalancerStatus(actor);
   const { data: tvlData } = useTVLData(actor);
-  const { data: userBalance } = useUserBalance(actor, principal);
   const { data: holdings } = useHoldings(actor);
   const { data: allocations } = useAllocation(actor);
   const { data: actualAllocations } = useActualAllocations(actor, icpiCanisterId, agent);
+  const { data: totalSupply } = useTotalSupply(actor);
 
-  const mintMutation = useMintICPI(actor);
+  const mintMutation = useMintICPI(actor, agent);
   const redeemMutation = useRedeemICPI(actor);
   const rebalanceMutation = useManualRebalance(actor);
 
@@ -123,7 +129,6 @@ function AppContent() {
     setIdentity(null);
     setPrincipal('');
     setIsAuthenticated(false);
-    setBalance('0');
     setActor(null);
   };
 
@@ -145,9 +150,6 @@ function AppContent() {
       newAgent.fetchRootKey().catch(console.error);
     }
 
-    // Log agent details for debugging
-    console.log('Creating actor with authenticated agent, host:', host, 'canisterId:', icpiCanisterId);
-
     // Use authenticated actor (needed for update calls like get_index_state)
     const newActor = Actor.createActor(icpiIdlFactory, {
       agent: newAgent,
@@ -156,30 +158,8 @@ function AppContent() {
 
     setAgent(newAgent);
     setActor(newActor);
-    fetchBalance(newActor);
     return newActor;
   };
-
-  const fetchBalance = async (actorInstance?: any) => {
-    if (!identity) return;
-    const actorToUse = actorInstance || actor;
-    if (!actorToUse) return;
-
-    try {
-      const account = {
-        owner: identity.getPrincipal(),
-        subaccount: []
-      };
-      const balanceNat = await actorToUse.icrc1_balance_of(account);
-      const formattedBalance = (Number(balanceNat) / Math.pow(10, 8)).toFixed(4);
-      setBalance(formattedBalance);
-    } catch (error) {
-      console.error('Error fetching balance:', error);
-      setBalance('0');
-    }
-  };
-
-  console.log('Auth state:', { isAuthenticated, actor: !!actor, identity: !!identity, principal });
 
   if (!isAuthenticated) {
     return (
@@ -206,21 +186,14 @@ function AppContent() {
 
   // Prepare data for Dashboard - no mock data, fail visibly if data unavailable
   // Note: rebalancerStatus is optional as it may timeout, don't block UI on it
-  if (!indexState || !actualAllocations || balancesLoading) {
-    console.log('Loading state:', {
-      indexState: !!indexState,
-      actualAllocations: !!actualAllocations,
-      rebalancerStatus: !!rebalancerStatus,
-      balancesLoading,
-      indexLoading,
-    });
+  if (!indexState || indexLoading) {
     return <FullPageSkeleton />;
   }
 
   const portfolioData = {
     portfolioValue: indexState.total_value,
-    indexPrice: 1.0, // TODO: Calculate from total_value / total_supply when we add total_supply
-    totalSupply: 0, // TODO: Query from ICPI token canister
+    indexPrice: (totalSupply && totalSupply > 0) ? indexState.total_value / totalSupply : 1.0, // NAV per token
+    totalSupply: totalSupply || 0,
     apy: 0, // TODO: Calculate from historical data
     dailyChange: 0, // TODO: Calculate from historical data
     priceChange: 0, // TODO: Calculate from historical data
@@ -236,12 +209,14 @@ function AppContent() {
 
   const handleMint = async (amount: number) => {
     await mintMutation.mutateAsync(amount);
-    fetchBalance();
+    // Refresh wallet balances after mint
+    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_WALLET_BALANCES] })
   };
 
   const handleRedeem = async (amount: number) => {
     await redeemMutation.mutateAsync(amount);
-    fetchBalance();
+    // Refresh wallet balances after redeem
+    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_WALLET_BALANCES] })
   };
 
   const handleManualRebalance = async () => {
@@ -270,31 +245,77 @@ function AppContent() {
     queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_WALLET_BALANCES] })
   };
 
-  if (indexLoading) {
+  // Derive balances from walletBalances (single source of truth)
+  const userICPIBalance = walletBalances?.find(b => b.symbol === 'ICPI')?.balanceFormatted || 0
+  const userUSDTBalance = walletBalances?.find(b => b.symbol === 'ckUSDT')?.balanceFormatted || 0
+
+  if (!indexState || indexLoading) {
     return <FullPageSkeleton />;
   }
 
   return (
     <>
-      <Dashboard
-        principal={principal}
-        balance={balance}
-        tvl={portfolioData.portfolioValue}
-        portfolioData={portfolioData}
-        allocations={actualAllocations}
-        rebalancingData={rebalancingData}
-        userICPIBalance={parseFloat(balance)}
-        userUSDTBalance={userBalance?.ckusdt || 0}
-        tokenHoldings={holdings || []}
-        walletBalances={walletBalances || []}
-        onDisconnect={logout}
-        onMint={handleMint}
-        onRedeem={handleRedeem}
-        onManualRebalance={handleManualRebalance}
-        onToggleAutoRebalance={setAutoRebalance}
-        onSendToken={handleSendToken}
-        onRefreshBalances={handleRefreshBalances}
-      />
+      {/* Navigation Bar */}
+      <div className="sticky top-0 z-50 border-b border-[#1f1f1f] bg-[#000000]">
+        <div className="container px-3 py-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <h1 className="text-lg font-mono font-bold text-white">ICPI</h1>
+              <div className="flex gap-1">
+                <Button
+                  variant={currentView === 'dashboard' ? 'primary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setCurrentView('dashboard')}
+                  className="text-xs"
+                >
+                  DASHBOARD
+                </Button>
+                <Button
+                  variant={currentView === 'docs' ? 'primary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setCurrentView('docs')}
+                  className="text-xs"
+                >
+                  DOCS
+                </Button>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={logout}
+              className="text-xs"
+            >
+              DISCONNECT
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      {currentView === 'dashboard' ? (
+        <Dashboard
+          principal={principal}
+          tvl={portfolioData.portfolioValue}
+          portfolioData={portfolioData}
+          allocations={actualAllocations || []}
+          rebalancingData={rebalancingData}
+          userICPIBalance={userICPIBalance}
+          userUSDTBalance={userUSDTBalance}
+          tokenHoldings={holdings || []}
+          walletBalances={walletBalances || []}
+          onDisconnect={logout}
+          onMint={handleMint}
+          onRedeem={handleRedeem}
+          onManualRebalance={handleManualRebalance}
+          onToggleAutoRebalance={setAutoRebalance}
+          onSendToken={handleSendToken}
+          onRefreshBalances={handleRefreshBalances}
+        />
+      ) : (
+        <Documentation />
+      )}
+
       {sendModalToken && (
         <SendTokenModal
           token={sendModalToken}

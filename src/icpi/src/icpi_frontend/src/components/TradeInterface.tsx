@@ -7,6 +7,10 @@ import { Separator } from './ui/separator'
 import { Loader2 } from 'lucide-react'
 import { formatNumber } from '@/lib/utils'
 
+// ICRC1 transfer fees (in human-readable units)
+const CKUSDT_FEE = 0.01 // 0.01 USDT (10000 e6s)
+const ICPI_FEE = 0.0001   // 0.0001 ICPI (10000 e8s)
+
 interface TokenAmount {
   token: string
   amount: number
@@ -121,14 +125,18 @@ export const TradeInterface: React.FC<TradeInterfaceProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setMintAmount(userUSDTBalance.toString())}
+                onClick={() => {
+                  // Reserve fee for the transfer
+                  const maxAmount = Math.max(0, userUSDTBalance - CKUSDT_FEE)
+                  setMintAmount(maxAmount.toFixed(6))
+                }}
                 className="px-2"
               >
                 MAX
               </Button>
             </div>
             <p className="text-[10px] text-[#666666] text-right font-mono">
-              Balance: {formatNumber(userUSDTBalance)}
+              Balance: {formatNumber(userUSDTBalance)} • Fee: {CKUSDT_FEE} USDT
             </p>
           </div>
 
@@ -178,14 +186,18 @@ export const TradeInterface: React.FC<TradeInterfaceProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setRedeemAmount(userICPIBalance.toString())}
+                onClick={() => {
+                  // Reserve fee for the burn operation
+                  const maxAmount = Math.max(0, userICPIBalance - ICPI_FEE)
+                  setRedeemAmount(maxAmount.toFixed(8))
+                }}
                 className="px-2"
               >
                 MAX
               </Button>
             </div>
             <p className="text-[10px] text-[#666666] text-right font-mono">
-              Balance: {userICPIBalance.toFixed(6)}
+              Balance: {userICPIBalance.toFixed(6)} • Fee: {ICPI_FEE} ICPI
             </p>
           </div>
 

@@ -123,6 +123,31 @@ pub async fn get_current_positions() -> Result<Vec<CurrentPosition>, String> {
         });
     }
 
+    // CRITICAL: Also include ckUSDT balance in positions
+    let ckusdt_balance = get_ckusdt_balance().await.unwrap_or_else(|e| {
+        ic_cdk::println!("Error getting ckUSDT balance: {}", e);
+        Nat::from(0u64)
+    });
+
+    if ckusdt_balance > Nat::from(0u64) {
+        // ckUSDT has 6 decimals, price is always 1.0 USD
+        let ckusdt_balance_decimal = Decimal::from_str(&ckusdt_balance.to_string())
+            .unwrap_or(Decimal::ZERO);
+        let ckusdt_value = ckusdt_balance_decimal / Decimal::from(1_000_000); // e6 to USD
+
+        total_value += ckusdt_value;
+
+        // Add ckUSDT as a position
+        positions.push(CurrentPosition {
+            token: TrackedToken::ckUSDT,
+            balance: ckusdt_balance.clone(),
+            usd_value: decimal_to_f64(ckusdt_value),
+            percentage: 0.0, // Calculate after total
+        });
+
+        ic_cdk::println!("ckUSDT balance: {} (${:.2})", ckusdt_balance, decimal_to_f64(ckusdt_value));
+    }
+
     // Calculate percentages
     let total_value_f64 = decimal_to_f64(total_value);
     for position in positions.iter_mut() {

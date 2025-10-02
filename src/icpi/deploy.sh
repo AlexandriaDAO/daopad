@@ -180,7 +180,7 @@ fi
 # Create canisters if needed
 if [ "$DEPLOY_BACKEND" = true ]; then
     print_info "Creating backend canister..."
-    dfx canister create icpi_backend $DEPLOY_ARGS --specified-id ehyav-lqaaa-aaaap-qqc2a-cai 2>/dev/null || true
+    dfx canister create icpi_backend $DEPLOY_ARGS --specified-id ev6xm-haaaa-aaaap-qqcza-cai 2>/dev/null || true
 fi
 
 if [ "$DEPLOY_FRONTEND" = true ]; then
@@ -190,7 +190,7 @@ fi
 
 if [ "$DEPLOY_TOKEN" = true ]; then
     print_info "Creating ICPI token canister..."
-    dfx canister create ICPI $DEPLOY_ARGS --specified-id es7ry-kyaaa-aaaap-qqczq-cai 2>/dev/null || true
+    dfx canister create ICPI $DEPLOY_ARGS --specified-id l6lep-niaaa-aaaap-qqeda-cai 2>/dev/null || true
 fi
 
 # Deploy canisters
@@ -218,7 +218,7 @@ if [ "$DEPLOY_TOKEN" = true ]; then
     # Deploy token with initialization arguments for ICRC1 ledger format
     dfx deploy ICPI $DEPLOY_ARGS --argument "(variant { Init =
     record {
-         minting_account = record { owner = principal \"ehyav-lqaaa-aaaap-qqc2a-cai\"; subaccount = null };
+         minting_account = record { owner = principal \"ev6xm-haaaa-aaaap-qqcza-cai\"; subaccount = null };
          fee_collector_account = null;
          transfer_fee = 10_000;
          decimals = opt 8;
@@ -241,7 +241,7 @@ if [ "$DEPLOY_TOKEN" = true ]; then
              num_blocks_to_archive = 1000;
              trigger_threshold = 2000;
              max_message_size_bytes = null;
-             controller_id = principal \"ehyav-lqaaa-aaaap-qqc2a-cai\";
+             controller_id = principal \"ev6xm-haaaa-aaaap-qqcza-cai\";
              more_controller_ids = null;
              cycles_for_archive_creation = null;
              node_max_memory_size_bytes = null;
@@ -253,9 +253,9 @@ if [ "$DEPLOY_TOKEN" = true ]; then
     if [ $? -eq 0 ]; then
         print_info "ICPI token deployed successfully!"
         if [ "$NETWORK" = "ic" ]; then
-            print_info "ICPI Token canister ID: es7ry-kyaaa-aaaap-qqczq-cai"
+            print_info "ICPI Token canister ID: l6lep-niaaa-aaaap-qqeda-cai"
         else
-            print_info "ICPI Token canister ID: es7ry-kyaaa-aaaap-qqczq-cai (local)"
+            print_info "ICPI Token canister ID: l6lep-niaaa-aaaap-qqeda-cai (local)"
         fi
     else
         print_error "Failed to deploy ICPI token!"
@@ -296,22 +296,22 @@ if [ -n "$CANISTERS_TO_DEPLOY" ]; then
             echo ""
             print_info "Backend Canister (Candid UI):"
             if [ "$NETWORK" = "ic" ]; then
-                echo "  🔧 https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=ehyav-lqaaa-aaaap-qqc2a-cai"
+                echo "  🔧 https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=ev6xm-haaaa-aaaap-qqcza-cai"
             else
-                echo "  🔧 http://127.0.0.1:4943/?canisterId=$CANDID_UI&id=ehyav-lqaaa-aaaap-qqc2a-cai"
+                echo "  🔧 http://127.0.0.1:4943/?canisterId=$CANDID_UI&id=ev6xm-haaaa-aaaap-qqcza-cai"
             fi
-            echo "  📝 Canister ID: ehyav-lqaaa-aaaap-qqc2a-cai"
+            echo "  📝 Canister ID: ev6xm-haaaa-aaaap-qqcza-cai"
         fi
 
         if [ "$DEPLOY_TOKEN" = true ]; then
             echo ""
             print_info "ICPI Token Canister (Candid UI):"
             if [ "$NETWORK" = "ic" ]; then
-                echo "  💰 https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=es7ry-kyaaa-aaaap-qqczq-cai"
+                echo "  💰 https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=l6lep-niaaa-aaaap-qqeda-cai"
             else
-                echo "  💰 http://127.0.0.1:4943/?canisterId=$CANDID_UI&id=es7ry-kyaaa-aaaap-qqczq-cai"
+                echo "  💰 http://127.0.0.1:4943/?canisterId=$CANDID_UI&id=l6lep-niaaa-aaaap-qqeda-cai"
             fi
-            echo "  📝 Canister ID: es7ry-kyaaa-aaaap-qqczq-cai"
+            echo "  📝 Canister ID: l6lep-niaaa-aaaap-qqeda-cai"
         fi
 
         echo ""

@@ -4,7 +4,6 @@ import { Copy } from 'lucide-react'
 
 interface HeaderProps {
   principal: string
-  balance: string
   tvl: number
   totalSupply: number
   indexPrice: number
@@ -14,7 +13,6 @@ interface HeaderProps {
 
 export const DashboardHeader: React.FC<HeaderProps> = ({
   principal,
-  balance,
   tvl,
   totalSupply,
   indexPrice,

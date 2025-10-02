@@ -54,6 +54,22 @@ export const AllocationChart: React.FC<AllocationChartProps> = ({
   data,
   height = 200
 }) => {
+  // Handle empty state during progressive loading
+  if (!data || data.length === 0) {
+    return (
+      <Card className="border-[#1f1f1f]">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">PORTFOLIO ALLOCATION</CardTitle>
+        </CardHeader>
+        <CardContent className="p-3">
+          <div className="text-center py-8 text-[#666666] text-xs">
+            Loading allocation data...
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   const actualData = data.map(item => ({
     name: item.token,
     value: item.currentPercent,

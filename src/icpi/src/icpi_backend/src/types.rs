@@ -11,10 +11,11 @@ pub enum TrackedToken {
     ZERO,
     KONG,
     BOB,
+    ckUSDT,
 }
 
 impl TrackedToken {
-    // Single source of truth for all tracked tokens
+    // Single source of truth for all tracked tokens (excluding ckUSDT which is the reserve asset)
     pub const ALL: [TrackedToken; 4] = [
         TrackedToken::ALEX,
         TrackedToken::ZERO,
@@ -36,6 +37,7 @@ impl TrackedToken {
             TrackedToken::ZERO => "ZERO",
             TrackedToken::KONG => "KONG",
             TrackedToken::BOB => "BOB",
+            TrackedToken::ckUSDT => "ckUSDT",
         }
     }
 
@@ -45,6 +47,7 @@ impl TrackedToken {
             "ZERO" => Ok(TrackedToken::ZERO),
             "KONG" => Ok(TrackedToken::KONG),
             "BOB" => Ok(TrackedToken::BOB),
+            "ckUSDT" => Ok(TrackedToken::ckUSDT),
             _ => Err(format!("Unknown tracked token symbol: {}", symbol)),
         }
     }
@@ -59,6 +62,8 @@ impl TrackedToken {
                 .map_err(|e| format!("Invalid KONG principal: {}", e)),
             TrackedToken::BOB => Principal::from_text("7pail-xaaaa-aaaas-aabmq-cai")
                 .map_err(|e| format!("Invalid BOB principal: {}", e)),
+            TrackedToken::ckUSDT => Principal::from_text(CKUSDT_CANISTER_ID)
+                .map_err(|e| format!("Invalid ckUSDT principal: {}", e)),
         }
     }
 
@@ -68,6 +73,7 @@ impl TrackedToken {
             TrackedToken::ZERO => 8,
             TrackedToken::KONG => 8,
             TrackedToken::BOB => 8,
+            TrackedToken::ckUSDT => 6,
         }
     }
 }
@@ -245,7 +251,7 @@ pub struct AllocationDeviation {
 }
 
 // Combined state for rebalancing decisions
-#[derive(CandidType, Deserialize, Serialize, Debug)]
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
 pub struct IndexState {
     pub total_value: f64,
     pub current_positions: Vec<CurrentPosition>,

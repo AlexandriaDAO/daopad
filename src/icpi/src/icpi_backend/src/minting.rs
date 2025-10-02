@@ -161,7 +161,7 @@ pub async fn complete_mint(mint_id: String) -> Result<Nat, String> {
 
     let current_supply = total_supply();
 
-    // Calculate TVL with automatic refund on failure
+    // Calculate TVL of canister holdings (includes all tokens + ckUSDT)
     let current_tvl = match calculate_tvl_in_ckusdt().await {
         Ok(tvl) => tvl,
         Err(e) => {
@@ -203,18 +203,26 @@ pub async fn complete_mint(mint_id: String) -> Result<Nat, String> {
         let _ = refund_deposit(
             caller,
             pending_mint.ckusdt_amount.clone(),
-            "TVL is zero - canister not initialized".to_string()
+            "TVL is zero - canister has no holdings".to_string()
         ).await;
 
         pending_mint.status = MintStatus::FailedRefunded("TVL is zero - deposit refunded".to_string());
         update_pending_mint(&pending_mint);
-        return Err("TVL is zero - canister must be seeded".to_string());
+        return Err("TVL is zero - canister has no token holdings".to_string());
     }
 
     // Formula: new_icpi = (deposit * current_supply) / current_tvl
-    let icpi_to_mint = match multiply_and_divide(&pending_mint.ckusdt_amount, &current_supply, &current_tvl) {
-        Ok(amount) => amount,
-        Err(e) => {
+    // Special case: Initial mint when supply is 0 - mint 1:1 with deposit
+    let icpi_to_mint = if current_supply == Nat::from(0u32) {
+        // Initial mint: 1 ICPI = 1 ckUSDT (both have different decimals but we match amounts)
+        // ckUSDT has 6 decimals, ICPI has 8 decimals
+        // 1 ckUSDT = 1_000_000, we want 1 ICPI = 100_000_000
+        // So multiply by 100
+        pending_mint.ckusdt_amount.clone() * Nat::from(100u32)
+    } else {
+        match multiply_and_divide(&pending_mint.ckusdt_amount, &current_supply, &current_tvl) {
+            Ok(amount) => amount,
+            Err(e) => {
             // Also refund on calculation error
             pending_mint.status = MintStatus::Refunding;
             update_pending_mint(&pending_mint);
@@ -237,6 +245,7 @@ pub async fn complete_mint(mint_id: String) -> Result<Nat, String> {
             }
             update_pending_mint(&pending_mint);
             return Err(format!("Calculation failed: {}", e));
+            }
         }
     };
 

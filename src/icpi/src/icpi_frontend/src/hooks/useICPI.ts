@@ -26,9 +26,10 @@ export const QUERY_KEYS = {
   ACTUAL_ALLOCATIONS: 'actualAllocations',
   TRACKED_TOKENS: 'trackedTokens',
   USER_WALLET_BALANCES: 'userWalletBalances',
+  TOTAL_SUPPLY: 'totalSupply',
 } as const
 
-// ICRC1 IDL for balance queries and transfers
+// ICRC1/ICRC2 IDL for balance queries, transfers, and approvals
 const ICRC1_IDL = ({ IDL }: any) => {
   const Account = IDL.Record({
     owner: IDL.Principal,
@@ -61,10 +62,40 @@ const ICRC1_IDL = ({ IDL }: any) => {
     Err: TransferError,
   })
 
+  // ICRC2 Approve types
+  const ApproveArgs = IDL.Record({
+    from_subaccount: IDL.Opt(IDL.Vec(IDL.Nat8)),
+    spender: Account,
+    amount: IDL.Nat,
+    expected_allowance: IDL.Opt(IDL.Nat),
+    expires_at: IDL.Opt(IDL.Nat64),
+    fee: IDL.Opt(IDL.Nat),
+    memo: IDL.Opt(IDL.Vec(IDL.Nat8)),
+    created_at_time: IDL.Opt(IDL.Nat64),
+  })
+
+  const ApproveError = IDL.Variant({
+    BadFee: IDL.Record({ expected_fee: IDL.Nat }),
+    InsufficientFunds: IDL.Record({ balance: IDL.Nat }),
+    AllowanceChanged: IDL.Record({ current_allowance: IDL.Nat }),
+    Expired: IDL.Record({ ledger_time: IDL.Nat64 }),
+    TooOld: IDL.Null,
+    CreatedInFuture: IDL.Record({ ledger_time: IDL.Nat64 }),
+    Duplicate: IDL.Record({ duplicate_of: IDL.Nat }),
+    TemporarilyUnavailable: IDL.Null,
+    GenericError: IDL.Record({ error_code: IDL.Nat, message: IDL.Text }),
+  })
+
+  const ApproveResult = IDL.Variant({
+    Ok: IDL.Nat,
+    Err: ApproveError,
+  })
+
   return IDL.Service({
     icrc1_balance_of: IDL.Func([Account], [IDL.Nat], ['query']),
     icrc1_fee: IDL.Func([], [IDL.Nat], ['query']),
     icrc1_transfer: IDL.Func([TransferArg], [TransferResult], []),
+    icrc2_approve: IDL.Func([ApproveArgs], [ApproveResult], []),
   })
 }
 
@@ -74,59 +105,22 @@ export const useIndexState = (actor: Actor | null) => {
     queryKey: [QUERY_KEYS.INDEX_STATE],
     queryFn: async () => {
       if (!actor) throw new Error('Actor not initialized')
-      console.log('Calling get_index_state...')
 
-      // First test if backend is responding
-      try {
-        const testResult = await actor.get_simple_test()
-        console.log('Backend query test successful:', testResult)
-      } catch (testError) {
-        console.error('Backend query test failed:', testError)
+      // Try cached version first (fast query)
+      const result = await actor.get_index_state_cached()
+
+      // Handle Result type - unwrap Ok/Err variant
+      if ('Ok' in result) {
+        return result.Ok
+      } else if ('Err' in result) {
+        console.error('get_index_state_cached returned error:', result.Err)
+        throw new Error(result.Err)
       }
-
-      // Test if update calls work at all
-      try {
-        const updateTest = await actor.test_simple_update()
-        console.log('Backend update test successful:', updateTest)
-      } catch (updateError) {
-        console.error('Backend update test failed:', updateError)
-      }
-
-      try {
-        // Add a timeout wrapper for the call (40s to accommodate inter-canister calls)
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => {
-            console.error('Timeout fired after 40s')
-            reject(new Error('get_index_state call timed out after 40s'))
-          }, 40000)
-        })
-
-        console.log('Starting Promise.race...')
-        const callPromise = actor.get_index_state()
-        console.log('Call promise created')
-
-        const result = await Promise.race([
-          callPromise,
-          timeoutPromise
-        ])
-        console.log('get_index_state result:', result)
-
-        // Handle Result type - unwrap Ok/Err variant
-        if ('Ok' in result) {
-          return result.Ok
-        } else if ('Err' in result) {
-          console.error('get_index_state returned error:', result.Err)
-          throw new Error(result.Err)
-        }
-        throw new Error('Unexpected result format')
-      } catch (error) {
-        console.error('get_index_state call failed:', error)
-        throw error
-      }
+      throw new Error('Unexpected result format')
     },
     enabled: !!actor,
-    refetchInterval: 2 * 60_000, // Refetch every 2 minutes
-    staleTime: 60_000, // 1 minute
+    refetchInterval: 60_000, // Refetch every 60 seconds (cache refreshes every 5 min on backend)
+    staleTime: 30_000, // Consider stale after 30 seconds
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     onError: (error: any) => console.error('useIndexState error:', error),
@@ -138,14 +132,13 @@ export const useRebalancerStatus = (actor: Actor | null) => {
     queryKey: [QUERY_KEYS.REBALANCER_STATUS],
     queryFn: async () => {
       if (!actor) throw new Error('Actor not initialized')
-      console.log('Calling get_rebalancer_status...')
 
       // Add timeout wrapper to prevent hanging
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => {
-          console.error('get_rebalancer_status timed out after 30s')
-          reject(new Error('get_rebalancer_status call timed out after 30s'))
-        }, 30000)
+          console.warn('⚠️ get_rebalancer_status timed out after 10s')
+          reject(new Error('get_rebalancer_status call timed out after 10s'))
+        }, 10000)
       })
 
       const result = await Promise.race([
@@ -153,13 +146,12 @@ export const useRebalancerStatus = (actor: Actor | null) => {
         timeoutPromise
       ])
 
-      console.log('get_rebalancer_status result:', result)
       return result
     },
     enabled: !!actor,
     refetchInterval: 60_000, // Refetch every 1 minute
     staleTime: 30_000,
-    retry: 2, // Only retry twice on failure
+    retry: 0, // Don't retry on timeout
     retryDelay: 1000, // Wait 1s between retries
     onError: (error: any) => console.error('useRebalancerStatus error:', error),
   })
@@ -244,35 +236,105 @@ export const useAllocation = (actor: Actor | null) => {
 }
 
 // Mutation hooks
-export const useMintICPI = (actor: Actor | null) => {
+export const useMintICPI = (actor: Actor | null, agent: HttpAgent | null) => {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
-    mutationFn: async (amount: number) => {
-      if (!actor) throw new Error('Actor not initialized')
-      return await actor.mint_icpi({ amount: BigInt(amount * 1e6) }) // Convert to e6 decimals
+    mutationFn: async (ckusdtAmount: number) => {
+      if (!actor || !agent) throw new Error('Actor or agent not initialized')
+
+      const amountRaw = BigInt(Math.floor(ckusdtAmount * 1e6)) // ckUSDT has 6 decimals
+      const feeAmount = BigInt(100_000) // 0.1 ckUSDT backend fee
+      const ckusdtTransferFee = BigInt(10_000) // 0.01 ckUSDT ICRC1 transfer fee
+
+      // Total approval: mint amount + backend fee + buffer for 2 transfers (fee collection + deposit)
+      const totalApproval = amountRaw + feeAmount + (ckusdtTransferFee * BigInt(2))
+
+      // Step 0: Approve ICPI backend to spend ckUSDT
+      const ckusdtActor = Actor.createActor(ICRC1_IDL, {
+        agent,
+        canisterId: CKUSDT_CANISTER_ID,
+      })
+
+      const icpiBackendPrincipal = Principal.fromText(ICPI_CANISTER_ID)
+
+      const approveArgs = {
+        from_subaccount: [],
+        spender: {
+          owner: icpiBackendPrincipal,
+          subaccount: [],
+        },
+        amount: totalApproval,
+        expected_allowance: [],
+        expires_at: [],
+        fee: [ckusdtTransferFee],
+        memo: [],
+        created_at_time: [],
+      }
+
+      const approveResult = await ckusdtActor.icrc2_approve(approveArgs)
+
+      if ('Err' in approveResult) {
+        throw new Error(`Approval failed: ${JSON.stringify(approveResult.Err)}`)
+      }
+
+      // Phase 1: Initiate mint (returns mint_id)
+      const initResult = await actor.initiate_mint(amountRaw)
+
+      if ('Err' in initResult) {
+        throw new Error(initResult.Err)
+      }
+      const mintId = initResult.Ok
+
+      // Phase 2: Complete mint (returns ICPI amount)
+      const completeResult = await actor.complete_mint(mintId)
+
+      if ('Err' in completeResult) {
+        throw new Error(completeResult.Err)
+      }
+
+      return completeResult.Ok
     },
     onSuccess: () => {
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.INDEX_STATE] })
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_BALANCE] })
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.HOLDINGS] })
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_WALLET_BALANCES] })
     },
   })
 }
 
 export const useRedeemICPI = (actor: Actor | null) => {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
-    mutationFn: async (amount: number) => {
+    mutationFn: async (icpiAmount: number) => {
       if (!actor) throw new Error('Actor not initialized')
-      return await actor.redeem_icpi({ amount: BigInt(amount * 1e8) }) // ICPI has 8 decimals
+
+      // Phase 1: Initiate burn (returns burn_id)
+      const amountRaw = BigInt(Math.floor(icpiAmount * 1e8)) // ICPI has 8 decimals
+      const initResult = await actor.initiate_burn(amountRaw)
+
+      if ('Err' in initResult) {
+        throw new Error(initResult.Err)
+      }
+      const burnId = initResult.Ok
+
+      // Phase 2: Complete burn (returns BurnResult with token amounts)
+      const completeResult = await actor.complete_burn(burnId)
+
+      if ('Err' in completeResult) {
+        throw new Error(completeResult.Err)
+      }
+
+      return completeResult.Ok
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.INDEX_STATE] })
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_BALANCE] })
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.HOLDINGS] })
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_WALLET_BALANCES] })
     },
   })
 }
@@ -387,12 +449,29 @@ export const useTokenMetadata = (actor: Actor | null) => {
   })
 }
 
+// Get ICPI total supply
+export const useTotalSupply = (actor: Actor | null) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.TOTAL_SUPPLY],
+    queryFn: async () => {
+      if (!actor) throw new Error('Actor not initialized')
+      const supply = await actor.icrc1_total_supply()
+      // Convert from e8 to human-readable (8 decimals)
+      return Number(supply) / 100_000_000
+    },
+    enabled: !!actor,
+    staleTime: 10_000, // 10 seconds
+    refetchInterval: 30_000, // Refetch every 30s
+  })
+}
+
 // Query token balances directly from token canisters
 export const useActualAllocations = (
   icpiActor: Actor | null,
   icpiCanisterId: string | null,
   agent: HttpAgent | null
 ) => {
+  const queryClient = useQueryClient()
   return useQuery({
     queryKey: [QUERY_KEYS.ACTUAL_ALLOCATIONS, icpiCanisterId],
     queryFn: async () => {
@@ -400,15 +479,11 @@ export const useActualAllocations = (
         throw new Error('Actor, canister ID, or agent not initialized')
       }
 
-      console.log('useActualAllocations: Fetching metadata and TVL...')
-
       // Get token metadata and TVL data
       const [tokenMetadataResult, tvlDataResult] = await Promise.all([
         icpiActor.get_token_metadata(),
         icpiActor.get_tvl_summary(),
       ])
-
-      console.log('useActualAllocations: Got results', { tokenMetadataResult, tvlDataResult })
 
       // Unwrap Result types
       if (!('Ok' in tokenMetadataResult) || !('Ok' in tvlDataResult)) {
@@ -449,22 +524,20 @@ export const useActualAllocations = (
         }
       })
 
-      console.log('useActualAllocations: Querying token balances...')
       const balances = await Promise.all(balancePromises)
-      console.log('useActualAllocations: Got balances:', balances)
 
       // Calculate USD values and percentages
-      // For now, we need prices - we can get these from the backend or Kongswap
-      // Let's use a simple approach: get current positions from backend for prices
-      console.log('useActualAllocations: Calling get_index_state for prices...')
-      const indexStateResult = await icpiActor.get_index_state()
-      console.log('useActualAllocations: Got index state for prices')
+      // Get current positions from backend for prices
+      let indexState = queryClient.getQueryData([QUERY_KEYS.INDEX_STATE])
 
-      // Unwrap Result type
-      if (!('Ok' in indexStateResult)) {
-        throw new Error('Err' in indexStateResult ? indexStateResult.Err : 'Failed to get index state')
+      if (!indexState) {
+        // Fallback: call it if somehow not cached yet
+        const indexStateResult = await icpiActor.get_index_state()
+        if (!('Ok' in indexStateResult)) {
+          throw new Error('Err' in indexStateResult ? indexStateResult.Err : 'Failed to get index state')
+        }
+        indexState = indexStateResult.Ok
       }
-      const indexState = indexStateResult.Ok
 
       // Only track these tokens in the index (exclude ckUSDT which is held for rebalancing)
       const TRACKED_TOKENS = ['ALEX', 'ZERO', 'KONG', 'BOB']
@@ -510,7 +583,6 @@ export const useActualAllocations = (
         deviation: totalValue > 0 ? (a.targetPercent ?? 0) - (a.value / totalValue) * 100 : 0,
       }))
 
-      console.log('useActualAllocations: Returning result:', result)
       return result
     },
     enabled: !!icpiActor && !!icpiCanisterId && !!agent,
@@ -537,6 +609,7 @@ export const useUserWalletBalances = (
   userPrincipal: string | null,
   agent: HttpAgent | null
 ) => {
+  const queryClient = useQueryClient()
   return useQuery({
     queryKey: [QUERY_KEYS.USER_WALLET_BALANCES, userPrincipal],
     queryFn: async () => {
@@ -620,10 +693,18 @@ export const useUserWalletBalances = (
       // STEP 7: Get USD values from index state
       let enrichedBalances = balances
       try {
-        const indexStateResult = await actor.get_index_state()
+        // Try cache first
+        let indexState = queryClient.getQueryData([QUERY_KEYS.INDEX_STATE])
 
-        if ('Ok' in indexStateResult) {
-          const indexState = indexStateResult.Ok
+        if (!indexState) {
+          // Fallback only if cache miss
+          const indexStateResult = await actor.get_index_state()
+          if ('Ok' in indexStateResult) {
+            indexState = indexStateResult.Ok
+          }
+        }
+
+        if (indexState) {
 
           // Enrich balances with USD values
           enrichedBalances = balances.map(balance => {

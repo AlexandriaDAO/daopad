@@ -186,8 +186,9 @@ pub async fn execute_swap(
             ic_cdk::println!("  Price: {}, Slippage: {:.2}%", reply.price, reply.slippage);
             ic_cdk::println!("  Status: {}", reply.status);
 
-            // Verify the swap completed
-            if reply.status != "SUCCESS" && reply.status != "PENDING" {
+            // Verify the swap completed (case-insensitive check)
+            let status_upper = reply.status.to_uppercase();
+            if status_upper != "SUCCESS" && status_upper != "PENDING" {
                 return Err(format!("Swap status not successful: {}", reply.status));
             }
 

@@ -71,3 +71,35 @@ Debugging principles:
 - Frontend must unwrap Result types: `if ('Ok' in result) { const data = result.Ok }` - never access fields on the Result wrapper directly
 - Parallelize independent inter-canister calls with `futures::future::join_all` - never await in loops
 - When debugging hangs/failures, add logging at each step to isolate the exact failure point instead of guessing
+
+## Canister IDs (Mainnet)
+
+The ICPI project consists of three canisters on the Internet Computer mainnet:
+
+1. **icpi_frontend** (User Interface)
+   - Canister ID: `qhlmp-5aaaa-aaaam-qd4jq-cai`
+   - Purpose: React frontend for interacting with ICPI
+   - URL: https://qhlmp-5aaaa-aaaam-qd4jq-cai.icp0.io
+
+2. **icpi_backend** (Business Logic)
+   - Canister ID: `ev6xm-haaaa-aaaap-qqcza-cai`
+   - Purpose: Minting, burning, rebalancing, TVL calculation
+   - Acts as minting authority for ICPI token
+   - Manages portfolio rebalancing via Kongswap
+
+3. **ICPI** (Token Ledger)
+   - Canister ID: `l6lep-niaaa-aaaap-qqeda-cai`
+   - Purpose: Standard ICRC-1 token ledger
+   - Symbol: ICPI
+   - Decimals: 8 (not specified, defaults to standard)
+   - Minting Authority: icpi_backend (`ev6xm-haaaa-aaaap-qqcza-cai`)
+   - Located on same subnet as backend (using --next-to flag)
+
+**Architecture:**
+```
+User → Frontend (qhlmp...) → Backend (ev6xm...) → ICPI Ledger (l6lep...)
+                                  ↓
+                          Kongswap/Kong Locker
+```
+
+The backend is the ONLY canister that should interact with the ICPI token ledger for minting/burning operations. All other token operations (transfers, balance queries) go directly to the ICPI ledger following ICRC-1 standards.
