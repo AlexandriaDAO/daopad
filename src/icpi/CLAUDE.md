@@ -1,5 +1,13 @@
 This project is the "Internet Computer Portfolio Index" (ICPI). It's a token that represents a basket of assets that are kept proportional to the dollar value of locked liquidity that the token has.
 
+## Three Canisters
+
+1. **ICPI Token** (`l6lep-niaaa-aaaap-qqeda-cai`) - Standard ICRC-1 ledger, stores all ICPI balances
+2. **Backend** (`ev6xm-haaaa-aaaap-qqcza-cai`) - Business logic: minting, burning, rebalancing. Calls token ledger to mint/burn
+3. **Frontend** (`qhlmp-5aaaa-aaaam-qd4jq-cai`) - React UI
+
+Backend is minting authority for the token. Query ICPI balances from the token canister, not the backend.
+
 The amount of 'Locked Liquidity' I'm referencing is queried from the kong_locker project (../kong_locker/). Query kong_locker_backend (eazgb-giaaa-aaaap-qqc2q-cai) for lock canisters, then kongswap_backend (2ipq2-uqaaa-aaaar-qailq-cai) for user_balances. Filter results for [ALEX, ZERO, KONG, BOB] tokens.
 
 The amount included in this index is limited to approved tokens right now, e.g., right now the distribution looks like this:
