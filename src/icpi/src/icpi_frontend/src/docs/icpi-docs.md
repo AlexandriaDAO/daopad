@@ -6,60 +6,59 @@
 
 ## What is ICPI?
 
-ICPI (Internet Computer Portfolio Index) is an ICRC-1 token that represents a proportional ownership stake in a basket of Internet Computer tokens. It's an index fund that automatically tracks and rebalances to match the dollar value distribution of locked liquidity in Kongswap pools.
+ICPI (Internet Computer Portfolio Index) is an ICRC-1 token that provides direct, redeemable ownership of a basket of Internet Computer tokens. Unlike traditional ETFs that charge management fees on paper representations requiring proof-of-reserves, ICPI maintains 1:1 backing that's always verifiable on-chain - you can redeem your ICPI tokens for the underlying assets at any time. The index automatically tracks and rebalances to match the dollar value distribution of locked liquidity in Kongswap pools.
 
-**Tracked tokens:** ALEX, ZERO, KONG, and BOB
-**Decimals:** 8
-**Initial supply:** 1 ICPI seeded to deployer
-**Transfer fee:** 0
+## Fees
 
-## How is the Mint Price Calculated?
+**No management fees.** Unlike traditional ETFs, ICPI charges no ongoing management fees or expenses.
 
-### Proportional Formula
+**Operation Fee (0.1 ckUSDT):**
+- Charged on every mint and burn operation
+- Goes directly to ALEX token stakers (recipient: `e454q-riaaa-aaaap-qqcyq-cai`)
+- Equivalent to ~$0.10 USD per transaction
 
-The mint price uses a **proportional formula** that ensures exact fair pricing:
+**Token Transfer Fees:**
+- When burning ICPI, you receive the underlying tokens minus standard ICRC-1 transfer fees
+- Typical transfer fee: 0.0001 tokens (10,000 e8s)
+- Dollar value varies by token price, but generally negligible (fractions of a cent)
+- Fee paid to each token's respective ledger canister
+
+**Example:** Burning 10 ICPI that represents holdings in 4 tokens means you pay 4 transfer fees (one per token) plus the 0.1 ckUSDT operation fee. Total cost: ~$0.10-0.12.
+
+## Mint Price
+
+The price per ICPI is simply:
 
 ```
-new_icpi = (usdt_deposit × current_supply) / current_tvl
+price = current_tvl_usd / total_supply
 ```
 
-This ensures depositors get exact proportional ownership - contribute 9.09% of value, get 9.09% of tokens.
+Where `current_tvl_usd` is the dollar value of all tokens held by the canister (ckUSDT + ALEX + ZERO + KONG + BOB).
 
-### Minting Process (minting.rs)
+When you deposit ckUSDT to mint ICPI, you receive:
 
-1. User initiates mint with ckUSDT amount (minimum 1 ckUSDT)
-2. Fee collected (0.01 ckUSDT)
-3. Deposit collected from user
-4. **TVL calculated:** Sum of all canister holdings (ckUSDT balance + value of ALEX, ZERO, KONG, BOB tokens)
-5. Formula applied to determine ICPI amount
-6. ICPI minted to user
+```
+new_icpi = usdt_deposit / price
+```
 
-### Example Calculation
+This ensures exact proportional ownership - if you contribute 10% of the total value, you receive 10% of the new supply.
+
+### Example
 
 **Given:**
-- Current TVL: $1,000
+- Current TVL: $1,000 (all canister holdings)
 - Current Supply: 100 ICPI
-- User Deposits: $100 ckUSDT
+- Price: $1,000 / 100 = $10 per ICPI
 
-**Calculation:**
-```
-new_icpi = (100 × 100) / 1,000
-new_icpi = 10 ICPI
-```
+**You deposit:** $100 ckUSDT
 
-**Result:** User receives 10 ICPI (9.09% of new supply)
-Represents exactly 9.09% ownership of all index holdings
+**You receive:** $100 / $10 = **10 ICPI**
 
-### Refund Policy
+You now own 10 out of 110 total ICPI (9.09% of supply), representing exactly 9.09% of all index holdings.
 
-If TVL calculation fails or TVL is zero, deposit is refunded (fee kept).
+**Note:** Minimum mint is 1 ckUSDT. If TVL calculation fails or is zero, deposit is refunded (0.1 ckUSDT fee kept).
 
-**Refund Scenarios:**
-- TVL calculation failure → Deposit refunded
-- Zero TVL (no holdings) → Deposit refunded
-- Math calculation error → Deposit refunded
-
-## How is the Burn Price Calculated?
+## Burn Price
 
 ### Inverse Proportional Formula
 
@@ -74,11 +73,11 @@ Burning 1% of ICPI supply returns exactly 1% of each token holding.
 ### Redemption Process (burning.rs)
 
 1. User initiates burn with ICPI amount
-2. Fee collected (0.01 ckUSDT)
+2. Fee collected (0.1 ckUSDT)
 3. For each token (ALEX, ZERO, KONG, BOB, ckUSDT):
    - Calculate proportional share
-   - Transfer tokens to user (skips dust amounts <1000 units)
-4. ICPI burned from user balance
+   - Transfer tokens to user (skips amounts ≤ transfer_fee + 1,000 units, i.e., ≤11,000 e8s)
+4. ICPI burned from user balance (timeout: 180 seconds)
 5. Returns list of successful/failed token transfers
 
 ### Example: Burning 10% of Supply
@@ -98,14 +97,16 @@ Burning 1% of ICPI supply returns exactly 1% of each token holding.
 - 20 KONG
 - 5 BOB
 
-## How Does Rebalancing Work?
+## Rebalancing
 
 ### Hourly Automated Rebalancing (rebalancer.rs)
 
 **Hourly automated rebalancing** via ic-cdk-timers (one trade per hour):
 
+- **Deviation Threshold:** Only triggers if any token deviates >1% from target allocation
 - **If ckUSDT available (>$10):** Buy token with largest deficit, trade size = 10% of deficit
 - **Else if tokens over-allocated:** Sell most overweight token to ckUSDT, trade size = 10% of excess
+- **Slippage Protection:** All swaps enforce 2% maximum slippage
 - All trades go through ckUSDT as intermediary
 - Sequential execution only (no batching) - required by Kongswap design
 
@@ -130,7 +131,7 @@ target% = token_locked_liquidity / total_locked_liquidity
 - KONG: 0.11% ($48.71)
 - BOB: 0.00% ($2.05)
 
-## How is Index Weighting Determined?
+## Index Weighting
 
 **Dynamic weighting based on locked liquidity:**
 
@@ -154,7 +155,7 @@ This data is cached for 5 minutes to optimize performance.
 ### Gas Efficiency
 
 - Parallel inter-canister calls (futures::join_all)
-- 60-second timeout on operations
+- Operation timeouts: 60 seconds (mint), 180 seconds (burn)
 - Cleanup timers for expired operations
 
 ### Price Discovery
@@ -166,4 +167,4 @@ This data is cached for 5 minutes to optimize performance.
 
 **Disclaimer:** This documentation describes the technical implementation of the ICPI protocol. It is not financial advice. Digital assets carry risk.
 
-*Protocol Version: 1.0.0 | Last Updated: 2025-10-01*
+*Protocol Version: 1.0.1 | Last Updated: 2025-10-02*

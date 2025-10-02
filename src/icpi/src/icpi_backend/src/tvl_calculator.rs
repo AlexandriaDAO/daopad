@@ -235,34 +235,41 @@ pub async fn calculate_tvl_in_ckusdt() -> Result<Nat, String> {
 
     total_value_decimal += ckusdt_value;
 
-    // 2. Get value of each tracked token holding
-    for token in TrackedToken::all() {
-        let balance = get_token_balance(&token).await
-            .unwrap_or_else(|e| {
-                ic_cdk::println!("Warning: Failed to get {} balance: {}", token.to_symbol(), e);
-                Nat::from(0u32)
-            });
+    // 2. Parallelize token balance and price queries
+    let token_futures: Vec<_> = TrackedToken::all().iter()
+        .map(|token| {
+            let token_clone = token.clone();
+            async move {
+                let balance = get_token_balance(&token_clone).await?;
+                if balance > Nat::from(0u32) {
+                    let price_decimal = get_token_price_in_usdt(&token_clone).await?;
+                    let balance_str = balance.to_string();
+                    let balance_decimal = Decimal::from_str(&balance_str)
+                        .map_err(|e| format!("Balance decimal error: {}", e))?;
+                    let decimals = Decimal::from(10u64.pow(token_clone.get_decimals() as u32));
+                    let balance_in_tokens = balance_decimal / decimals;
+                    let token_value = balance_in_tokens * price_decimal;
 
-        if balance > Nat::from(0u32) {
-            // Query price from Kongswap
-            let price_decimal = get_token_price_in_usdt(&token).await
-                .unwrap_or_else(|e| {
-                    ic_cdk::println!("Warning: Failed to get {} price: {}", token.to_symbol(), e);
-                    Decimal::ZERO
-                });
+                    Ok::<_, String>((token_clone.to_symbol().to_string(), balance_in_tokens, price_decimal, token_value))
+                } else {
+                    Ok::<_, String>((token_clone.to_symbol().to_string(), Decimal::ZERO, Decimal::ZERO, Decimal::ZERO))
+                }
+            }
+        })
+        .collect();
 
-            // Convert balance to decimal (considering token decimals)
-            let balance_str = balance.to_string();
-            let balance_decimal = Decimal::from_str(&balance_str)
-                .unwrap_or(Decimal::ZERO);
-            let decimals = Decimal::from(10u64.pow(token.get_decimals() as u32));
-            let balance_in_tokens = balance_decimal / decimals;
+    let results = future::join_all(token_futures).await;
 
-            let token_value = balance_in_tokens * price_decimal;
-            total_value_decimal += token_value;
-
-            ic_cdk::println!("{} balance: {}, price: ${}, value: ${}",
-                token.to_symbol(), balance_in_tokens, price_decimal, token_value);
+    for result in results {
+        match result {
+            Ok((symbol, balance, price, value)) => {
+                if value > Decimal::ZERO {
+                    ic_cdk::println!("{} balance: {}, price: ${}, value: ${}",
+                        symbol, balance, price, value);
+                    total_value_decimal += value;
+                }
+            }
+            Err(e) => ic_cdk::println!("Warning: Token query failed: {}", e),
         }
     }
 

@@ -165,38 +165,77 @@ pub fn get_rebalancing_action(
 ) -> Option<RebalanceAction> {
     // Convert ckUSDT balance to USD (6 decimals)
     let ckusdt_str = ckusdt_balance.to_string();
-    let ckusdt_decimal = Decimal::from_str(&ckusdt_str).ok()?;
+    let ckusdt_decimal = match Decimal::from_str(&ckusdt_str) {
+        Ok(d) => d,
+        Err(e) => {
+            ic_cdk::println!("❌ ERROR: Failed to parse ckUSDT balance '{}': {}", ckusdt_str, e);
+            return None;
+        }
+    };
     let ckusdt_balance_usd = decimal_to_f64(ckusdt_decimal / Decimal::from(1_000_000));
+
+    ic_cdk::println!("🔄 Rebalancing check: ckUSDT balance = ${:.2} (raw: {})", ckusdt_balance_usd, ckusdt_balance);
+    ic_cdk::println!("📊 Deviations ({} tokens):", deviations.len());
+    for dev in deviations {
+        ic_cdk::println!("  {:?}: current={:.2}%, target={:.2}%, deviation={:.2}%, trade_size=${:.2}",
+            dev.token, dev.current_pct, dev.target_pct, dev.deviation_pct, dev.trade_size_usd);
+    }
 
     // Minimum ckUSDT balance to trigger buy ($10)
     if ckusdt_balance_usd >= 10.0 {
-        // Buy most underweight token if deviation > 1%
-        let most_underweight = deviations.iter()
+        ic_cdk::println!("✅ ckUSDT balance sufficient for buying (${:.2} >= $10.00)", ckusdt_balance_usd);
+
+        let underweight_tokens: Vec<_> = deviations.iter()
             .filter(|d| d.deviation_pct > 1.0)
-            .max_by(|a, b| a.deviation_pct.partial_cmp(&b.deviation_pct).unwrap());
+            .collect();
+
+        ic_cdk::println!("🔍 Found {} underweight tokens (deviation > 1.0%)", underweight_tokens.len());
+        for d in &underweight_tokens {
+            ic_cdk::println!("  {:?}: {:.2}% deviation, trade size ${:.2}",
+                d.token, d.deviation_pct, d.trade_size_usd);
+        }
+
+        let most_underweight = underweight_tokens.iter()
+            .max_by(|a, b| a.deviation_pct.partial_cmp(&b.deviation_pct).unwrap_or(std::cmp::Ordering::Equal));
 
         if let Some(underweight) = most_underweight {
             let buy_amount = underweight.trade_size_usd.min(ckusdt_balance_usd);
+            ic_cdk::println!("✅ REBALANCE ACTION: Buy ${:.2} of {:?}", buy_amount, underweight.token);
 
             return Some(RebalanceAction::Buy {
                 token: underweight.token.clone(),
                 usdt_amount: buy_amount,
             });
+        } else {
+            ic_cdk::println!("⚠️ No underweight tokens found despite checking");
         }
+    } else {
+        ic_cdk::println!("⚠️ ckUSDT balance insufficient for buying (${:.2} < $10.00)", ckusdt_balance_usd);
     }
 
     // Otherwise, sell most overweight token if deviation > 1%
-    let most_overweight = deviations.iter()
+    let overweight_tokens: Vec<_> = deviations.iter()
         .filter(|d| d.deviation_pct < -1.0)
-        .min_by(|a, b| a.deviation_pct.partial_cmp(&b.deviation_pct).unwrap());
+        .collect();
+
+    ic_cdk::println!("🔍 Found {} overweight tokens (deviation < -1.0%)", overweight_tokens.len());
+    for d in &overweight_tokens {
+        ic_cdk::println!("  {:?}: {:.2}% deviation, trade size ${:.2}",
+            d.token, d.deviation_pct, d.trade_size_usd);
+    }
+
+    let most_overweight = overweight_tokens.iter()
+        .min_by(|a, b| a.deviation_pct.partial_cmp(&b.deviation_pct).unwrap_or(std::cmp::Ordering::Equal));
 
     if let Some(overweight) = most_overweight {
+        ic_cdk::println!("✅ REBALANCE ACTION: Sell ${:.2} of {:?}", overweight.trade_size_usd, overweight.token);
         return Some(RebalanceAction::Sell {
             token: overweight.token.clone(),
             usdt_value: overweight.trade_size_usd,
         });
     }
 
+    ic_cdk::println!("ℹ️ No rebalancing action needed (no tokens exceed 1% deviation threshold)");
     None
 }
 

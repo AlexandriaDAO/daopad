@@ -68,7 +68,7 @@ function AppContent() {
   const { data: totalSupply } = useTotalSupply(actor);
 
   const mintMutation = useMintICPI(actor, agent);
-  const redeemMutation = useRedeemICPI(actor);
+  const redeemMutation = useRedeemICPI(actor, agent);
   const rebalanceMutation = useManualRebalance(actor);
 
   // Wallet balance hooks

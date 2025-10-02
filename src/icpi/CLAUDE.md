@@ -8,6 +8,12 @@ This project is the "Internet Computer Portfolio Index" (ICPI). It's a token tha
 
 Backend is minting authority for the token. Query ICPI balances from the token canister, not the backend.
 
+**CRITICAL: Backend as Minting/Burning Account**
+The backend canister (`ev6xm-haaaa-aaaap-qqcza-cai`) is the minting and burning account for ICPI, which carries heavy responsibility:
+- **Burning:** Any ICPI tokens transferred TO the backend are automatically removed from circulation (burned). Users transfer ICPI directly to backend via `icrc1_transfer`.
+- **Minting:** The backend can mint any amount of ICPI by calling the ledger. Only authorized minting functions should exist.
+- **Security implication:** Protect minting functions carefully. Any bug allowing unauthorized mints or miscalculated burns directly affects token supply and user funds.
+
 The amount of 'Locked Liquidity' I'm referencing is queried from the kong_locker project (../kong_locker/). Query kong_locker_backend (eazgb-giaaa-aaaap-qqc2q-cai) for lock canisters, then kongswap_backend (2ipq2-uqaaa-aaaar-qailq-cai) for user_balances. Filter results for [ALEX, ZERO, KONG, BOB] tokens.
 
 The amount included in this index is limited to approved tokens right now, e.g., right now the distribution looks like this:
@@ -69,10 +75,12 @@ Kongswap's pools always denominate liquidity in 50/50 pools that either denomina
 We should never guess types. Reference ./kong-reference/ for Kongswap source code and ../kong_locker/ for lock canister details. Always test with dfx commands first before implementing.
 
 Development workflow - always deploy and test on mainnet:
-- After implementing features, deploy with: `./deploy.sh --network ic`
+- **CRITICAL: ALWAYS deploy to mainnet after ANY frontend changes** - run `./deploy.sh --network ic` immediately after updating frontend files (docs, UI, components, etc.)
+- After implementing backend features, deploy with: `./deploy.sh --network ic`
 - Test all functions directly on mainnet using dfx commands
 - No need for local testing - we're experimenting with small amounts
 - This enables real integration testing with kong_locker and Kongswap
+- Frontend changes are NOT visible until deployed - local changes don't affect the live site
 
 Debugging principles:
 - Candid .did files must match Rust structs exactly (field names, types) - test with `dfx canister call --network ic` to catch deserialization errors before deploying frontend

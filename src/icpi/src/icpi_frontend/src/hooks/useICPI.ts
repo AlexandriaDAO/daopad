@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Actor, HttpAgent } from '@dfinity/agent'
 import { Principal } from '@dfinity/principal'
-import { ICPI_CANISTER_ID, CKUSDT_CANISTER_ID } from '../constants/canisters'
+import { ICPI_BACKEND_CANISTER_ID, ICPI_TOKEN_CANISTER_ID, CKUSDT_CANISTER_ID } from '../constants/canisters'
 
 // Types
 export interface UserTokenBalance {
@@ -256,7 +256,7 @@ export const useMintICPI = (actor: Actor | null, agent: HttpAgent | null) => {
         canisterId: CKUSDT_CANISTER_ID,
       })
 
-      const icpiBackendPrincipal = Principal.fromText(ICPI_CANISTER_ID)
+      const icpiBackendPrincipal = Principal.fromText(ICPI_BACKEND_CANISTER_ID)
 
       const approveArgs = {
         from_subaccount: [],
@@ -305,30 +305,78 @@ export const useMintICPI = (actor: Actor | null, agent: HttpAgent | null) => {
   })
 }
 
-export const useRedeemICPI = (actor: Actor | null) => {
+export const useRedeemICPI = (actor: Actor | null, agent: HttpAgent | null) => {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (icpiAmount: number) => {
-      if (!actor) throw new Error('Actor not initialized')
+      if (!actor || !agent) throw new Error('Actor or agent not initialized')
 
-      // Phase 1: Initiate burn (returns burn_id)
       const amountRaw = BigInt(Math.floor(icpiAmount * 1e8)) // ICPI has 8 decimals
-      const initResult = await actor.initiate_burn(amountRaw)
+      const feeAmount = BigInt(100_000) // 0.1 ckUSDT backend fee (6 decimals)
+      const ckusdtTransferFee = BigInt(10_000) // 0.01 ckUSDT ICRC1 transfer fee
+      const icpiTransferFee = BigInt(10_000) // ICPI transfer fee (8 decimals, but numerically 10000)
 
-      if ('Err' in initResult) {
-        throw new Error(initResult.Err)
+      // Step 1: Approve backend to collect fee (ckUSDT)
+      const ckusdtActor = Actor.createActor(ICRC1_IDL, {
+        agent,
+        canisterId: CKUSDT_CANISTER_ID,
+      })
+
+      const icpiBackendPrincipal = Principal.fromText(ICPI_BACKEND_CANISTER_ID)
+
+      const approveArgs = {
+        from_subaccount: [],
+        spender: {
+          owner: icpiBackendPrincipal,
+          subaccount: [],
+        },
+        amount: feeAmount + ckusdtTransferFee, // Fee + transfer fee
+        expected_allowance: [],
+        expires_at: [],
+        fee: [ckusdtTransferFee],
+        memo: [],
+        created_at_time: [],
       }
-      const burnId = initResult.Ok
 
-      // Phase 2: Complete burn (returns BurnResult with token amounts)
-      const completeResult = await actor.complete_burn(burnId)
+      const approveResult = await ckusdtActor.icrc2_approve(approveArgs)
 
-      if ('Err' in completeResult) {
-        throw new Error(completeResult.Err)
+      if ('Err' in approveResult) {
+        throw new Error(`Fee approval failed: ${JSON.stringify(approveResult.Err)}`)
       }
 
-      return completeResult.Ok
+      // Step 2: Transfer ICPI to backend (this burns it since backend is minting account)
+      const icpiActor = Actor.createActor(ICRC1_IDL, {
+        agent,
+        canisterId: ICPI_TOKEN_CANISTER_ID,
+      })
+
+      const transferArgs = {
+        to: {
+          owner: icpiBackendPrincipal,
+          subaccount: [],
+        },
+        amount: amountRaw,
+        fee: [icpiTransferFee],
+        memo: [],
+        from_subaccount: [],
+        created_at_time: [],
+      }
+
+      const transferResult = await icpiActor.icrc1_transfer(transferArgs)
+
+      if ('Err' in transferResult) {
+        throw new Error(`ICPI transfer failed: ${JSON.stringify(transferResult.Err)}`)
+      }
+
+      // Step 3: Call atomic burn_icpi (backend will verify burn and send redemption tokens)
+      const burnResult = await actor.burn_icpi(amountRaw)
+
+      if ('Err' in burnResult) {
+        throw new Error(burnResult.Err)
+      }
+
+      return burnResult.Ok
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.INDEX_STATE] })
@@ -539,7 +587,7 @@ export const useActualAllocations = (
         indexState = indexStateResult.Ok
       }
 
-      // Only track these tokens in the index (exclude ckUSDT which is held for rebalancing)
+      // Track index tokens + ckUSDT (cash position for rebalancing)
       const TRACKED_TOKENS = ['ALEX', 'ZERO', 'KONG', 'BOB']
 
       const allocations = balances
@@ -572,7 +620,22 @@ export const useActualAllocations = (
           }
         })
 
-      // Calculate actual percentages (only from tracked tokens, excluding ckUSDT)
+      // Add ckUSDT position (cash held for rebalancing)
+      const ckusdtPosition = indexState.current_positions.find(
+        (p: any) => p.token.ckUSDT !== undefined
+      )
+
+      if (ckusdtPosition) {
+        allocations.push({
+          token: 'ckUSDT',
+          balance: Number(ckusdtPosition.balance) / 1_000_000, // 6 decimals
+          value: ckusdtPosition.usd_value,
+          decimals: 6,
+          targetPercent: 0, // ckUSDT is cash, not a target allocation
+        })
+      }
+
+      // Calculate actual percentages (including ckUSDT to show total portfolio composition)
       const totalValue = allocations.reduce((sum, a) => sum + a.value, 0)
 
       const result = allocations.map((a) => ({
@@ -628,7 +691,7 @@ export const useUserWalletBalances = (
       // STEP 2: Add ICPI token metadata (the index token itself)
       const icpiMetadata = {
         symbol: 'ICPI',
-        canister_id: Principal.fromText(ICPI_CANISTER_ID),
+        canister_id: Principal.fromText(ICPI_TOKEN_CANISTER_ID),
         decimals: 8, // ICPI has 8 decimals
       }
 

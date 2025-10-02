@@ -27,17 +27,6 @@ type MintStatus = variant {
     Expired;
 };
 
-type BurnStatus = variant {
-    Pending;
-    CollectingFee;
-    LockingTokens;
-    CalculatingAmounts;
-    TransferringTokens;
-    Complete : BurnResult;
-    Failed : text;
-    Expired;
-};
-
 type BurnResult = record {
     successful_transfers : vec record { text; nat };
     failed_transfers : vec record { text; nat; text };
@@ -122,12 +111,12 @@ type RebalancerStatus = record {
 };
 
 service : {
-    // ICRC1 Token Standard
+    // ICRC1 Token Standard (proxied to ICPI ledger canister)
     icrc1_name : () -> (text) query;
     icrc1_symbol : () -> (text) query;
     icrc1_decimals : () -> (nat8) query;
-    icrc1_total_supply : () -> (nat) query;
-    icrc1_balance_of : (Account) -> (nat) query;
+    icrc1_total_supply : () -> (nat);  // Update method - queries real ledger
+    icrc1_balance_of : (Account) -> (nat);  // Update method - queries real ledger
     icrc1_fee : () -> (nat) query;
     icrc1_metadata : () -> (vec record { text; MetadataValue }) query;
     icrc1_supported_standards : () -> (vec StandardRecord) query;
@@ -139,9 +128,7 @@ service : {
     check_mint_status : (text) -> (variant { Ok : MintStatus; Err : text }) query;
 
     // Burning
-    initiate_burn : (nat) -> (variant { Ok : text; Err : text });
-    complete_burn : (text) -> (variant { Ok : BurnResult; Err : text });
-    check_burn_status : (text) -> (variant { Ok : BurnStatus; Err : text }) query;
+    burn_icpi : (nat) -> (variant { Ok : BurnResult; Err : text });
 
     // Index State & Data
     get_index_state : () -> (variant { Ok : IndexState; Err : text });
@@ -154,6 +141,7 @@ service : {
 
     // Rebalancer
     get_rebalancer_status : () -> (RebalancerStatus) query;
+    debug_rebalancer : () -> (text);
 
     // System Info
     get_canister_id : () -> (principal) query;

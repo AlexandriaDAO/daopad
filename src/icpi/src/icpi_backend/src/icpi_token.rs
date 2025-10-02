@@ -1,23 +1,15 @@
 use candid::{CandidType, Deserialize, Nat, Principal};
-use std::cell::RefCell;
-use std::collections::HashMap;
-
-use crate::icrc_types::{Account, ICPI_DECIMALS};
+use crate::icrc_types::Account;
+use crate::ledger_client::{get_icpi_balance, get_icpi_total_supply};
 
 // ICRC1 metadata
 const TOKEN_NAME: &str = "Internet Computer Portfolio Index";
 const TOKEN_SYMBOL: &str = "ICPI";
+const ICPI_DECIMALS: u8 = 8;
 
-// Thread-local storage for token state (in-memory for safety)
-thread_local! {
-    // Token balances
-    static BALANCES: RefCell<HashMap<Principal, Nat>> = RefCell::new(HashMap::new());
-
-    // Total supply
-    static TOTAL_SUPPLY: RefCell<Nat> = RefCell::new(Nat::from(0u32));
-}
-
-// ===== ICRC1 Standard Methods =====
+// ===== ICRC1 Standard Methods (Proxied to Real Ledger) =====
+// NOTE: These methods are kept for backwards compatibility with the Candid interface.
+// They proxy queries to the actual ICPI ledger canister (l6lep-niaaa-aaaap-qqeda-cai).
 
 #[ic_cdk::query]
 pub fn icrc1_name() -> String {
@@ -34,14 +26,26 @@ pub fn icrc1_decimals() -> u8 {
     ICPI_DECIMALS
 }
 
-#[ic_cdk::query]
-pub fn icrc1_total_supply() -> Nat {
-    total_supply()
+// NOTE: This is an update method (not query) because it needs to make an inter-canister call
+#[ic_cdk::update]
+pub async fn icrc1_total_supply() -> Nat {
+    get_icpi_total_supply()
+        .await
+        .unwrap_or_else(|e| {
+            ic_cdk::println!("ERROR: Failed to query ICPI total supply: {}", e);
+            Nat::from(0u32)
+        })
 }
 
-#[ic_cdk::query]
-pub fn icrc1_balance_of(account: Account) -> Nat {
-    get_balance(account.owner)
+// NOTE: This is an update method (not query) because it needs to make an inter-canister call
+#[ic_cdk::update]
+pub async fn icrc1_balance_of(account: Account) -> Nat {
+    get_icpi_balance(account.owner)
+        .await
+        .unwrap_or_else(|e| {
+            ic_cdk::println!("ERROR: Failed to query ICPI balance for {}: {}", account.owner, e);
+            Nat::from(0u32)
+        })
 }
 
 #[ic_cdk::query]
@@ -81,139 +85,12 @@ pub struct StandardRecord {
     pub url: String,
 }
 
-// ===== Internal Token Operations =====
+// ===== Helper Methods for Backwards Compatibility =====
 
-// Get balance (internal)
-pub fn get_balance(owner: Principal) -> Nat {
-    BALANCES.with(|balances| {
-        balances.borrow()
-            .get(&owner)
-            .cloned()
-            .unwrap_or_else(|| Nat::from(0u32))
-    })
-}
-
-// Get total supply (internal)
-pub fn total_supply() -> Nat {
-    TOTAL_SUPPLY.with(|supply| supply.borrow().clone())
-}
-
-// Mint tokens (internal - only callable by canister's own code)
-// NOTE: This is an internal function called from within update methods like complete_mint.
-// When called from an update method, ic_cdk::caller() returns the user who triggered the update,
-// not the canister itself. This is expected behavior - the authorization happens in the calling
-// function (complete_mint), which validates the user's mint request before calling this.
-pub fn mint_tokens(to: Principal, amount: Nat) -> Result<(), String> {
-    // Update balance
-    BALANCES.with(|balances| {
-        let mut balances = balances.borrow_mut();
-        let current_balance = balances.get(&to).cloned().unwrap_or_else(|| Nat::from(0u32));
-        let new_balance = current_balance + amount.clone();
-        balances.insert(to, new_balance);
-    });
-
-    // Update total supply
-    TOTAL_SUPPLY.with(|supply| {
-        let mut supply = supply.borrow_mut();
-        *supply = supply.clone() + amount;
-    });
-
-    Ok(())
-}
-
-// Burn tokens (internal - only callable by canister's own code)
-// NOTE: Same authorization pattern as mint_tokens - called from within update methods
-pub fn burn_tokens(from: Principal, amount: Nat) -> Result<(), String> {
-    // Check balance
-    let current_balance = get_balance(from);
-    if current_balance < amount {
-        return Err(format!("Insufficient balance. Have: {}, Need: {}", current_balance, amount));
-    }
-
-    // Update balance
-    BALANCES.with(|balances| {
-        let mut balances = balances.borrow_mut();
-        let new_balance = current_balance - amount.clone();
-        if new_balance == Nat::from(0u32) {
-            balances.remove(&from);
-        } else {
-            balances.insert(from, new_balance);
-        }
-    });
-
-    // Update total supply
-    TOTAL_SUPPLY.with(|supply| {
-        let mut supply = supply.borrow_mut();
-        *supply = supply.clone() - amount;
-    });
-
-    Ok(())
-}
-
-// Transfer tokens (for future ICRC1 compliance)
-pub fn transfer_tokens(from: Principal, to: Principal, amount: Nat) -> Result<(), String> {
-    // Verify caller is the from principal or the canister itself
-    let caller = ic_cdk::caller();
-    if caller != from && caller != ic_cdk::api::id() {
-        return Err("Unauthorized: caller must be sender".to_string());
-    }
-
-    // Check balance
-    let current_balance = get_balance(from);
-    if current_balance < amount {
-        return Err(format!("Insufficient balance. Have: {}, Need: {}", current_balance, amount));
-    }
-
-    // Update sender balance
-    BALANCES.with(|balances| {
-        let mut balances = balances.borrow_mut();
-        let new_balance = current_balance - amount.clone();
-        if new_balance == Nat::from(0u32) {
-            balances.remove(&from);
-        } else {
-            balances.insert(from, new_balance);
-        }
-    });
-
-    // Update recipient balance
-    BALANCES.with(|balances| {
-        let mut balances = balances.borrow_mut();
-        let recipient_balance = balances.get(&to).cloned().unwrap_or_else(|| Nat::from(0u32));
-        let new_balance = recipient_balance + amount;
-        balances.insert(to, new_balance);
-    });
-
-    Ok(())
-}
-
-// Get all balances (for debugging)
+// Get all balances (for debugging) - DEPRECATED
+// This method is no longer accurate as balances are stored on the ICPI ledger canister
 #[ic_cdk::query]
 pub fn get_all_balances() -> Vec<(Principal, Nat)> {
-    BALANCES.with(|balances| {
-        balances.borrow()
-            .iter()
-            .map(|(k, v)| (*k, v.clone()))
-            .collect()
-    })
-}
-
-// Initialize with seed supply (only callable once during init)
-pub fn initialize_seed_supply(to: Principal, amount: Nat) -> Result<(), String> {
-    let current_supply = total_supply();
-    if current_supply > Nat::from(0u32) {
-        return Err("Supply already initialized".to_string());
-    }
-
-    // Mint seed supply to specified principal
-    TOTAL_SUPPLY.with(|supply| {
-        let mut supply = supply.borrow_mut();
-        *supply = amount.clone();
-    });
-
-    BALANCES.with(|balances| {
-        let mut balances = balances.borrow_mut();
-        balances.insert(to, amount);
-    });
-
-    Ok(())
+    ic_cdk::println!("WARNING: get_all_balances is deprecated. Query the ICPI ledger directly at l6lep-niaaa-aaaap-qqeda-cai");
+    vec![]
 }

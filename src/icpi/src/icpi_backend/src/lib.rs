@@ -12,6 +12,7 @@ mod precision;
 mod icpi_token;
 mod minting;
 mod burning;
+mod ledger_client;
 
 use types::{IndexState, HealthStatus, RebalanceAction, TrackedToken};
 use rebalancer::{RebalancerStatus, start_rebalancing};
@@ -45,22 +46,10 @@ fn start_cache_refresh_timer() {
 fn init() {
     ic_cdk::println!("ICPI Backend initialized");
 
-    // Seed initial supply: 1 ICPI to deployer
-    let seed_principal = Principal::from_text("eurew-qh72r-pxmst-k7hft-b4kku-fd7gu-mbrlg-3zwi4-t4o5t-tq3wi-cqe")
-        .expect("Invalid seed principal");
-    let seed_amount = candid::Nat::from(100_000_000u64); // 1 ICPI (8 decimals)
-
-    if let Err(e) = icpi_token::initialize_seed_supply(seed_principal, seed_amount) {
-        ic_cdk::println!("Warning: Failed to initialize seed supply: {}", e);
-    } else {
-        ic_cdk::println!("✓ Seeded 1 ICPI to {}", seed_principal);
-    }
-
     // Start the hourly rebalancing timer
     start_rebalancing();
-    // Start cleanup timers for mint/burn operations
+    // Start cleanup timer for mint operations
     minting::start_cleanup_timer();
-    burning::start_cleanup_timer();
     // Start cache refresh timer
     start_cache_refresh_timer();
 }
@@ -71,9 +60,8 @@ fn post_upgrade() {
     ic_cdk::println!("ICPI Backend upgraded");
     // Restart the hourly rebalancing timer
     start_rebalancing();
-    // Restart cleanup timers
+    // Restart cleanup timer for mint operations
     minting::start_cleanup_timer();
-    burning::start_cleanup_timer();
     // Restart cache refresh timer
     start_cache_refresh_timer();
 }
@@ -174,6 +162,30 @@ async fn trigger_manual_rebalance() -> Result<String, String> {
 #[ic_cdk::query]
 fn get_rebalancer_status() -> RebalancerStatus {
     rebalancer::get_rebalancer_status()
+}
+
+// Debug rebalancer logic (shows detailed state + logs action determination)
+#[ic_cdk::update]
+async fn debug_rebalancer() -> String {
+    use index_state::{get_index_state, get_rebalancing_action};
+
+    ic_cdk::println!("🔍 DEBUG: Manually checking rebalancer state...");
+
+    let state = match get_index_state().await {
+        Ok(s) => s,
+        Err(e) => return format!("❌ Failed to get index state: {}", e),
+    };
+
+    // This will log detailed output via ic_cdk::println
+    let action = get_rebalancing_action(&state.deviations, &state.ckusdt_balance);
+
+    format!(
+        "ckUSDT: {} (${:.2})\nTotal Value: ${:.2}\nAction: {:?}\n\nCheck canister logs for detailed breakdown",
+        state.ckusdt_balance,
+        state.ckusdt_balance.to_string().parse::<f64>().unwrap_or(0.0) / 1_000_000.0,
+        state.total_value,
+        action
+    )
 }
 
 // Stop rebalancing
@@ -317,19 +329,9 @@ fn check_mint_status(mint_id: String) -> Result<minting::MintStatus, String> {
     minting::check_mint_status(mint_id)
 }
 
-// ===== Burning Endpoints =====
+// ===== Burning Endpoint =====
 
 #[ic_cdk::update]
-async fn initiate_burn(icpi_amount: candid::Nat) -> Result<String, String> {
-    burning::initiate_burn(icpi_amount).await
-}
-
-#[ic_cdk::update]
-async fn complete_burn(burn_id: String) -> Result<burning::BurnResult, String> {
-    burning::complete_burn(burn_id).await
-}
-
-#[ic_cdk::query]
-fn check_burn_status(burn_id: String) -> Result<burning::BurnStatus, String> {
-    burning::check_burn_status(burn_id)
+async fn burn_icpi(amount: candid::Nat) -> Result<burning::BurnResult, String> {
+    burning::burn_icpi(amount).await
 }

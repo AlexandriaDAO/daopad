@@ -5,9 +5,9 @@ use std::collections::HashMap;
 use crate::icrc_types::{collect_fee, collect_deposit, CKUSDT_CANISTER, CKUSDT_DECIMALS, ICPI_DECIMALS};
 use crate::precision::{multiply_and_divide, convert_decimals};
 use crate::tvl_calculator::calculate_tvl_in_ckusdt;
-use crate::icpi_token::{mint_tokens, total_supply};
+use crate::ledger_client::{mint_icpi_tokens, get_icpi_total_supply};
 
-const TIMEOUT_NANOS: u64 = 60_000_000_000; // 60 seconds
+const TIMEOUT_NANOS: u64 = 180_000_000_000; // 180 seconds (3 minutes for safety)
 
 // Helper to refund deposit on failure (keeps fee as intended)
 async fn refund_deposit(
@@ -136,30 +136,36 @@ pub async fn complete_mint(mint_id: String) -> Result<Nat, String> {
 
     ic_cdk::println!("Fee collected for mint {}", mint_id);
 
-    // Step 2: Collect deposit
-    pending_mint.status = MintStatus::CollectingDeposit;
-    update_pending_mint(&pending_mint);
-
-    let deposit_result = collect_deposit(
-        caller,
-        pending_mint.ckusdt_amount.clone(),
-        format!("ICPI mint {}", mint_id),
-    ).await;
-
-    if let Err(e) = deposit_result {
-        pending_mint.status = MintStatus::Failed(format!("Deposit collection failed: {}", e));
-        update_pending_mint(&pending_mint);
-        // Note: Fee is NOT refunded on failure (as per plan)
-        return Err(format!("Deposit collection failed: {}", e));
-    }
-
-    ic_cdk::println!("Deposit collected for mint {}", mint_id);
-
-    // Step 3: Calculate ICPI to mint with refund on failure
+    // Step 2: Calculate supply and TVL BEFORE collecting deposit (critical for fair pricing)
     pending_mint.status = MintStatus::Calculating;
     update_pending_mint(&pending_mint);
 
-    let current_supply = total_supply();
+    let current_supply = match get_icpi_total_supply().await {
+        Ok(supply) => supply,
+        Err(e) => {
+            pending_mint.status = MintStatus::Refunding;
+            update_pending_mint(&pending_mint);
+
+            match refund_deposit(
+                caller,
+                pending_mint.ckusdt_amount.clone(),
+                format!("Failed to query ICPI supply: {}", e)
+            ).await {
+                Ok(_) => {
+                    pending_mint.status = MintStatus::FailedRefunded(
+                        format!("Supply query failed, deposit refunded: {}", e)
+                    );
+                }
+                Err(refund_err) => {
+                    pending_mint.status = MintStatus::FailedNoRefund(
+                        format!("Supply query failed: {}. Refund failed: {}", e, refund_err)
+                    );
+                }
+            }
+            update_pending_mint(&pending_mint);
+            return Err(format!("Failed to query ICPI supply: {}", e));
+        }
+    };
 
     // Calculate TVL of canister holdings (includes all tokens + ckUSDT)
     let current_tvl = match calculate_tvl_in_ckusdt().await {
@@ -196,21 +202,34 @@ pub async fn complete_mint(mint_id: String) -> Result<Nat, String> {
 
     // Validate TVL is not zero
     if current_tvl == Nat::from(0u32) {
-        // Refund on zero TVL
-        pending_mint.status = MintStatus::Refunding;
-        update_pending_mint(&pending_mint);
-
-        let _ = refund_deposit(
-            caller,
-            pending_mint.ckusdt_amount.clone(),
-            "TVL is zero - canister has no holdings".to_string()
-        ).await;
-
-        pending_mint.status = MintStatus::FailedRefunded("TVL is zero - deposit refunded".to_string());
+        // Cannot mint with zero TVL (no refund needed - deposit not collected yet)
+        pending_mint.status = MintStatus::Failed("TVL is zero - canister has no holdings".to_string());
         update_pending_mint(&pending_mint);
         return Err("TVL is zero - canister has no token holdings".to_string());
     }
 
+    ic_cdk::println!("Pre-deposit TVL: {} ckUSDT (e6), Supply: {} ICPI (e8)", current_tvl, current_supply);
+
+    // Step 3: NOW collect deposit (after TVL snapshot taken)
+    pending_mint.status = MintStatus::CollectingDeposit;
+    update_pending_mint(&pending_mint);
+
+    let deposit_result = collect_deposit(
+        caller,
+        pending_mint.ckusdt_amount.clone(),
+        format!("ICPI mint {}", mint_id),
+    ).await;
+
+    if let Err(e) = deposit_result {
+        pending_mint.status = MintStatus::Failed(format!("Deposit collection failed: {}", e));
+        update_pending_mint(&pending_mint);
+        // Note: Fee is NOT refunded on failure (as per plan)
+        return Err(format!("Deposit collection failed: {}", e));
+    }
+
+    ic_cdk::println!("Deposit collected for mint {}", mint_id);
+
+    // Step 4: Calculate ICPI to mint using pre-deposit TVL
     // Formula: new_icpi = (deposit * current_supply) / current_tvl
     // Special case: Initial mint when supply is 0 - mint 1:1 with deposit
     let icpi_to_mint = if current_supply == Nat::from(0u32) {
@@ -252,20 +271,41 @@ pub async fn complete_mint(mint_id: String) -> Result<Nat, String> {
     pending_mint.icpi_to_mint = Some(icpi_to_mint.clone());
     ic_cdk::println!("Calculated ICPI to mint: {}", icpi_to_mint);
 
-    // Step 4: Mint ICPI tokens
+    // Step 5: Mint ICPI tokens on the actual ICPI ledger
     pending_mint.status = MintStatus::Minting;
     update_pending_mint(&pending_mint);
 
-    mint_tokens(caller, icpi_to_mint.clone())
-        .map_err(|e| {
-            pending_mint.status = MintStatus::Failed(format!("Minting failed: {}", e));
+    match mint_icpi_tokens(caller, icpi_to_mint.clone()).await {
+        Ok(block_index) => {
+            ic_cdk::println!("Minted {} ICPI to {} (block: {})", icpi_to_mint, caller, block_index);
+        }
+        Err(e) => {
+            // Minting failed - try to refund
+            pending_mint.status = MintStatus::Refunding;
             update_pending_mint(&pending_mint);
-            format!("Minting failed: {}", e)
-        })?;
 
-    ic_cdk::println!("Minted {} ICPI to {}", icpi_to_mint, caller);
+            match refund_deposit(
+                caller,
+                pending_mint.ckusdt_amount.clone(),
+                format!("Ledger minting failed: {}", e)
+            ).await {
+                Ok(_) => {
+                    pending_mint.status = MintStatus::FailedRefunded(
+                        format!("Ledger minting failed, deposit refunded: {}", e)
+                    );
+                }
+                Err(refund_err) => {
+                    pending_mint.status = MintStatus::FailedNoRefund(
+                        format!("Ledger minting failed: {}. Refund failed: {}. Contact support.", e, refund_err)
+                    );
+                }
+            }
+            update_pending_mint(&pending_mint);
+            return Err(format!("Ledger minting failed: {}", e));
+        }
+    }
 
-    // Step 5: Mark as complete
+    // Step 6: Mark as complete
     pending_mint.status = MintStatus::Complete(icpi_to_mint.clone());
     update_pending_mint(&pending_mint);
 
