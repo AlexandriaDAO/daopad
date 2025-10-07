@@ -8,6 +8,21 @@ mod portfolio_data;
 mod critical_operations;
 mod orchestration;
 
+// Root-level modules (to be migrated)
+mod balance_tracker;
+mod burning;
+mod icpi_math;
+mod icpi_token;
+mod icrc_types;
+mod index_state;
+mod kong_locker;
+mod kongswap;
+mod ledger_client;
+mod minting;
+mod precision;
+mod rebalancer;
+mod tvl_calculator;
+
 // Legacy modules (will be phased out)
 mod legacy {
     pub mod balance_tracker;
@@ -27,7 +42,7 @@ mod legacy {
 }
 
 use candid::{candid_method, Nat, Principal};
-use ic_cdk_macros::{init, post_upgrade, query, update};
+use ic_cdk::{init, post_upgrade, query, update};
 use infrastructure::{FeatureFlags, OperationStrategy, log_shadow_comparison};
 
 // =============================================================================
@@ -42,11 +57,14 @@ fn init() {
 
     // Start rebalancing timer based on feature flag
     match FeatureFlags::get_rebalancing_strategy() {
-        OperationStrategy::Legacy => legacy::rebalancer::start_rebalancing_timer(),
-        OperationStrategy::Refactored => orchestration::start_rebalancing_timer(),
+        OperationStrategy::Legacy => legacy::rebalancer::start_rebalancing(),
+        OperationStrategy::Refactored => {
+            // orchestration::start_rebalancing_timer() - TODO: implement
+            ic_cdk::println!("Refactored rebalancing not yet implemented");
+        }
         OperationStrategy::Shadow => {
-            legacy::rebalancer::start_rebalancing_timer();
-            orchestration::start_rebalancing_timer();
+            legacy::rebalancer::start_rebalancing();
+            // orchestration::start_rebalancing_timer() - TODO: implement
         }
     }
 }
@@ -58,11 +76,14 @@ fn post_upgrade() {
 
     // Restart rebalancing timer based on feature flag
     match FeatureFlags::get_rebalancing_strategy() {
-        OperationStrategy::Legacy => legacy::rebalancer::start_rebalancing_timer(),
-        OperationStrategy::Refactored => orchestration::start_rebalancing_timer(),
+        OperationStrategy::Legacy => legacy::rebalancer::start_rebalancing(),
+        OperationStrategy::Refactored => {
+            // orchestration::start_rebalancing_timer() - TODO: implement
+            ic_cdk::println!("Refactored rebalancing not yet implemented");
+        }
         OperationStrategy::Shadow => {
-            legacy::rebalancer::start_rebalancing_timer();
-            orchestration::start_rebalancing_timer();
+            legacy::rebalancer::start_rebalancing();
+            // orchestration::start_rebalancing_timer() - TODO: implement
         }
     }
 }
@@ -97,24 +118,20 @@ fn get_feature_flags() -> infrastructure::FeatureFlagConfig {
 
 #[update]
 #[candid_method(update)]
-async fn mint_with_usdt(usdt_amount: Nat) -> Result<Nat, String> {
-    let caller = ic_cdk::caller();
-
+async fn mint_with_usdt(usdt_amount: Nat) -> Result<String, String> {
     match FeatureFlags::get_minting_strategy() {
         OperationStrategy::Legacy => {
-            legacy::minting::mint_with_usdt(caller, usdt_amount).await
+            legacy::minting::initiate_mint(usdt_amount).await
         }
         OperationStrategy::Refactored => {
-            orchestration::orchestrate_mint(caller, usdt_amount).await
+            // orchestration::orchestrate_mint - TODO: implement
+            Err("Refactored minting not yet implemented".to_string())
         }
         OperationStrategy::Shadow => {
             // Run both and compare
-            let legacy_result = legacy::minting::mint_with_usdt(caller.clone(), usdt_amount.clone()).await;
-            let refactored_result = orchestration::orchestrate_mint(caller, usdt_amount).await;
-
-            log_shadow_comparison("mint_with_usdt", &legacy_result, &refactored_result);
-
-            // Return legacy result as source of truth
+            let legacy_result = legacy::minting::initiate_mint(usdt_amount.clone()).await;
+            // let refactored_result = orchestration::orchestrate_mint(caller, usdt_amount).await;
+            // log_shadow_comparison("mint_with_usdt", &legacy_result, &refactored_result);
             legacy_result
         }
     }
@@ -123,24 +140,21 @@ async fn mint_with_usdt(usdt_amount: Nat) -> Result<Nat, String> {
 #[update]
 #[candid_method(update)]
 async fn burn_icpi(icpi_amount: Nat) -> Result<Vec<(String, Nat)>, String> {
-    let caller = ic_cdk::caller();
-
     match FeatureFlags::get_burning_strategy() {
         OperationStrategy::Legacy => {
-            legacy::burning::burn_icpi(caller, icpi_amount).await
+            legacy::burning::burn_icpi(icpi_amount).await
+                .map(|result| result.successful_transfers)
         }
         OperationStrategy::Refactored => {
-            orchestration::orchestrate_burn(caller, icpi_amount).await
+            // orchestration::orchestrate_burn - TODO: implement
+            Err("Refactored burning not yet implemented".to_string())
         }
         OperationStrategy::Shadow => {
             // Run both and compare
-            let legacy_result = legacy::burning::burn_icpi(caller.clone(), icpi_amount.clone()).await;
-            let refactored_result = orchestration::orchestrate_burn(caller, icpi_amount).await;
-
-            log_shadow_comparison("burn_icpi", &legacy_result, &refactored_result);
-
-            // Return legacy result as source of truth
-            legacy_result
+            let legacy_result = legacy::burning::burn_icpi(icpi_amount.clone()).await;
+            // let refactored_result = orchestration::orchestrate_burn(caller, icpi_amount).await;
+            // log_shadow_comparison("burn_icpi", &legacy_result, &refactored_result);
+            legacy_result.map(|result| result.successful_transfers)
         }
     }
 }
@@ -171,14 +185,7 @@ async fn get_index_state() -> Result<types::portfolio::IndexState, String> {
 #[query]
 #[candid_method(query)]
 fn get_health_status() -> types::common::HealthStatus {
-    match FeatureFlags::get_query_strategy() {
-        OperationStrategy::Legacy => {
-            legacy::lib::health_status()
-        }
-        OperationStrategy::Refactored | OperationStrategy::Shadow => {
-            informational::get_health_status()
-        }
-    }
+    informational::get_health_status()
 }
 
 #[query]
@@ -195,26 +202,7 @@ fn get_tracked_tokens() -> Vec<String> {
 #[candid_method(update)]
 async fn trigger_rebalance() -> Result<String, String> {
     // TODO: Add admin authorization check
-
-    match FeatureFlags::get_rebalancing_strategy() {
-        OperationStrategy::Legacy => {
-            legacy::rebalancer::execute_rebalance().await
-        }
-        OperationStrategy::Refactored => {
-            orchestration::execute_rebalance().await
-                .map(|_| "Rebalance executed successfully".to_string())
-        }
-        OperationStrategy::Shadow => {
-            // Run both and compare
-            let legacy_result = legacy::rebalancer::execute_rebalance().await;
-            let refactored_result = orchestration::execute_rebalance().await
-                .map(|_| "Rebalance executed successfully".to_string());
-
-            log_shadow_comparison("trigger_rebalance", &legacy_result, &refactored_result);
-
-            legacy_result
-        }
-    }
+    legacy::rebalancer::trigger_manual_rebalance().await
 }
 
 // =============================================================================
