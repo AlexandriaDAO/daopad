@@ -1,8 +1,12 @@
-//! Infrastructure module - Temporary stub to fix compilation
-//! TODO: Implement properly in Phase 4
+//! Infrastructure module - Core utilities and types
+//! Phase 2 complete: Error types implemented
 
 use candid::CandidType;
 use serde::{Deserialize, Serialize};
+
+// Export error types
+pub mod errors;
+pub use errors::{IcpiError, Result, MintError, BurnError, RebalanceError};
 
 // Feature flag system (stub for now)
 pub struct FeatureFlags;
