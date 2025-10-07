@@ -19,6 +19,9 @@ pub struct BurnResult {
 
 // Main burn orchestration function
 pub async fn burn_icpi(caller: Principal, amount: Nat) -> Result<BurnResult> {
+    // Acquire reentrancy guard - prevents concurrent burns by same user
+    let _guard = crate::infrastructure::BurnGuard::acquire(caller)?;
+
     // Validate request
     burn_validator::validate_burn_request(&caller, &amount)?;
 

@@ -38,6 +38,9 @@ pub async fn initiate_mint(caller: Principal, amount: Nat) -> Result<String> {
 
 /// Complete a pending mint request
 pub async fn complete_mint(caller: Principal, mint_id: String) -> Result<Nat> {
+    // Acquire reentrancy guard - prevents concurrent mints by same user
+    let _guard = crate::infrastructure::MintGuard::acquire(caller)?;
+
     // Get pending mint
     let pending_mint = get_pending_mint(&mint_id)?
         .ok_or_else(|| IcpiError::Mint(MintError::InvalidMintId {
@@ -220,18 +223,26 @@ pub async fn mint_icpi_on_ledger(recipient: Principal, amount: Nat) -> Result<Na
             details: format!("Invalid ICPI principal: {}", e),
         }))?;
 
-    // Call the ledger to mint tokens
+    // Call the ledger to mint tokens using icrc1_transfer
+    // Backend is the minting account, so transfers create new tokens
+    use crate::types::icrc::TransferArgs;
+
+    let transfer_args = TransferArgs {
+        from_subaccount: None,
+        to: crate::types::Account {
+            owner: recipient,
+            subaccount: None,
+        },
+        amount: amount.clone(),
+        fee: None, // No fee for minting
+        memo: Some(b"ICPI minting".to_vec()),
+        created_at_time: Some(ic_cdk::api::time()),
+    };
+
     let result: std::result::Result<(crate::types::icrc::TransferResult,), _> = ic_cdk::call(
         icpi_ledger,
-        "icrc1_mint",
-        (
-            crate::types::Account {
-                owner: recipient,
-                subaccount: None,
-            },
-            amount.clone(),
-            Some(b"ICPI minting".to_vec()),  // memo
-        )
+        "icrc1_transfer",
+        (transfer_args,)
     ).await;
 
     match result {

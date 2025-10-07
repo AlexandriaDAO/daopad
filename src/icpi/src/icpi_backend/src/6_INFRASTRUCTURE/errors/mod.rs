@@ -116,6 +116,7 @@ pub enum SystemError {
     Unauthorized { principal: String, required_role: String },
     StateCorrupted { reason: String },
     InterCanisterCallFailed { canister: String, method: String, reason: String },
+    OperationInProgress { operation: String, user: String },
 }
 
 // Query errors

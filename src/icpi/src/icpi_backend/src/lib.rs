@@ -101,27 +101,6 @@ fn get_rebalancer_status() -> _1_CRITICAL_OPERATIONS::rebalancing::RebalancerSta
     _1_CRITICAL_OPERATIONS::rebalancing::get_rebalancer_status()
 }
 
-#[query]
-#[candid_method(query)]
-fn get_feature_flags() -> infrastructure::FeatureFlagConfig {
-    infrastructure::FeatureFlags::get_all_flags()
-}
-
-#[update]
-#[candid_method(update)]
-fn set_feature_flag(operation: String, strategy: String) -> Result<String> {
-    require_admin()?;
-
-    let strat = match strategy.as_str() {
-        "legacy" => infrastructure::OperationStrategy::Legacy,
-        "refactored" => infrastructure::OperationStrategy::Refactored,
-        "shadow" => infrastructure::OperationStrategy::Shadow,
-        _ => return Err(IcpiError::Other("Invalid strategy".to_string())),
-    };
-
-    infrastructure::FeatureFlags::set_strategy(&operation, strat)
-}
-
 #[update]
 #[candid_method(update)]
 fn clear_caches() -> String {

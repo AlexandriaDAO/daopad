@@ -7,6 +7,7 @@ use crate::types::{TrackedToken, Account, TransferArgs, TransferResult};
 use super::BurnResult;
 
 /// Distribute calculated redemption amounts to user
+/// Now with parallel execution for efficiency
 pub async fn distribute_tokens(
     recipient: Principal,
     redemptions: Vec<(String, Nat)>,
@@ -18,8 +19,22 @@ pub async fn distribute_tokens(
         timestamp: ic_cdk::api::time(),
     };
 
-    for (token_symbol, amount) in redemptions {
-        match transfer_token(&token_symbol, recipient, amount.clone()).await {
+    // Execute all transfers in parallel
+    let transfer_futures: Vec<_> = redemptions.iter()
+        .map(|(token_symbol, amount)| {
+            let symbol = token_symbol.clone();
+            let amt = amount.clone();
+            async move {
+                (symbol.clone(), amt.clone(), transfer_token(&symbol, recipient, amt).await)
+            }
+        })
+        .collect();
+
+    let transfer_results = futures::future::join_all(transfer_futures).await;
+
+    // Process results
+    for (token_symbol, amount, transfer_result) in transfer_results {
+        match transfer_result {
             Ok(block_index) => {
                 ic_cdk::println!("✓ Transferred {} {} to {} (block: {})",
                     amount, token_symbol, recipient, block_index);
