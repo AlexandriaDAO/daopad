@@ -6,12 +6,10 @@ use crate::types::TrackedToken;
 /// Get system health status
 pub fn get_health_status() -> HealthStatus {
     HealthStatus {
-        is_healthy: true,
-        last_rebalance: 0,
-        pending_mints: 0,
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        tracked_tokens: get_tracked_tokens(),
+        last_rebalance: Some(0), // TODO: Get from rebalancer state
         cycles_balance: ic_cdk::api::canister_balance128(),
-        memory_used: ic_cdk::api::stable_size() as u128 * 65536,
-        timestamp: ic_cdk::api::time(),
     }
 }
 

@@ -17,41 +17,34 @@ pub async fn collect_mint_fee(user: Principal) -> Result<Nat> {
             reason: format!("Invalid ckUSDT principal: {}", e),
         }))?;
 
-    // Transfer from user to backend (as fee)
-    let transfer_args = TransferArgs {
-        to: Account {
-            owner: ic_cdk::id(),
-            subaccount: None,
-        },
+    // ICRC-2 transfer_from requires approval first
+    // User must have called icrc2_approve before this
+    use crate::types::icrc::{TransferFromArgs, TransferFromError};
+
+    let args = TransferFromArgs {
+        from: Account { owner: user, subaccount: None },
+        to: Account { owner: ic_cdk::id(), subaccount: None },
         amount: fee_amount.clone(),
         fee: None,
         memo: Some(b"ICPI mint fee".to_vec()),
-        from_subaccount: None,
-        created_at_time: None,
+        created_at_time: Some(ic_cdk::api::time()),
     };
 
-    let result: Result<(crate::types::icrc::TransferResult,), _> = ic_cdk::call(
+    let result: std::result::Result<(std::result::Result<Nat, TransferFromError>,), _> = ic_cdk::call(
         ckusdt,
-        "icrc1_transfer_from",
-        (
-            Account { owner: user, subaccount: None },
-            Account { owner: ic_cdk::id(), subaccount: None },
-            fee_amount.clone(),
-            None::<Vec<u8>>,  // fee
-            Some(b"ICPI mint fee".to_vec()),  // memo
-            None::<u64>,  // created_at_time
-        )
+        "icrc2_transfer_from",
+        (args,)
     ).await;
 
     match result {
-        Ok((crate::types::icrc::TransferResult::Ok(block),)) => {
-            ic_cdk::println!("Fee collected successfully: block {}", block);
+        Ok((Ok(block_index),)) => {
+            ic_cdk::println!("✅ Fee collected: block {}", block_index);
             Ok(fee_amount)
         }
-        Ok((crate::types::icrc::TransferResult::Err(e),)) => {
+        Ok((Err(e),)) => {
             Err(IcpiError::Mint(MintError::FeeCollectionFailed {
                 user: user.to_text(),
-                reason: format!("{:?}", e),
+                reason: format!("ICRC-2 error: {:?}", e),
             }))
         }
         Err((code, msg)) => {
@@ -78,29 +71,33 @@ pub async fn collect_deposit(
             reason: format!("Invalid ckUSDT principal: {}", e),
         }))?;
 
-    let result: Result<(crate::types::icrc::TransferResult,), _> = ic_cdk::call(
+    use crate::types::icrc::{TransferFromArgs, TransferFromError};
+
+    let args = TransferFromArgs {
+        from: Account { owner: user, subaccount: None },
+        to: Account { owner: ic_cdk::id(), subaccount: None },
+        amount: amount.clone(),
+        fee: None,
+        memo: Some(memo.into_bytes()),
+        created_at_time: Some(ic_cdk::api::time()),
+    };
+
+    let result: std::result::Result<(std::result::Result<Nat, TransferFromError>,), _> = ic_cdk::call(
         ckusdt,
-        "icrc1_transfer_from",
-        (
-            Account { owner: user, subaccount: None },
-            Account { owner: ic_cdk::id(), subaccount: None },
-            amount.clone(),
-            None::<Vec<u8>>,  // fee
-            Some(memo.into_bytes()),  // memo
-            None::<u64>,  // created_at_time
-        )
+        "icrc2_transfer_from",
+        (args,)
     ).await;
 
     match result {
-        Ok((crate::types::icrc::TransferResult::Ok(block),)) => {
-            ic_cdk::println!("Deposit collected successfully: block {}", block);
+        Ok((Ok(block_index),)) => {
+            ic_cdk::println!("✅ Deposit collected: block {}", block_index);
             Ok(amount)
         }
-        Ok((crate::types::icrc::TransferResult::Err(e),)) => {
+        Ok((Err(e),)) => {
             Err(IcpiError::Mint(MintError::DepositCollectionFailed {
                 user: user.to_text(),
                 amount: amount.to_string(),
-                reason: format!("{:?}", e),
+                reason: format!("ICRC-2 error: {:?}", e),
             }))
         }
         Err((code, msg)) => {

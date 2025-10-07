@@ -33,6 +33,9 @@ pub enum IcpiError {
     // System errors
     System(SystemError),
 
+    // Query errors
+    Query(QueryError),
+
     // Generic error
     Other(String),
 }
@@ -49,6 +52,7 @@ pub enum MintError {
     InsufficientTVL { tvl: String, required: String },
     LedgerInteractionFailed { operation: String, details: String },
     Unauthorized { principal: String, mint_id: String },
+    ProportionalCalculationError { reason: String },
 }
 
 // Burn-specific errors
@@ -103,6 +107,7 @@ pub enum CalculationError {
     Overflow { operation: String },
     DivisionByZero { operation: String },
     ConversionError { from: String, to: String, reason: String },
+    PrecisionLoss { operation: String, original: String, result: String },
 }
 
 // System errors
@@ -111,6 +116,14 @@ pub enum SystemError {
     Unauthorized { principal: String, required_role: String },
     StateCorrupted { reason: String },
     InterCanisterCallFailed { canister: String, method: String, reason: String },
+}
+
+// Query errors
+#[derive(Debug, Clone, CandidType, Deserialize, Serialize)]
+pub enum QueryError {
+    CanisterUnreachable { canister: String, reason: String },
+    InvalidResponse { canister: String, method: String, reason: String },
+    Timeout { canister: String, method: String },
 }
 
 // Display implementations
@@ -125,6 +138,7 @@ impl std::fmt::Display for IcpiError {
             IcpiError::Validation(e) => write!(f, "Validation error: {:?}", e),
             IcpiError::Calculation(e) => write!(f, "Calculation error: {:?}", e),
             IcpiError::System(e) => write!(f, "System error: {:?}", e),
+            IcpiError::Query(e) => write!(f, "Query error: {:?}", e),
             IcpiError::Other(msg) => write!(f, "{}", msg),
         }
     }

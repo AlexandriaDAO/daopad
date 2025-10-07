@@ -23,7 +23,8 @@ pub async fn burn_icpi(caller: Principal, amount: Nat) -> Result<BurnResult> {
     burn_validator::validate_burn_request(&caller, &amount)?;
 
     // Collect fee from user
-    let ckusdt = Principal::from_text(crate::infrastructure::constants::CKUSDT_CANISTER_ID)?;
+    let _ckusdt = Principal::from_text(crate::infrastructure::constants::CKUSDT_CANISTER_ID)
+        .map_err(|e| IcpiError::Other(format!("Invalid ckUSDT principal: {}", e)))?;
     crate::_1_CRITICAL_OPERATIONS::minting::fee_handler::collect_mint_fee(caller).await?;
 
     ic_cdk::println!("Fee collected for burn from user {}", caller);

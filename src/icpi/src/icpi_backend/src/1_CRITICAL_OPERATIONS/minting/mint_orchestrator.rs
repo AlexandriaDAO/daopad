@@ -221,7 +221,7 @@ pub async fn mint_icpi_on_ledger(recipient: Principal, amount: Nat) -> Result<Na
         }))?;
 
     // Call the ledger to mint tokens
-    let result: Result<(crate::types::icrc::TransferResult,), _> = ic_cdk::call(
+    let result: std::result::Result<(crate::types::icrc::TransferResult,), _> = ic_cdk::call(
         icpi_ledger,
         "icrc1_mint",
         (

@@ -50,6 +50,8 @@ async fn transfer_token(
 ) -> Result<Nat> {
     let token_canister = get_token_canister(token_symbol)?;
 
+    let amount_str = amount.to_string();
+
     let transfer_args = TransferArgs {
         to: Account {
             owner: recipient,
@@ -62,7 +64,7 @@ async fn transfer_token(
         created_at_time: None,
     };
 
-    let result: Result<(TransferResult,), _> = ic_cdk::call(
+    let result: std::result::Result<(TransferResult,), _> = ic_cdk::call(
         token_canister,
         "icrc1_transfer",
         (transfer_args,)
@@ -73,14 +75,14 @@ async fn transfer_token(
         Ok((TransferResult::Err(e),)) => {
             Err(IcpiError::Burn(BurnError::TokenTransferFailed {
                 token: token_symbol.to_string(),
-                amount: amount.to_string(),
+                amount: amount_str.clone(),
                 reason: format!("{:?}", e),
             }))
         }
         Err((code, msg)) => {
             Err(IcpiError::Burn(BurnError::TokenTransferFailed {
                 token: token_symbol.to_string(),
-                amount: amount.to_string(),
+                amount: amount_str.clone(),
                 reason: format!("Call failed: {:?} - {}", code, msg),
             }))
         }

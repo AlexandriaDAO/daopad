@@ -5,7 +5,7 @@ use candid::{CandidType, Deserialize, Nat};
 use crate::infrastructure::{Result, IcpiError, RebalanceError};
 
 // Rebalance action types
-#[derive(Debug, Clone, CandidType, Deserialize)]
+#[derive(Debug, Clone, CandidType, Deserialize, serde::Serialize)]
 pub enum RebalanceAction {
     None,
     Buy { token: String, usd_amount: f64 },
@@ -13,7 +13,7 @@ pub enum RebalanceAction {
 }
 
 // Rebalance record
-#[derive(Debug, Clone, CandidType, Deserialize)]
+#[derive(Debug, Clone, CandidType, Deserialize, serde::Serialize)]
 pub struct RebalanceRecord {
     pub timestamp: u64,
     pub action: RebalanceAction,

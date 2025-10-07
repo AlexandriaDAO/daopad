@@ -27,7 +27,7 @@ pub async fn refund_deposit(user: Principal, amount: Nat) -> Result<Nat> {
         created_at_time: None,
     };
 
-    let result: Result<(crate::types::icrc::TransferResult,), _> = ic_cdk::call(
+    let result: std::result::Result<(crate::types::icrc::TransferResult,), _> = ic_cdk::call(
         ckusdt,
         "icrc1_transfer",
         (transfer_args,)

@@ -36,21 +36,6 @@ use infrastructure_6 as infrastructure;
 // Types module (existing)
 mod types;
 
-// Legacy modules (to be removed in cleanup phase)
-mod balance_tracker;
-mod burning;
-mod icpi_math;
-mod icpi_token;
-mod icrc_types;
-mod index_state;
-mod kong_locker;
-mod kongswap;
-mod ledger_client;
-mod minting;
-mod precision;
-mod rebalancer;
-mod tvl_calculator;
-
 use candid::{candid_method, Nat, Principal};
 use ic_cdk::{init, post_upgrade, query, update};
 use infrastructure::{Result, IcpiError};
