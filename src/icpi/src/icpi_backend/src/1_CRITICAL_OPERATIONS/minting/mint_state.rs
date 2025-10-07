@@ -76,6 +76,7 @@ pub fn update_mint_status(mint_id: &str, status: MintStatus) -> Result<()> {
 
 pub fn cleanup_expired_mints() -> Result<u32> {
     const TIMEOUT_NANOS: u64 = 180_000_000_000; // 3 minutes
+    const COMPLETED_RETENTION_NANOS: u64 = 86_400_000_000_000; // 24 hours
     let now = ic_cdk::api::time();
     let mut cleaned = 0u32;
 
@@ -83,10 +84,19 @@ pub fn cleanup_expired_mints() -> Result<u32> {
         let mut mints = mints.borrow_mut();
         mints.retain(|_id, mint| {
             let age = now - mint.created_at;
+
+            // Remove failed/expired pending mints after 3 minutes
             if age > TIMEOUT_NANOS && !matches!(mint.status, MintStatus::Complete(_)) {
                 cleaned += 1;
                 false
-            } else {
+            }
+            // Remove completed mints after 24 hours to prevent memory leak
+            else if age > COMPLETED_RETENTION_NANOS && matches!(mint.status, MintStatus::Complete(_)) {
+                cleaned += 1;
+                ic_cdk::println!("Cleaned up completed mint {} after 24 hours", _id);
+                false
+            }
+            else {
                 true
             }
         });

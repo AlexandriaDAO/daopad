@@ -4,7 +4,7 @@ use std::hash::Hash;
 
 // Central ICPI token constant
 pub const ICPI_CANISTER_ID: &str = "l6lep-niaaa-aaaap-qqeda-cai";
-pub const CKUSDT_CANISTER_ID: &str = "cngnf-vqaaa-aaaah-adbba-cai";
+pub const CKUSDT_CANISTER_ID: &str = "cngnf-vqaaa-aaaar-qag4q-cai";
 
 // Token identifiers - use symbols as strings (Kongswap pattern)
 #[derive(CandidType, Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]

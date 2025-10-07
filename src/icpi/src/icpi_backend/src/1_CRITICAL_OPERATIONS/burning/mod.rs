@@ -25,19 +25,19 @@ pub async fn burn_icpi(caller: Principal, amount: Nat) -> Result<BurnResult> {
     // Validate request
     burn_validator::validate_burn_request(&caller, &amount)?;
 
-    // Collect fee from user
-    let _ckusdt = Principal::from_text(crate::infrastructure::constants::CKUSDT_CANISTER_ID)
-        .map_err(|e| IcpiError::Other(format!("Invalid ckUSDT principal: {}", e)))?;
-    crate::_1_CRITICAL_OPERATIONS::minting::fee_handler::collect_mint_fee(caller).await?;
-
-    ic_cdk::println!("Fee collected for burn from user {}", caller);
-
-    // Get current supply atomically
+    // Get current supply atomically BEFORE collecting fee
     let current_supply = crate::_2_CRITICAL_DATA::supply_tracker::get_icpi_supply_uncached().await?;
 
     if current_supply == Nat::from(0u32) {
         return Err(IcpiError::Burn(crate::infrastructure::BurnError::NoSupply));
     }
+
+    // NOW collect fee (after validation passed)
+    let _ckusdt = Principal::from_text(crate::infrastructure::constants::CKUSDT_CANISTER_ID)
+        .map_err(|e| IcpiError::Other(format!("Invalid ckUSDT principal: {}", e)))?;
+    crate::_1_CRITICAL_OPERATIONS::minting::fee_handler::collect_mint_fee(caller).await?;
+
+    ic_cdk::println!("Fee collected for burn from user {}", caller);
 
     ic_cdk::println!("Burning {} ICPI from supply of {}", amount, current_supply);
 

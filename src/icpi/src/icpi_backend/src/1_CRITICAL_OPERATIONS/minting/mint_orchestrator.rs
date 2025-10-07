@@ -145,7 +145,12 @@ pub async fn complete_mint(caller: Principal, mint_id: String) -> Result<Nat> {
     let icpi_to_mint = if current_supply == Nat::from(0u32) {
         // Initial mint: 1 ICPI = 1 ckUSDT (adjust for decimals)
         // ckUSDT has 6 decimals, ICPI has 8 decimals
-        pending_mint.amount.clone() * Nat::from(100u32)
+        // Use proper decimal conversion: 1 ckUSDT (e6) = 100 ICPI (e8)
+        crate::infrastructure::math::convert_decimals(
+            &pending_mint.amount,
+            crate::infrastructure::constants::CKUSDT_DECIMALS,
+            crate::infrastructure::constants::ICPI_DECIMALS
+        )?
     } else {
         // Formula: new_icpi = (deposit * current_supply) / current_tvl
         match crate::infrastructure::math::multiply_and_divide(&pending_mint.amount, &current_supply, &current_tvl) {
