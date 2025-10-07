@@ -2,6 +2,7 @@
 //! Single source of truth for all configuration values
 
 // ===== Canister IDs =====
+pub const ICPI_CANISTER_ID: &str = "l6lep-niaaa-aaaap-qqeda-cai"; // ICPI token ledger
 pub const ICPI_LEDGER_ID: &str = "l6lep-niaaa-aaaap-qqeda-cai";
 pub const ICPI_BACKEND_ID: &str = "ev6xm-haaaa-aaaap-qqcza-cai";
 pub const CKUSDT_CANISTER_ID: &str = "cngnf-vqaaa-aaaar-qag4q-cai";
@@ -27,6 +28,7 @@ pub const MIN_MINT_AMOUNT: u64 = 100_000; // 0.1 ckUSDT (e6)
 pub const MAX_MINT_AMOUNT: u64 = 100_000_000_000; // 100k ckUSDT
 pub const MINT_TIMEOUT_NANOS: u64 = 180_000_000_000; // 3 minutes
 pub const MINT_FEE_AMOUNT: u64 = 100_000; // 0.1 ckUSDT
+pub const MINT_FEE_E6: u64 = 100_000; // 0.1 ckUSDT (alias for compatibility)
 pub const FEE_RECIPIENT: &str = "e454q-riaaa-aaaap-qqcyq-cai";
 
 // ===== Burning Constants =====

@@ -1,14 +1,42 @@
-// Module declarations
-mod types;
-mod infrastructure;
-mod informational;
-mod market_data;
-mod kong_liquidity;
-mod portfolio_data;
-mod critical_operations;
-mod orchestration;
+//! ICPI Backend - Security-First Architecture with Numbered Zones
+//!
+//! Architecture:
+//! 1_CRITICAL_OPERATIONS - Mint, burn, rebalance (highest security)
+//! 2_CRITICAL_DATA - Portfolio calculations, supply tracking
+//! 3_KONG_LIQUIDITY - External liquidity reference
+//! 4_TRADING_EXECUTION - DEX interactions
+//! 5_INFORMATIONAL - Display and caching
+//! 6_INFRASTRUCTURE - Math, errors, constants
 
-// Root-level modules (to be migrated)
+// Import numbered modules with explicit paths
+#[path = "1_CRITICAL_OPERATIONS/mod.rs"]
+mod critical_operations_1;
+use critical_operations_1 as _1_CRITICAL_OPERATIONS;
+
+#[path = "2_CRITICAL_DATA/mod.rs"]
+mod critical_data_2;
+use critical_data_2 as _2_CRITICAL_DATA;
+
+#[path = "3_KONG_LIQUIDITY/mod.rs"]
+mod kong_liquidity_3;
+use kong_liquidity_3 as _3_KONG_LIQUIDITY;
+
+#[path = "4_TRADING_EXECUTION/mod.rs"]
+mod trading_execution_4;
+use trading_execution_4 as _4_TRADING_EXECUTION;
+
+#[path = "5_INFORMATIONAL/mod.rs"]
+mod informational_5;
+use informational_5 as _5_INFORMATIONAL;
+
+#[path = "6_INFRASTRUCTURE/mod.rs"]
+mod infrastructure_6;
+use infrastructure_6 as infrastructure;
+
+// Types module (existing)
+mod types;
+
+// Legacy modules (to be removed in cleanup phase)
 mod balance_tracker;
 mod burning;
 mod icpi_math;
@@ -23,190 +51,146 @@ mod precision;
 mod rebalancer;
 mod tvl_calculator;
 
-// Legacy modules (will be phased out)
-mod legacy {
-    pub mod balance_tracker;
-    pub mod burning;
-    pub mod icpi_math;
-    pub mod icpi_token;
-    pub mod icrc_types;
-    pub mod index_state;
-    pub mod kong_locker;
-    pub mod kongswap;
-    pub mod ledger_client;
-    pub mod minting;
-    pub mod precision;
-    pub mod rebalancer;
-    pub mod tvl_calculator;
-    pub mod types;
-}
-
 use candid::{candid_method, Nat, Principal};
 use ic_cdk::{init, post_upgrade, query, update};
-use infrastructure::{FeatureFlags, OperationStrategy, log_shadow_comparison};
+use infrastructure::{Result, IcpiError};
 
-// =============================================================================
-// INITIALIZATION & UPGRADES
-// =============================================================================
-
-#[init]
-fn init() {
-    ic_cdk::println!("ICPI Backend initialized with refactored architecture");
-    ic_cdk::println!("Starting in LEGACY mode for safety");
-    FeatureFlags::set_all_to_legacy();
-
-    // Start rebalancing timer based on feature flag
-    match FeatureFlags::get_rebalancing_strategy() {
-        OperationStrategy::Legacy => legacy::rebalancer::start_rebalancing(),
-        OperationStrategy::Refactored => {
-            // orchestration::start_rebalancing_timer() - TODO: implement
-            ic_cdk::println!("Refactored rebalancing not yet implemented");
-        }
-        OperationStrategy::Shadow => {
-            legacy::rebalancer::start_rebalancing();
-            // orchestration::start_rebalancing_timer() - TODO: implement
-        }
-    }
-}
-
-#[post_upgrade]
-fn post_upgrade() {
-    ic_cdk::println!("ICPI Backend upgraded with refactored architecture");
-    ic_cdk::println!("Maintaining existing feature flag configuration");
-
-    // Restart rebalancing timer based on feature flag
-    match FeatureFlags::get_rebalancing_strategy() {
-        OperationStrategy::Legacy => legacy::rebalancer::start_rebalancing(),
-        OperationStrategy::Refactored => {
-            // orchestration::start_rebalancing_timer() - TODO: implement
-            ic_cdk::println!("Refactored rebalancing not yet implemented");
-        }
-        OperationStrategy::Shadow => {
-            legacy::rebalancer::start_rebalancing();
-            // orchestration::start_rebalancing_timer() - TODO: implement
-        }
-    }
-}
-
-// =============================================================================
-// FEATURE FLAG MANAGEMENT (Admin only)
-// =============================================================================
+// ===== PUBLIC API =====
 
 #[update]
 #[candid_method(update)]
-async fn set_feature_flag(operation: String, strategy: String) -> Result<String, String> {
-    // TODO: Add admin authorization check
-    let strat = match strategy.as_str() {
-        "legacy" => OperationStrategy::Legacy,
-        "refactored" => OperationStrategy::Refactored,
-        "shadow" => OperationStrategy::Shadow,
-        _ => return Err("Invalid strategy. Use: legacy, refactored, or shadow".to_string()),
-    };
+async fn mint_icpi(amount: Nat) -> Result<String> {
+    let caller = ic_cdk::caller();
+    _1_CRITICAL_OPERATIONS::minting::initiate_mint(caller, amount).await
+}
 
-    FeatureFlags::set_strategy(&operation, strat)
+#[update]
+#[candid_method(update)]
+async fn complete_mint(mint_id: String) -> Result<Nat> {
+    let caller = ic_cdk::caller();
+    _1_CRITICAL_OPERATIONS::minting::complete_mint(caller, mint_id).await
+}
+
+#[update]
+#[candid_method(update)]
+async fn burn_icpi(amount: Nat) -> Result<_1_CRITICAL_OPERATIONS::burning::BurnResult> {
+    let caller = ic_cdk::caller();
+    _1_CRITICAL_OPERATIONS::burning::burn_icpi(caller, amount).await
+}
+
+#[update]
+#[candid_method(update)]
+async fn perform_rebalance() -> Result<String> {
+    require_admin()?;
+    _1_CRITICAL_OPERATIONS::rebalancing::perform_rebalance().await
+}
+
+#[update]
+#[candid_method(update)]
+async fn trigger_manual_rebalance() -> Result<String> {
+    require_admin()?;
+    _1_CRITICAL_OPERATIONS::rebalancing::trigger_manual_rebalance().await
 }
 
 #[query]
 #[candid_method(query)]
-fn get_feature_flags() -> infrastructure::FeatureFlagConfig {
-    FeatureFlags::get_all_flags()
-}
-
-// =============================================================================
-// CRITICAL OPERATIONS (Minting/Burning/Trading)
-// =============================================================================
-
-#[update]
-#[candid_method(update)]
-async fn mint_with_usdt(usdt_amount: Nat) -> Result<String, String> {
-    match FeatureFlags::get_minting_strategy() {
-        OperationStrategy::Legacy => {
-            legacy::minting::initiate_mint(usdt_amount).await
-        }
-        OperationStrategy::Refactored => {
-            // orchestration::orchestrate_mint - TODO: implement
-            Err("Refactored minting not yet implemented".to_string())
-        }
-        OperationStrategy::Shadow => {
-            // Run both and compare
-            let legacy_result = legacy::minting::initiate_mint(usdt_amount.clone()).await;
-            // let refactored_result = orchestration::orchestrate_mint(caller, usdt_amount).await;
-            // log_shadow_comparison("mint_with_usdt", &legacy_result, &refactored_result);
-            legacy_result
-        }
-    }
-}
-
-#[update]
-#[candid_method(update)]
-async fn burn_icpi(icpi_amount: Nat) -> Result<Vec<(String, Nat)>, String> {
-    match FeatureFlags::get_burning_strategy() {
-        OperationStrategy::Legacy => {
-            legacy::burning::burn_icpi(icpi_amount).await
-                .map(|result| result.successful_transfers)
-        }
-        OperationStrategy::Refactored => {
-            // orchestration::orchestrate_burn - TODO: implement
-            Err("Refactored burning not yet implemented".to_string())
-        }
-        OperationStrategy::Shadow => {
-            // Run both and compare
-            let legacy_result = legacy::burning::burn_icpi(icpi_amount.clone()).await;
-            // let refactored_result = orchestration::orchestrate_burn(caller, icpi_amount).await;
-            // log_shadow_comparison("burn_icpi", &legacy_result, &refactored_result);
-            legacy_result.map(|result| result.successful_transfers)
-        }
-    }
-}
-
-// =============================================================================
-// QUERY OPERATIONS (Read-only)
-// =============================================================================
-
-#[query]
-#[candid_method(query)]
-async fn get_index_state() -> Result<types::portfolio::IndexState, String> {
-    match FeatureFlags::get_query_strategy() {
-        OperationStrategy::Legacy => {
-            legacy::index_state::get_index_state().await
-        }
-        OperationStrategy::Refactored => {
-            informational::get_index_state_cached().await
-        }
-        OperationStrategy::Shadow => {
-            // Run both for comparison but don't log (too noisy for queries)
-            let legacy_result = legacy::index_state::get_index_state().await;
-            let _refactored_result = informational::get_index_state_cached().await;
-            legacy_result
-        }
-    }
+async fn get_index_state() -> types::portfolio::IndexState {
+    _5_INFORMATIONAL::display::get_index_state_cached().await
 }
 
 #[query]
 #[candid_method(query)]
 fn get_health_status() -> types::common::HealthStatus {
-    informational::get_health_status()
+    _5_INFORMATIONAL::health::get_health_status()
 }
 
 #[query]
 #[candid_method(query)]
 fn get_tracked_tokens() -> Vec<String> {
-    informational::get_tracked_tokens()
+    _5_INFORMATIONAL::health::get_tracked_tokens()
 }
 
-// =============================================================================
-// ADMIN OPERATIONS
-// =============================================================================
+#[query]
+#[candid_method(query)]
+fn get_rebalancer_status() -> _1_CRITICAL_OPERATIONS::rebalancing::RebalancerStatus {
+    _1_CRITICAL_OPERATIONS::rebalancing::get_rebalancer_status()
+}
+
+#[query]
+#[candid_method(query)]
+fn get_feature_flags() -> infrastructure::FeatureFlagConfig {
+    infrastructure::FeatureFlags::get_all_flags()
+}
 
 #[update]
 #[candid_method(update)]
-async fn trigger_rebalance() -> Result<String, String> {
-    // TODO: Add admin authorization check
-    legacy::rebalancer::trigger_manual_rebalance().await
+fn set_feature_flag(operation: String, strategy: String) -> Result<String> {
+    require_admin()?;
+
+    let strat = match strategy.as_str() {
+        "legacy" => infrastructure::OperationStrategy::Legacy,
+        "refactored" => infrastructure::OperationStrategy::Refactored,
+        "shadow" => infrastructure::OperationStrategy::Shadow,
+        _ => return Err(IcpiError::Other("Invalid strategy".to_string())),
+    };
+
+    infrastructure::FeatureFlags::set_strategy(&operation, strat)
 }
 
-// =============================================================================
-// CANDID INTERFACE
-// =============================================================================
+#[update]
+#[candid_method(update)]
+fn clear_caches() -> String {
+    require_admin().unwrap_or_else(|e| {
+        ic_cdk::println!("Unauthorized cache clear attempt: {}", e);
+    });
+
+    _5_INFORMATIONAL::cache::clear_all_caches();
+    "Caches cleared".to_string()
+}
+
+// ===== INITIALIZATION =====
+
+#[init]
+fn init() {
+    ic_cdk::println!("===================================");
+    ic_cdk::println!("ICPI Backend Initialized");
+    ic_cdk::println!("Architecture: Numbered Security Zones");
+    ic_cdk::println!("Mode: REFACTORED (no legacy code)");
+    ic_cdk::println!("===================================");
+
+    // Start rebalancing timer
+    _1_CRITICAL_OPERATIONS::rebalancing::start_rebalancing_timer();
+}
+
+#[post_upgrade]
+fn post_upgrade() {
+    ic_cdk::println!("ICPI Backend upgraded successfully");
+
+    // Restart rebalancing timer
+    _1_CRITICAL_OPERATIONS::rebalancing::start_rebalancing_timer();
+}
+
+// ===== HELPER FUNCTIONS =====
+
+fn require_admin() -> Result<()> {
+    const ADMIN_PRINCIPALS: &[&str] = &[
+        "e454q-riaaa-aaaap-qqcyq-cai", // Example admin
+    ];
+
+    let caller = ic_cdk::caller();
+
+    if ADMIN_PRINCIPALS.iter()
+        .any(|&admin| Principal::from_text(admin).ok() == Some(caller))
+    {
+        Ok(())
+    } else {
+        Err(IcpiError::System(infrastructure::errors::SystemError::Unauthorized {
+            principal: caller.to_text(),
+            required_role: "admin".to_string(),
+        }))
+    }
+}
+
+// ===== CANDID EXPORT =====
 
 ic_cdk::export_candid!();
