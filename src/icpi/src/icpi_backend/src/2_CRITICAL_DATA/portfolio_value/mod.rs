@@ -54,20 +54,35 @@ pub async fn calculate_portfolio_value_atomic() -> Result<Nat> {
 /// Get USD value of a token amount by querying Kongswap pool
 /// Returns value in e6 (ckUSDT decimals)
 async fn get_token_usd_value(token_symbol: &str, amount: &Nat) -> Result<u64> {
-    // For now, use a conservative approach:
-    // Assume tokens have minimal value if we can't query price
-    // This prevents over-valuation and minting too many ICPI tokens
+    // Conservative hardcoded prices to prevent over-minting
+    let price_per_token_e6 = match token_symbol {
+        "ALEX" => 500_000u64,  // $0.50 per ALEX
+        "ZERO" => 100_000u64,  // $0.10 per ZERO
+        "KONG" => 50_000u64,   // $0.05 per KONG
+        "BOB" => 10_000u64,    // $0.01 per BOB
+        _ => {
+            ic_cdk::println!("  Unknown token {}, valuing at $0", token_symbol);
+            return Ok(0u64);
+        }
+    };
 
-    // In production, this would query Kongswap pools like:
-    // dfx canister call kongswap_backend swap_amounts '("IC.token_X", amount, "IC.ckUSDT")'
+    let amount_e8 = amount.0.to_u64().unwrap_or(0);
+    if amount_e8 == 0 {
+        return Ok(0u64);
+    }
 
-    // For initial deployment, we conservatively value non-ckUSDT holdings at $0
-    // This means TVL = ckUSDT reserves only, which is safe for early stage
-    // Once rebalancing is active and we're holding tracked tokens, we'll implement
-    // proper Kongswap price queries
+    // Calculate: (amount_e8 * price_e6) / 1e8
+    let value_e6 = (amount_e8 as u128 * price_per_token_e6 as u128 / 100_000_000) as u64;
 
-    ic_cdk::println!("  Price query for {}: Conservative valuation at $0 until Kongswap integration complete", token_symbol);
-    Ok(0u64)
+    ic_cdk::println!(
+        "  {} tokens of {}: ${} (@ ${}/token)",
+        amount_e8 as f64 / 100_000_000.0,
+        token_symbol,
+        value_e6 as f64 / 1_000_000.0,
+        price_per_token_e6 as f64 / 1_000_000.0
+    );
+
+    Ok(value_e6)
 }
 
 /// Get portfolio state without caching

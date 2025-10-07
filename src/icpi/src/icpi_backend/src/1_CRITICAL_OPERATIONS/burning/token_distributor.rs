@@ -11,11 +11,12 @@ use super::BurnResult;
 pub async fn distribute_tokens(
     recipient: Principal,
     redemptions: Vec<(String, Nat)>,
+    icpi_burn_amount: Nat,
 ) -> Result<BurnResult> {
     let mut result = BurnResult {
         successful_transfers: Vec::new(),
         failed_transfers: Vec::new(),
-        icpi_burned: calculate_total_burned(&redemptions),
+        icpi_burned: icpi_burn_amount,
         timestamp: ic_cdk::api::time(),
     };
 
@@ -126,10 +127,3 @@ fn get_token_canister(symbol: &str) -> Result<Principal> {
         }))
 }
 
-fn calculate_total_burned(redemptions: &[(String, Nat)]) -> Nat {
-    // This would be the original ICPI amount burned
-    // For now, sum all redemptions as proxy
-    redemptions.iter()
-        .map(|(_, amount)| amount.clone())
-        .fold(Nat::from(0u64), |acc, x| acc + x)
-}

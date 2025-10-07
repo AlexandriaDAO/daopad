@@ -120,3 +120,15 @@ pub fn get_pending_count() -> usize {
             .count()
     })
 }
+
+pub fn export_state() -> HashMap<String, PendingMint> {
+    PENDING_MINTS.with(|mints| {
+        mints.borrow().clone()
+    })
+}
+
+pub fn import_state(state: HashMap<String, PendingMint>) {
+    PENDING_MINTS.with(|mints| {
+        *mints.borrow_mut() = state;
+    })
+}

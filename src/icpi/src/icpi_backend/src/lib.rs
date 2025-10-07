@@ -37,7 +37,7 @@ use infrastructure_6 as infrastructure;
 mod types;
 
 use candid::{candid_method, Nat, Principal};
-use ic_cdk::{init, post_upgrade, query, update};
+use ic_cdk::{init, pre_upgrade, post_upgrade, query, update};
 use infrastructure::{Result, IcpiError};
 
 // ===== PUBLIC API =====
@@ -77,10 +77,10 @@ async fn trigger_manual_rebalance() -> Result<String> {
     _1_CRITICAL_OPERATIONS::rebalancing::trigger_manual_rebalance().await
 }
 
-#[query]
-#[candid_method(query)]
-async fn get_index_state() -> types::portfolio::IndexState {
-    _5_INFORMATIONAL::display::get_index_state_cached().await
+#[update]
+#[candid_method(update)]
+async fn get_index_state() -> Result<types::portfolio::IndexState> {
+    Ok(_5_INFORMATIONAL::display::get_index_state_cached().await)
 }
 
 #[query]
@@ -126,12 +126,39 @@ fn init() {
     _1_CRITICAL_OPERATIONS::rebalancing::start_rebalancing_timer();
 }
 
+#[pre_upgrade]
+fn pre_upgrade() {
+    ic_cdk::println!("===================================");
+    ic_cdk::println!("ICPI Backend Pre-Upgrade");
+    ic_cdk::println!("===================================");
+
+    let pending_mints = _1_CRITICAL_OPERATIONS::minting::mint_state::export_state();
+    infrastructure::stable_storage::save_state(pending_mints);
+
+    ic_cdk::println!("✅ State saved to stable storage");
+}
+
 #[post_upgrade]
 fn post_upgrade() {
-    ic_cdk::println!("ICPI Backend upgraded successfully");
+    ic_cdk::println!("===================================");
+    ic_cdk::println!("ICPI Backend Post-Upgrade");
+    ic_cdk::println!("===================================");
 
-    // Restart rebalancing timer
+    let pending_mints = infrastructure::stable_storage::restore_state();
+    _1_CRITICAL_OPERATIONS::minting::mint_state::import_state(pending_mints);
+
+    match _1_CRITICAL_OPERATIONS::minting::mint_state::cleanup_expired_mints() {
+        Ok(count) => {
+            if count > 0 {
+                ic_cdk::println!("🧹 Cleaned up {} expired mints after upgrade", count);
+            }
+        }
+        Err(e) => ic_cdk::println!("⚠️  Failed to cleanup expired mints: {}", e),
+    }
+
     _1_CRITICAL_OPERATIONS::rebalancing::start_rebalancing_timer();
+
+    ic_cdk::println!("✅ Backend upgraded successfully");
 }
 
 // ===== HELPER FUNCTIONS =====

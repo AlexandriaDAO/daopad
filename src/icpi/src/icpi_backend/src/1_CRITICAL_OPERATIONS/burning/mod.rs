@@ -41,11 +41,53 @@ pub async fn burn_icpi(caller: Principal, amount: Nat) -> Result<BurnResult> {
 
     ic_cdk::println!("Burning {} ICPI from supply of {}", amount, current_supply);
 
+    // CRITICAL: Transfer ICPI from user to backend (which automatically burns it)
+    let icpi_canister = Principal::from_text(crate::infrastructure::constants::ICPI_CANISTER_ID)
+        .map_err(|e| IcpiError::Other(format!("Invalid ICPI principal: {}", e)))?;
+
+    let transfer_args = crate::types::icrc::TransferArgs {
+        from_subaccount: None,
+        to: crate::types::icrc::Account {
+            owner: ic_cdk::id(),
+            subaccount: None,
+        },
+        amount: amount.clone(),
+        fee: None,
+        memo: Some(b"ICPI burn".to_vec()),
+        created_at_time: None,
+    };
+
+    let transfer_result: std::result::Result<(crate::types::icrc::TransferResult,), _> = ic_cdk::call(
+        icpi_canister,
+        "icrc1_transfer",
+        (transfer_args,)
+    ).await;
+
+    match transfer_result {
+        Ok((crate::types::icrc::TransferResult::Ok(block),)) => {
+            ic_cdk::println!("✅ ICPI transferred to burning account at block {}", block);
+        }
+        Ok((crate::types::icrc::TransferResult::Err(e),)) => {
+            return Err(IcpiError::Burn(crate::infrastructure::BurnError::TokenTransferFailed {
+                token: "ICPI".to_string(),
+                amount: amount.to_string(),
+                reason: format!("{:?}", e),
+            }));
+        }
+        Err((code, msg)) => {
+            return Err(IcpiError::Burn(crate::infrastructure::BurnError::TokenTransferFailed {
+                token: "ICPI".to_string(),
+                amount: amount.to_string(),
+                reason: format!("Transfer failed: {:?} - {}", code, msg),
+            }));
+        }
+    }
+
     // Calculate redemptions
     let redemptions = redemption_calculator::calculate_redemptions(&amount, &current_supply).await?;
 
-    // Distribute tokens to user
-    let result = token_distributor::distribute_tokens(caller, redemptions).await?;
+    // Distribute tokens to user (passing actual burn amount)
+    let result = token_distributor::distribute_tokens(caller, redemptions, amount.clone()).await?;
 
     Ok(result)
 }

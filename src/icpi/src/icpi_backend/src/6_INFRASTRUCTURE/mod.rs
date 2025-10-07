@@ -9,6 +9,7 @@ pub mod logging;
 pub mod cache;
 pub mod rate_limiting;
 pub mod reentrancy;
+pub mod stable_storage;
 
 // Re-export commonly used items
 pub use constants::*;
