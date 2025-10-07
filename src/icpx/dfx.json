@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "canisters": {
+    "icpx_backend": {
+      "type": "rust",
+      "package": "icpx_backend",
+      "candid": "src/icpx_backend.did",
+      "build": "cargo build --target wasm32-unknown-unknown --release --package icpx_backend",
+      "wasm": "target/wasm32-unknown-unknown/release/icpx_backend.wasm",
+      "declarations": {
+        "node_compatibility": true
+      }
+    }
+  },
+  "defaults": {
+    "build": {
+      "packtool": "",
+      "args": ""
+    }
+  },
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:8000",
+      "type": "ephemeral"
+    },
+    "ic": {
+      "providers": ["https://ic0.app"],
+      "type": "persistent"
+    }
+  }
+}
