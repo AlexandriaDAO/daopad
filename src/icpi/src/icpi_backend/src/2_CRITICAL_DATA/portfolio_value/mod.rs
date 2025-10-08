@@ -22,7 +22,7 @@ pub async fn calculate_portfolio_value_atomic() -> Result<Nat> {
     // Get all balances in parallel
     let balances = crate::_2_CRITICAL_DATA::token_queries::get_all_balances_uncached().await?;
 
-    let mut total_value_e6: u64 = 0;
+    let mut total_value_e6: u128 = 0;
 
     for (symbol, balance) in balances {
         if symbol == "ckUSDT" {
@@ -34,7 +34,15 @@ pub async fn calculate_portfolio_value_atomic() -> Result<Nat> {
                         format!("ckUSDT balance {} too large to process", balance)
                     )
                 })?;
-            total_value_e6 += value;
+
+            // Use checked addition to prevent overflow
+            total_value_e6 = total_value_e6.checked_add(value as u128)
+                .ok_or_else(|| {
+                    crate::infrastructure::IcpiError::Other(
+                        "Portfolio value overflow when adding ckUSDT".to_string()
+                    )
+                })?;
+
             ic_cdk::println!("  ckUSDT: {} (e6) = ${}", balance, value as f64 / 1_000_000.0);
         } else {
             // For tracked tokens, get price from Kongswap and calculate value
@@ -47,9 +55,24 @@ pub async fn calculate_portfolio_value_atomic() -> Result<Nat> {
                     )
                 })?;
 
-            total_value_e6 += value_e6;
+            // Use checked addition to prevent overflow
+            total_value_e6 = total_value_e6.checked_add(value_e6 as u128)
+                .ok_or_else(|| {
+                    crate::infrastructure::IcpiError::Other(
+                        format!("Portfolio value overflow when adding {} value", symbol)
+                    )
+                })?;
+
             ic_cdk::println!("  {}: {} tokens = ${}", symbol, balance, value_e6 as f64 / 1_000_000.0);
         }
+    }
+
+    // Validate the total value is reasonable (under $1 trillion as sanity check)
+    const MAX_REASONABLE_VALUE_E6: u128 = 1_000_000_000_000 * 1_000_000; // $1 trillion in e6
+    if total_value_e6 > MAX_REASONABLE_VALUE_E6 {
+        return Err(crate::infrastructure::IcpiError::Other(
+            format!("Portfolio value {} exceeds maximum reasonable limit", total_value_e6)
+        ));
     }
 
     let total_value = Nat::from(total_value_e6);
@@ -145,7 +168,9 @@ pub async fn get_portfolio_state_uncached() -> Result<IndexState> {
 
     // Calculate total value
     let total_value_nat = calculate_portfolio_value_atomic().await?;
-    let total_value_f64 = total_value_nat.0.to_u64().unwrap_or(0) as f64 / 1_000_000.0;
+    // Handle u128 values properly - convert to f64 safely
+    let total_value_u128 = total_value_nat.0.to_u128().unwrap_or(0);
+    let total_value_f64 = total_value_u128 as f64 / 1_000_000.0;
 
     // Build current positions using CurrentPosition type
     use crate::types::portfolio::CurrentPosition;
