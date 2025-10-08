@@ -16,7 +16,8 @@ EXECUTE THESE STEPS AUTONOMOUSLY (DO NOT ASK FOR PERMISSION):
 
 Step 1 - Create Isolated Worktree:
   cd /home/theseus/alexandria/daopad/src/icpi
-  git worktree add ../icpi-pr-4 icpi-to-icpx-refactor-v2
+  BRANCH=$(gh pr view 4 --json headRefName -q .headRefName)
+  git worktree add ../icpi-pr-4 $BRANCH
   cd ../icpi-pr-4
   pwd  # Confirm you're in ../icpi-pr-4
 
@@ -64,13 +65,13 @@ You are an autonomous PR orchestrator.
 
 Feature: Implement Zone 3 Kong liquidity integration
 Main Repo: /home/theseus/alexandria/daopad/src/icpi
-Base Branch: master
+Base Branch: main
 
 EXECUTE THESE STEPS AUTONOMOUSLY (DO NOT ASK FOR PERMISSION):
 
 Step 1 - Create Isolated Worktree:
   cd /home/theseus/alexandria/daopad/src/icpi
-  git worktree add -b feature/zone-3-kong-liquidity ../icpi-zone3 master
+  git worktree add -b feature/zone-3-kong-liquidity ../icpi-zone3 main
   cd ../icpi-zone3
   pwd  # Confirm you're in ../icpi-zone3
 
@@ -139,7 +140,7 @@ claude
 ```bash
 # From main repo
 cd /home/theseus/alexandria/daopad/src/icpi
-git worktree add -b feature/zone-3 ../icpi-zone3 master
+git worktree add -b feature/zone-3 ../icpi-zone3 main
 cd ../icpi-zone3
 
 # Start agent in worktree
@@ -173,9 +174,9 @@ git branch -a  # All branches (local + remote)
 
 **Delete local branches not in remote**:
 ```bash
-# List branches not in master
-git branch --merged master  # Safe to delete
-git branch --no-merged master  # Check these manually
+# List branches not in main
+git branch --merged main  # Safe to delete
+git branch --no-merged main  # Check these manually
 
 # Delete old local branches
 git branch -d old-branch-name
@@ -187,11 +188,11 @@ git branch -D old-branch-name
 **Recommended cleanup for ICPI project**:
 ```bash
 # You probably want to keep:
-# - master (base branch)
+# - main (base branch)
 # - icpi-to-icpx-refactor-v2 (active PR #4)
 
 # Delete any other local branches unless actively working on them
-git branch | grep -v "master\|icpi-to-icpx-refactor-v2" | xargs git branch -D
+git branch | grep -v "main\|icpi-to-icpx-refactor-v2" | xargs git branch -D
 ```
 
 ### Should You Delete Branches Not in Main?
@@ -199,7 +200,7 @@ git branch | grep -v "master\|icpi-to-icpx-refactor-v2" | xargs git branch -D
 **It depends**:
 
 ✅ **DELETE if**:
-- Merged to master (no longer needed)
+- Merged to main (no longer needed)
 - Abandoned work (decided not to pursue)
 - Experimental branches (testing something)
 
@@ -211,7 +212,7 @@ git branch | grep -v "master\|icpi-to-icpx-refactor-v2" | xargs git branch -D
 **For your current state**:
 ```bash
 # Your branches:
-master                              ← KEEP (base branch)
+main                                ← KEEP (base branch)
 icpi-to-icpx-refactor-v2           ← KEEP (active PR #4)
 
 # Remote branches you're not using locally are fine - ignore them
@@ -220,8 +221,8 @@ icpi-to-icpx-refactor-v2           ← KEEP (active PR #4)
 **Start fresh**:
 ```bash
 # Clean slate before autonomous workflow
-git checkout master
-git pull origin master
+git checkout main
+git pull origin main
 git branch -D any-old-branches  # If any exist
 
 # Now ready to run autonomous orchestrator!
@@ -244,8 +245,8 @@ WORKFLOW (EXECUTE AUTONOMOUSLY):
 1. Setup Isolation:
    - Detect if already in worktree (check pwd vs git rev-parse --show-toplevel)
    - If NOT in worktree: Create one for this PR
-   - Extract branch: gh pr view 4 --json headRefName
-   - Create: git worktree add ../icpi-pr-4 [branch-name]
+   - Extract branch: BRANCH=$(gh pr view 4 --json headRefName -q .headRefName)
+   - Create: git worktree add ../icpi-pr-4 $BRANCH
    - Move to worktree: cd ../icpi-pr-4
 
 2. Iteration Loop (Max 5 iterations):
