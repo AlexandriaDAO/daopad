@@ -204,14 +204,16 @@ fn post_upgrade() {
 /// - Access diagnostic functions
 ///
 /// Current admins:
-/// - qhlmp-5aaaa-aaaam-qd4jq-cai (ICPI Frontend) - For automated operations
 /// - ev6xm-haaaa-aaaap-qqcza-cai (ICPI Backend itself) - For timer-triggered operations
+///
+/// Security Note: Frontend canister MUST NOT have admin access to prevent
+/// potential security vulnerabilities. Frontend should only call public query/update methods.
 ///
 /// TODO: Add actual deployer/controller principals for manual admin operations
 fn require_admin() -> Result<()> {
     const ADMIN_PRINCIPALS: &[&str] = &[
-        "qhlmp-5aaaa-aaaam-qd4jq-cai",  // ICPI Frontend canister
-        "ev6xm-haaaa-aaaap-qqcza-cai",  // ICPI Backend (self, for timers)
+        "ev6xm-haaaa-aaaap-qqcza-cai",  // ICPI Backend (self, for timers only)
+        // Frontend removed for security - should not have admin access
     ];
 
     let caller = ic_cdk::caller();

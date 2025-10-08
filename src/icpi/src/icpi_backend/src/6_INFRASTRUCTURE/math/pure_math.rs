@@ -25,7 +25,7 @@ pub fn multiply_and_divide(a: &Nat, b: &Nat, c: &Nat) -> Result<Nat> {
     let result = (a_big * b_big) / c_big;
 
     // Convert back to Nat
-    Ok(biguint_to_nat(result))
+    biguint_to_nat(result)
 }
 
 /// Convert between different decimal places
@@ -178,8 +178,15 @@ fn nat_to_biguint(nat: &Nat) -> BigUint {
     BigUint::from_bytes_be(&nat.0.to_bytes_be())
 }
 
-fn biguint_to_nat(big: BigUint) -> Nat {
-    Nat::from(num_bigint::ToBigUint::to_biguint(&big).unwrap())
+fn biguint_to_nat(big: BigUint) -> Result<Nat> {
+    // BigUint already implements ToBigUint, so conversion should always succeed
+    // But we handle the theoretical error case properly for production safety
+    match num_bigint::ToBigUint::to_biguint(&big) {
+        Some(biguint) => Ok(Nat::from(biguint)),
+        None => Err(IcpiError::Calculation(CalculationError::Overflow {
+            operation: format!("BigUint to Nat conversion failed for value: {}", big),
+        }))
+    }
 }
 
 // ===== Tests =====

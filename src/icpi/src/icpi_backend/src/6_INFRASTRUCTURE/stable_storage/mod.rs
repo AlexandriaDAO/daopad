@@ -12,8 +12,22 @@ pub struct StableState {
 pub fn save_state(pending_mints: HashMap<String, PendingMint>) {
     let state = StableState { pending_mints };
     ic_cdk::println!("💾 Saving {} pending mints to stable storage", state.pending_mints.len());
-    ic_cdk::storage::stable_save((state,))
-        .expect("Failed to save state to stable memory");
+
+    // Handle serialization errors gracefully - log but don't panic
+    // This is critical for production: if stable storage fails, we log the error
+    // but continue operation. The pending mints will be lost on upgrade, but
+    // the canister won't trap during upgrade.
+    match ic_cdk::storage::stable_save((state,)) {
+        Ok(_) => {
+            ic_cdk::println!("✅ Successfully saved state to stable memory");
+        }
+        Err(e) => {
+            ic_cdk::println!("⚠️ WARNING: Failed to save state to stable memory: {}", e);
+            ic_cdk::println!("⚠️ Pending mints may be lost on upgrade, but canister will continue operating");
+            // Don't panic - allow the upgrade to continue even if stable storage fails
+            // This is better than trapping the entire canister upgrade
+        }
+    }
 }
 
 pub fn restore_state() -> HashMap<String, PendingMint> {
