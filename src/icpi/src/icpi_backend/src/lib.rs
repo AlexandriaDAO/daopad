@@ -163,23 +163,40 @@ fn post_upgrade() {
 
 // ===== HELPER FUNCTIONS =====
 
+/// Verify caller is an admin principal
+///
+/// Admin principals can:
+/// - Trigger manual rebalancing
+/// - Clear caches
+/// - Access diagnostic functions
+///
+/// Current admins:
+/// - qhlmp-5aaaa-aaaam-qd4jq-cai (ICPI Frontend) - For automated operations
+/// - ev6xm-haaaa-aaaap-qqcza-cai (ICPI Backend itself) - For timer-triggered operations
+///
+/// TODO: Add actual deployer/controller principals for manual admin operations
 fn require_admin() -> Result<()> {
     const ADMIN_PRINCIPALS: &[&str] = &[
-        "e454q-riaaa-aaaap-qqcyq-cai", // Example admin
+        "qhlmp-5aaaa-aaaam-qd4jq-cai",  // ICPI Frontend canister
+        "ev6xm-haaaa-aaaap-qqcza-cai",  // ICPI Backend (self, for timers)
     ];
 
     let caller = ic_cdk::caller();
 
+    // Allow admin principals
     if ADMIN_PRINCIPALS.iter()
         .any(|&admin| Principal::from_text(admin).ok() == Some(caller))
     {
-        Ok(())
-    } else {
-        Err(IcpiError::System(infrastructure::errors::SystemError::Unauthorized {
-            principal: caller.to_text(),
-            required_role: "admin".to_string(),
-        }))
+        return Ok(());
     }
+
+    // For debugging: log unauthorized attempts
+    ic_cdk::println!("⚠️  Unauthorized admin access attempt from {}", caller);
+
+    Err(IcpiError::System(infrastructure::errors::SystemError::Unauthorized {
+        principal: caller.to_text(),
+        required_role: "admin (frontend or backend canister)".to_string(),
+    }))
 }
 
 // ===== CANDID EXPORT =====

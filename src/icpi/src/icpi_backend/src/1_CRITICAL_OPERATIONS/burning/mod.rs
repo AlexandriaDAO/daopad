@@ -32,7 +32,40 @@ pub async fn burn_icpi(caller: Principal, amount: Nat) -> Result<BurnResult> {
         return Err(IcpiError::Burn(crate::infrastructure::BurnError::NoSupply));
     }
 
-    // NOW collect fee (after validation passed)
+    // CRITICAL: Check user has sufficient ICPI balance BEFORE collecting fee
+    // This prevents user from paying fee if burn will fail anyway
+    let icpi_canister = Principal::from_text(crate::infrastructure::constants::ICPI_CANISTER_ID)
+        .map_err(|e| IcpiError::Other(format!("Invalid ICPI principal: {}", e)))?;
+
+    let user_balance_result: std::result::Result<(Nat,), _> = ic_cdk::call(
+        icpi_canister,
+        "icrc1_balance_of",
+        (crate::types::icrc::Account {
+            owner: caller,
+            subaccount: None,
+        },)
+    ).await;
+
+    let user_icpi_balance = match user_balance_result {
+        Ok((balance,)) => balance,
+        Err((code, msg)) => {
+            return Err(IcpiError::Query(crate::infrastructure::errors::QueryError::CanisterUnreachable {
+                canister: "ICPI ledger".to_string(),
+                reason: format!("Balance query failed: {:?} - {}", code, msg),
+            }));
+        }
+    };
+
+    if user_icpi_balance < amount {
+        return Err(IcpiError::Burn(crate::infrastructure::BurnError::InsufficientBalance {
+            required: amount.to_string(),
+            available: user_icpi_balance.to_string(),
+        }));
+    }
+
+    ic_cdk::println!("User {} has {} ICPI, burning {} ICPI", caller, user_icpi_balance, amount);
+
+    // NOW collect fee (after all validations passed)
     let _ckusdt = Principal::from_text(crate::infrastructure::constants::CKUSDT_CANISTER_ID)
         .map_err(|e| IcpiError::Other(format!("Invalid ckUSDT principal: {}", e)))?;
     crate::_1_CRITICAL_OPERATIONS::minting::fee_handler::collect_mint_fee(caller).await?;
@@ -42,11 +75,17 @@ pub async fn burn_icpi(caller: Principal, amount: Nat) -> Result<BurnResult> {
     ic_cdk::println!("Burning {} ICPI from supply of {}", amount, current_supply);
 
     // CRITICAL: Transfer ICPI from user to backend (which automatically burns it)
+    // Uses ICRC-2 transfer_from so user keeps custody until burn confirmed
     let icpi_canister = Principal::from_text(crate::infrastructure::constants::ICPI_CANISTER_ID)
         .map_err(|e| IcpiError::Other(format!("Invalid ICPI principal: {}", e)))?;
 
-    let transfer_args = crate::types::icrc::TransferArgs {
-        from_subaccount: None,
+    use crate::types::icrc::{TransferFromArgs, TransferFromError};
+
+    let transfer_from_args = TransferFromArgs {
+        from: crate::types::icrc::Account {
+            owner: caller,
+            subaccount: None,
+        },
         to: crate::types::icrc::Account {
             owner: ic_cdk::id(),
             subaccount: None,
@@ -54,31 +93,37 @@ pub async fn burn_icpi(caller: Principal, amount: Nat) -> Result<BurnResult> {
         amount: amount.clone(),
         fee: None,
         memo: Some(b"ICPI burn".to_vec()),
-        created_at_time: None,
+        created_at_time: Some(ic_cdk::api::time()),
     };
 
-    let transfer_result: std::result::Result<(crate::types::icrc::TransferResult,), _> = ic_cdk::call(
+    let transfer_result: std::result::Result<(std::result::Result<Nat, TransferFromError>,), _> = ic_cdk::call(
         icpi_canister,
-        "icrc1_transfer",
-        (transfer_args,)
+        "icrc2_transfer_from",
+        (transfer_from_args,)
     ).await;
 
     match transfer_result {
-        Ok((crate::types::icrc::TransferResult::Ok(block),)) => {
-            ic_cdk::println!("✅ ICPI transferred to burning account at block {}", block);
+        Ok((Ok(block),)) => {
+            ic_cdk::println!("✅ ICPI transferred to burning account at block {} via ICRC-2", block);
         }
-        Ok((crate::types::icrc::TransferResult::Err(e),)) => {
+        Ok((Err(TransferFromError::InsufficientAllowance { allowance }),)) => {
+            return Err(IcpiError::Burn(crate::infrastructure::BurnError::InsufficientApproval {
+                required: amount.to_string(),
+                approved: allowance.to_string(),
+            }));
+        }
+        Ok((Err(e),)) => {
             return Err(IcpiError::Burn(crate::infrastructure::BurnError::TokenTransferFailed {
                 token: "ICPI".to_string(),
                 amount: amount.to_string(),
-                reason: format!("{:?}", e),
+                reason: format!("ICRC-2 error: {:?}", e),
             }));
         }
         Err((code, msg)) => {
             return Err(IcpiError::Burn(crate::infrastructure::BurnError::TokenTransferFailed {
                 token: "ICPI".to_string(),
                 amount: amount.to_string(),
-                reason: format!("Transfer failed: {:?} - {}", code, msg),
+                reason: format!("Transfer call failed: {:?} - {}", code, msg),
             }));
         }
     }

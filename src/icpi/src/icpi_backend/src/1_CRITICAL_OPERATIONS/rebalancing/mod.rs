@@ -1,5 +1,28 @@
-//! Rebalancing module - Hourly portfolio rebalancing
-//! Critical operation for maintaining index composition
+//! # Rebalancing Module - PHASE 2 (NOT IN ALPHA v1)
+//!
+//! ⚠️  **STATUS: INTENTIONALLY STUBBED FOR ALPHA v1 DEPLOYMENT**
+//!
+//! ## Alpha v1 Scope (Current)
+//! - Mint ICPI tokens with ckUSDT deposits ✅
+//! - Burn ICPI tokens for proportional redemptions ✅
+//! - Manual portfolio management by admin (out-of-band)
+//!
+//! ## Phase 2 Scope (Future - Q1 2026)
+//! - Automatic hourly rebalancing via Kongswap
+//! - Dynamic token price queries from Kong liquidity pools
+//! - Slippage protection and trade execution
+//! - Target allocation enforcement (25% each: ALEX, ZERO, KONG, BOB)
+//!
+//! ## Current Behavior
+//! All rebalancing functions return "Not yet implemented" errors.
+//! The rebalancing timer is started but does nothing.
+//!
+//! ## Phase 2 Requirements
+//! 1. Implement Kong price oracle integration (Zone 3)
+//! 2. Implement Kongswap trade execution (Zone 4)
+//! 3. Implement rebalancing logic with deviation detection
+//! 4. Add comprehensive testing for trade scenarios
+//! 5. Mainnet testing with small amounts before full deployment
 
 use candid::{CandidType, Deserialize, Nat};
 use crate::infrastructure::{Result, IcpiError, RebalanceError};

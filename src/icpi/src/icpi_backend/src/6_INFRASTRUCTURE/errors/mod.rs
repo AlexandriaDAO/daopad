@@ -59,6 +59,8 @@ pub enum MintError {
 #[derive(Debug, Clone, CandidType, Deserialize, Serialize)]
 pub enum BurnError {
     AmountBelowMinimum { amount: String, minimum: String },
+    InsufficientApproval { required: String, approved: String },
+    InsufficientBalance { required: String, available: String },
     NoSupply,
     NoRedemptionsPossible { reason: String },
     TokenTransferFailed { token: String, amount: String, reason: String },
