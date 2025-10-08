@@ -27,23 +27,31 @@ Step 2 - Iteration Loop (Max 5 iterations):
     c. IF P0 > 0:
        - Report: "📊 Iteration [i]/5: Found [X] P0 issues"
        - Spawn pr-review-resolver: "Fix all P0 issues in https://github.com/AlexandriaDAO/daopad/pull/4"
-       - AUTOMATICALLY sleep: echo "⏳ Waiting 5 minutes for GitHub Actions..." && sleep 300
-       - DO NOT ask user "is check done?" - just continue automatically
-       - Continue to iteration [i+1]
+       - Execute: sleep 300
+       - After sleep completes, IMMEDIATELY go to step a (check review)
+       - DO NOT report "waiting complete, should I continue?"
+       - DO NOT ask "want to watch?" or "want me to check?"
+       - Just loop back to step a
     d. IF P0 = 0:
        - Report: "✅ SUCCESS: PR approved after [i] iterations"
        - EXIT
 
   IF iteration 5 AND P0 > 0:
-    - Report: "⚠️ ESCALATE: 5 iterations complete, [X] P0 issues remain"
-    - List remaining issues
-    - EXIT
+    - Report: "⚠️ ESCALATE: Max iterations reached"
+    - List remaining P0 issues
+    - Report: "Manual intervention required"
+    - EXIT (do not ask "want to continue manually?")
 
 CRITICAL RULES:
 - DO NOT ask "Should I proceed?" or "Is this correct?" - just execute
+- DO NOT ask "Want to watch?" or "Want me to report back?" - just continue
+- DO NOT ask "is check done?" or "should I check now?" - just sleep and continue
 - DO NOT wait for human confirmation - proceed automatically
-- DO report progress after each iteration
+- DO NOT pause after reporting - immediately continue to next step
+- DO report progress ONLY (not questions)
 - DO spawn fresh pr-review-resolver subagent each iteration
+- DO execute sleep commands without asking permission
+- AFTER sleep completes: IMMEDIATELY continue, do not report "sleep done, continue?"
 - ONLY STOP when: approved, 5 iterations complete, or critical error
 
 START NOW with Step 1 (create worktree).
@@ -80,24 +88,26 @@ Step 3 - Push and Create PR:
 Step 4 - Iteration Loop (Max 5 iterations):
   FOR i = 1 to 5:
     a. Get PR number from created PR
-    b. AUTOMATICALLY sleep 300 seconds: echo "⏳ Waiting 5 minutes for initial review..." && sleep 300
+    b. Execute: sleep 300
     c. Check review: gh pr view [PR_NUM] --json comments --jq '.comments[-1].body'
     d. Count P0 issues
     e. IF P0 > 0:
        - Report: "📊 Iteration [i]/5: Found [X] P0 issues"
        - Spawn pr-review-resolver to fix
-       - AUTOMATICALLY sleep: echo "⏳ Waiting 5 minutes for re-review..." && sleep 300
-       - Continue to next iteration WITHOUT asking user
+       - Execute: sleep 300
+       - After sleep, IMMEDIATELY go to step c (no questions)
     f. IF P0 = 0:
        - Report: "✅ SUCCESS: PR approved"
        - EXIT
 
 CRITICAL RULES:
 - DO NOT ask for permission at any step
+- DO NOT ask "Want to watch?" or "Want me to report back when done?"
 - DO NOT wait for user to say "continue" or "check is done"
 - DO automatically sleep 300 seconds (5 minutes) after each push
 - DO proceed through all steps automatically
-- DO report progress only
+- DO report progress ONLY (not questions)
+- AFTER sleep: IMMEDIATELY continue to next step (no pause, no questions)
 - ONLY STOP when: approved, 5 iterations, or critical error
 
 START NOW with Step 1.
@@ -245,23 +255,29 @@ WORKFLOW (EXECUTE AUTONOMOUSLY):
      c. IF P0 > 0:
         - Report: "Iteration [i]/5: Found [X] P0 issues"
         - Spawn pr-review-resolver: "Fix all P0 issues in PR 4"
-        - Wait 4 minutes: sleep 240
-        - Continue to next iteration
+        - Execute: sleep 300
+        - After sleep, IMMEDIATELY go to step a (no questions)
      d. IF P0 = 0:
         - Report: "✅ SUCCESS: PR approved after [i] iterations"
         - EXIT
 
    IF iteration 5 AND P0 > 0:
-     - Report: "⚠️ ESCALATE: 5 iterations complete, [X] P0 issues remain"
-     - EXIT
+     - Report: "⚠️ ESCALATE: Max iterations reached"
+     - List remaining P0 issues
+     - Report: "Manual intervention required"
+     - EXIT (do not ask "want to continue manually?")
 
 CRITICAL RULES:
 - DO NOT ask questions like "Should I proceed?"
+- DO NOT ask "Want to watch?" or "Want me to report back when done?"
+- DO NOT ask "is check done?" or "should I check now?"
 - DO NOT wait for confirmation
-- DO report progress after each iteration
+- DO NOT pause after reporting - immediately continue
+- DO report progress ONLY (not questions)
 - DO use git worktrees for parallel safety
 - DO spawn fresh pr-review-resolver each iteration
-- DO wait 240 seconds (4 min) for GitHub Actions between iterations
+- DO wait 300 seconds (5 min) for GitHub Actions between iterations
+- AFTER sleep: IMMEDIATELY continue, no "sleep done, continue?" questions
 - ONLY STOP at: approval, max iterations, or critical error
 
 START IMMEDIATELY. First action: Setup worktree or detect existing worktree.
