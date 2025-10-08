@@ -5,57 +5,57 @@
 
 @layer base {
   :root {
-    /* Robinhood-inspired: Pure black background */
+    /* Terminal aesthetic: Pure black background */
     --background: 0 0% 0%;
     --foreground: 0 0% 100%;
 
     /* Dark gray cards with subtle borders */
-    --card: 0 0% 8%;
+    --card: 0 0% 4%;
     --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 8%;
+    --popover: 0 0% 4%;
     --popover-foreground: 0 0% 100%;
 
-    /* Robinhood signature green */
-    --primary: 142 76% 36%;
-    --primary-foreground: 0 0% 100%;
+    /* Terminal neon green */
+    --primary: 120 100% 50%;
+    --primary-foreground: 0 0% 0%;
 
     /* Dark gray secondary */
     --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary-foreground: 0 0% 60%;
 
     --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 60%;
+    --muted-foreground: 0 0% 50%;
 
-    /* Accent green */
-    --accent: 142 76% 36%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent neon green */
+    --accent: 120 100% 50%;
+    --accent-foreground: 0 0% 0%;
 
     /* Red for losses/negative */
-    --destructive: 0 91% 71%;
+    --destructive: 348 100% 55%;
     --destructive-foreground: 0 0% 100%;
 
     /* Green for gains/positive */
-    --success: 142 76% 36%;
-    --success-foreground: 0 0% 100%;
+    --success: 120 100% 50%;
+    --success-foreground: 0 0% 0%;
 
     /* Yellow for warnings */
-    --warning: 38 92% 50%;
+    --warning: 54 100% 63%;
     --warning-foreground: 0 0% 0%;
 
-    /* Minimal borders */
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 142 76% 36%;
+    /* Minimal borders - darker */
+    --border: 0 0% 12%;
+    --input: 0 0% 12%;
+    --ring: 120 100% 50%;
 
-    --radius: 0.375rem;
+    --radius: 0.125rem;
 
     /* Data visualization colors */
-    --chart-1: 142 76% 36%;  /* Green - Gains */
-    --chart-2: 221 83% 53%;  /* Blue */
-    --chart-3: 262 83% 58%;  /* Purple */
-    --chart-4: 291 64% 42%;  /* Magenta */
-    --chart-5: 0 91% 71%;    /* Red - Losses */
+    --chart-1: 120 100% 50%;  /* Neon green */
+    --chart-2: 189 100% 50%;  /* Cyan */
+    --chart-3: 262 83% 58%;   /* Purple */
+    --chart-4: 291 64% 42%;   /* Magenta */
+    --chart-5: 348 100% 55%;  /* Red */
   }
 }
 

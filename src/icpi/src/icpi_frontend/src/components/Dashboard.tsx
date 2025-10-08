@@ -60,27 +60,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {/* Stats Bar */}
       <div className="border-b border-[#1f1f1f] bg-[#000000]">
         <div className="container py-2 px-3">
-          <div className="flex items-center justify-between text-xs font-mono">
-            <div className="flex items-center gap-4">
-              <span className="text-[#666666]">TVL</span>
-              <span className="text-white">{formatNumber(tvl)}</span>
-              <span className="text-[#666666]">SUPPLY</span>
-              <span className="text-white">{portfolioData.totalSupply.toFixed(2)} ICPI</span>
-              <span className="text-[#666666]">NAV</span>
-              <span className="text-white">${portfolioData.indexPrice.toFixed(4)}</span>
-              <span className="text-[#666666]">APY</span>
-              <span className="text-white">{portfolioData.apy.toFixed(2)}%</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-[#666666]">{shortenAddress(principal)}</span>
-              <button
-                onClick={handleCopy}
-                className="text-[#999999] hover:text-[#00FF41] transition-none px-1.5 py-0.5 border border-[#1f1f1f] hover:border-[#00FF41] flex items-center gap-1"
-                title="Copy principal"
-              >
-                <Copy className="h-3 w-3" />
-                {copied ? 'COPIED' : 'COPY'}
-              </button>
+          <div className="overflow-x-auto">
+            <div className="flex items-center justify-between text-xs font-mono min-w-max">
+              <div className="flex items-center gap-4">
+                <span className="text-[#666666]">TVL</span>
+                <span className="text-white">{formatNumber(tvl)}</span>
+                <span className="text-[#666666]">SUPPLY</span>
+                <span className="text-white">{portfolioData.totalSupply.toFixed(2)} ICPI</span>
+                <span className="text-[#666666]">NAV</span>
+                <span className="text-white">${portfolioData.indexPrice.toFixed(4)}</span>
+                <span className="text-[#666666]">APY</span>
+                <span className="text-white">{portfolioData.apy.toFixed(2)}%</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[#666666]">{shortenAddress(principal)}</span>
+                <button
+                  onClick={handleCopy}
+                  className="text-[#999999] hover:text-[#00FF41] transition-colors duration-150 px-1.5 py-0.5 border border-[#1f1f1f] hover:border-[#00FF41] flex items-center gap-1 active:scale-[0.98]"
+                  title="Copy principal"
+                >
+                  <Copy className="h-3 w-3" />
+                  <span className="hidden sm:inline">{copied ? 'COPIED' : 'COPY'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -88,7 +90,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       <div className="container py-3 px-3">
         {/* Responsive grid: 1 col (mobile) -> 2 col (tablet) -> 3 col (desktop) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_400px_350px] gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] xl:grid-cols-[1.5fr_1fr_1fr] gap-3">
           {/* Left: Portfolio Dashboard */}
           <PortfolioDashboard
             portfolioData={portfolioData}

@@ -61,9 +61,28 @@ export const AllocationChart: React.FC<AllocationChartProps> = ({
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">PORTFOLIO ALLOCATION</CardTitle>
         </CardHeader>
-        <CardContent className="p-3">
-          <div className="text-center py-8 text-[#666666] text-xs">
-            Loading allocation data...
+        <CardContent className="p-3 space-y-3">
+          {/* Skeleton for pie charts */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="h-3 w-12 bg-[#1f1f1f] animate-pulse rounded mb-1" />
+              <div className="flex items-center justify-center h-[200px]">
+                <div className="w-32 h-32 rounded-full bg-[#1f1f1f] animate-pulse" />
+              </div>
+            </div>
+            <div>
+              <div className="h-3 w-12 bg-[#1f1f1f] animate-pulse rounded mb-1" />
+              <div className="flex items-center justify-center h-[200px]">
+                <div className="w-32 h-32 rounded-full bg-[#1f1f1f] animate-pulse" />
+              </div>
+            </div>
+          </div>
+          {/* Skeleton for table */}
+          <div className="space-y-2">
+            <div className="h-8 bg-[#1f1f1f] animate-pulse rounded" />
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-10 bg-[#1f1f1f] animate-pulse rounded" />
+            ))}
           </div>
         </CardContent>
       </Card>
