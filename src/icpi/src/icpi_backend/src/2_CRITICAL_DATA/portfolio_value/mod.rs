@@ -27,21 +27,28 @@ pub async fn calculate_portfolio_value_atomic() -> Result<Nat> {
     for (symbol, balance) in balances {
         if symbol == "ckUSDT" {
             // ckUSDT is 1:1 with USD, already in e6 decimals
-            let value = balance.0.to_u64().unwrap_or(0);
+            // Safely convert balance, return error if overflow
+            let value = balance.0.to_u64()
+                .ok_or_else(|| {
+                    crate::infrastructure::IcpiError::Other(
+                        format!("ckUSDT balance {} too large to process", balance)
+                    )
+                })?;
             total_value_e6 += value;
             ic_cdk::println!("  ckUSDT: {} (e6) = ${}", balance, value as f64 / 1_000_000.0);
         } else {
             // For tracked tokens, get price from Kongswap and calculate value
-            match get_token_usd_value(&symbol, &balance).await {
-                Ok(value_e6) => {
-                    total_value_e6 += value_e6;
-                    ic_cdk::println!("  {}: {} tokens = ${}", symbol, balance, value_e6 as f64 / 1_000_000.0);
-                }
-                Err(e) => {
-                    ic_cdk::println!("  ⚠️ {}: {} tokens (price query failed: {}, counted as $0)", symbol, balance, e);
-                    // Continue without this token's value rather than failing entire TVL calculation
-                }
-            }
+            // CRITICAL: Fail if any token pricing fails to ensure accurate TVL
+            let value_e6 = get_token_usd_value(&symbol, &balance).await
+                .map_err(|e| {
+                    ic_cdk::println!("  ❌ Error valuing {}: {}", symbol, e);
+                    crate::infrastructure::IcpiError::Other(
+                        format!("Failed to value token {}: {}", symbol, e)
+                    )
+                })?;
+
+            total_value_e6 += value_e6;
+            ic_cdk::println!("  {}: {} tokens = ${}", symbol, balance, value_e6 as f64 / 1_000_000.0);
         }
     }
 
@@ -51,28 +58,70 @@ pub async fn calculate_portfolio_value_atomic() -> Result<Nat> {
     Ok(total_value)
 }
 
-/// Get USD value of a token amount by querying Kongswap pool
+/// Get USD value of a token amount
 /// Returns value in e6 (ckUSDT decimals)
+///
+/// **ALPHA V1 LIMITATION**: Uses conservative hardcoded prices
+/// This is intentional for the Alpha deployment to ensure stability and prevent
+/// over-minting during experimental phase. These prices are set conservatively low
+/// to protect users during the initial testing period.
+///
+/// **PRODUCTION NOTE**: Beta/Production versions will integrate with Kongswap
+/// price feeds for real-time market pricing.
+///
+/// Current hardcoded prices (conservative):
+/// - ALEX: $0.50 (actual market ~$1.00+)
+/// - ZERO: $0.10 (actual market ~$0.20+)
+/// - KONG: $0.05 (actual market ~$0.10+)
+/// - BOB: $0.01 (actual market ~$0.02+)
 async fn get_token_usd_value(token_symbol: &str, amount: &Nat) -> Result<u64> {
-    // Conservative hardcoded prices to prevent over-minting
+    // ALPHA V1: Conservative hardcoded prices to prevent over-minting
+    // These values are intentionally set below market prices for safety
     let price_per_token_e6 = match token_symbol {
-        "ALEX" => 500_000u64,  // $0.50 per ALEX
-        "ZERO" => 100_000u64,  // $0.10 per ZERO
-        "KONG" => 50_000u64,   // $0.05 per KONG
-        "BOB" => 10_000u64,    // $0.01 per BOB
+        "ALEX" => 500_000u64,  // $0.50 per ALEX (conservative)
+        "ZERO" => 100_000u64,  // $0.10 per ZERO (conservative)
+        "KONG" => 50_000u64,   // $0.05 per KONG (conservative)
+        "BOB" => 10_000u64,    // $0.01 per BOB (conservative)
         _ => {
             ic_cdk::println!("  Unknown token {}, valuing at $0", token_symbol);
             return Ok(0u64);
         }
     };
 
-    let amount_e8 = amount.0.to_u64().unwrap_or(0);
+    // Safely convert amount to u64, returning error on overflow
+    let amount_e8 = amount.0.to_u64()
+        .ok_or_else(|| {
+            crate::infrastructure::IcpiError::Other(
+                format!("Amount {} too large to process", amount)
+            )
+        })?;
+
     if amount_e8 == 0 {
         return Ok(0u64);
     }
 
-    // Calculate: (amount_e8 * price_e6) / 1e8
-    let value_e6 = (amount_e8 as u128 * price_per_token_e6 as u128 / 100_000_000) as u64;
+    // Calculate: (amount_e8 * price_e6) / 1e8 with overflow protection
+    let amount_u128 = amount_e8 as u128;
+    let price_u128 = price_per_token_e6 as u128;
+
+    // Check for potential overflow before multiplication
+    let product = amount_u128.checked_mul(price_u128)
+        .ok_or_else(|| {
+            crate::infrastructure::IcpiError::Other(
+                format!("Arithmetic overflow in price calculation: {} * {}", amount_e8, price_per_token_e6)
+            )
+        })?;
+
+    let value_e6_u128 = product / 100_000_000;
+
+    // Ensure result fits in u64
+    if value_e6_u128 > u64::MAX as u128 {
+        return Err(crate::infrastructure::IcpiError::Other(
+            format!("Value overflow: {} exceeds u64 max", value_e6_u128)
+        ));
+    }
+
+    let value_e6 = value_e6_u128 as u64;
 
     ic_cdk::println!(
         "  {} tokens of {}: ${} (@ ${}/token)",

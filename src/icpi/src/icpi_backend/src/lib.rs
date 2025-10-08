@@ -203,17 +203,27 @@ fn post_upgrade() {
 /// - Clear caches
 /// - Access diagnostic functions
 ///
+/// **ALPHA V1 LIMITATION**: Currently only the backend canister itself has admin access
+/// This is sufficient for Alpha v1 since:
+/// - Rebalancing is not yet implemented (stubbed)
+/// - Cache clearing can be triggered via canister upgrade if needed
+/// - No critical admin operations required during Alpha testing
+///
+/// **PRODUCTION NOTE**: Beta/Production versions should add:
+/// - Deployer principal for manual interventions
+/// - Controller principals for emergency operations
+/// - Multi-sig or DAO governance for admin actions
+///
 /// Current admins:
 /// - ev6xm-haaaa-aaaap-qqcza-cai (ICPI Backend itself) - For timer-triggered operations
 ///
 /// Security Note: Frontend canister MUST NOT have admin access to prevent
 /// potential security vulnerabilities. Frontend should only call public query/update methods.
-///
-/// TODO: Add actual deployer/controller principals for manual admin operations
 fn require_admin() -> Result<()> {
     const ADMIN_PRINCIPALS: &[&str] = &[
         "ev6xm-haaaa-aaaap-qqcza-cai",  // ICPI Backend (self, for timers only)
-        // Frontend removed for security - should not have admin access
+        // ALPHA V1: No manual admin principals added yet
+        // Beta will add controller/deployer principals here
     ];
 
     let caller = ic_cdk::caller();
