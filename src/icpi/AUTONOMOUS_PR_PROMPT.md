@@ -4,6 +4,18 @@
 
 ---
 
+## 🚨 CRITICAL: ISOLATION REQUIREMENT
+
+**YOU must work in an isolated worktree** because:
+- Other Claude agents may be running in parallel on different features
+- If YOU work in the main repo directory, YOU will conflict with them
+- File changes from other agents will corrupt YOUR work
+- Git checkouts by other agents will change YOUR files
+
+**Safety**: The prompts below automatically create isolated worktrees for YOU.
+
+---
+
 ## ⚡ COPY THIS PROMPT → Test PR #4 Iteration
 
 ```
@@ -14,12 +26,24 @@ Main Repo: /home/theseus/alexandria/daopad/src/icpi
 
 EXECUTE THESE STEPS AUTONOMOUSLY (DO NOT ASK FOR PERMISSION):
 
-Step 1 - Create Isolated Worktree:
-  cd /home/theseus/alexandria/daopad/src/icpi
-  BRANCH=$(gh pr view 4 --json headRefName -q .headRefName)
-  git worktree add ../icpi-pr-4 $BRANCH
-  cd ../icpi-pr-4
-  pwd  # Confirm you're in ../icpi-pr-4
+Step 1 - Isolate Yourself (MANDATORY for safety):
+  # YOU must check if you're in the main repo or a worktree
+  REPO_ROOT=$(git rev-parse --show-toplevel)
+  CURRENT_DIR=$(pwd)
+
+  if [ "$REPO_ROOT" = "$CURRENT_DIR" ]; then
+    # YOU are in the main repo - create YOUR isolated worktree
+    echo "⚠️ Creating YOUR isolated worktree for safe parallel work..."
+    cd /home/theseus/alexandria/daopad/src/icpi
+    BRANCH=$(gh pr view 4 --json headRefName -q .headRefName)
+    git worktree add ../icpi-pr-4 $BRANCH
+    cd ../icpi-pr-4
+  else
+    # YOU are already in a worktree - safe to continue
+    echo "✅ You are already isolated in: $CURRENT_DIR"
+  fi
+
+  pwd  # Confirm YOUR working directory
 
 Step 2 - Iteration Loop (Max 5 iterations):
   FOR i = 1 to 5:
@@ -43,19 +67,20 @@ Step 2 - Iteration Loop (Max 5 iterations):
     - Report: "Manual intervention required"
     - EXIT (do not ask "want to continue manually?")
 
-CRITICAL RULES:
-- DO NOT ask "Should I proceed?" or "Is this correct?" - just execute
-- DO NOT ask "Want to watch?" or "Want me to report back?" - just continue
-- DO NOT ask "is check done?" or "should I check now?" - just sleep and continue
-- DO NOT wait for human confirmation - proceed automatically
-- DO NOT pause after reporting - immediately continue to next step
-- DO report progress ONLY (not questions)
-- DO spawn fresh pr-review-resolver subagent each iteration
-- DO execute sleep commands without asking permission
-- AFTER sleep completes: IMMEDIATELY continue, do not report "sleep done, continue?"
-- ONLY STOP when: approved, 5 iterations complete, or critical error
+YOUR CRITICAL RULES (YOU must follow these):
+- YOU must NOT ask "Should I proceed?" or "Is this correct?" - just execute
+- YOU must NOT ask "Want to watch?" or "Want me to report back?" - just continue
+- YOU must NOT ask "is check done?" or "should I check now?" - just sleep and continue
+- YOU must NOT wait for human confirmation - proceed automatically
+- YOU must NOT pause after reporting - immediately continue to next step
+- YOU must work in YOUR isolated worktree (other agents may be working in parallel)
+- YOU must report progress ONLY (not questions)
+- YOU must spawn fresh pr-review-resolver subagent each iteration
+- YOU must execute sleep 300 commands without asking permission
+- AFTER sleep: YOU must IMMEDIATELY continue (no "sleep done, continue?" questions)
+- YOU ONLY STOP when: approved, 5 iterations complete, or critical error
 
-START NOW with Step 1 (create worktree).
+START NOW with Step 1 (isolate yourself).
 ```
 
 ## ⚡ COPY THIS PROMPT → Implement New Feature
@@ -69,11 +94,23 @@ Base Branch: main
 
 EXECUTE THESE STEPS AUTONOMOUSLY (DO NOT ASK FOR PERMISSION):
 
-Step 1 - Create Isolated Worktree:
-  cd /home/theseus/alexandria/daopad/src/icpi
-  git worktree add -b feature/zone-3-kong-liquidity ../icpi-zone3 main
-  cd ../icpi-zone3
-  pwd  # Confirm you're in ../icpi-zone3
+Step 1 - Isolate Yourself (MANDATORY for safety):
+  # YOU must check if you're in the main repo or a worktree
+  REPO_ROOT=$(git rev-parse --show-toplevel)
+  CURRENT_DIR=$(pwd)
+
+  if [ "$REPO_ROOT" = "$CURRENT_DIR" ]; then
+    # YOU are in the main repo - create YOUR isolated worktree
+    echo "⚠️ Creating YOUR isolated worktree for safe parallel work..."
+    cd /home/theseus/alexandria/daopad/src/icpi
+    git worktree add -b feature/zone-3-kong-liquidity ../icpi-zone3 main
+    cd ../icpi-zone3
+  else
+    # YOU are already in a worktree - safe to continue
+    echo "✅ You are already isolated in: $CURRENT_DIR"
+  fi
+
+  pwd  # Confirm YOUR working directory
 
 Step 2 - Implement Feature:
   - Implement complete Zone 3 functionality
@@ -101,17 +138,18 @@ Step 4 - Iteration Loop (Max 5 iterations):
        - Report: "✅ SUCCESS: PR approved"
        - EXIT
 
-CRITICAL RULES:
-- DO NOT ask for permission at any step
-- DO NOT ask "Want to watch?" or "Want me to report back when done?"
-- DO NOT wait for user to say "continue" or "check is done"
-- DO automatically sleep 300 seconds (5 minutes) after each push
-- DO proceed through all steps automatically
-- DO report progress ONLY (not questions)
-- AFTER sleep: IMMEDIATELY continue to next step (no pause, no questions)
-- ONLY STOP when: approved, 5 iterations, or critical error
+YOUR CRITICAL RULES (YOU must follow these):
+- YOU must NOT ask for permission at any step
+- YOU must NOT ask "Want to watch?" or "Want me to report back when done?"
+- YOU must NOT wait for user to say "continue" or "check is done"
+- YOU must work in YOUR isolated worktree (other agents may be working in parallel)
+- YOU must automatically sleep 300 seconds (5 minutes) after each push
+- YOU must proceed through all steps automatically
+- YOU must report progress ONLY (not questions)
+- AFTER sleep: YOU must IMMEDIATELY continue to next step (no pause, no questions)
+- YOU ONLY STOP when: approved, 5 iterations, or critical error
 
-START NOW with Step 1.
+START NOW with Step 1 (isolate yourself).
 ```
 
 ---
@@ -268,18 +306,18 @@ WORKFLOW (EXECUTE AUTONOMOUSLY):
      - Report: "Manual intervention required"
      - EXIT (do not ask "want to continue manually?")
 
-CRITICAL RULES:
-- DO NOT ask questions like "Should I proceed?"
-- DO NOT ask "Want to watch?" or "Want me to report back when done?"
-- DO NOT ask "is check done?" or "should I check now?"
-- DO NOT wait for confirmation
-- DO NOT pause after reporting - immediately continue
-- DO report progress ONLY (not questions)
-- DO use git worktrees for parallel safety
-- DO spawn fresh pr-review-resolver each iteration
-- DO wait 300 seconds (5 min) for GitHub Actions between iterations
-- AFTER sleep: IMMEDIATELY continue, no "sleep done, continue?" questions
-- ONLY STOP at: approval, max iterations, or critical error
+YOUR CRITICAL RULES (YOU must follow these):
+- YOU must NOT ask questions like "Should I proceed?"
+- YOU must NOT ask "Want to watch?" or "Want me to report back when done?"
+- YOU must NOT ask "is check done?" or "should I check now?"
+- YOU must NOT wait for confirmation
+- YOU must NOT pause after reporting - immediately continue
+- YOU must work in YOUR isolated worktree (other agents may be working in parallel)
+- YOU must report progress ONLY (not questions)
+- YOU must spawn fresh pr-review-resolver subagent each iteration
+- YOU must wait 300 seconds (5 min) for GitHub Actions between iterations
+- AFTER sleep: YOU must IMMEDIATELY continue (no "sleep done, continue?" questions)
+- YOU ONLY STOP at: approval, max iterations, or critical error
 
 START IMMEDIATELY. First action: Setup worktree or detect existing worktree.
 ```
