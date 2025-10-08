@@ -27,7 +27,8 @@ Step 2 - Iteration Loop (Max 5 iterations):
     c. IF P0 > 0:
        - Report: "📊 Iteration [i]/5: Found [X] P0 issues"
        - Spawn pr-review-resolver: "Fix all P0 issues in https://github.com/AlexandriaDAO/daopad/pull/4"
-       - Wait: sleep 240 (4 minutes for GitHub Actions)
+       - AUTOMATICALLY sleep: echo "⏳ Waiting 5 minutes for GitHub Actions..." && sleep 300
+       - DO NOT ask user "is check done?" - just continue automatically
        - Continue to iteration [i+1]
     d. IF P0 = 0:
        - Report: "✅ SUCCESS: PR approved after [i] iterations"
@@ -79,20 +80,22 @@ Step 3 - Push and Create PR:
 Step 4 - Iteration Loop (Max 5 iterations):
   FOR i = 1 to 5:
     a. Get PR number from created PR
-    b. Wait 240 seconds for initial GitHub Actions review
+    b. AUTOMATICALLY sleep 300 seconds: echo "⏳ Waiting 5 minutes for initial review..." && sleep 300
     c. Check review: gh pr view [PR_NUM] --json comments --jq '.comments[-1].body'
     d. Count P0 issues
     e. IF P0 > 0:
        - Report: "📊 Iteration [i]/5: Found [X] P0 issues"
        - Spawn pr-review-resolver to fix
-       - Wait 240 seconds
-       - Continue
+       - AUTOMATICALLY sleep: echo "⏳ Waiting 5 minutes for re-review..." && sleep 300
+       - Continue to next iteration WITHOUT asking user
     f. IF P0 = 0:
        - Report: "✅ SUCCESS: PR approved"
        - EXIT
 
 CRITICAL RULES:
 - DO NOT ask for permission at any step
+- DO NOT wait for user to say "continue" or "check is done"
+- DO automatically sleep 300 seconds (5 minutes) after each push
 - DO proceed through all steps automatically
 - DO report progress only
 - ONLY STOP when: approved, 5 iterations, or critical error
