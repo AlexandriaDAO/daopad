@@ -1,5 +1,0 @@
-[workspace]
-members = [
-    "src/icpi_backend"
-]
-resolver = "2"
