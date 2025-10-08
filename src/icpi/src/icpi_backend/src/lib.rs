@@ -103,13 +103,13 @@ fn get_rebalancer_status() -> _1_CRITICAL_OPERATIONS::rebalancing::RebalancerSta
 
 #[update]
 #[candid_method(update)]
-fn clear_caches() -> String {
-    require_admin().unwrap_or_else(|e| {
-        ic_cdk::println!("Unauthorized cache clear attempt: {}", e);
-    });
+fn clear_caches() -> Result<String> {
+    // Enforce admin check - returns error if unauthorized
+    require_admin()?;
 
     _5_INFORMATIONAL::cache::clear_all_caches();
-    "Caches cleared".to_string()
+    ic_cdk::println!("Admin {} cleared all caches", ic_cdk::caller());
+    Ok("Caches cleared".to_string())
 }
 
 // ===== INITIALIZATION =====
@@ -124,6 +124,23 @@ fn init() {
 
     // Start rebalancing timer
     _1_CRITICAL_OPERATIONS::rebalancing::start_rebalancing_timer();
+
+    // Start mint cleanup timer to prevent memory leak
+    // Runs every hour to clean up completed mints older than 24 hours
+    ic_cdk_timers::set_timer_interval(
+        std::time::Duration::from_secs(3600), // 1 hour
+        || {
+            ic_cdk::spawn(async {
+                match _1_CRITICAL_OPERATIONS::minting::mint_state::cleanup_expired_mints() {
+                    Ok(count) if count > 0 => {
+                        ic_cdk::println!("🧹 Periodic cleanup: removed {} expired mints", count);
+                    }
+                    Ok(_) => {}, // No mints to clean
+                    Err(e) => ic_cdk::println!("⚠️ Periodic cleanup failed: {}", e),
+                }
+            });
+        }
+    );
 }
 
 #[pre_upgrade]
@@ -157,6 +174,22 @@ fn post_upgrade() {
     }
 
     _1_CRITICAL_OPERATIONS::rebalancing::start_rebalancing_timer();
+
+    // Restart mint cleanup timer after upgrade
+    ic_cdk_timers::set_timer_interval(
+        std::time::Duration::from_secs(3600), // 1 hour
+        || {
+            ic_cdk::spawn(async {
+                match _1_CRITICAL_OPERATIONS::minting::mint_state::cleanup_expired_mints() {
+                    Ok(count) if count > 0 => {
+                        ic_cdk::println!("🧹 Periodic cleanup: removed {} expired mints", count);
+                    }
+                    Ok(_) => {}, // No mints to clean
+                    Err(e) => ic_cdk::println!("⚠️ Periodic cleanup failed: {}", e),
+                }
+            });
+        }
+    );
 
     ic_cdk::println!("✅ Backend upgraded successfully");
 }

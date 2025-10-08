@@ -76,7 +76,16 @@ export const TradeInterface: React.FC<TradeInterfaceProps> = ({
       await onMint(amount)
       setMintAmount('')
     } catch (err: any) {
-      setError(err.message || 'Mint failed')
+      const errMsg = err.message || ''
+      if (errMsg.includes('InsufficientFunds') || errMsg.includes('insufficient funds')) {
+        setError(`Insufficient USDT balance (need ${amount} + ${CKUSDT_FEE} fee)`)
+      } else if (errMsg.includes('Allowance') || errMsg.includes('allowance')) {
+        setError('Token approval failed - please try again')
+      } else if (errMsg.includes('rejected') || errMsg.includes('denied')) {
+        setError('Transaction rejected by user')
+      } else {
+        setError(errMsg || 'Mint failed - please try again')
+      }
     } finally {
       setIsMinting(false)
     }
@@ -99,7 +108,16 @@ export const TradeInterface: React.FC<TradeInterfaceProps> = ({
       await onRedeem(amount)
       setRedeemAmount('')
     } catch (err: any) {
-      setError(err.message || 'Redeem failed')
+      const errMsg = err.message || ''
+      if (errMsg.includes('InsufficientFunds') || errMsg.includes('insufficient funds')) {
+        setError(`Insufficient ICPI balance (need ${amount} + ${ICPI_FEE} fee)`)
+      } else if (errMsg.includes('rejected') || errMsg.includes('denied')) {
+        setError('Transaction rejected by user')
+      } else if (errMsg.includes('supply') || errMsg.includes('Supply')) {
+        setError('Cannot redeem - insufficient token reserves')
+      } else {
+        setError(errMsg || 'Redeem failed - please try again')
+      }
     } finally {
       setIsRedeeming(false)
     }
@@ -120,6 +138,7 @@ export const TradeInterface: React.FC<TradeInterfaceProps> = ({
                 placeholder="0.00"
                 value={mintAmount}
                 onChange={(e) => setMintAmount(e.target.value)}
+                disabled={isMinting}
                 className="flex-1 text-right"
               />
               <Button
@@ -141,10 +160,27 @@ export const TradeInterface: React.FC<TradeInterfaceProps> = ({
           </div>
 
           {mintReceive > 0 && (
-            <div className="pt-2 border-t border-[#1f1f1f]">
+            <div className="pt-2 border-t border-[#1f1f1f] space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-[#666666]">Receive</span>
                 <span className="text-white font-mono">{mintReceive.toFixed(6)} ICPI</span>
+              </div>
+              <div className="flex justify-between text-[10px]">
+                <span className="text-[#666666]">Price per ICPI</span>
+                <span className="text-[#999999] font-mono">${(parseFloat(mintAmount) / mintReceive).toFixed(4)}</span>
+              </div>
+              <div className="flex justify-between text-[10px]">
+                <span className="text-[#666666]">Transfer Fee</span>
+                <span className="text-[#FFE600] font-mono">{CKUSDT_FEE} USDT</span>
+              </div>
+            </div>
+          )}
+
+          {!mintReceive && mintAmount && parseFloat(mintAmount) > 0 && (
+            <div className="pt-2 border-t border-[#1f1f1f]">
+              <div className="flex justify-between text-[10px]">
+                <span className="text-[#666666]">Transfer Fee</span>
+                <span className="text-[#FFE600] font-mono">{CKUSDT_FEE} USDT</span>
               </div>
             </div>
           )}
@@ -181,6 +217,7 @@ export const TradeInterface: React.FC<TradeInterfaceProps> = ({
                 placeholder="0.00"
                 value={redeemAmount}
                 onChange={(e) => setRedeemAmount(e.target.value)}
+                disabled={isRedeeming}
                 className="flex-1 text-right"
               />
               <Button
@@ -210,6 +247,19 @@ export const TradeInterface: React.FC<TradeInterfaceProps> = ({
                   <span className="text-white font-mono">{item.amount.toFixed(6)}</span>
                 </div>
               ))}
+              <div className="flex justify-between text-[10px] pt-1 border-t border-[#1f1f1f]">
+                <span className="text-[#666666]">Burn Fee</span>
+                <span className="text-[#FFE600] font-mono">{ICPI_FEE} ICPI</span>
+              </div>
+            </div>
+          )}
+
+          {!redeemReceive.length && redeemAmount && parseFloat(redeemAmount) > 0 && (
+            <div className="pt-2 border-t border-[#1f1f1f]">
+              <div className="flex justify-between text-[10px]">
+                <span className="text-[#666666]">Burn Fee</span>
+                <span className="text-[#FFE600] font-mono">{ICPI_FEE} ICPI</span>
+              </div>
             </div>
           )}
 
