@@ -164,7 +164,7 @@ export const fetchOrbitStationStatus = createAsyncThunk(
 // Create transfer request (mutation)
 export const createTransferRequest = createAsyncThunk(
   'orbit/createTransferRequest',
-  async ({ stationId, identity, params }, { rejectWithValue, dispatch }) => {
+  async ({ tokenId, stationId, identity, params }, { rejectWithValue, dispatch }) => {
     try {
       const service = new DAOPadBackendService(identity);
       const stationPrincipal = Principal.fromText(stationId);
@@ -194,6 +194,7 @@ export const createTransferRequest = createAsyncThunk(
       if (parsedResult.success) {
         // Trigger requests refetch
         dispatch(fetchOrbitRequests({
+          tokenId,
           stationId,
           identity,
           filters: {}
@@ -211,7 +212,7 @@ export const createTransferRequest = createAsyncThunk(
 // Approve request (mutation)
 export const approveOrbitRequest = createAsyncThunk(
   'orbit/approveRequest',
-  async ({ stationId, identity, requestId }, { rejectWithValue, dispatch }) => {
+  async ({ tokenId, stationId, identity, requestId }, { rejectWithValue, dispatch }) => {
     try {
       const service = new DAOPadBackendService(identity);
       const stationPrincipal = Principal.fromText(stationId);
@@ -234,6 +235,7 @@ export const approveOrbitRequest = createAsyncThunk(
       if (parsedResult.success) {
         // Trigger requests refetch
         dispatch(fetchOrbitRequests({
+          tokenId,
           stationId,
           identity,
           filters: {}
@@ -251,7 +253,7 @@ export const approveOrbitRequest = createAsyncThunk(
 // Reject request (mutation)
 export const rejectOrbitRequest = createAsyncThunk(
   'orbit/rejectRequest',
-  async ({ stationId, identity, requestId }, { rejectWithValue, dispatch }) => {
+  async ({ tokenId, stationId, identity, requestId }, { rejectWithValue, dispatch }) => {
     try {
       const service = new DAOPadBackendService(identity);
       const stationPrincipal = Principal.fromText(stationId);
@@ -274,6 +276,7 @@ export const rejectOrbitRequest = createAsyncThunk(
       if (parsedResult.success) {
         // Trigger requests refetch
         dispatch(fetchOrbitRequests({
+          tokenId,
           stationId,
           identity,
           filters: {}
