@@ -1,6 +1,6 @@
 import { Actor, HttpAgent } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
-import { idlFactory as generatedIdlFactory, canisterId as generatedCanisterId } from '../../../../declarations/daopad_backend';
+import { idlFactory as generatedIdlFactory, canisterId as generatedCanisterId } from 'declarations/daopad_backend';
 import { idlFactory as orbitStationIdlFactory } from './orbitStation.did.js';
 
 // DAOPad Backend Canister ID
