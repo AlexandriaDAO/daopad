@@ -758,8 +758,12 @@ pub struct GetExternalCanisterByPrincipalInput {
 }
 
 #[derive(CandidType, Deserialize, Serialize, Debug)]
-pub struct GetExternalCanisterResult {
-    pub canister: ExternalCanister,
+pub enum GetExternalCanisterResult {
+    Ok {
+        canister: ExternalCanister,
+        privileges: ExternalCanisterCallerPrivileges,
+    },
+    Err(Error),
 }
 
 // External canister ID for requests

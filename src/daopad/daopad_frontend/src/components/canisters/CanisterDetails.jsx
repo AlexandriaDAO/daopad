@@ -132,11 +132,11 @@ export default function CanisterDetails({ orbitStationId, canisterId, onBack }) 
       {/* Status Badge */}
       <div className="flex items-center space-x-4">
         <span className={`px-3 py-1 rounded-full text-sm ${
-          canister.state?.Active ?
+          (canister.state && 'Active' in canister.state) ?
             'bg-green-100 text-green-800' :
             'bg-gray-100 text-gray-800'
         }`}>
-          {canister.state?.Active ? 'Active' : 'Archived'}
+          {(canister.state && 'Active' in canister.state) ? 'Active' : 'Archived'}
         </span>
         {canister.labels?.map(label => (
           <span key={label} className="px-2 py-1 text-xs bg-gray-100 rounded">

@@ -120,7 +120,7 @@ export default function CanisterSettings({ canister, orbitStationId, onRefresh }
   };
 
   const handleArchive = async () => {
-    if (!confirm(`Are you sure you want to ${canister.state?.Active ? 'archive' : 'unarchive'} this canister?`)) {
+    if (!confirm(`Are you sure you want to ${(canister.state && 'Active' in canister.state) ? 'archive' : 'unarchive'} this canister?`)) {
       return;
     }
 
@@ -128,11 +128,11 @@ export default function CanisterSettings({ canister, orbitStationId, onRefresh }
       const result = await canisterService.archiveCanister(
         orbitStationId,
         canister.id,
-        !canister.state?.Active
+        !(canister.state && 'Active' in canister.state)
       );
 
       if (result.Ok) {
-        setSuccess(`Canister ${canister.state?.Active ? 'archived' : 'unarchived'} successfully`);
+        setSuccess(`Canister ${(canister.state && 'Active' in canister.state) ? 'archived' : 'unarchived'} successfully`);
         setTimeout(() => onRefresh(), 2000);
       } else {
         setError(result.Err?.message || 'Failed to update canister state');
@@ -385,20 +385,20 @@ export default function CanisterSettings({ canister, orbitStationId, onRefresh }
           <div className="flex justify-between items-center p-4 border rounded">
             <div>
               <p className="font-medium">
-                {canister.state?.Active ? 'Archive' : 'Unarchive'} Canister
+                {(canister.state && 'Active' in canister.state) ? 'Archive' : 'Unarchive'} Canister
               </p>
               <p className="text-sm text-gray-600">
-                {canister.state?.Active ?
+                {(canister.state && 'Active' in canister.state) ?
                   'Hide this canister from the main list' :
                   'Make this canister active again'}
               </p>
             </div>
             <Button
-              variant={canister.state?.Active ? 'outline' : 'default'}
+              variant={(canister.state && 'Active' in canister.state) ? 'outline' : 'default'}
               onClick={handleArchive}
             >
               <Archive className="h-4 w-4 mr-2" />
-              {canister.state?.Active ? 'Archive' : 'Unarchive'}
+              {(canister.state && 'Active' in canister.state) ? 'Archive' : 'Unarchive'}
             </Button>
           </div>
 

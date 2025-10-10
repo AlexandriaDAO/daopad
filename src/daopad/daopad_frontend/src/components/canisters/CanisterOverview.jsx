@@ -57,7 +57,10 @@ export default function CanisterOverview({ canister, orbitStationId, onRefresh }
 
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A';
-    const date = new Date(Number(timestamp) / 1e6); // Convert from nanoseconds
+    // Handle both RFC3339 strings and nanosecond timestamps
+    const date = typeof timestamp === 'string'
+      ? new Date(timestamp)
+      : new Date(Number(timestamp) / 1e6); // Convert from nanoseconds if number
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 

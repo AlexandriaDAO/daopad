@@ -153,15 +153,26 @@ export const canisterService = {
         principalObj // Principal object
       );
 
+      // Handle double-wrapped Result: outer from backend, inner from Orbit Station
       if (result.Ok) {
-        return {
-          success: true,
-          data: parseCanisterFromCandid(result.Ok.canister)
-        };
+        const orbitResult = result.Ok;
+
+        if (orbitResult.Ok) {
+          return {
+            success: true,
+            data: parseCanisterFromCandid(orbitResult.Ok.canister),
+            privileges: orbitResult.Ok.privileges // Include privileges for permission checks
+          };
+        } else {
+          return {
+            success: false,
+            error: orbitResult.Err?.message || 'Failed to get canister from Orbit Station'
+          };
+        }
       } else {
         return {
           success: false,
-          error: result.Err
+          error: result.Err || 'Backend error'
         };
       }
     } catch (error) {

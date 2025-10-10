@@ -64,8 +64,8 @@ export default function CanisterCard({ canister, onTopUp, onConfigure }) {
               ID: {canister.id?.substring(0, 8)}...
             </p>
           </div>
-          <Badge variant={canister.state?.Active ? 'default' : 'secondary'}>
-            {canister.state?.Active ? 'Active' : 'Archived'}
+          <Badge variant={(canister.state && 'Active' in canister.state) ? 'default' : 'secondary'}>
+            {(canister.state && 'Active' in canister.state) ? 'Active' : 'Archived'}
           </Badge>
         </div>
       </CardHeader>
