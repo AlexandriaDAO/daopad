@@ -9,6 +9,10 @@
  * - OrbitAccountsService: Treasury accounts and balances
  * - TokenService: Token and station mappings
  * - UtilityService: Utility methods (health check, backend principal, token metadata)
+ * - OrbitPermissionsService: Permission management and access control
+ * - OrbitSecurityService: Security checks and validation
+ * - OrbitCanisterService: Canister lifecycle management
+ * - OrbitGovernanceService: Governance configuration and voting thresholds
  */
 
 export { KongLockerService, getKongLockerService } from './kong-locker/KongLockerService';
@@ -18,6 +22,10 @@ export { OrbitMembersService, getOrbitMembersService } from './orbit/OrbitMember
 export { OrbitAccountsService, getOrbitAccountsService } from './orbit/OrbitAccountsService';
 export { TokenService, getTokenService } from './tokens/TokenService';
 export { UtilityService, getUtilityService } from './utility/UtilityService';
+export { OrbitPermissionsService, getOrbitPermissionsService } from './orbit/permissions/OrbitPermissionsService';
+export { OrbitSecurityService, getOrbitSecurityService } from './orbit/security/OrbitSecurityService';
+export { OrbitCanisterService, getOrbitCanisterService } from './orbit/canisters/OrbitCanisterService';
+export { OrbitGovernanceService, getOrbitGovernanceService } from './orbit/governance/OrbitGovernanceService';
 
 // Unified service for backward compatibility
 export { UnifiedBackendService } from './UnifiedBackendService';
