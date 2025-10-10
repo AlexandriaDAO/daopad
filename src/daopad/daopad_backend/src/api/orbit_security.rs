@@ -4,16 +4,18 @@ use serde::Serialize;
 
 use crate::types::orbit::{
     ListUsersInput, ListUsersResult, UserDTO,
-    ListUserGroupsInput, ListUserGroupsResult,
-    ListPermissionsInput, ListPermissionsResult, Resource,
-    ListRequestPoliciesInput, ListRequestPoliciesResult, RequestPolicyRule,
-    RequestSpecifier,
+    ListPermissionsInput, ListPermissionsResult, Resource, Permission,
+    ListRequestPoliciesResult, RequestPolicyRule,
+    ResourceAction, ExternalCanisterAction, SystemAction, UserAction,
+    PermissionAction,
     SystemInfoResult,
     PaginationInput,
 };
 
 const ADMIN_GROUP_ID: &str = "00000000-0000-4000-8000-000000000000";
 const OPERATOR_GROUP_ID: &str = "00000000-0000-4000-8000-000000000001";
+
+// ===== RESPONSE TYPES =====
 
 #[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
 pub enum CheckStatus {
@@ -44,121 +46,109 @@ pub struct SecurityCheck {
 }
 
 #[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
-pub struct SecurityDashboard {
+pub struct EnhancedSecurityDashboard {
     pub station_id: Principal,
-    pub overall_status: String, // "secure", "warnings", "critical", "error"
+    pub overall_status: String,
+    pub decentralization_score: u8, // 0-100
     pub last_checked: u64,
     pub checks: Vec<SecurityCheck>,
+    pub risk_summary: String,
+    pub critical_issues: Vec<SecurityCheck>,
+    pub recommended_actions: Vec<String>,
 }
 
-struct RuleAnalysis {
-    has_bypass: bool,
-    is_auto_approved: bool,
-    bypass_reason: Option<String>,
+// Helper struct for risk analysis
+struct RiskWeights {
+    critical_admin_control: f64,
+    critical_treasury: f64,
+    critical_governance: f64,
+    high_proposal_bypass: f64,
+    medium_external_canisters: f64,
+    medium_system_config: f64,
+    low_operational: f64,
 }
 
-impl Default for RuleAnalysis {
+impl Default for RiskWeights {
     fn default() -> Self {
-        RuleAnalysis {
-            has_bypass: false,
-            is_auto_approved: false,
-            bypass_reason: None,
+        RiskWeights {
+            critical_admin_control: 30.0,
+            critical_treasury: 25.0,
+            critical_governance: 20.0,
+            high_proposal_bypass: 15.0,
+            medium_external_canisters: 5.0,
+            medium_system_config: 3.0,
+            low_operational: 2.0,
         }
     }
 }
 
-// Main orchestrator function that runs all security checks
+// ===== MAIN ORCHESTRATOR =====
+
 #[ic_cdk::update]
-pub async fn perform_security_check(station_id: Principal) -> Result<SecurityDashboard, String> {
-    let mut checks = Vec::new();
+pub async fn perform_security_check(station_id: Principal) -> Result<EnhancedSecurityDashboard, String> {
+    let backend_principal = ic_cdk::id();
+    let mut all_checks = Vec::new();
 
-    // Run all security checks
+    // Fetch all data sequentially (IC doesn't support tokio::join!)
+    let users_result = fetch_users(station_id).await;
+    let perms_result = fetch_permissions(station_id).await;
+    let policies_result = fetch_policies(station_id).await;
+    let system_result = fetch_system_info(station_id).await;
 
-    // 1. Admin control check
-    match verify_admin_only_control(station_id).await {
-        Ok(check) => checks.push(check),
-        Err(e) => checks.push(SecurityCheck {
-            category: "User Management".to_string(),
-            name: "Admin Control".to_string(),
-            status: CheckStatus::Error,
-            message: format!("Failed to verify: {}", e),
-            severity: Some(Severity::Critical),
-            details: None,
-            recommendation: Some("Check Orbit Station connectivity".to_string()),
-        }),
-    }
-
-    // 2. Non-admin permissions check
-    match verify_no_non_admin_permissions(station_id).await {
-        Ok(check) => checks.push(check),
-        Err(e) => checks.push(SecurityCheck {
-            category: "Permissions".to_string(),
-            name: "Group Permissions".to_string(),
-            status: CheckStatus::Error,
-            message: format!("Failed to verify: {}", e),
-            severity: Some(Severity::High),
-            details: None,
-            recommendation: None,
-        }),
-    }
-
-    // 3. Request policies check
-    match verify_request_policies(station_id).await {
-        Ok(check) => checks.push(check),
-        Err(e) => checks.push(SecurityCheck {
-            category: "Policies".to_string(),
-            name: "Request Approval Policies".to_string(),
-            status: CheckStatus::Error,
-            message: format!("Failed to verify: {}", e),
-            severity: Some(Severity::Critical),
-            details: None,
-            recommendation: None,
-        }),
-    }
-
-    // 4. System settings check
-    match verify_system_settings(station_id).await {
-        Ok(check) => checks.push(check),
-        Err(e) => checks.push(SecurityCheck {
-            category: "Configuration".to_string(),
-            name: "System Settings".to_string(),
-            status: CheckStatus::Error,
-            message: format!("Failed to verify: {}", e),
-            severity: Some(Severity::Medium),
-            details: None,
-            recommendation: None,
-        }),
-    }
-
-    // Determine overall status
-    let has_critical = checks.iter().any(|c| matches!(c.status, CheckStatus::Fail) &&
-        matches!(c.severity, Some(Severity::Critical)));
-    let has_error = checks.iter().any(|c| matches!(c.status, CheckStatus::Error));
-    let has_warning = checks.iter().any(|c| matches!(c.status, CheckStatus::Warn));
-
-    let overall_status = if has_error {
-        "error".to_string()
-    } else if has_critical {
-        "critical".to_string()
-    } else if has_warning {
-        "warnings".to_string()
-    } else {
-        "secure".to_string()
+    // Extract data or create error checks
+    let users_data = match users_result {
+        Ok(data) => data,
+        Err(e) => {
+            all_checks.push(create_error_check("Admin Control", "User Management", Severity::Critical, &e));
+            return build_dashboard(station_id, all_checks);
+        }
     };
 
-    Ok(SecurityDashboard {
-        station_id,
-        overall_status,
-        last_checked: time(),
-        checks,
-    })
+    let perms_data = match perms_result {
+        Ok(data) => data,
+        Err(e) => {
+            all_checks.push(create_error_check("Permission Analysis", "Permissions", Severity::High, &e));
+            return build_dashboard(station_id, all_checks);
+        }
+    };
+
+    let policies_data = match policies_result {
+        Ok(data) => data,
+        Err(e) => {
+            all_checks.push(create_error_check("Request Policies", "Policies", Severity::Critical, &e));
+            return build_dashboard(station_id, all_checks);
+        }
+    };
+
+    let system_data = match system_result {
+        Ok(data) => data,
+        Err(e) => {
+            all_checks.push(create_error_check("System Settings", "Configuration", Severity::Medium, &e));
+            return build_dashboard(station_id, all_checks);
+        }
+    };
+
+    // Run comprehensive security checks
+    all_checks.extend(check_admin_control_layer(&users_data, backend_principal));
+    all_checks.extend(check_treasury_control(&perms_data.permissions, &perms_data.user_groups));
+    all_checks.extend(check_governance_permissions(&perms_data.permissions, &perms_data.user_groups));
+    all_checks.extend(check_proposal_policies(&policies_data));
+    all_checks.extend(check_external_canister_control(&perms_data.permissions, &perms_data.user_groups));
+    all_checks.extend(check_asset_management(&perms_data.permissions, &perms_data.user_groups));
+    all_checks.extend(check_system_configuration(&system_data, &perms_data.permissions, &perms_data.user_groups));
+    all_checks.extend(check_operational_permissions(&perms_data.permissions));
+
+    build_dashboard(station_id, all_checks)
 }
 
-// Check 1: Verify admin-only control
-async fn verify_admin_only_control(station_id: Principal) -> Result<SecurityCheck, String> {
-    let backend_principal = ic_cdk::id();
+// ===== DATA FETCHING =====
 
-    // Call Orbit Station with exact types from spec.did
+struct PermissionsData {
+    permissions: Vec<Permission>,
+    user_groups: Vec<crate::types::orbit::UserGroup>,
+}
+
+async fn fetch_users(station_id: Principal) -> Result<Vec<UserDTO>, String> {
     let input = ListUsersInput {
         search_term: None,
         statuses: None,
@@ -166,356 +156,690 @@ async fn verify_admin_only_control(station_id: Principal) -> Result<SecurityChec
         paginate: None,
     };
 
-    let result: (ListUsersResult,) = ic_cdk::call(
-        station_id,
-        "list_users",
-        (input,)
-    ).await.map_err(|e| format!("Failed to list users: {:?}", e))?;
+    let result: (ListUsersResult,) = ic_cdk::call(station_id, "list_users", (input,))
+        .await
+        .map_err(|e| format!("Failed to list users: {:?}", e))?;
 
     match result.0 {
-        ListUsersResult::Ok { users, .. } => {
-            // Filter for admin users
-            let admin_users: Vec<&UserDTO> = users.iter()
-                .filter(|u| u.groups.iter().any(|g| g.id == ADMIN_GROUP_ID))
-                .collect();
-
-            if admin_users.is_empty() {
-                return Ok(SecurityCheck {
-                    category: "User Management".to_string(),
-                    name: "Admin Control".to_string(),
-                    status: CheckStatus::Fail,
-                    message: "No admin user found".to_string(),
-                    severity: Some(Severity::Critical),
-                    details: None,
-                    recommendation: Some("Add DAOPad backend as admin".to_string()),
-                });
-            }
-
-            // Check if only backend is admin
-            let backend_is_admin = admin_users.iter()
-                .any(|u| u.identities.contains(&backend_principal));
-
-            if admin_users.len() == 1 && backend_is_admin {
-                return Ok(SecurityCheck {
-                    category: "User Management".to_string(),
-                    name: "Admin Control".to_string(),
-                    status: CheckStatus::Pass,
-                    message: "Backend is sole admin".to_string(),
-                    severity: Some(Severity::None),
-                    details: None,
-                    recommendation: None,
-                });
-            }
-
-            // Multiple admins or backend not admin
-            let admin_names: Vec<String> = admin_users.iter().map(|u| u.name.clone()).collect();
-
-            Ok(SecurityCheck {
-                category: "User Management".to_string(),
-                name: "Admin Control".to_string(),
-                status: CheckStatus::Fail,
-                message: format!("Multiple admins found: {}", admin_users.len()),
-                severity: Some(Severity::Critical),
-                details: Some(format!("Admins: {:?}, Backend is admin: {}", admin_names, backend_is_admin)),
-                recommendation: Some("Remove non-backend admin users for full DAO control".to_string()),
-            })
-        }
-        ListUsersResult::Err(e) => {
-            Err(format!("Orbit returned error: {:?}", e))
-        }
+        ListUsersResult::Ok { users, .. } => Ok(users),
+        ListUsersResult::Err(e) => Err(format!("Orbit returned error: {}", e)),
     }
 }
 
-// Check 2: Verify no non-admin groups have dangerous permissions
-async fn verify_no_non_admin_permissions(station_id: Principal) -> Result<SecurityCheck, String> {
-    // Get all groups
-    let groups_input = ListUserGroupsInput {
-        search_term: None,
-        paginate: None,
-    };
-
-    let groups_result: (ListUserGroupsResult,) = ic_cdk::call(
-        station_id,
-        "list_user_groups",
-        (groups_input,)
-    ).await.map_err(|e| format!("Failed to list groups: {:?}", e))?;
-
-    // Get all permissions
-    let perms_input = ListPermissionsInput {
+async fn fetch_permissions(station_id: Principal) -> Result<PermissionsData, String> {
+    let input = ListPermissionsInput {
         resources: None,
         paginate: None,
     };
 
-    let perms_result: (ListPermissionsResult,) = ic_cdk::call(
-        station_id,
-        "list_permissions",
-        (perms_input,)
-    ).await.map_err(|e| format!("Failed to list permissions: {:?}", e))?;
+    let result: (ListPermissionsResult,) = ic_cdk::call(station_id, "list_permissions", (input,))
+        .await
+        .map_err(|e| format!("Failed to list permissions: {:?}", e))?;
 
-    match (groups_result.0, perms_result.0) {
-        (ListUserGroupsResult::Ok(_groups_resp), ListPermissionsResult::Ok { permissions, user_groups, .. }) => {
-            let mut violations = Vec::new();
-
-            // Check write permissions for non-admin groups
-            for perm in &permissions {
-                if is_write_permission(&perm.resource) {
-                    for group_id in &perm.allow.user_groups {
-                        if group_id != ADMIN_GROUP_ID {
-                            let group_name = user_groups.iter()
-                                .find(|g| &g.id == group_id)
-                                .map(|g| g.name.clone())
-                                .unwrap_or_else(|| group_id.clone());
-
-                            violations.push(format!("Group '{}' has write access to {:?}",
-                                group_name, perm.resource));
-                        }
-                    }
-                }
-            }
-
-            if violations.is_empty() {
-                Ok(SecurityCheck {
-                    category: "Permissions".to_string(),
-                    name: "Group Permissions".to_string(),
-                    status: CheckStatus::Pass,
-                    message: "Non-admin groups have no dangerous permissions".to_string(),
-                    severity: Some(Severity::None),
-                    details: None,
-                    recommendation: None,
-                })
-            } else {
-                Ok(SecurityCheck {
-                    category: "Permissions".to_string(),
-                    name: "Group Permissions".to_string(),
-                    status: CheckStatus::Fail,
-                    message: format!("{} non-admin write permissions found", violations.len()),
-                    severity: Some(Severity::High),
-                    details: Some(violations.join("; ")),
-                    recommendation: Some("Remove write permissions from non-admin groups".to_string()),
-                })
-            }
+    match result.0 {
+        ListPermissionsResult::Ok { permissions, user_groups, .. } => {
+            Ok(PermissionsData { permissions, user_groups })
         }
-        _ => Err("Failed to get groups or permissions".to_string())
+        ListPermissionsResult::Err(e) => Err(format!("Orbit returned error: {}", e)),
     }
 }
 
-// Check 3: Verify request policies require admin approval
-async fn verify_request_policies(station_id: Principal) -> Result<SecurityCheck, String> {
-    let input = PaginationInput {
+async fn fetch_policies(station_id: Principal) -> Result<Vec<crate::types::orbit::RequestPolicy>, String> {
+    let input: PaginationInput = PaginationInput {
         limit: None,
         offset: None,
     };
 
-    let result: (ListRequestPoliciesResult,) = ic_cdk::call(
-        station_id,
-        "list_request_policies",
-        (input,)
-    ).await.map_err(|e| format!("Failed to list policies: {:?}", e))?;
+    let result: (ListRequestPoliciesResult,) = ic_cdk::call(station_id, "list_request_policies", (input,))
+        .await
+        .map_err(|e| format!("Failed to list policies: {:?}", e))?;
 
     match result.0 {
-        ListRequestPoliciesResult::Ok { policies, .. } => {
-            let mut issues = Vec::new();
-            let mut warnings = Vec::new();
-
-            for policy in &policies {
-                let analysis = analyze_rule(&policy.rule, &policy.specifier);
-
-                if analysis.has_bypass {
-                    issues.push(format!("{:?}: {}",
-                        policy.specifier,
-                        analysis.bypass_reason.unwrap_or_else(|| "Unknown bypass".to_string())));
-                }
-
-                if analysis.is_auto_approved {
-                    warnings.push(format!("{:?}: Auto-approved (OK for development)",
-                        policy.specifier));
-                }
-            }
-
-            if !issues.is_empty() {
-                Ok(SecurityCheck {
-                    category: "Policies".to_string(),
-                    name: "Request Approval Policies".to_string(),
-                    status: CheckStatus::Fail,
-                    message: format!("Found {} policy bypasses", issues.len()),
-                    severity: Some(Severity::Critical),
-                    details: Some(issues.join("; ")),
-                    recommendation: Some("Update policies to require admin approval".to_string()),
-                })
-            } else if !warnings.is_empty() {
-                Ok(SecurityCheck {
-                    category: "Policies".to_string(),
-                    name: "Request Approval Policies".to_string(),
-                    status: CheckStatus::Warn,
-                    message: "Development auto-approvals in use".to_string(),
-                    severity: Some(Severity::Low),
-                    details: Some(warnings.join("; ")),
-                    recommendation: Some("Consider requiring approvals for production".to_string()),
-                })
-            } else {
-                Ok(SecurityCheck {
-                    category: "Policies".to_string(),
-                    name: "Request Approval Policies".to_string(),
-                    status: CheckStatus::Pass,
-                    message: "All policies require admin approval".to_string(),
-                    severity: Some(Severity::None),
-                    details: None,
-                    recommendation: None,
-                })
-            }
-        }
-        ListRequestPoliciesResult::Err(e) => {
-            Err(format!("Orbit returned error: {:?}", e))
-        }
+        ListRequestPoliciesResult::Ok { policies, .. } => Ok(policies),
+        ListRequestPoliciesResult::Err(e) => Err(format!("Orbit returned error: {}", e)),
     }
 }
 
-// Check 4: Verify system settings
-async fn verify_system_settings(station_id: Principal) -> Result<SecurityCheck, String> {
-    let result: (SystemInfoResult,) = ic_cdk::call(
-        station_id,
-        "system_info",
-        ()
-    ).await.map_err(|e| format!("Failed to get system info: {:?}", e))?;
+async fn fetch_system_info(station_id: Principal) -> Result<crate::types::orbit::SystemInfo, String> {
+    let result: (SystemInfoResult,) = ic_cdk::call(station_id, "system_info", ())
+        .await
+        .map_err(|e| format!("Failed to get system info: {:?}", e))?;
 
     match result.0 {
-        SystemInfoResult::Ok { system, .. } => {
-            let mut warnings = Vec::new();
+        SystemInfoResult::Ok { system } => Ok(system),
+        SystemInfoResult::Err(e) => Err(format!("Orbit returned error: {}", e)),
+    }
+}
 
-            // Check disaster recovery
-            if let Some(dr) = &system.disaster_recovery {
-                if dr.committee.user_group_id != ADMIN_GROUP_ID || dr.committee.quorum != 1 {
-                    warnings.push(format!("Disaster Recovery: Group {}, Quorum {}",
-                        dr.user_group_name.as_ref().unwrap_or(&dr.committee.user_group_id),
-                        dr.committee.quorum
-                    ));
+// ===== CHECK CATEGORY 1: ADMIN CONTROL LAYER =====
+
+fn check_admin_control_layer(users: &Vec<UserDTO>, backend_principal: Principal) -> Vec<SecurityCheck> {
+    let mut checks = Vec::new();
+
+    // Get admin users
+    let admin_users: Vec<&UserDTO> = users.iter()
+        .filter(|u| u.groups.iter().any(|g| g.id == ADMIN_GROUP_ID))
+        .collect();
+
+    // Check 1: No admins at all
+    if admin_users.is_empty() {
+        checks.push(SecurityCheck {
+            category: "Admin Control".to_string(),
+            name: "Admin Users Present".to_string(),
+            status: CheckStatus::Fail,
+            message: "No admin user found in station".to_string(),
+            severity: Some(Severity::Critical),
+            details: None,
+            recommendation: Some("Add DAOPad backend as admin user".to_string()),
+        });
+        return checks;
+    }
+
+    // Check 2: Backend is admin?
+    let backend_is_admin = admin_users.iter()
+        .any(|u| u.identities.contains(&backend_principal));
+
+    if !backend_is_admin {
+        checks.push(SecurityCheck {
+            category: "Admin Control".to_string(),
+            name: "Backend Admin Status".to_string(),
+            status: CheckStatus::Fail,
+            message: "DAOPad backend is not an admin".to_string(),
+            severity: Some(Severity::Critical),
+            details: Some(format!("Backend principal: {}", backend_principal)),
+            recommendation: Some("Add DAOPad backend principal to Admin group in Orbit Station".to_string()),
+        });
+    } else {
+        checks.push(SecurityCheck {
+            category: "Admin Control".to_string(),
+            name: "Backend Admin Status".to_string(),
+            status: CheckStatus::Pass,
+            message: "DAOPad backend has admin access".to_string(),
+            severity: Some(Severity::None),
+            details: None,
+            recommendation: None,
+        });
+    }
+
+    // Check 3: Multiple admins
+    if admin_users.len() > 1 {
+        let admin_names: Vec<String> = admin_users.iter().map(|u| u.name.clone()).collect();
+        checks.push(SecurityCheck {
+            category: "Admin Control".to_string(),
+            name: "Admin User Count".to_string(),
+            status: CheckStatus::Fail,
+            message: format!("{} admin users found - allows individual bypass of community governance", admin_users.len()),
+            severity: Some(Severity::Critical),
+            details: Some(format!("Admin users: {}", admin_names.join(", "))),
+            recommendation: Some("Remove non-backend admin users to ensure only community governance".to_string()),
+        });
+    } else {
+        checks.push(SecurityCheck {
+            category: "Admin Control".to_string(),
+            name: "Admin User Count".to_string(),
+            status: CheckStatus::Pass,
+            message: "Single admin user (backend only)".to_string(),
+            severity: Some(Severity::None),
+            details: None,
+            recommendation: None,
+        });
+    }
+
+    // Check 4: Operator group size
+    let operator_users: Vec<&UserDTO> = users.iter()
+        .filter(|u| u.groups.iter().any(|g| g.id == OPERATOR_GROUP_ID))
+        .collect();
+
+    if operator_users.len() > 3 {
+        checks.push(SecurityCheck {
+            category: "Admin Control".to_string(),
+            name: "Operator Group Size".to_string(),
+            status: CheckStatus::Warn,
+            message: format!("{} users in Operator group", operator_users.len()),
+            severity: Some(Severity::Low),
+            details: Some(format!("Operator users: {}", operator_users.iter().map(|u| u.name.as_str()).collect::<Vec<_>>().join(", "))),
+            recommendation: Some("Consider if all operator users need elevated privileges".to_string()),
+        });
+    } else {
+        checks.push(SecurityCheck {
+            category: "Admin Control".to_string(),
+            name: "Operator Group Size".to_string(),
+            status: CheckStatus::Pass,
+            message: format!("{} users in Operator group", operator_users.len()),
+            severity: Some(Severity::None),
+            details: None,
+            recommendation: None,
+        });
+    }
+
+    checks
+}
+
+// ===== CHECK CATEGORY 2: TREASURY CONTROL =====
+
+fn check_treasury_control(
+    permissions: &Vec<Permission>,
+    user_groups: &Vec<crate::types::orbit::UserGroup>
+) -> Vec<SecurityCheck> {
+    let mut checks = Vec::new();
+
+    // Check Account.Transfer permissions
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Treasury Control",
+        "Account Transfer Permissions",
+        |resource| matches!(resource, Resource::Account(ResourceAction::Transfer(_))),
+        Severity::Critical,
+        "Non-admin groups can transfer treasury funds without community approval",
+        "Remove Account.Transfer permission from non-admin groups",
+    ));
+
+    // Check Account.Create permissions
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Treasury Control",
+        "Account Creation Permissions",
+        |resource| matches!(resource, Resource::Account(ResourceAction::Create)),
+        Severity::High,
+        "Non-admin groups can create new treasury accounts",
+        "Restrict Account.Create to Admin group only",
+    ));
+
+    // Check Account.Update permissions
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Treasury Control",
+        "Account Modification Permissions",
+        |resource| matches!(resource, Resource::Account(ResourceAction::Update(_))),
+        Severity::High,
+        "Non-admin groups can modify treasury account settings",
+        "Restrict Account.Update to Admin group only",
+    ));
+
+    // Check Asset.Transfer permissions
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Treasury Control",
+        "Asset Transfer Permissions",
+        |resource| matches!(resource, Resource::Asset(ResourceAction::Transfer(_))),
+        Severity::Critical,
+        "Non-admin groups can transfer assets without community approval",
+        "Remove Asset.Transfer permission from non-admin groups",
+    ));
+
+    checks
+}
+
+// ===== CHECK CATEGORY 3: GOVERNANCE PERMISSIONS =====
+
+fn check_governance_permissions(
+    permissions: &Vec<Permission>,
+    user_groups: &Vec<crate::types::orbit::UserGroup>
+) -> Vec<SecurityCheck> {
+    let mut checks = Vec::new();
+
+    // Check Permission.Update - CRITICAL
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Governance Control",
+        "Permission Management Access",
+        |resource| matches!(resource, Resource::Permission(PermissionAction::Update)),
+        Severity::Critical,
+        "Non-admin groups can change permission rules",
+        "Restrict Permission.Update to Admin group only",
+    ));
+
+    // Check RequestPolicy.Update - CRITICAL
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Governance Control",
+        "Policy Management Access",
+        |resource| matches!(resource, Resource::RequestPolicy(ResourceAction::Update(_))),
+        Severity::Critical,
+        "Non-admin groups can change voting rules",
+        "Restrict RequestPolicy.Update to Admin group only",
+    ));
+
+    // Check User.Create
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Governance Control",
+        "User Creation Access",
+        |resource| matches!(resource, Resource::User(UserAction::Create)),
+        Severity::High,
+        "Non-admin groups can add new users/governors",
+        "Restrict User.Create to Admin group only",
+    ));
+
+    // Check User.Update
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Governance Control",
+        "User Modification Access",
+        |resource| matches!(resource, Resource::User(UserAction::Update(_))),
+        Severity::High,
+        "Non-admin groups can modify user rights",
+        "Restrict User.Update to Admin group only",
+    ));
+
+    // Check UserGroup.Create
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Governance Control",
+        "User Group Creation Access",
+        |resource| matches!(resource, Resource::UserGroup(ResourceAction::Create)),
+        Severity::High,
+        "Non-admin groups can create voting groups",
+        "Restrict UserGroup.Create to Admin group only",
+    ));
+
+    // Check UserGroup.Update
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Governance Control",
+        "User Group Modification Access",
+        |resource| matches!(resource, Resource::UserGroup(ResourceAction::Update(_))),
+        Severity::High,
+        "Non-admin groups can modify group memberships",
+        "Restrict UserGroup.Update to Admin group only",
+    ));
+
+    checks
+}
+
+// ===== CHECK CATEGORY 4: PROPOSAL POLICIES =====
+
+fn check_proposal_policies(policies: &Vec<crate::types::orbit::RequestPolicy>) -> Vec<SecurityCheck> {
+    let mut checks = Vec::new();
+    let mut auto_approved_count = 0;
+    let mut bypass_count = 0;
+    let mut bypass_details = Vec::new();
+
+    for policy in policies {
+        let analysis = analyze_policy_rule(&policy.rule);
+
+        if analysis.is_auto_approved {
+            auto_approved_count += 1;
+        }
+
+        if analysis.has_bypass {
+            bypass_count += 1;
+            if let Some(reason) = &analysis.bypass_reason {
+                bypass_details.push(format!("{:?}: {}", policy.specifier, reason));
+            }
+        }
+    }
+
+    // Check for bypasses (critical)
+    if bypass_count > 0 {
+        checks.push(SecurityCheck {
+            category: "Request Policies".to_string(),
+            name: "Policy Bypass Detection".to_string(),
+            status: CheckStatus::Fail,
+            message: format!("{} policies allow bypassing admin approval", bypass_count),
+            severity: Some(Severity::Critical),
+            details: Some(bypass_details.join("; ")),
+            recommendation: Some("Update policies to require Admin group approval only".to_string()),
+        });
+    } else {
+        checks.push(SecurityCheck {
+            category: "Request Policies".to_string(),
+            name: "Policy Bypass Detection".to_string(),
+            status: CheckStatus::Pass,
+            message: "No policy bypasses detected".to_string(),
+            severity: Some(Severity::None),
+            details: None,
+            recommendation: None,
+        });
+    }
+
+    // Check for auto-approvals (warning for dev)
+    if auto_approved_count > 0 {
+        checks.push(SecurityCheck {
+            category: "Request Policies".to_string(),
+            name: "Auto-Approval Policies".to_string(),
+            status: CheckStatus::Warn,
+            message: format!("{} policies are auto-approved (development mode)", auto_approved_count),
+            severity: Some(Severity::Low),
+            details: Some(format!("Auto-approved policies skip all voting - OK for testing, but should be changed for production")),
+            recommendation: Some("Before going live, change auto-approved policies to require Admin approval".to_string()),
+        });
+    } else {
+        checks.push(SecurityCheck {
+            category: "Request Policies".to_string(),
+            name: "Auto-Approval Policies".to_string(),
+            status: CheckStatus::Pass,
+            message: "No auto-approved policies (production-ready)".to_string(),
+            severity: Some(Severity::None),
+            details: None,
+            recommendation: None,
+        });
+    }
+
+    checks
+}
+
+// ===== CHECK CATEGORY 5: EXTERNAL CANISTER CONTROL =====
+
+fn check_external_canister_control(
+    permissions: &Vec<Permission>,
+    user_groups: &Vec<crate::types::orbit::UserGroup>
+) -> Vec<SecurityCheck> {
+    let mut checks = Vec::new();
+
+    // Check ExternalCanister.Create
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "External Canister Control",
+        "Canister Creation Access",
+        |resource| matches!(resource, Resource::ExternalCanister(ExternalCanisterAction::Create)),
+        Severity::Medium,
+        "Non-admin groups can create external canisters",
+        "Consider restricting ExternalCanister.Create to Admin group",
+    ));
+
+    // Check ExternalCanister.Change
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "External Canister Control",
+        "Canister Modification Access",
+        |resource| matches!(resource, Resource::ExternalCanister(ExternalCanisterAction::Change(_))),
+        Severity::High,
+        "Non-admin groups can modify external canisters",
+        "Restrict ExternalCanister.Change to Admin group only",
+    ));
+
+    // Check ExternalCanister.Fund
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "External Canister Control",
+        "Canister Funding Access",
+        |resource| matches!(resource, Resource::ExternalCanister(ExternalCanisterAction::Fund(_))),
+        Severity::Medium,
+        "Non-admin groups can fund external canisters",
+        "Consider restricting ExternalCanister.Fund to Admin group",
+    ));
+
+    checks
+}
+
+// ===== CHECK CATEGORY 6: ASSET MANAGEMENT =====
+
+fn check_asset_management(
+    permissions: &Vec<Permission>,
+    user_groups: &Vec<crate::types::orbit::UserGroup>
+) -> Vec<SecurityCheck> {
+    let mut checks = Vec::new();
+
+    // Check Asset.Create
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Asset Management",
+        "Asset Creation Access",
+        |resource| matches!(resource, Resource::Asset(ResourceAction::Create)),
+        Severity::Medium,
+        "Non-admin groups can create new assets",
+        "Consider restricting Asset.Create to Admin group",
+    ));
+
+    // Check Asset.Update
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Asset Management",
+        "Asset Modification Access",
+        |resource| matches!(resource, Resource::Asset(ResourceAction::Update(_))),
+        Severity::Medium,
+        "Non-admin groups can modify asset settings",
+        "Consider restricting Asset.Update to Admin group",
+    ));
+
+    // Check Asset.Delete
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Asset Management",
+        "Asset Deletion Access",
+        |resource| matches!(resource, Resource::Asset(ResourceAction::Delete(_))),
+        Severity::High,
+        "Non-admin groups can delete assets",
+        "Restrict Asset.Delete to Admin group only",
+    ));
+
+    checks
+}
+
+// ===== CHECK CATEGORY 7: SYSTEM CONFIGURATION =====
+
+fn check_system_configuration(
+    system: &crate::types::orbit::SystemInfo,
+    permissions: &Vec<Permission>,
+    user_groups: &Vec<crate::types::orbit::UserGroup>
+) -> Vec<SecurityCheck> {
+    let mut checks = Vec::new();
+
+    // Check System.Upgrade permission
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "System Configuration",
+        "System Upgrade Access",
+        |resource| matches!(resource, Resource::System(SystemAction::Upgrade)),
+        Severity::Critical,
+        "Non-admin groups can upgrade the Station",
+        "Restrict System.Upgrade to Admin group only",
+    ));
+
+    // Check System.ManageSystemInfo permission
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "System Configuration",
+        "System Info Management Access",
+        |resource| matches!(resource, Resource::System(SystemAction::ManageSystemInfo)),
+        Severity::Medium,
+        "Non-admin groups can modify system information",
+        "Consider restricting System.ManageSystemInfo to Admin group",
+    ));
+
+    // Check disaster recovery settings
+    if let Some(dr) = &system.disaster_recovery {
+        if dr.committee.user_group_id != ADMIN_GROUP_ID || dr.committee.quorum != 1 {
+            checks.push(SecurityCheck {
+                category: "System Configuration".to_string(),
+                name: "Disaster Recovery Settings".to_string(),
+                status: CheckStatus::Warn,
+                message: "Disaster recovery not set to Admin group".to_string(),
+                severity: Some(Severity::Low),
+                details: Some(format!(
+                    "Group: {}, Quorum: {}",
+                    dr.user_group_name.as_ref().unwrap_or(&dr.committee.user_group_id),
+                    dr.committee.quorum
+                )),
+                recommendation: Some("Set disaster recovery committee to Admin group with quorum 1".to_string()),
+            });
+        } else {
+            checks.push(SecurityCheck {
+                category: "System Configuration".to_string(),
+                name: "Disaster Recovery Settings".to_string(),
+                status: CheckStatus::Pass,
+                message: "Disaster recovery properly configured".to_string(),
+                severity: Some(Severity::None),
+                details: None,
+                recommendation: None,
+            });
+        }
+    }
+
+    checks
+}
+
+// ===== CHECK CATEGORY 8: OPERATIONAL PERMISSIONS =====
+
+fn check_operational_permissions(permissions: &Vec<Permission>) -> Vec<SecurityCheck> {
+    let mut checks = Vec::new();
+
+    // Check Request.Read permissions (visibility)
+    let request_read_perms: Vec<&Permission> = permissions.iter()
+        .filter(|p| matches!(p.resource, Resource::Request(_)))
+        .collect();
+
+    checks.push(SecurityCheck {
+        category: "Operational Access".to_string(),
+        name: "Request Visibility".to_string(),
+        status: CheckStatus::Pass,
+        message: if request_read_perms.is_empty() {
+            "Request access properly configured".to_string()
+        } else {
+            format!("{} request visibility permissions configured", request_read_perms.len())
+        },
+        severity: Some(Severity::None),
+        details: None,
+        recommendation: None,
+    });
+
+    checks
+}
+
+// ===== HELPER FUNCTIONS =====
+
+fn check_permission_by_resource<F>(
+    permissions: &Vec<Permission>,
+    user_groups: &Vec<crate::types::orbit::UserGroup>,
+    category: &str,
+    check_name: &str,
+    resource_matcher: F,
+    severity: Severity,
+    fail_message: &str,
+    recommendation: &str,
+) -> SecurityCheck
+where
+    F: Fn(&Resource) -> bool,
+{
+    let matching_perms: Vec<&Permission> = permissions.iter()
+        .filter(|p| resource_matcher(&p.resource))
+        .collect();
+
+    let mut non_admin_groups: Vec<String> = Vec::new();
+
+    for perm in &matching_perms {
+        for group_id in &perm.allow.user_groups {
+            if group_id != ADMIN_GROUP_ID {
+                let group_name = user_groups.iter()
+                    .find(|g| &g.id == group_id)
+                    .map(|g| g.name.clone())
+                    .unwrap_or_else(|| group_id.clone());
+                if !non_admin_groups.contains(&group_name) {
+                    non_admin_groups.push(group_name);
                 }
             }
-
-            if warnings.is_empty() {
-                Ok(SecurityCheck {
-                    category: "Configuration".to_string(),
-                    name: "System Settings".to_string(),
-                    status: CheckStatus::Pass,
-                    message: "System settings secure".to_string(),
-                    severity: Some(Severity::None),
-                    details: None,
-                    recommendation: None,
-                })
-            } else {
-                Ok(SecurityCheck {
-                    category: "Configuration".to_string(),
-                    name: "System Settings".to_string(),
-                    status: CheckStatus::Warn,
-                    message: format!("{} system settings need review", warnings.len()),
-                    severity: Some(Severity::Medium),
-                    details: Some(warnings.join("; ")),
-                    recommendation: Some("Review disaster recovery settings".to_string()),
-                })
-            }
         }
-        SystemInfoResult::Err(e) => {
-            Err(format!("Orbit returned error: {:?}", e))
+    }
+
+    if !non_admin_groups.is_empty() {
+        SecurityCheck {
+            category: category.to_string(),
+            name: check_name.to_string(),
+            status: CheckStatus::Fail,
+            message: fail_message.to_string(),
+            severity: Some(severity),
+            details: Some(format!("Groups with access: {}", non_admin_groups.join(", "))),
+            recommendation: Some(recommendation.to_string()),
+        }
+    } else {
+        SecurityCheck {
+            category: category.to_string(),
+            name: check_name.to_string(),
+            status: CheckStatus::Pass,
+            message: "Properly restricted to Admin group".to_string(),
+            severity: Some(Severity::None),
+            details: Some(format!("{} permission(s) found, all restricted to Admin", matching_perms.len())),
+            recommendation: None,
         }
     }
 }
 
-// Helper function to check if a resource requires write permissions
-fn is_write_permission(resource: &Resource) -> bool {
-    match resource {
-        Resource::Account(action) => match action {
-            crate::types::orbit::ResourceAction::Create
-            | crate::types::orbit::ResourceAction::Update(_)
-            | crate::types::orbit::ResourceAction::Delete(_)
-            | crate::types::orbit::ResourceAction::Transfer(_) => true,
-            _ => false,
-        },
-        Resource::Permission(_) => true,
-        Resource::UserGroup(_) => true,
-        Resource::System(_) => true,
-        Resource::User(action) => match action {
-            crate::types::orbit::UserAction::Create
-            | crate::types::orbit::UserAction::Update(_) => true,
-            _ => false,
-        },
-        Resource::ExternalCanister(action) => match action {
-            crate::types::orbit::ExternalCanisterAction::Create
-            | crate::types::orbit::ExternalCanisterAction::Change(_)
-            | crate::types::orbit::ExternalCanisterAction::Fund(_) => true,
-            _ => false,
-        },
-        Resource::RequestPolicy(_) => true,
-        _ => false,
-    }
+struct PolicyAnalysis {
+    has_bypass: bool,
+    is_auto_approved: bool,
+    bypass_reason: Option<String>,
 }
 
-// Analyze a request policy rule for security issues
-fn analyze_rule(
-    rule: &RequestPolicyRule,
-    _specifier: &RequestSpecifier,
-) -> RuleAnalysis {
+fn analyze_policy_rule(rule: &RequestPolicyRule) -> PolicyAnalysis {
     match rule {
-        RequestPolicyRule::AutoApproved => RuleAnalysis {
-            has_bypass: false, // OK for development
+        RequestPolicyRule::AutoApproved => PolicyAnalysis {
+            has_bypass: false,
             is_auto_approved: true,
             bypass_reason: None,
         },
         RequestPolicyRule::QuorumPercentage(quorum) => {
-            analyze_quorum(&quorum.approvers)
+            analyze_quorum_approvers(&quorum.approvers)
         }
         RequestPolicyRule::Quorum(quorum) => {
-            analyze_quorum(&quorum.approvers)
+            analyze_quorum_approvers(&quorum.approvers)
         }
-        RequestPolicyRule::AllowListed => {
-            RuleAnalysis {
-                has_bypass: true,
-                is_auto_approved: false,
-                bypass_reason: Some("AllowListed bypasses admin approval".to_string()),
-            }
-        }
-        RequestPolicyRule::AllowListedByMetadata(_) => {
-            RuleAnalysis {
-                has_bypass: true,
-                is_auto_approved: false,
-                bypass_reason: Some("AllowListed by metadata bypasses admin approval".to_string()),
-            }
-        }
-        RequestPolicyRule::NamedRule(_) => {
-            // Named rules would need to be resolved - for now mark as potential bypass
-            RuleAnalysis {
-                has_bypass: true,
-                is_auto_approved: false,
-                bypass_reason: Some("Named rule may contain bypass".to_string()),
-            }
-        }
+        RequestPolicyRule::AllowListed => PolicyAnalysis {
+            has_bypass: true,
+            is_auto_approved: false,
+            bypass_reason: Some("AllowListed bypasses admin approval".to_string()),
+        },
+        RequestPolicyRule::AllowListedByMetadata(_) => PolicyAnalysis {
+            has_bypass: true,
+            is_auto_approved: false,
+            bypass_reason: Some("AllowListed by metadata bypasses approval".to_string()),
+        },
+        RequestPolicyRule::NamedRule(_) => PolicyAnalysis {
+            has_bypass: false, // Can't determine without resolving
+            is_auto_approved: false,
+            bypass_reason: None,
+        },
         RequestPolicyRule::AnyOf(rules) => {
-            // Any path that bypasses admin is a problem
             for subrule in rules {
-                let sub_analysis = analyze_rule(subrule, _specifier);
-                if sub_analysis.has_bypass || sub_analysis.is_auto_approved {
-                    return RuleAnalysis {
+                let analysis = analyze_policy_rule(subrule);
+                if analysis.has_bypass || analysis.is_auto_approved {
+                    return PolicyAnalysis {
                         has_bypass: true,
                         is_auto_approved: false,
                         bypass_reason: Some("AnyOf contains bypass path".to_string()),
                     };
                 }
             }
-            RuleAnalysis::default()
+            PolicyAnalysis {
+                has_bypass: false,
+                is_auto_approved: false,
+                bypass_reason: None,
+            }
         }
         RequestPolicyRule::AllOf(rules) => {
-            // All must pass, so check each
             for subrule in rules {
-                let sub_analysis = analyze_rule(subrule, _specifier);
-                if sub_analysis.has_bypass {
-                    return sub_analysis;
+                let analysis = analyze_policy_rule(subrule);
+                if analysis.has_bypass {
+                    return analysis;
                 }
             }
-            RuleAnalysis::default()
+            PolicyAnalysis {
+                has_bypass: false,
+                is_auto_approved: false,
+                bypass_reason: None,
+            }
         }
         RequestPolicyRule::Not(subrule) => {
-            // Invert the logic
-            let sub_analysis = analyze_rule(subrule, _specifier);
-            RuleAnalysis {
+            let sub_analysis = analyze_policy_rule(subrule);
+            PolicyAnalysis {
                 has_bypass: !sub_analysis.has_bypass,
                 is_auto_approved: false,
                 bypass_reason: if !sub_analysis.has_bypass {
@@ -528,33 +852,119 @@ fn analyze_rule(
     }
 }
 
-fn analyze_quorum(approvers: &crate::types::orbit::UserSpecifier) -> RuleAnalysis {
+fn analyze_quorum_approvers(approvers: &crate::types::orbit::UserSpecifier) -> PolicyAnalysis {
     match approvers {
         crate::types::orbit::UserSpecifier::Group(groups) => {
             if groups.iter().any(|g| g != ADMIN_GROUP_ID) {
-                RuleAnalysis {
+                PolicyAnalysis {
                     has_bypass: true,
                     is_auto_approved: false,
                     bypass_reason: Some("Non-admin group can approve".to_string()),
                 }
             } else {
-                RuleAnalysis::default()
+                PolicyAnalysis {
+                    has_bypass: false,
+                    is_auto_approved: false,
+                    bypass_reason: None,
+                }
             }
         }
-        crate::types::orbit::UserSpecifier::Id(_user_ids) => {
-            // User-specific approval bypasses admin group requirement
-            RuleAnalysis {
-                has_bypass: true,
-                is_auto_approved: false,
-                bypass_reason: Some("User-specific approval bypasses admin group".to_string()),
-            }
-        }
-        crate::types::orbit::UserSpecifier::Any => {
-            RuleAnalysis {
-                has_bypass: true,
-                is_auto_approved: false,
-                bypass_reason: Some("Any user can approve".to_string()),
+        crate::types::orbit::UserSpecifier::Id(_) => PolicyAnalysis {
+            has_bypass: true,
+            is_auto_approved: false,
+            bypass_reason: Some("User-specific approval bypasses admin group".to_string()),
+        },
+        crate::types::orbit::UserSpecifier::Any => PolicyAnalysis {
+            has_bypass: true,
+            is_auto_approved: false,
+            bypass_reason: Some("Any user can approve".to_string()),
+        },
+    }
+}
+
+fn create_error_check(name: &str, category: &str, severity: Severity, error: &str) -> SecurityCheck {
+    SecurityCheck {
+        category: category.to_string(),
+        name: name.to_string(),
+        status: CheckStatus::Error,
+        message: format!("Failed to verify: {}", error),
+        severity: Some(severity),
+        details: None,
+        recommendation: Some("Check Orbit Station connectivity and permissions".to_string()),
+    }
+}
+
+// ===== RISK SCORING & DASHBOARD BUILDING =====
+
+fn calculate_risk_score(checks: &Vec<SecurityCheck>) -> (u8, String, Vec<SecurityCheck>, Vec<String>) {
+    let weights = RiskWeights::default();
+    let mut score = 100.0;
+    let mut critical_issues = Vec::new();
+    let mut recommended_actions = Vec::new();
+
+    for check in checks {
+        let deduction = match (&check.status, &check.severity) {
+            (CheckStatus::Fail, Some(Severity::Critical)) => weights.critical_admin_control,
+            (CheckStatus::Fail, Some(Severity::High)) => weights.critical_governance,
+            (CheckStatus::Fail, Some(Severity::Medium)) => weights.medium_external_canisters,
+            (CheckStatus::Warn, Some(Severity::Low)) => weights.low_operational * 0.5,
+            (CheckStatus::Warn, _) => weights.medium_system_config * 0.3,
+            _ => 0.0,
+        };
+
+        score -= deduction;
+
+        // Collect critical issues
+        if matches!(check.status, CheckStatus::Fail) &&
+           matches!(check.severity, Some(Severity::Critical) | Some(Severity::High)) {
+            critical_issues.push(check.clone());
+            if let Some(rec) = &check.recommendation {
+                if !recommended_actions.contains(rec) {
+                    recommended_actions.push(rec.clone());
+                }
             }
         }
     }
+
+    score = score.max(0.0).min(100.0);
+    let score_u8 = score as u8;
+
+    let summary = if score < 30.0 {
+        format!("NOT A DAO - {} critical issues prevent community governance", critical_issues.len())
+    } else if score < 60.0 {
+        format!("PARTIAL DAO - {} issues allow admin bypass of community", critical_issues.len())
+    } else if score < 85.0 {
+        "MOSTLY DECENTRALIZED - Minor issues remain".to_string()
+    } else {
+        "TRUE DAO - Full community governance".to_string()
+    };
+
+    (score_u8, summary, critical_issues, recommended_actions)
+}
+
+fn build_dashboard(station_id: Principal, checks: Vec<SecurityCheck>) -> Result<EnhancedSecurityDashboard, String> {
+    let (score, summary, critical_issues, recommended_actions) = calculate_risk_score(&checks);
+
+    let overall_status = if checks.iter().any(|c| matches!(c.status, CheckStatus::Error)) {
+        "error"
+    } else if score < 30 {
+        "critical"
+    } else if score < 60 {
+        "high_risk"
+    } else if score < 85 {
+        "medium_risk"
+    } else {
+        "secure"
+    };
+
+    Ok(EnhancedSecurityDashboard {
+        station_id,
+        overall_status: overall_status.to_string(),
+        decentralization_score: score,
+        last_checked: time(),
+        checks,
+        risk_summary: summary,
+        critical_issues,
+        recommended_actions,
+    })
 }
