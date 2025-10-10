@@ -22,7 +22,7 @@
 You are an autonomous PR orchestrator.
 
 PR: https://github.com/AlexandriaDAO/daopad/pull/[PR_NUMBER]
-Main Repo: /home/theseus/alexandria/daopad/src/daopad
+Main Repo: /home/theseus/alexandria/daopad
 
 EXECUTE THESE STEPS AUTONOMOUSLY (DO NOT ASK FOR PERMISSION):
 
@@ -34,7 +34,7 @@ Step 1 - Isolate Yourself (MANDATORY for safety):
   if [ "$REPO_ROOT" = "$CURRENT_DIR" ]; then
     # YOU are in the main repo - create YOUR isolated worktree
     echo "⚠️ Creating YOUR isolated worktree for safe parallel work..."
-    cd /home/theseus/alexandria/daopad/src/daopad
+    cd /home/theseus/alexandria/daopad
     BRANCH=$(gh pr view [PR_NUMBER] --json headRefName -q .headRefName)
     git worktree add ../daopad-pr-[PR_NUMBER] $BRANCH
     cd ../daopad-pr-[PR_NUMBER]
@@ -89,7 +89,7 @@ START NOW with Step 1 (isolate yourself).
 You are an autonomous PR orchestrator.
 
 Feature: [FEATURE_DESCRIPTION]
-Main Repo: /home/theseus/alexandria/daopad/src/daopad
+Main Repo: /home/theseus/alexandria/daopad
 Base Branch: master
 
 EXECUTE THESE STEPS AUTONOMOUSLY (DO NOT ASK FOR PERMISSION):
@@ -102,7 +102,7 @@ Step 1 - Isolate Yourself (MANDATORY for safety):
   if [ "$REPO_ROOT" = "$CURRENT_DIR" ]; then
     # YOU are in the main repo - create YOUR isolated worktree
     echo "⚠️ Creating YOUR isolated worktree for safe parallel work..."
-    cd /home/theseus/alexandria/daopad/src/daopad
+    cd /home/theseus/alexandria/daopad
     git worktree add -b feature/[FEATURE_BRANCH] ../daopad-[FEATURE] master
     cd ../daopad-[FEATURE]
   else
@@ -182,8 +182,8 @@ START NOW with Step 1 (isolate yourself).
 
 ### Setup Worktree for PR
 ```bash
-# From main repo
-cd /home/theseus/alexandria/daopad/src/daopad
+# From main repo root
+cd /home/theseus/alexandria/daopad
 git worktree add ../daopad-pr-123 feature-branch-name
 cd ../daopad-pr-123
 
@@ -195,8 +195,8 @@ claude
 
 ### Setup Worktree for New Feature
 ```bash
-# From main repo
-cd /home/theseus/alexandria/daopad/src/daopad
+# From main repo root
+cd /home/theseus/alexandria/daopad
 git worktree add -b feature/member-management ../daopad-members master
 cd ../daopad-members
 
@@ -295,15 +295,15 @@ Use this if the simple prompts don't work:
 You are an autonomous PR orchestrator. Execute the full review-fix-review cycle without asking for confirmation.
 
 INPUT: https://github.com/AlexandriaDAO/daopad/pull/[PR_NUMBER]
-MAIN_REPO: /home/theseus/alexandria/daopad/src/daopad
+MAIN_REPO: /home/theseus/alexandria/daopad
 
 WORKFLOW (EXECUTE AUTONOMOUSLY):
 
 1. Setup Isolation:
    - Detect if already in worktree (check pwd vs git rev-parse --show-toplevel)
-   - If NOT in worktree: Create one for this PR
+   - If NOT in worktree: Create one for this PR from main repo root
    - Extract branch: BRANCH=$(gh pr view [PR_NUMBER] --json headRefName -q .headRefName)
-   - Create: git worktree add ../daopad-pr-[PR_NUMBER] $BRANCH
+   - Create: cd /home/theseus/alexandria/daopad && git worktree add ../daopad-pr-[PR_NUMBER] $BRANCH
    - Move to worktree: cd ../daopad-pr-[PR_NUMBER]
 
 2. Build Process (for fixes):
