@@ -46,9 +46,14 @@ thread_local! {
     // Treasury proposal storage (volatile - expires in 7 days)
     // IMPORTANT: Using regular BTreeMap (not stable memory) since proposals are temporary
     // and don't need to survive canister upgrades
+    //
+    // DESIGN: One active proposal per token (key = token Principal, not proposal ID)
+    // This matches the orbit_link.rs pattern and prevents proposal spam.
+    // New proposals for the same token will fail until the active one expires/executes.
     pub static TREASURY_PROPOSALS: RefCell<BTreeMap<StorablePrincipal, TreasuryProposal>> = RefCell::new(BTreeMap::new());
 
     // Vote tracking (separate from proposals for memory efficiency)
     // Key: (ProposalId, Voter Principal)
+    // Allows efficient double-vote prevention without storing full voter sets in proposals
     pub static PROPOSAL_VOTES: RefCell<BTreeMap<(ProposalId, StorablePrincipal), VoteChoice>> = RefCell::new(BTreeMap::new());
 }

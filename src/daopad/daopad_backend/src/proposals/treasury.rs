@@ -211,8 +211,9 @@ pub async fn vote_on_treasury_proposal(
             proposal.yes_votes,
             required_votes
         );
-    } else if proposal.no_votes > (proposal.total_voting_power - required_votes) {
-        // Rejected
+    } else if proposal.no_votes >= (proposal.total_voting_power - required_votes) {
+        // Rejected - impossible to reach threshold even if all remaining votes are YES
+        // When no_votes >= (total - required), max possible yes = total - no_votes <= required
         proposal.status = ProposalStatus::Rejected;
 
         TREASURY_PROPOSALS.with(|proposals| {
@@ -253,7 +254,7 @@ async fn create_transfer_request_in_orbit(
     station_id: Principal,
     details: TransferDetails,
 ) -> Result<String, ProposalError> {
-    use crate::api::{CreateRequestResult, ErrorInfo};
+    use crate::api::CreateRequestResult;
     use crate::types::orbit::{
         RequestOperation, SubmitRequestInput, TransferMetadata, TransferOperationInput,
     };
