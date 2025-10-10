@@ -1,5 +1,4 @@
-import React, { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStationService } from '@/hooks/useStationService';
 import { useActiveStation } from '@/hooks/useActiveStation';
@@ -41,14 +40,21 @@ export function DashboardPage() {
   const { activeStation, isLoading: stationLoading } = useActiveStation();
   const stationService = useStationService();
 
-  // Query for dashboard data
-  const dashboardQuery = useQuery({
-    queryKey: ['station', activeStation?.station_id, 'dashboard'],
-    queryFn: async () => {
-      if (!activeStation?.station_id || !stationService) {
-        return null;
-      }
+  // Local state for dashboard data (replacing React Query)
+  const [dashboardData, setDashboardData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
+  // Fetch dashboard data
+  const fetchDashboard = useCallback(async () => {
+    if (!activeStation?.station_id || !stationService) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
       // Fetch multiple data points in parallel
       const [assets, metrics, recentActivity] = await Promise.all([
         stationService.listDashboardAssets(),
@@ -56,19 +62,36 @@ export function DashboardPage() {
         stationService.getRecentActivity({ limit: BigInt(10) })
       ]);
 
-      return {
+      setDashboardData({
         assets: assets || [],
         metrics: metrics || {},
         recentActivity: recentActivity || []
-      };
-    },
-    enabled: !!activeStation?.station_id && !!stationService,
-    refetchInterval: 10000 // Refresh every 10 seconds
-  });
+      });
+    } catch (err) {
+      console.error('Failed to fetch dashboard:', err);
+      setError(err.message || 'Failed to fetch dashboard data');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeStation?.station_id, stationService]);
+
+  // Fetch on mount and when dependencies change
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
+
+  // Refetch every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchDashboard();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [fetchDashboard]);
 
   // Calculate aggregated metrics
   const aggregatedMetrics = useMemo(() => {
-    if (!dashboardQuery.data) {
+    if (!dashboardData) {
       return {
         totalValue: 0,
         totalAccounts: 0,
@@ -79,7 +102,7 @@ export function DashboardPage() {
       };
     }
 
-    const { assets, metrics } = dashboardQuery.data;
+    const { assets, metrics } = dashboardData;
 
     // Calculate total value across all assets
     const totalValue = assets.reduce((sum, asset) => {
@@ -102,7 +125,7 @@ export function DashboardPage() {
       approvalRate: metrics.approvalRate || 0,
       avgApprovalTime: metrics.avgApprovalTime || 0
     };
-  }, [dashboardQuery.data]);
+  }, [dashboardData]);
 
   if (!activeStation) {
     return (
@@ -118,8 +141,8 @@ export function DashboardPage() {
     );
   }
 
-  const loading = stationLoading || dashboardQuery.isLoading;
-  const data = dashboardQuery.data;
+  const loading = stationLoading || isLoading;
+  const data = dashboardData;
 
   return (
     <PageLayout title="Dashboard">

@@ -106,10 +106,7 @@ const TokenTabs = ({ identity }) => {
     return React.lazy(() => import('./OrbitStationTest'));
   }, [showOrbitDebugPanels]);
 
-  const ReactQueryDemo = useMemo(() => {
-    if (!showOrbitDebugPanels) return null;
-    return React.lazy(() => import('./ReactQueryDemo'));
-  }, [showOrbitDebugPanels]);
+  // ReactQueryDemo removed - migrated to Redux
 
   if (loading) {
     return (
@@ -178,7 +175,7 @@ const TokenTabs = ({ identity }) => {
         <h2 className="text-3xl font-display text-executive-ivory">Token Governance</h2>
       </div>
 
-      {showOrbitDebugPanels && OrbitStationTest && ReactQueryDemo && (
+      {showOrbitDebugPanels && OrbitStationTest && (
         <Suspense
           fallback={(
             <Card className="bg-executive-darkGray border-executive-gold/20">
@@ -190,7 +187,6 @@ const TokenTabs = ({ identity }) => {
         >
           <div className="grid lg:grid-cols-2 gap-6">
             <OrbitStationTest />
-            <ReactQueryDemo />
           </div>
         </Suspense>
       )}
