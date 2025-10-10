@@ -18,6 +18,7 @@ import TokenTabs from '../components/TokenTabs';
 import PublicStatsStrip from '../components/PublicStatsStrip';
 import PublicActivityFeed from '../components/PublicActivityFeed';
 import TreasuryShowcase from '../components/TreasuryShowcase';
+import RouteErrorBoundary from '../components/errors/RouteErrorBoundary';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -153,8 +154,14 @@ function AppRoute() {
   // Determine if we should show Kong Locker setup
   const shouldShowKongLockerSetup = isAuthenticated && !kongLockerCanister && !isCheckingKongLocker;
 
+  const handleReset = () => {
+    // Optionally refetch data or reset route state
+    console.log('Route error boundary reset');
+  };
+
   return (
-    <div className="min-h-screen bg-executive-charcoal text-executive-lightGray">
+    <RouteErrorBoundary onReset={handleReset}>
+      <div className="min-h-screen bg-executive-charcoal text-executive-lightGray">
       {/* Executive letterhead gold trim line */}
       <div className="h-1 bg-gradient-to-r from-transparent via-executive-gold to-transparent"></div>
 
@@ -329,7 +336,8 @@ function AppRoute() {
         </p>
       </div>
     </footer>
-    </div>
+      </div>
+    </RouteErrorBoundary>
   );
 }
 

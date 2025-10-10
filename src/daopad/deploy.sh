@@ -158,6 +158,47 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
             exit 1
         fi
     fi
+
+    # Sync backend declarations to frontend immediately after backend deployment
+    echo ""
+    echo "=================================================="
+    echo "🔄 Syncing Backend Declarations to Frontend"
+    echo "=================================================="
+
+    DECL_SOURCE="src/declarations/daopad_backend"
+    DECL_TARGET="src/daopad/daopad_frontend/src/declarations/daopad_backend"
+
+    if [ -d "$DECL_SOURCE" ]; then
+        echo "Source: $DECL_SOURCE"
+        echo "Target: $DECL_TARGET"
+
+        # Create target directory if it doesn't exist
+        mkdir -p "$DECL_TARGET"
+
+        # Copy all declaration files
+        cp -r "$DECL_SOURCE"/* "$DECL_TARGET/"
+
+        echo "✅ Declarations synced successfully"
+
+        # Verify sync
+        if [ -f "$DECL_SOURCE/daopad_backend.did.js" ] && [ -f "$DECL_TARGET/daopad_backend.did.js" ]; then
+            if diff -q "$DECL_SOURCE/daopad_backend.did.js" "$DECL_TARGET/daopad_backend.did.js" > /dev/null 2>&1; then
+                echo "✅ Verification: Files match"
+            else
+                echo "⚠️  WARNING: Files don't match after copy!"
+                echo "This shouldn't happen. Check file permissions."
+            fi
+        else
+            echo "⚠️  WARNING: Could not verify sync - declaration files not found"
+        fi
+    else
+        echo "⚠️  WARNING: Source declarations not found at $DECL_SOURCE"
+        echo "Make sure you ran candid-extractor before deploying."
+        echo "Run: cargo build --target wasm32-unknown-unknown --release -p daopad_backend"
+        echo "Then: candid-extractor target/wasm32-unknown-unknown/release/daopad_backend.wasm > src/daopad/daopad_backend/daopad_backend.did"
+    fi
+
+    echo ""
 fi
 
 # Deploy frontend
