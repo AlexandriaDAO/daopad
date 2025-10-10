@@ -181,11 +181,15 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "backend" ]; then
         echo "✅ Declarations synced successfully"
 
         # Verify sync
-        if diff -q "$DECL_SOURCE/daopad_backend.did.js" "$DECL_TARGET/daopad_backend.did.js" > /dev/null 2>&1; then
-            echo "✅ Verification: Files match"
+        if [ -f "$DECL_SOURCE/daopad_backend.did.js" ] && [ -f "$DECL_TARGET/daopad_backend.did.js" ]; then
+            if diff -q "$DECL_SOURCE/daopad_backend.did.js" "$DECL_TARGET/daopad_backend.did.js" > /dev/null 2>&1; then
+                echo "✅ Verification: Files match"
+            else
+                echo "⚠️  WARNING: Files don't match after copy!"
+                echo "This shouldn't happen. Check file permissions."
+            fi
         else
-            echo "⚠️  WARNING: Files don't match after copy!"
-            echo "This shouldn't happen. Check file permissions."
+            echo "⚠️  WARNING: Could not verify sync - declaration files not found"
         fi
     else
         echo "⚠️  WARNING: Source declarations not found at $DECL_SOURCE"

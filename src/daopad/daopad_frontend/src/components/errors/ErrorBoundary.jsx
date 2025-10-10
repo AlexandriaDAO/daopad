@@ -21,27 +21,31 @@ class ErrorBoundary extends React.Component {
     // Log error details
     console.error('ErrorBoundary caught an error:', error, errorInfo);
 
-    this.setState(prevState => ({
-      error,
-      errorInfo,
-      errorCount: prevState.errorCount + 1,
-    }));
+    this.setState(prevState => {
+      const newErrorCount = prevState.errorCount + 1;
+
+      // Auto-reset after 3 errors (prevent infinite error loops)
+      if (newErrorCount >= 3) {
+        console.warn('Too many errors, forcing reset');
+        setTimeout(() => {
+          this.setState({
+            hasError: false,
+            error: null,
+            errorInfo: null,
+            errorCount: 0,
+          });
+        }, 1000);
+      }
+
+      return {
+        error,
+        errorInfo,
+        errorCount: newErrorCount,
+      };
+    });
 
     // Optional: Send to error tracking service
     // sendErrorToTracking(error, errorInfo);
-
-    // Auto-reset after 3 errors (prevent infinite error loops)
-    if (this.state.errorCount >= 3) {
-      console.warn('Too many errors, forcing reset');
-      setTimeout(() => {
-        this.setState({
-          hasError: false,
-          error: null,
-          errorInfo: null,
-          errorCount: 0,
-        });
-      }, 1000);
-    }
   }
 
   handleReset = () => {
@@ -49,6 +53,7 @@ class ErrorBoundary extends React.Component {
       hasError: false,
       error: null,
       errorInfo: null,
+      errorCount: 0,  // Reset error count when user manually resets
     });
 
     // Optional: Notify parent to refetch data
