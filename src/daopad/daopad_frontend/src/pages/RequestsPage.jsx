@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useStationService } from '@/hooks/useStationService';
 import { useActiveStation } from '@/hooks/useActiveStation';
 import { usePagination } from '@/hooks/usePagination';
@@ -23,7 +22,6 @@ import { useToast } from '@/components/ui/use-toast';
 
 export function RequestsPage() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const { activeStation, isLoading: stationLoading } = useActiveStation();
   const stationService = useStationService();
   const pagination = usePagination({ pageSize: 25 });
@@ -40,6 +38,11 @@ export function RequestsPage() {
   const debouncedSearch = useDebounce(filters.search, 300);
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Local state for requests data (replacing React Query)
+  const [requestsData, setRequestsData] = useState({ requests: [], total: 0, privileges: [] });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Build filter object for API
   const buildApiFilters = useCallback(() => {
@@ -81,14 +84,16 @@ export function RequestsPage() {
     return apiFilters;
   }, [debouncedSearch, filters]);
 
-  // Query for requests
-  const requestsQuery = useQuery({
-    queryKey: ['station', activeStation?.station_id, 'requests', buildApiFilters(), pagination.page],
-    queryFn: async () => {
-      if (!activeStation?.station_id || !stationService) {
-        return { requests: [], total: 0, privileges: [] };
-      }
+  // Fetch requests data (replacing React Query)
+  const fetchRequests = useCallback(async () => {
+    if (!activeStation?.station_id || !stationService) {
+      return;
+    }
 
+    setIsLoading(true);
+    setError(null);
+
+    try {
       const result = await stationService.listRequests({
         filter: buildApiFilters(),
         pagination: {
@@ -97,23 +102,35 @@ export function RequestsPage() {
         }
       });
 
-      return {
+      const data = {
         requests: result.requests || [],
         total: Number(result.total || 0),
         privileges: result.privileges || []
       };
-    },
-    enabled: !!activeStation?.station_id && !!stationService,
-    refetchInterval: 5000,
-    keepPreviousData: true
-  });
 
-  // Update pagination total when data changes
-  useEffect(() => {
-    if (requestsQuery.data?.total) {
-      pagination.setTotal(requestsQuery.data.total);
+      setRequestsData(data);
+      pagination.setTotal(data.total);
+    } catch (err) {
+      console.error('Failed to fetch requests:', err);
+      setError(err.message || 'Failed to fetch requests');
+    } finally {
+      setIsLoading(false);
     }
-  }, [requestsQuery.data?.total]);
+  }, [activeStation?.station_id, stationService, buildApiFilters, pagination.offset, pagination.limit]);
+
+  // Fetch on mount and when dependencies change
+  useEffect(() => {
+    fetchRequests();
+  }, [fetchRequests]);
+
+  // Refetch every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchRequests();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [fetchRequests]);
 
   // Export to CSV
   const handleExportCsv = useCallback(async () => {
@@ -191,9 +208,9 @@ export function RequestsPage() {
   }, []);
 
   const handleRequestApproved = useCallback(() => {
-    queryClient.invalidateQueries(['station', activeStation?.station_id, 'requests']);
+    fetchRequests(); // Refetch requests after approval
     handleCloseDialog();
-  }, [queryClient, activeStation, handleCloseDialog]);
+  }, [fetchRequests, handleCloseDialog]);
 
   if (!activeStation) {
     return (
@@ -209,7 +226,7 @@ export function RequestsPage() {
     );
   }
 
-  const loading = stationLoading || requestsQuery.isLoading;
+  const loading = stationLoading || isLoading;
 
   return (
     <PageLayout
@@ -219,7 +236,7 @@ export function RequestsPage() {
           variant="outline"
           size="sm"
           onClick={handleExportCsv}
-          disabled={!requestsQuery.data?.requests?.length}
+          disabled={!requestsData?.requests?.length}
         >
           <Download className="w-4 h-4 mr-2" />
           Export CSV
@@ -231,8 +248,8 @@ export function RequestsPage() {
       <div className="grid gap-6 lg:grid-cols-[1fr,300px]">
         <div className="space-y-4">
           <RequestList
-            requests={requestsQuery.data?.requests || []}
-            privileges={requestsQuery.data?.privileges || []}
+            requests={requestsData?.requests || []}
+            privileges={requestsData?.privileges || []}
             loading={loading}
             onOpenRequest={handleOpenRequest}
             emptyMessage={
@@ -242,7 +259,7 @@ export function RequestsPage() {
             }
           />
 
-          {requestsQuery.data?.total > pagination.pageSize && (
+          {requestsData?.total > pagination.pageSize && (
             <div className="flex items-center justify-center gap-2">
               <Button
                 variant="outline"
@@ -271,7 +288,7 @@ export function RequestsPage() {
           <RequestFilters
             filters={filters}
             onChange={setFilters}
-            requestsData={requestsQuery.data}
+            requestsData={requestsData}
           />
         </div>
       </div>
