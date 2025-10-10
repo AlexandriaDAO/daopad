@@ -21,6 +21,8 @@ pub use types::orbit::{
     MonitorExternalCanisterOperationInput, PruneExternalCanisterOperationInput,
     RestoreExternalCanisterOperationInput, SnapshotExternalCanisterOperationInput,
     SubmitRequestInput, SubmitRequestResult,
+    // Snapshot query types
+    CanisterSnapshot, CanisterSnapshotsInput, CanisterSnapshotsResponse, CanisterSnapshotsResult,
 };
 pub use types::{TokenInfo, UserStatus, VotingThresholds};
 
