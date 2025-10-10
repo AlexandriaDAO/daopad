@@ -13,30 +13,29 @@
 ```
 project_root/
 ├── deploy.sh            # LEGACY - Archived, DO NOT USE
-├── src/
-│   ├── daopad/         # YOU ARE HERE - Primary development
-│   │   ├── CLAUDE.md   # This file - Main documentation
-│   │   ├── deploy.sh   # USE THIS for deployments
-│   │   ├── daopad_backend/
-│   │   ├── daopad_frontend/
-│   │   ├── orbit_station/
-│   │   └── orbit-reference/  # READ-ONLY - Dfinity Orbit source (reference only)
-│   │       ├── apps/station/  # Station frontend code (for reference)
-│   │       ├── core/station/  # Station backend code (for reference)
-│   │       └── ...           # Full Orbit codebase (DO NOT MODIFY)
-│   │
-│   └── kong_locker/    # READ-ONLY - Reference only
-│       ├── CLAUDE.md   # Kong Locker details (for reference)
-│       ├── deploy.sh   # Kong Locker deploy (rarely used)
-│       ├── kong_locker/
-│       └── kong_locker_frontend/
+├── orbit-reference/     # READ-ONLY - Dfinity Orbit source (reference only)
+│   ├── apps/station/    # Station frontend code (for reference)
+│   ├── core/station/    # Station backend code (for reference)
+│   └── ...              # Full Orbit codebase (DO NOT MODIFY)
+├── kong-locker-reference/  # READ-ONLY - Reference only
+│   ├── CLAUDE.md        # Kong Locker details (for reference)
+│   ├── deploy.sh        # Kong Locker deploy (rarely used)
+│   ├── kong_locker/
+│   └── kong_locker_frontend/
+└── src/
+    └── daopad/          # YOU ARE HERE - Primary development
+        ├── CLAUDE.md    # This file - Main documentation
+        ├── deploy.sh    # USE THIS for deployments
+        ├── daopad_backend/
+        ├── daopad_frontend/
+        └── orbit_station/
 ```
 
 ### When You Need Reference Information:
-- **Kong Locker voting power**: Read `../kong_locker/CLAUDE.md`
-- **Orbit Station architecture**: Read `./orbit-reference/` files
-- **Treasury management patterns**: See `orbit-reference/apps/station/`
-- **Station backend logic**: See `orbit-reference/core/station/`
+- **Kong Locker voting power**: Read `../../kong-locker-reference/CLAUDE.md`
+- **Orbit Station architecture**: Read `../../orbit-reference/` files
+- **Treasury management patterns**: See `../../orbit-reference/apps/station/`
+- **Station backend logic**: See `../../orbit-reference/core/station/`
 - **But remember**: NEVER modify reference code - it's READ-ONLY
 
 ### Kong Locker Key Concepts (Reference Only):
@@ -44,56 +43,6 @@ project_root/
 - Each user gets one lock canister (blackholed, immutable)
 - Voting power = USD value of locked LP tokens × 100
 - Query with: `dfx canister --network ic call kong_locker get_all_voting_powers`
-
-## 🏛️ DAOPad Architecture (Active Development)
-
-### Core Components
-```
-daopad/
-├── daopad_backend/       # Rust canister - governance & treasury management
-│   ├── src/
-│   │   ├── lib.rs       # Main entry point
-│   │   ├── api/         # API modules (NEW modular structure)
-│   │   │   ├── orbit.rs         # Orbit Station core integration
-│   │   │   ├── orbit_requests.rs # Request management (proposals, transfers)
-│   │   │   ├── orbit_users.rs   # Member management & roles
-│   │   │   ├── orbit_transfers.rs # Treasury transfer operations
-│   │   │   ├── address_book.rs  # Address book for easy transfers
-│   │   │   ├── dao_transition.rs # DAO setup & transition logic
-│   │   │   └── kong_locker.rs   # Kong Locker integration
-│   │   └── types/
-│   │       └── orbit.rs # Orbit-specific type definitions
-│   └── daopad_backend.did  # Auto-generated candid (use candid-extractor!)
-│
-├── daopad_frontend/      # React app with shadcn/ui components
-│   ├── src/
-│   │   ├── App.jsx      # Main application
-│   │   ├── components/
-│   │   │   ├── TokenDashboard.jsx # Main token governance interface
-│   │   │   ├── TokenTabs.jsx      # Token selection & navigation
-│   │   │   ├── orbit/             # Orbit Station components
-│   │   │   │   ├── UnifiedRequests.jsx # Transfer & proposal management
-│   │   │   │   └── TransferRequestDialog.jsx # Create transfers
-│   │   │   ├── tables/            # Data display components
-│   │   │   │   ├── AccountsTable.jsx # Treasury accounts & balances
-│   │   │   │   ├── MembersTable.jsx  # DAO members & roles
-│   │   │   │   └── RequestsTable.jsx # Governance requests
-│   │   │   ├── address-book/      # Address book (integrated in Treasury tab)
-│   │   │   └── ui/                # shadcn/ui components (Button, Table, etc.)
-│   │   ├── services/
-│   │   │   ├── daopadBackend.js   # Backend API service
-│   │   │   ├── orbitStation.js    # Direct Orbit Station service
-│   │   │   └── addressBookService.js # Address book service
-│   │   └── declarations/          # CRITICAL: Frontend uses these, not /src/declarations!
-│   └── dist/            # Build output
-│
-├── orbit_station/        # Orbit Station interface (KEEP THIS!)
-│   └── orbit_station.did # Candid interface for cross-canister calls to Orbit
-│                        # This defines the API contract between DAOPad and Orbit Station
-│                        # Required for backend to interact with treasury operations
-│
-└── orbit-reference/      # Full Orbit source code (reference only, DO NOT MODIFY)
-```
 
 ## 🏗️ Design Principles
 
@@ -106,6 +55,8 @@ daopad/
 3. **Maintenance**: Less code, less bugs, less to maintain
 4. **Flexibility**: Can change what we display without backend changes
 
+Don't optimize for speed in the frontend. It's perfectly fine if the frontend is slow because it uses inter-canister calls. For now we just want to ensure modular functionality and maximum robustness.
+
 #### Implementation Pattern:
 ```javascript
 // Frontend handles minimal data gracefully
@@ -116,6 +67,10 @@ if (result.success && result.data) {
     });
 }
 ```
+
+### Don't worry about Backwards Compatability
+
+Since we're not storing anything, we can't break anything. Also this product isn't live so be liberal about edits. The goal is not to preserve anything, but constantly be removing all bloat and tech debt. Never worry about backwards compatability at the expense of optimization.
 
 ### Orbit Station Query Strategy
 
@@ -198,7 +153,7 @@ async fn execute_orbit_action() -> Result<()> {
 | "Backend not authorized" | Register backend principal in Orbit Station |
 | "Invalid candid decode" | Run candid-extractor after Rust changes |
 | "Query calling query" | Use update method or direct frontend call |
-| Need Kong Locker data | Read `../kong_locker/CLAUDE.md` for API info |
+| Need Kong Locker data | Read `../../kong-locker-reference/CLAUDE.md` for API info |
 | Wrong deploy script | Use `./deploy.sh` from THIS directory |
 | **"is not a function" error** | **CRITICAL: See Declaration Sync Bug section below** |
 
@@ -241,10 +196,10 @@ grep "method_name" src/daopad/daopad_frontend/src/declarations/daopad_backend/da
 
 ### The Deterministic 4-Step Process
 
-#### 1️⃣ Research in orbit-reference/
+#### 1️⃣ Research in ../../orbit-reference/
 ```bash
 # Find exact types in Orbit source
-grep -r "OperationName" orbit-reference/core/station/ --include="*.rs" --include="*.did"
+grep -r "OperationName" ../../orbit-reference/core/station/ --include="*.rs" --include="*.did"
 # Check: api/spec.did, impl/src/models/, impl/src/mappers/
 ```
 
@@ -310,12 +265,12 @@ statuses = opt vec { variant { Created }; variant { Processing } }  # ✓ Works
 
 **Why This Works**: Test station + admin access + exact type matching = deterministic success. If dfx works, code works.
 
-#### Orbit Reference (./orbit-reference/):
+#### Orbit Reference (../../orbit-reference/):
 - **🚨 CRITICAL**: This is Dfinity's official Orbit repository - READ-ONLY
-- Use for understanding Station architecture: `orbit-reference/core/station/`
-- Study frontend patterns: `orbit-reference/apps/station/`
-- Reference treasury management: `orbit-reference/core/station/src/services/`
-- Check API interfaces: `orbit-reference/core/station/api/`
+- Use for understanding Station architecture: `../../orbit-reference/core/station/`
+- Study frontend patterns: `../../orbit-reference/apps/station/`
+- Reference treasury management: `../../orbit-reference/core/station/src/services/`
+- Check API interfaces: `../../orbit-reference/core/station/api/`
 - **🚨 NEVER MODIFY - This is not our code, it's reference material only**
 
 Remember: DAOPad is where we build. References are where we learn. Never modify reference code.
