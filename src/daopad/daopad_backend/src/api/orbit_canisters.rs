@@ -415,3 +415,40 @@ pub struct CanisterStatusResponse {
     pub module_hash: Option<String>,
     pub status: String,
 }
+
+// ===== LIST CANISTER SNAPSHOTS =====
+
+/// Get snapshots for a canister managed by Orbit Station
+///
+/// This method proxies to Orbit Station's canister_snapshots API,
+/// which returns up to 10 snapshots per canister.
+#[ic_cdk::update]
+async fn get_canister_snapshots(
+    token_canister_id: Principal,
+    canister_principal: Principal,
+) -> Result<crate::types::orbit::CanisterSnapshotsResult, String> {
+    use crate::api::orbit::get_orbit_station_for_token;
+    use crate::types::orbit::{CanisterSnapshotsInput, CanisterSnapshotsResult};
+
+    // Get Orbit Station ID for this token
+    let station_id = get_orbit_station_for_token(token_canister_id)
+        .ok_or_else(|| "No Orbit Station linked to this token".to_string())?;
+
+    // Create input for Orbit Station
+    let input = CanisterSnapshotsInput {
+        canister_id: canister_principal,
+    };
+
+    // Call Orbit Station's canister_snapshots method
+    let result: Result<(CanisterSnapshotsResult,), _> = ic_cdk::call(
+        station_id,
+        "canister_snapshots",
+        (input,),
+    ).await;
+
+    // Handle result
+    match result {
+        Ok((res,)) => Ok(res),
+        Err((code, msg)) => Err(format!("Failed to get snapshots: {:?} - {}", code, msg)),
+    }
+}

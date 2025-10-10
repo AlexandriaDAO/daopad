@@ -940,6 +940,27 @@ pub struct PruneExternalCanisterOperationInput {
     pub snapshot_ids: Vec<String>,
 }
 
+// Snapshot query types (matching Orbit Station API)
+#[derive(CandidType, Deserialize, Debug)]
+pub struct CanisterSnapshotsInput {
+    pub canister_id: Principal,
+}
+
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub struct CanisterSnapshot {
+    pub snapshot_id: String,
+    pub taken_at_timestamp: String,
+    pub total_size: u64,
+}
+
+pub type CanisterSnapshotsResponse = Vec<CanisterSnapshot>;
+
+#[derive(CandidType, Deserialize, Debug)]
+pub enum CanisterSnapshotsResult {
+    Ok(CanisterSnapshotsResponse),
+    Err(Error),
+}
+
 // Enhanced RequestOperation enum with canister operations
 #[derive(CandidType, Deserialize, Debug)]
 pub enum RequestOperation {

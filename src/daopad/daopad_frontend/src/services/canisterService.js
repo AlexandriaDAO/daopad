@@ -585,29 +585,40 @@ export const canisterService = {
     }
   },
 
-  // List snapshots for a canister (obtained from canister_status)
+  // List snapshots for a canister (via Orbit Station API)
   listSnapshots: async (tokenCanisterId, canisterPrincipal) => {
     try {
       const actor = await getBackendActor();
 
-      // Snapshots are part of canister_status
-      const result = await actor.get_canister_status(
+      // Call new backend method that proxies to Orbit Station
+      const result = await actor.get_canister_snapshots(
+        Principal.fromText(tokenCanisterId),
         Principal.fromText(canisterPrincipal)
       );
 
-      if (result.Ok) {
-        // Extract snapshots from status if available
-        return {
-          Ok: result.Ok.snapshots || []
-        };
+      // Handle Result<CanisterSnapshotsResult, String> wrapper
+      if (result && 'Ok' in result) {
+        const orbitResult = result.Ok;
+
+        // Handle inner Ok/Err from Orbit Station
+        if (orbitResult && 'Ok' in orbitResult) {
+          // Transform snapshot data for frontend
+          const snapshots = orbitResult.Ok.map(s => ({
+            id: s.snapshot_id,
+            taken_at: s.taken_at_timestamp,
+            size: Number(s.total_size),
+          }));
+
+          return { Ok: snapshots };
+        } else {
+          return { Err: orbitResult.Err?.message || 'Failed to get snapshots' };
+        }
       } else {
-        return result;
+        return { Err: result.Err || 'Backend error' };
       }
     } catch (error) {
       console.error('Failed to list snapshots:', error);
-      return {
-        Err: error.message
-      };
+      return { Err: error.message };
     }
   },
 

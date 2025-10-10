@@ -25,7 +25,7 @@ export default function CanisterSnapshots({ canister, orbitStationId, onRefresh 
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  const MAX_SNAPSHOTS = 10;
+  const MAX_SNAPSHOTS = 10; // ICP supports up to 10 snapshots per canister (enabled via Orbit Station)
 
   useEffect(() => {
     fetchSnapshots();
