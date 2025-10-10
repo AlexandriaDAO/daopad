@@ -6,6 +6,11 @@ use crate::proposals::storage::{
 use candid::Principal;
 use ic_cdk::{query, update};
 
+// Re-export treasury proposal functions
+pub use crate::proposals::{
+    create_treasury_transfer_proposal, get_treasury_proposal, vote_on_treasury_proposal,
+};
+
 #[update]
 pub async fn propose_orbit_station_link(
     token_canister_id: Principal,

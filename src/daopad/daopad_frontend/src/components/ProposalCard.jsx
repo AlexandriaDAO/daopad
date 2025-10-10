@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,7 +34,7 @@ const getStatusText = (status) => {
   return 'Unknown';
 };
 
-const ProposalCard = ({ proposal, onClick, onApprove, onReject, canVote, isVotingLoading }) => {
+const ProposalCard = memo(function ProposalCard({ proposal, onClick, onApprove, onReject, canVote, isVotingLoading }) {
   const approvals = proposal.approvals || [];
   const approvalProgress = 0; // We'll calculate this based on policy rules if available
 
@@ -127,6 +127,27 @@ const ProposalCard = ({ proposal, onClick, onApprove, onReject, canVote, isVotin
       </CardContent>
     </Card>
   );
-};
+}, (prevProps, nextProps) => {
+  // Only re-render if these specific props changed
+  const prevApprovals = prevProps.proposal.approvals || [];
+  const nextApprovals = nextProps.proposal.approvals || [];
+
+  // Check if approval statuses changed (not just length)
+  const approvalsEqual = prevApprovals.length === nextApprovals.length &&
+    prevApprovals.every((prev, i) => {
+      const next = nextApprovals[i];
+      return prev?.status?.Approved === next?.status?.Approved;
+    });
+
+  return (
+    prevProps.proposal.id === nextProps.proposal.id &&
+    prevProps.proposal.status === nextProps.proposal.status &&
+    approvalsEqual &&
+    prevProps.canVote === nextProps.canVote &&
+    prevProps.isVotingLoading === nextProps.isVotingLoading &&
+    prevProps.proposal.yesVotes === nextProps.proposal.yesVotes &&
+    prevProps.proposal.noVotes === nextProps.proposal.noVotes
+  );
+});
 
 export default ProposalCard;
