@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { canisterService } from '../../services/canisterService';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { ArrowUpCircle, Settings, Activity, AlertCircle } from 'lucide-react';
 
-export default function CanisterCard({ canister, onTopUp, onConfigure }) {
+const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure }) {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -167,4 +167,15 @@ export default function CanisterCard({ canister, onTopUp, onConfigure }) {
       </CardFooter>
     </Card>
   );
-}
+}, (prevProps, nextProps) => {
+  // Only re-render if these specific props changed
+  return (
+    prevProps.canister.id === nextProps.canister.id &&
+    prevProps.canister.canister_id === nextProps.canister.canister_id &&
+    prevProps.canister.name === nextProps.canister.name &&
+    JSON.stringify(prevProps.canister.state) === JSON.stringify(nextProps.canister.state) &&
+    prevProps.canister.labels?.length === nextProps.canister.labels?.length
+  );
+});
+
+export default CanisterCard;

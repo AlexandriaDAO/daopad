@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Toaster } from '@/components/ui/toaster';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 function AppRoute() {
   const [copyFeedback, setCopyFeedback] = useState(false);
@@ -168,6 +169,7 @@ function AppRoute() {
           </div>
 
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             {isAuthenticated ? (
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
@@ -181,6 +183,7 @@ function AppRoute() {
                         size="sm"
                         onClick={() => dispatch(fetchBalances(identity))}
                         title="Refresh balance"
+                        aria-label="Refresh ICP balance"
                       >
                         ↻
                       </Button>
@@ -194,6 +197,7 @@ function AppRoute() {
                     size="sm"
                     onClick={copyPrincipal}
                     title="Copy principal"
+                    aria-label="Copy principal to clipboard"
                   >
                     {copyFeedback ? '✓' : '⧉'}
                   </Button>
@@ -203,12 +207,21 @@ function AppRoute() {
                     🔒 Connected
                   </Badge>
                 )}
-                <Button className="border-executive-gold/30 text-executive-goldLight hover:bg-executive-gold/10 hover:border-executive-gold" variant="outline" onClick={handleLogout}>
+                <Button
+                  className="border-executive-gold/30 text-executive-goldLight hover:bg-executive-gold/10 hover:border-executive-gold"
+                  variant="outline"
+                  onClick={handleLogout}
+                  aria-label="Logout from DAOPad"
+                >
                   Logout
                 </Button>
               </div>
             ) : (
-              <Button className="bg-executive-gold text-executive-charcoal hover:bg-executive-goldLight font-serif" onClick={handleLogin}>
+              <Button
+                className="bg-executive-gold text-executive-charcoal hover:bg-executive-goldLight font-serif"
+                onClick={handleLogin}
+                aria-label="Connect with Internet Identity"
+              >
                 Connect with Internet Identity
               </Button>
             )}
