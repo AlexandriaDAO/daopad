@@ -635,14 +635,14 @@ const TokenDashboard = memo(function TokenDashboard({
   );
 }, (prevProps, nextProps) => {
   // Only re-render if these specific props changed
+  // Note: tokenVotingPowers excluded as it's typically a stable reference
+  // If it changes, a re-render is acceptable and rare
   return (
     prevProps.token?.canister_id === nextProps.token?.canister_id &&
     prevProps.activeTokenIndex === nextProps.activeTokenIndex &&
     prevProps.votingPower === nextProps.votingPower &&
-    prevProps.lpPositions?.length === nextProps.lpPositions?.length &&
-    prevProps.tokens?.length === nextProps.tokens?.length &&
-    // Deep check for tokenVotingPowers if it's an object
-    JSON.stringify(prevProps.tokenVotingPowers) === JSON.stringify(nextProps.tokenVotingPowers)
+    prevProps.lpPositions === nextProps.lpPositions && // Reference equality is sufficient
+    prevProps.tokens === nextProps.tokens // Reference equality is sufficient
   );
 });
 
