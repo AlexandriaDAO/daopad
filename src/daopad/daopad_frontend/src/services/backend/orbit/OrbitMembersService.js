@@ -214,6 +214,39 @@ export class OrbitMembersService extends BackendServiceBase {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Get predefined user groups
+   */
+  async getPredefinedGroups() {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.get_predefined_groups();
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Failed to get predefined groups:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Verify if user is sole admin
+   */
+  async verifySoleAdmin(stationId) {
+    try {
+      const actor = await this.getActor();
+      const stationPrincipal = this.toPrincipal(stationId);
+      const result = await actor.verify_sole_admin(stationPrincipal);
+      if ('Ok' in result) {
+        return { success: true, data: result.Ok };
+      } else {
+        return { success: false, error: result.Err };
+      }
+    } catch (error) {
+      console.error('Failed to verify sole admin:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 export const getOrbitMembersService = (identity) => {
