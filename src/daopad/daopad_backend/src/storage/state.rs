@@ -1,4 +1,5 @@
 use crate::proposals::orbit_link::OrbitLinkProposal;
+use crate::proposals::types::{ProposalId, TreasuryProposal, VoteChoice};
 use crate::storage::memory::{
     Memory, KONG_LOCKER_PRINCIPALS_MEM_ID, MEMORY_MANAGER, ORBIT_STATIONS_MEM_ID,
     STATION_TO_TOKEN_MEM_ID,
@@ -41,4 +42,18 @@ thread_local! {
     // IMPORTANT: Using regular BTreeMap since these can be reconfigured
     // and we want flexibility during the DAO transition phase
     pub static VOTING_THRESHOLDS: RefCell<BTreeMap<StorablePrincipal, VotingThresholds>> = RefCell::new(BTreeMap::new());
+
+    // Treasury proposal storage (volatile - expires in 7 days)
+    // IMPORTANT: Using regular BTreeMap (not stable memory) since proposals are temporary
+    // and don't need to survive canister upgrades
+    //
+    // DESIGN: One active proposal per token (key = token Principal, not proposal ID)
+    // This matches the orbit_link.rs pattern and prevents proposal spam.
+    // New proposals for the same token will fail until the active one expires/executes.
+    pub static TREASURY_PROPOSALS: RefCell<BTreeMap<StorablePrincipal, TreasuryProposal>> = RefCell::new(BTreeMap::new());
+
+    // Vote tracking (separate from proposals for memory efficiency)
+    // Key: (ProposalId, Voter Principal)
+    // Allows efficient double-vote prevention without storing full voter sets in proposals
+    pub static PROPOSAL_VOTES: RefCell<BTreeMap<(ProposalId, StorablePrincipal), VoteChoice>> = RefCell::new(BTreeMap::new());
 }
