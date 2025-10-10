@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { canisterService } from '../../services/canisterService';
+import { canisterCapabilities } from '../../utils/canisterCapabilities';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
-import { Alert, AlertDescription } from '../ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import {
   Activity,
   Cpu,
@@ -12,10 +14,12 @@ import {
   Hash,
   Clock,
   Zap,
-  AlertCircle
+  AlertCircle,
+  Shield
 } from 'lucide-react';
 
-export default function CanisterOverview({ canister, orbitStationId, onRefresh }) {
+export default function CanisterOverview({ canister, privileges, orbitStationId, onRefresh }) {
+  const permissionInfo = canisterCapabilities.getPermissionLevel(privileges);
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -33,11 +37,12 @@ export default function CanisterOverview({ canister, orbitStationId, onRefresh }
       if (result.Ok) {
         setStatus(result.Ok);
       } else {
-        setError(result.Err || 'Failed to fetch canister status');
+        // Don't set error - IC status is optional if no controller access
+        console.log('IC status unavailable:', result.Err);
       }
     } catch (err) {
       console.error('Error fetching canister status:', err);
-      setError('Failed to fetch canister status');
+      // Don't set error - graceful degradation
     } finally {
       setLoading(false);
     }
@@ -121,6 +126,46 @@ export default function CanisterOverview({ canister, orbitStationId, onRefresh }
 
   return (
     <div className="space-y-6">
+      {/* Permission Badge */}
+      <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50">
+        <div className="flex items-center space-x-3">
+          <Shield className={`h-5 w-5 ${
+            permissionInfo.color === 'green' ? 'text-green-600' :
+            permissionInfo.color === 'yellow' ? 'text-yellow-600' :
+            permissionInfo.color === 'blue' ? 'text-blue-600' : 'text-gray-600'
+          }`} />
+          <div>
+            <p className="font-medium">Access Level: {permissionInfo.label}</p>
+            {permissionInfo.level !== 'full' && (
+              <p className="text-sm text-gray-600">
+                Some operations are unavailable
+              </p>
+            )}
+          </div>
+        </div>
+        <Badge
+          variant={permissionInfo.color === 'green' ? 'default' : 'secondary'}
+          className={`
+            ${permissionInfo.color === 'yellow' ? 'bg-yellow-100 text-yellow-800' : ''}
+            ${permissionInfo.color === 'blue' ? 'bg-blue-100 text-blue-800' : ''}
+          `}
+        >
+          {permissionInfo.label}
+        </Badge>
+      </div>
+
+      {/* Limited Access Alert */}
+      {permissionInfo.level !== 'full' && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Limited Management</AlertTitle>
+          <AlertDescription>
+            This canister has {permissionInfo.label.toLowerCase()}. To enable full management
+            (snapshots, upgrades, settings), add Orbit Station as a controller.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -128,86 +173,97 @@ export default function CanisterOverview({ canister, orbitStationId, onRefresh }
         </Alert>
       )}
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Cycles Balance */}
+      {/* Key Metrics - Only show if IC status available */}
+      {status ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Cycles Balance */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Cycles Balance
+              </CardTitle>
+              <Zap className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatCycles(status.cycles)}</div>
+              <Progress
+                value={getCyclesPercentage(status.cycles)}
+                className="mt-2"
+              />
+              <div className="mt-2">
+                <Button size="sm" onClick={handleTopUp}>
+                  Top Up Cycles
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Memory Usage */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Memory Usage
+              </CardTitle>
+              <Database className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatMemory(status.memory_size)}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Compute allocation: {status.compute_allocation || '0'}%
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Module Hash */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Module Hash
+              </CardTitle>
+              <Hash className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="font-mono text-xs break-all">
+                {status.module_hash?.[0] ?
+                  status.module_hash[0].substring(0, 16) + '...' :
+                  'No module deployed'}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Detailed metrics unavailable (requires controller access)
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Controllers - Only show if status available */}
+      {status && (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Cycles Balance
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Users className="h-5 w-5 mr-2" />
+              Controllers
             </CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCycles(status?.cycles)}</div>
-            <Progress
-              value={getCyclesPercentage(status?.cycles)}
-              className="mt-2"
-            />
-            <div className="mt-2">
-              <Button size="sm" onClick={handleTopUp}>
-                Top Up Cycles
-              </Button>
-            </div>
+            {status.controllers?.length > 0 ? (
+              <div className="space-y-2">
+                {status.controllers.map((controller, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <code className="text-xs">{controller}</code>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No controllers found</p>
+            )}
           </CardContent>
         </Card>
-
-        {/* Memory Usage */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Memory Usage
-            </CardTitle>
-            <Database className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatMemory(status?.memory_size)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Compute allocation: {status?.compute_allocation || '0'}%
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Module Hash */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Module Hash
-            </CardTitle>
-            <Hash className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="font-mono text-xs break-all">
-              {status?.module_hash?.[0] ?
-                status.module_hash[0].substring(0, 16) + '...' :
-                'No module deployed'}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Controllers */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Users className="h-5 w-5 mr-2" />
-            Controllers
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {status?.controllers?.length > 0 ? (
-            <div className="space-y-2">
-              {status.controllers.map((controller, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                  <code className="text-xs">{controller}</code>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">No controllers found</p>
-          )}
-        </CardContent>
-      </Card>
+      )}
 
       {/* Canister Info */}
       <Card>

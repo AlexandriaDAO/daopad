@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { canisterService } from '../../services/canisterService';
+import { canisterCapabilities } from '../../utils/canisterCapabilities';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
-import { Alert, AlertDescription } from '../ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import {
   Upload,
@@ -19,7 +20,8 @@ import {
   X
 } from 'lucide-react';
 
-export default function CanisterUpgrades({ canister, orbitStationId, onRefresh }) {
+export default function CanisterUpgrades({ canister, privileges, orbitStationId, onRefresh }) {
+  const canManage = canisterCapabilities.canManage(privileges);
   const [wasmFile, setWasmFile] = useState(null);
   const [wasmModule, setWasmModule] = useState(null);
   const [upgradeMode, setUpgradeMode] = useState('upgrade');
@@ -75,6 +77,11 @@ export default function CanisterUpgrades({ canister, orbitStationId, onRefresh }
   };
 
   const handleUpgrade = async () => {
+    if (!canManage) {
+      setError('You do not have permission to upgrade this canister.');
+      return;
+    }
+
     if (!wasmModule) {
       setError('Please select a WASM file first');
       return;
@@ -161,6 +168,16 @@ export default function CanisterUpgrades({ canister, orbitStationId, onRefresh }
 
   return (
     <div className="space-y-6">
+      {!canManage && (
+        <Alert className="mb-4">
+          <Shield className="h-4 w-4" />
+          <AlertTitle>Read-Only Access</AlertTitle>
+          <AlertDescription>
+            You have read-only access to this canister. To upgrade code, Orbit Station must be a controller.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {error && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
@@ -196,7 +213,7 @@ export default function CanisterUpgrades({ canister, orbitStationId, onRefresh }
                 type="file"
                 accept=".wasm"
                 onChange={handleFileSelect}
-                disabled={uploading || submitting}
+                disabled={uploading || submitting || !canManage}
               />
               {wasmFile && (
                 <div className="mt-2 p-3 bg-gray-50 rounded flex items-center justify-between">
@@ -225,21 +242,21 @@ export default function CanisterUpgrades({ canister, orbitStationId, onRefresh }
           {/* Upgrade Mode */}
           <div>
             <Label>Upgrade Mode</Label>
-            <RadioGroup value={upgradeMode} onValueChange={setUpgradeMode}>
+            <RadioGroup value={upgradeMode} onValueChange={setUpgradeMode} disabled={!canManage}>
               <div className="flex items-center space-x-2 mt-2">
-                <RadioGroupItem value="upgrade" id="upgrade" />
+                <RadioGroupItem value="upgrade" id="upgrade" disabled={!canManage} />
                 <Label htmlFor="upgrade">
                   Upgrade (preserves state)
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="reinstall" id="reinstall" />
+                <RadioGroupItem value="reinstall" id="reinstall" disabled={!canManage} />
                 <Label htmlFor="reinstall">
                   Reinstall (clears state)
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="install" id="install" />
+                <RadioGroupItem value="install" id="install" disabled={!canManage} />
                 <Label htmlFor="install">
                   Install (initial deployment)
                 </Label>
@@ -259,6 +276,7 @@ export default function CanisterUpgrades({ canister, orbitStationId, onRefresh }
               placeholder="Candid-encoded arguments"
               rows={3}
               className="font-mono text-sm mt-2"
+              disabled={!canManage}
             />
           </div>
 
@@ -269,6 +287,7 @@ export default function CanisterUpgrades({ canister, orbitStationId, onRefresh }
               id="take-snapshot"
               checked={takeSnapshot}
               onChange={(e) => setTakeSnapshot(e.target.checked)}
+              disabled={!canManage}
             />
             <Label htmlFor="take-snapshot" className="flex items-center">
               <Shield className="h-4 w-4 mr-1" />
@@ -279,7 +298,7 @@ export default function CanisterUpgrades({ canister, orbitStationId, onRefresh }
           {/* Submit Button */}
           <Button
             onClick={handleUpgrade}
-            disabled={!wasmModule || submitting}
+            disabled={!wasmModule || submitting || !canManage}
             className="w-full"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -349,6 +368,7 @@ export default function CanisterUpgrades({ canister, orbitStationId, onRefresh }
                       size="sm"
                       variant="outline"
                       onClick={() => handleRollback(item)}
+                      disabled={!canManage}
                     >
                       Rollback
                     </Button>

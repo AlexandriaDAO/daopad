@@ -12,6 +12,7 @@ import CanisterSettings from './CanisterSettings';
 
 export default function CanisterDetails({ orbitStationId, canisterId, onBack }) {
   const [canister, setCanister] = useState(null);
+  const [privileges, setPrivileges] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -36,6 +37,7 @@ export default function CanisterDetails({ orbitStationId, canisterId, onBack }) 
 
       if (result.success) {
         setCanister(result.data);
+        setPrivileges(result.privileges);
       } else {
         setError(result.error || 'Failed to load canister details');
       }
@@ -158,6 +160,7 @@ export default function CanisterDetails({ orbitStationId, canisterId, onBack }) 
         <TabsContent value="overview">
           <CanisterOverview
             canister={canister}
+            privileges={privileges}
             orbitStationId={orbitStationId}
             onRefresh={fetchCanisterDetails}
           />
@@ -166,6 +169,7 @@ export default function CanisterDetails({ orbitStationId, canisterId, onBack }) 
         <TabsContent value="methods">
           <CanisterMethods
             canister={canister}
+            privileges={privileges}
             orbitStationId={orbitStationId}
             onRefresh={fetchCanisterDetails}
           />
@@ -174,6 +178,7 @@ export default function CanisterDetails({ orbitStationId, canisterId, onBack }) 
         <TabsContent value="upgrades">
           <CanisterUpgrades
             canister={canister}
+            privileges={privileges}
             orbitStationId={orbitStationId}
             onRefresh={fetchCanisterDetails}
           />
@@ -182,6 +187,7 @@ export default function CanisterDetails({ orbitStationId, canisterId, onBack }) 
         <TabsContent value="snapshots">
           <CanisterSnapshots
             canister={canister}
+            privileges={privileges}
             orbitStationId={orbitStationId}
             onRefresh={fetchCanisterDetails}
           />
@@ -190,6 +196,7 @@ export default function CanisterDetails({ orbitStationId, canisterId, onBack }) 
         <TabsContent value="settings">
           <CanisterSettings
             canister={canister}
+            privileges={privileges}
             orbitStationId={orbitStationId}
             onRefresh={fetchCanisterDetails}
           />
