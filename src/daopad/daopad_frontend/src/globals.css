@@ -95,8 +95,19 @@
    PERFORMANCE & UX ENHANCEMENTS
    ======================================== */
 
-/* Smooth transitions for theme changes and interactions */
-* {
+/* Smooth transitions for theme changes - scoped to avoid performance issues */
+:root,
+body,
+.dark,
+button,
+a,
+[role="button"],
+input,
+textarea,
+select,
+.card,
+.badge,
+.alert {
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
 }
 

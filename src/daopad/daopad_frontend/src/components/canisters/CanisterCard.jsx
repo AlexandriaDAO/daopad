@@ -10,27 +10,39 @@ const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (canister?.canister_id) {
-      fetchStatus();
-    }
-  }, [canister?.canister_id]);
+    if (!canister?.canister_id) return;
 
-  const fetchStatus = async () => {
-    setLoading(true);
-    try {
-      // Use Principal for IC management canister calls
-      const result = await canisterService.getCanisterStatus(
-        canister.canister_id  // This is the Principal
-      );
-      if (result.success) {
-        setStatus(result.data);
+    let isCancelled = false; // Race condition protection
+
+    const fetchStatus = async () => {
+      setLoading(true);
+      try {
+        // Use Principal for IC management canister calls
+        const result = await canisterService.getCanisterStatus(
+          canister.canister_id  // This is the Principal
+        );
+        // Only update state if component is still mounted and this is the latest request
+        if (!isCancelled && result.success) {
+          setStatus(result.data);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          console.error('Failed to fetch status:', error);
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoading(false);
+        }
       }
-    } catch (error) {
-      console.error('Failed to fetch status:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchStatus();
+
+    // Cleanup function to prevent race conditions
+    return () => {
+      isCancelled = true;
+    };
+  }, [canister?.canister_id]);
 
   const formatCycles = (cycles) => {
     if (!cycles) return '0 T';
@@ -169,12 +181,22 @@ const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure
   );
 }, (prevProps, nextProps) => {
   // Only re-render if these specific props changed
+  // Explicit comparison instead of JSON.stringify for better performance and reliability
+  const prevState = prevProps.canister.state;
+  const nextState = nextProps.canister.state;
+
+  // Compare state explicitly (both Active or both Archived)
+  const stateEquals =
+    (prevState && nextState && 'Active' in prevState === 'Active' in nextState) ||
+    (!prevState && !nextState);
+
   return (
     prevProps.canister.id === nextProps.canister.id &&
     prevProps.canister.canister_id === nextProps.canister.canister_id &&
     prevProps.canister.name === nextProps.canister.name &&
-    JSON.stringify(prevProps.canister.state) === JSON.stringify(nextProps.canister.state) &&
-    prevProps.canister.labels?.length === nextProps.canister.labels?.length
+    stateEquals &&
+    prevProps.canister.labels?.length === nextProps.canister.labels?.length &&
+    prevProps.canister.monitoring === nextProps.canister.monitoring
   );
 });
 

@@ -129,12 +129,24 @@ const ProposalCard = memo(function ProposalCard({ proposal, onClick, onApprove, 
   );
 }, (prevProps, nextProps) => {
   // Only re-render if these specific props changed
+  const prevApprovals = prevProps.proposal.approvals || [];
+  const nextApprovals = nextProps.proposal.approvals || [];
+
+  // Check if approval statuses changed (not just length)
+  const approvalsEqual = prevApprovals.length === nextApprovals.length &&
+    prevApprovals.every((prev, i) => {
+      const next = nextApprovals[i];
+      return prev?.status?.Approved === next?.status?.Approved;
+    });
+
   return (
     prevProps.proposal.id === nextProps.proposal.id &&
     prevProps.proposal.status === nextProps.proposal.status &&
-    prevProps.proposal.approvals?.length === nextProps.proposal.approvals?.length &&
+    approvalsEqual &&
     prevProps.canVote === nextProps.canVote &&
-    prevProps.isVotingLoading === nextProps.isVotingLoading
+    prevProps.isVotingLoading === nextProps.isVotingLoading &&
+    prevProps.proposal.yesVotes === nextProps.proposal.yesVotes &&
+    prevProps.proposal.noVotes === nextProps.proposal.noVotes
   );
 });
 
