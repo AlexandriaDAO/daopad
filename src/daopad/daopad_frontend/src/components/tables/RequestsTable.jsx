@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { Principal } from '@dfinity/principal';
 import { DAOPadBackendService } from '@/services/daopadBackend';
 import { EmptyStates } from '../ui/EmptyState';
@@ -25,7 +25,7 @@ import {
   Zap,
 } from 'lucide-react';
 
-export default function RequestsTable({ tokenId, identity }) {
+const RequestsTable = memo(function RequestsTable({ tokenId, identity }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -377,4 +377,10 @@ export default function RequestsTable({ tokenId, identity }) {
       )}
     </>
   );
-}
+}, (prevProps, nextProps) => {
+  // Only re-render if tokenId changes
+  return prevProps.tokenId === nextProps.tokenId;
+  // identity is excluded because it's a stable object
+});
+
+export default RequestsTable;
