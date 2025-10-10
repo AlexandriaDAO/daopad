@@ -10,6 +10,20 @@ dotenv.config({ path: '../../.env' });
 export default defineConfig({
   build: {
     emptyOutDir: true,
+    // Add rollup options for better code splitting
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split vendor code
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-redux': ['@reduxjs/toolkit', 'react-redux'],
+          'vendor-dfinity': ['@dfinity/agent', '@dfinity/auth-client', '@dfinity/principal'],
+          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
+        },
+      },
+    },
+    // Add source maps for production debugging
+    sourcemap: true,
   },
   optimizeDeps: {
     esbuildOptions: {
@@ -39,8 +53,9 @@ export default defineConfig({
     alias: [
       {
         find: "declarations",
+        // FIX: Point to local frontend declarations (synced from dfx)
         replacement: fileURLToPath(
-          new URL("../declarations", import.meta.url)
+          new URL("./src/declarations", import.meta.url)  // FIXED PATH
         ),
       },
       {
