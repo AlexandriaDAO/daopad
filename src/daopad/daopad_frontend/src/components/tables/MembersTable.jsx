@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { Principal } from '@dfinity/principal';
 import { DAOPadBackendService } from '@/services/daopadBackend';
 import { Button } from '@/components/ui/button';
@@ -46,7 +46,7 @@ import {
 } from 'lucide-react';
 import MembershipStatus from '../MembershipStatus';
 
-export default function MembersTable({ stationId, identity, token }) {
+const MembersTable = memo(function MembersTable({ stationId, identity, token }) {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -617,4 +617,13 @@ export default function MembersTable({ stationId, identity, token }) {
       </Dialog>
     </>
   );
-}
+}, (prevProps, nextProps) => {
+  // Only re-render if these specific props changed
+  return (
+    prevProps.stationId === nextProps.stationId &&
+    prevProps.token?.canister_id === nextProps.token?.canister_id
+    // Note: identity is excluded because it's a stable object
+  );
+});
+
+export default MembersTable;

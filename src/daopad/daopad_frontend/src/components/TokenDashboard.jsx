@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { Principal } from '@dfinity/principal';
 import { useDispatch } from 'react-redux';
 import { DAOPadBackendService } from '../services/daopadBackend';
@@ -33,7 +33,7 @@ import { upsertStationMapping } from '../features/dao/daoSlice';
 import { useActiveStation } from '../hooks/useActiveStation';
 import OrbitStationPlaceholder from './orbit/OrbitStationPlaceholder';
 
-const TokenDashboard = ({
+const TokenDashboard = memo(function TokenDashboard({
   token,
   tokens = null,
   activeTokenIndex = 0,
@@ -43,7 +43,7 @@ const TokenDashboard = ({
   votingPower,
   lpPositions,
   onRefresh
-}) => {
+}) {
   const dispatch = useDispatch();
   const activeStation = useActiveStation(token?.canister_id);
   const [orbitStation, setOrbitStation] = useState(null);
@@ -633,6 +633,17 @@ const TokenDashboard = ({
       )}
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  // Only re-render if these specific props changed
+  return (
+    prevProps.token?.canister_id === nextProps.token?.canister_id &&
+    prevProps.activeTokenIndex === nextProps.activeTokenIndex &&
+    prevProps.votingPower === nextProps.votingPower &&
+    prevProps.lpPositions?.length === nextProps.lpPositions?.length &&
+    prevProps.tokens?.length === nextProps.tokens?.length &&
+    // Deep check for tokenVotingPowers if it's an object
+    JSON.stringify(prevProps.tokenVotingPowers) === JSON.stringify(nextProps.tokenVotingPowers)
+  );
+});
 
 export default TokenDashboard;
