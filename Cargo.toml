@@ -1,6 +1,8 @@
 [workspace]
 members = [
     "src/daopad/daopad_backend",
+    # Kong Locker moved to kong-locker-reference/ (read-only reference)
+    # Workspace members commented out to speed up builds
     # "src/kong_locker/kong_locker",
     # "src/kong_locker/lock_canister"
 ]

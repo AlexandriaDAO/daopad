@@ -422,6 +422,9 @@ pub struct CanisterStatusResponse {
 ///
 /// This method proxies to Orbit Station's canister_snapshots API,
 /// which returns up to 10 snapshots per canister.
+///
+/// Security: Validates principals and that the token is registered before
+/// making inter-canister calls.
 #[ic_cdk::update]
 async fn get_canister_snapshots(
     token_canister_id: Principal,
@@ -430,9 +433,15 @@ async fn get_canister_snapshots(
     use crate::api::orbit::get_orbit_station_for_token;
     use crate::types::orbit::{CanisterSnapshotsInput, CanisterSnapshotsResult};
 
+    // Validate principals are not anonymous
+    if token_canister_id == Principal::anonymous() || canister_principal == Principal::anonymous() {
+        return Err("Invalid principal provided".to_string());
+    }
+
     // Get Orbit Station ID for this token
+    // Note: get_orbit_station_for_token already validates the token is registered
     let station_id = get_orbit_station_for_token(token_canister_id)
-        .ok_or_else(|| "No Orbit Station linked to this token".to_string())?;
+        .ok_or_else(|| "Token not registered with any Orbit Station".to_string())?;
 
     // Create input for Orbit Station
     let input = CanisterSnapshotsInput {
@@ -446,9 +455,12 @@ async fn get_canister_snapshots(
         (input,),
     ).await;
 
-    // Handle result
+    // Handle result - log detailed errors internally, return generic message to user
     match result {
         Ok((res,)) => Ok(res),
-        Err((code, msg)) => Err(format!("Failed to get snapshots: {:?} - {}", code, msg)),
+        Err((code, msg)) => {
+            ic_cdk::println!("Snapshot query failed for canister {}: {:?} - {}", canister_principal, code, msg);
+            Err("Failed to retrieve snapshots. Please try again or contact support.".to_string())
+        }
     }
 }
