@@ -17,6 +17,9 @@ export { OrbitMembersService, getOrbitMembersService } from './orbit/OrbitMember
 export { OrbitAccountsService, getOrbitAccountsService } from './orbit/OrbitAccountsService';
 export { TokenService, getTokenService } from './tokens/TokenService';
 
+// Unified service for backward compatibility
+export { UnifiedBackendService } from './UnifiedBackendService';
+
 // Re-export base and utilities for custom extensions
 export { BackendServiceBase } from './base/BackendServiceBase';
 export { parseOrbitResult, formatOrbitError } from './utils/errorParsers';

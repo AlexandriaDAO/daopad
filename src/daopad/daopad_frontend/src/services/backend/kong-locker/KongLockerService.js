@@ -88,14 +88,8 @@ export class KongLockerService extends BackendServiceBase {
   }
 }
 
-// Export singleton factory
-let instance = null;
-
 export const getKongLockerService = (identity) => {
-  if (!instance || instance.identity !== identity) {
-    instance = new KongLockerService(identity);
-  }
-  return instance;
+  return new KongLockerService(identity);
 };
 
 export default KongLockerService;
