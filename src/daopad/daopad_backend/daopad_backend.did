@@ -180,6 +180,16 @@ type EditAddressBookEntryOperationInput = record {
   address_book_entry_id : text;
   address_owner : opt text;
 };
+type EnhancedSecurityDashboard = record {
+  overall_status : text;
+  risk_summary : text;
+  station_id : principal;
+  checks : vec SecurityCheck;
+  last_checked : nat64;
+  recommended_actions : vec text;
+  critical_issues : vec SecurityCheck;
+  decentralization_score : nat8;
+};
 type Error = record {
   code : text;
   message : opt text;
@@ -627,7 +637,7 @@ type Result_31 = variant { Ok : vec UserGroupInfo; Err : text };
 type Result_32 = variant { Ok : vec UserInfo; Err : text };
 type Result_33 = variant { Ok : ListPermissionsResponse; Err : text };
 type Result_34 = variant { Ok : ListUserGroupsResponse; Err : text };
-type Result_35 = variant { Ok : SecurityDashboard; Err : text };
+type Result_35 = variant { Ok : EnhancedSecurityDashboard; Err : text };
 type Result_36 = variant { Ok : SyncVotingPowerResult; Err : text };
 type Result_37 = variant { Ok : PermissionStatus; Err : text };
 type Result_4 = variant { Ok : bool; Err : text };
@@ -644,12 +654,6 @@ type SecurityCheck = record {
   category : text;
   severity : opt Severity;
   recommendation : opt text;
-};
-type SecurityDashboard = record {
-  overall_status : text;
-  station_id : principal;
-  checks : vec SecurityCheck;
-  last_checked : nat64;
 };
 type Severity = variant { Low; High; Medium; None; Critical };
 type SimpleRequest = record { id : text; status : text; title : text };
