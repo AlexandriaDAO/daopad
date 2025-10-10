@@ -525,6 +525,7 @@ type ProposalConfig = record {
 };
 type ProposalError = variant {
   AlreadyVoted : nat64;
+  InvalidTransferDetails : text;
   NotActive;
   NotFound : nat64;
   NoStationLinked : principal;
@@ -534,6 +535,7 @@ type ProposalError = variant {
     required : nat64;
     current : nat64;
   };
+  ZeroVotingPower;
   NoVotingPower;
   Expired;
   AuthRequired;

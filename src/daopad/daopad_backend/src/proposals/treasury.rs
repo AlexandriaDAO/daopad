@@ -25,6 +25,49 @@ pub struct TransferDetails {
     pub memo: Option<String>,
 }
 
+/// Validate transfer details before creating proposal
+fn validate_transfer_details(details: &TransferDetails) -> Result<(), ProposalError> {
+    // Validate from_account_id (should be UUID format)
+    if details.from_account_id.is_empty() {
+        return Err(ProposalError::InvalidTransferDetails(
+            "from_account_id cannot be empty".to_string(),
+        ));
+    }
+    if details.from_account_id.len() != 36 || details.from_account_id.chars().filter(|c| *c == '-').count() != 4 {
+        return Err(ProposalError::InvalidTransferDetails(
+            "from_account_id must be a valid UUID format".to_string(),
+        ));
+    }
+
+    // Validate from_asset_id (should be UUID format)
+    if details.from_asset_id.is_empty() {
+        return Err(ProposalError::InvalidTransferDetails(
+            "from_asset_id cannot be empty".to_string(),
+        ));
+    }
+    if details.from_asset_id.len() != 36 || details.from_asset_id.chars().filter(|c| *c == '-').count() != 4 {
+        return Err(ProposalError::InvalidTransferDetails(
+            "from_asset_id must be a valid UUID format".to_string(),
+        ));
+    }
+
+    // Validate destination address
+    if details.to.is_empty() {
+        return Err(ProposalError::InvalidTransferDetails(
+            "destination address cannot be empty".to_string(),
+        ));
+    }
+
+    // Validate amount is greater than zero
+    if details.amount == 0u64 {
+        return Err(ProposalError::InvalidTransferDetails(
+            "transfer amount must be greater than zero".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
 /// Create a treasury transfer proposal
 ///
 /// This creates:
@@ -44,7 +87,10 @@ pub async fn create_treasury_transfer_proposal(
         return Err(ProposalError::AuthRequired);
     }
 
-    // 1. Check minimum voting power requirement
+    // 1. Validate transfer details
+    validate_transfer_details(&transfer_details)?;
+
+    // 2. Check minimum voting power requirement
     let proposer_power = get_user_voting_power_for_token(caller, token_canister_id)
         .await
         .map_err(|_| ProposalError::NoVotingPower)?;
@@ -56,7 +102,7 @@ pub async fn create_treasury_transfer_proposal(
         });
     }
 
-    // 2. Get station ID
+    // 3. Get station ID
     let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
         stations
             .borrow()
@@ -65,13 +111,13 @@ pub async fn create_treasury_transfer_proposal(
             .ok_or(ProposalError::NoStationLinked(token_canister_id))
     })?;
 
-    // 3. Create transfer request in Orbit (status: pending approval)
-    let orbit_request_id = create_transfer_request_in_orbit(station_id, transfer_details).await?;
-
-    // 4. Get total voting power
+    // 4. Get total voting power (must be > 0 for proposal to be viable)
     let total_voting_power = get_total_voting_power_for_token(token_canister_id).await?;
 
-    // 5. Create DAOPad proposal
+    // 5. Create transfer request in Orbit (status: pending approval)
+    let orbit_request_id = create_transfer_request_in_orbit(station_id, transfer_details).await?;
+
+    // 6. Create DAOPad proposal
     let proposal_id = ProposalId::new();
     let now = time();
 
@@ -90,7 +136,7 @@ pub async fn create_treasury_transfer_proposal(
         status: ProposalStatus::Active,
     };
 
-    // 6. Store proposal
+    // 7. Store proposal
     TREASURY_PROPOSALS.with(|proposals| {
         proposals
             .borrow_mut()
@@ -358,8 +404,197 @@ async fn get_total_voting_power_for_token(token: Principal) -> Result<u64, Propo
     }
 
     if total_power == 0 {
-        return Err(ProposalError::NoVotingPower);
+        return Err(ProposalError::ZeroVotingPower);
     }
 
     Ok(total_power)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_transfer_details_valid() {
+        let details = TransferDetails {
+            from_account_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+            from_asset_id: "650e8400-e29b-41d4-a716-446655440000".to_string(),
+            to: "recipient-address".to_string(),
+            amount: Nat::from(1000u64),
+            memo: Some("test".to_string()),
+        };
+
+        assert!(validate_transfer_details(&details).is_ok());
+    }
+
+    #[test]
+    fn test_validate_transfer_details_empty_account_id() {
+        let details = TransferDetails {
+            from_account_id: "".to_string(),
+            from_asset_id: "650e8400-e29b-41d4-a716-446655440000".to_string(),
+            to: "recipient-address".to_string(),
+            amount: Nat::from(1000u64),
+            memo: None,
+        };
+
+        let result = validate_transfer_details(&details);
+        assert!(result.is_err());
+        match result {
+            Err(ProposalError::InvalidTransferDetails(msg)) => {
+                assert!(msg.contains("from_account_id cannot be empty"));
+            }
+            _ => panic!("Expected InvalidTransferDetails error"),
+        }
+    }
+
+    #[test]
+    fn test_validate_transfer_details_invalid_uuid_format() {
+        let details = TransferDetails {
+            from_account_id: "not-a-uuid".to_string(),
+            from_asset_id: "650e8400-e29b-41d4-a716-446655440000".to_string(),
+            to: "recipient-address".to_string(),
+            amount: Nat::from(1000u64),
+            memo: None,
+        };
+
+        let result = validate_transfer_details(&details);
+        assert!(result.is_err());
+        match result {
+            Err(ProposalError::InvalidTransferDetails(msg)) => {
+                assert!(msg.contains("UUID format"));
+            }
+            _ => panic!("Expected InvalidTransferDetails error"),
+        }
+    }
+
+    #[test]
+    fn test_validate_transfer_details_zero_amount() {
+        let details = TransferDetails {
+            from_account_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+            from_asset_id: "650e8400-e29b-41d4-a716-446655440000".to_string(),
+            to: "recipient-address".to_string(),
+            amount: Nat::from(0u64),
+            memo: None,
+        };
+
+        let result = validate_transfer_details(&details);
+        assert!(result.is_err());
+        match result {
+            Err(ProposalError::InvalidTransferDetails(msg)) => {
+                assert!(msg.contains("must be greater than zero"));
+            }
+            _ => panic!("Expected InvalidTransferDetails error"),
+        }
+    }
+
+    #[test]
+    fn test_validate_transfer_details_empty_destination() {
+        let details = TransferDetails {
+            from_account_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+            from_asset_id: "650e8400-e29b-41d4-a716-446655440000".to_string(),
+            to: "".to_string(),
+            amount: Nat::from(1000u64),
+            memo: None,
+        };
+
+        let result = validate_transfer_details(&details);
+        assert!(result.is_err());
+        match result {
+            Err(ProposalError::InvalidTransferDetails(msg)) => {
+                assert!(msg.contains("destination address cannot be empty"));
+            }
+            _ => panic!("Expected InvalidTransferDetails error"),
+        }
+    }
+
+    #[test]
+    fn test_threshold_calculation_simple_majority() {
+        let total_vp = 100_000u64;
+        let threshold_percent = 50u32;
+        let required_votes = (total_vp * threshold_percent as u64) / 100;
+
+        assert_eq!(required_votes, 50_000);
+
+        // Test pass condition: yes_votes > required_votes
+        let yes_votes = 50_001u64;
+        assert!(yes_votes > required_votes, "Should pass with 50,001 votes");
+
+        // Test fail condition: yes_votes <= required_votes
+        let yes_votes = 50_000u64;
+        assert!(
+            !(yes_votes > required_votes),
+            "Should not pass with exactly 50,000 votes"
+        );
+    }
+
+    #[test]
+    fn test_rejection_threshold_correct() {
+        let total_vp = 100_000u64;
+        let threshold_percent = 50u32;
+        let required_votes = (total_vp * threshold_percent as u64) / 100; // 50,000
+
+        // Rejection condition: no_votes >= (total - required)
+        // When no_votes >= 50,000, max possible yes = 100,000 - 50,000 = 50,000
+        // Since 50,000 <= 50,000 (required), proposal cannot pass
+
+        let no_votes = 50_000u64;
+        assert!(
+            no_votes >= (total_vp - required_votes),
+            "Should reject with 50,000 NO votes"
+        );
+
+        let no_votes = 49_999u64;
+        assert!(
+            !(no_votes >= (total_vp - required_votes)),
+            "Should not reject with 49,999 NO votes"
+        );
+
+        let no_votes = 50_001u64;
+        assert!(
+            no_votes >= (total_vp - required_votes),
+            "Should reject with 50,001 NO votes"
+        );
+    }
+
+    #[test]
+    fn test_edge_case_all_votes_yes() {
+        let total_vp = 100_000u64;
+        let yes_votes = 100_000u64;
+        let required_votes = 50_000u64;
+
+        assert!(yes_votes > required_votes, "All YES votes should pass");
+    }
+
+    #[test]
+    fn test_edge_case_all_votes_no() {
+        let total_vp = 100_000u64;
+        let no_votes = 100_000u64;
+        let required_votes = 50_000u64;
+
+        assert!(
+            no_votes >= (total_vp - required_votes),
+            "All NO votes should reject"
+        );
+    }
+
+    #[test]
+    fn test_edge_case_exact_split() {
+        let total_vp = 100_000u64;
+        let yes_votes = 50_000u64;
+        let no_votes = 50_000u64;
+        let required_votes = 50_000u64;
+
+        // With exact 50/50 split:
+        // yes_votes (50,000) is NOT > required_votes (50,000), so doesn't pass
+        assert!(
+            !(yes_votes > required_votes),
+            "Exact 50/50 split should not pass"
+        );
+
+        // no_votes (50,000) >= (100,000 - 50,000) = 50,000, so should reject
+        assert!(
+            no_votes >= (total_vp - required_votes),
+            "Exact 50/50 split should reject"
+        );
+    }
 }

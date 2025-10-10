@@ -99,4 +99,10 @@ pub enum ProposalError {
 
     #[error("IC call failed: {message}")]
     IcCallFailed { code: i32, message: String },
+
+    #[error("Invalid transfer details: {0}")]
+    InvalidTransferDetails(String),
+
+    #[error("Total voting power is zero - no votes possible")]
+    ZeroVotingPower,
 }
