@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Eye, Edit2, Trash2, ChevronRight, RefreshCw, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,35 +39,51 @@ export default function AssetsPage() {
   const debouncedSearch = useDebounce(searchQuery, 300);
   const pagination = usePagination({ pageSize: 20 });
 
-  // Fetch assets list
-  const {
-    data: assetsData,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ['station', stationId, 'assets', pagination.page, debouncedSearch],
-    queryFn: async () => {
-      if (!stationId) return { assets: [], total: 0, privileges: [] };
+  // Local state (replacing React Query)
+  const [assetsData, setAssetsData] = useState({ assets: [], total: 0, privileges: [] });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-      try {
-        const response = await station.listAssets({
-          offset: pagination.offset,
-          limit: pagination.limit,
-          search: debouncedSearch || undefined,
-        });
+  // Fetch assets data
+  const fetchAssets = useCallback(async () => {
+    if (!stationId || stationStatus !== 'connected') {
+      setAssetsData({ assets: [], total: 0, privileges: [] });
+      return;
+    }
 
-        pagination.setTotal(response.total);
-        return response;
-      } catch (err) {
-        console.error('Failed to fetch assets:', err);
-        throw err;
-      }
-    },
-    enabled: !!stationId && stationStatus === 'connected',
-    refetchInterval: 5000,
-    retry: 1,
-  });
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await station.listAssets({
+        offset: pagination.offset,
+        limit: pagination.limit,
+        search: debouncedSearch || undefined,
+      });
+
+      setAssetsData(response);
+      pagination.setTotal(response.total);
+    } catch (err) {
+      console.error('Failed to fetch assets:', err);
+      setError(err.message || 'Failed to fetch assets');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [stationId, stationStatus, station, pagination.offset, pagination.limit, debouncedSearch]);
+
+  // Fetch on mount and when dependencies change
+  useEffect(() => {
+    fetchAssets();
+  }, [fetchAssets]);
+
+  // Auto-refresh every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchAssets();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [fetchAssets]);
 
   const assets = assetsData?.assets || [];
   const privileges = assetsData?.privileges || [];
@@ -103,7 +118,7 @@ export default function AssetsPage() {
         title: 'Asset Removed',
         description: `${asset.symbol} has been removed successfully.`,
       });
-      refetch();
+      fetchAssets(); // Refresh data
     } catch (err) {
       toast({
         variant: 'destructive',
@@ -114,7 +129,7 @@ export default function AssetsPage() {
   };
 
   const handleAssetSaved = () => {
-    refetch();
+    fetchAssets(); // Refresh data
     setIsAssetDialogOpen(false);
     toast({
       title: dialogMode === 'create' ? 'Asset Created' : 'Asset Updated',
@@ -160,7 +175,7 @@ export default function AssetsPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => refetch()}
+            onClick={() => fetchAssets()}
             disabled={isLoading}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />

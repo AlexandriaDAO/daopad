@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, ChevronRight, RefreshCw, Search, Server, Activity, Shield, ExternalLink, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -41,36 +40,52 @@ export default function ExternalCanistersPage() {
     permissions: null,
   });
 
-  // Fetch external canisters list
-  const {
-    data: canistersData,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ['station', stationId, 'external-canisters', pagination.page, debouncedSearch, filters],
-    queryFn: async () => {
-      if (!stationId) return { canisters: [], total: 0, privileges: [] };
+  // Local state (replacing React Query)
+  const [canistersData, setCanistersData] = useState({ canisters: [], total: 0, privileges: [] });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-      try {
-        const response = await station.listExternalCanisters({
-          offset: pagination.offset,
-          limit: pagination.limit,
-          search: debouncedSearch || undefined,
-          filters: activeFilters,
-        });
+  // Fetch external canisters
+  const fetchCanisters = useCallback(async () => {
+    if (!stationId || stationStatus !== 'connected') {
+      setCanistersData({ canisters: [], total: 0, privileges: [] });
+      return;
+    }
 
-        pagination.setTotal(response.total);
-        return response;
-      } catch (err) {
-        console.error('Failed to fetch external canisters:', err);
-        throw err;
-      }
-    },
-    enabled: !!stationId && stationStatus === 'connected',
-    refetchInterval: 10000, // Longer interval for canisters
-    retry: 1,
-  });
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await station.listExternalCanisters({
+        offset: pagination.offset,
+        limit: pagination.limit,
+        search: debouncedSearch || undefined,
+        filters: activeFilters,
+      });
+
+      setCanistersData(response);
+      pagination.setTotal(response.total);
+    } catch (err) {
+      console.error('Failed to fetch external canisters:', err);
+      setError(err.message || 'Failed to fetch external canisters');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [stationId, stationStatus, station, pagination.offset, pagination.limit, debouncedSearch, activeFilters]);
+
+  // Fetch on mount and when dependencies change
+  useEffect(() => {
+    fetchCanisters();
+  }, [fetchCanisters]);
+
+  // Auto-refresh every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchCanisters();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [fetchCanisters]);
 
   const canisters = canistersData?.canisters || [];
   const privileges = canistersData?.privileges || [];
@@ -97,7 +112,7 @@ export default function ExternalCanistersPage() {
   };
 
   const handleCanisterSaved = () => {
-    refetch();
+    fetchCanisters(); // Refresh data
     setIsCanisterDialogOpen(false);
     toast({
       title: dialogMode === 'create' ? 'Canister Registered' : 'Canister Updated',
@@ -173,7 +188,7 @@ export default function ExternalCanistersPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => refetch()}
+            onClick={() => fetchCanisters()}
             disabled={isLoading}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />

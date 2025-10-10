@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -35,7 +35,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useStationService } from '@/hooks/useStationService';
-import { useQuery } from '@tanstack/react-query';
 import { Loader2, Info, Shield, Settings, Users, Key } from 'lucide-react';
 
 // Account setup validation schema
@@ -59,19 +58,31 @@ export default function AccountSetupDialog({ open, onOpenChange, onAccountCreate
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState('basic');
 
+  // Local state for assets (replacing React Query)
+  const [assetsData, setAssetsData] = useState({ assets: [] });
+  const [isLoadingAssets, setIsLoadingAssets] = useState(false);
+
   // Fetch available assets for selection
-  const { data: assetsData } = useQuery({
-    queryKey: ['station', 'assets-list'],
-    queryFn: async () => {
-      try {
-        return await station.listAssets({ limit: 100 });
-      } catch (err) {
-        console.error('Failed to fetch assets:', err);
-        return { assets: [] };
-      }
-    },
-    enabled: open,
-  });
+  const fetchAssets = useCallback(async () => {
+    if (!open) return;
+
+    setIsLoadingAssets(true);
+
+    try {
+      const response = await station.listAssets({ limit: 100 });
+      setAssetsData(response);
+    } catch (err) {
+      console.error('Failed to fetch assets:', err);
+      setAssetsData({ assets: [] });
+    } finally {
+      setIsLoadingAssets(false);
+    }
+  }, [station, open]);
+
+  // Fetch assets when dialog opens
+  useEffect(() => {
+    fetchAssets();
+  }, [fetchAssets]);
 
   const availableAssets = assetsData?.assets || [];
 
@@ -98,70 +109,56 @@ export default function AccountSetupDialog({ open, onOpenChange, onAccountCreate
       const accountRequest = {
         name: data.name,
         description: data.description || undefined,
-        account_type: { [data.type]: null },
-        assets: data.assets.map(id => ({ asset_id: id })),
-        metadata: {
-          transfer_permission: data.transfer_permission,
-          approval_threshold: data.approval_threshold.toString(),
-          require_mfa: data.require_mfa.toString(),
-        },
+        account_type: data.type,
+        assets: data.assets,
+        transfer_permission: data.transfer_permission,
+        approval_threshold: data.approval_threshold,
+        require_mfa: data.require_mfa,
       };
 
-      const response = await station.createAccount(accountRequest);
+      const result = await station.createAccount(accountRequest);
 
-      toast({
-        title: 'Account Created',
-        description: `Account "${data.name}" has been created successfully.`,
-      });
-
-      onAccountCreated?.();
-      form.reset();
-      setCurrentStep('basic');
+      if (result.success) {
+        toast({
+          title: 'Account Created',
+          description: `Account "${data.name}" has been created successfully.`,
+        });
+        form.reset();
+        onOpenChange(false);
+        if (onAccountCreated) {
+          onAccountCreated(result.data);
+        }
+      } else {
+        throw new Error(result.error || 'Failed to create account');
+      }
     } catch (error) {
-      console.error('Failed to create account:', error);
+      console.error('Error creating account:', error);
       toast({
         variant: 'destructive',
         title: 'Account Creation Failed',
-        description: error.message || 'An unexpected error occurred',
+        description: error.message || 'Failed to create account',
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleAssetToggle = (assetId) => {
-    const current = form.getValues('assets');
-    const updated = current.includes(assetId)
-      ? current.filter(id => id !== assetId)
-      : [...current, assetId];
-    form.setValue('assets', updated);
-  };
-
-  const getAccountTypeDescription = (type) => {
-    const descriptions = {
-      Main: 'Primary treasury account for holding and managing assets',
-      Cycles: 'Specialized account for managing IC cycles and compute resources',
-      External: 'Account for managing external blockchain assets',
-    };
-    return descriptions[type];
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px]">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Account</DialogTitle>
           <DialogDescription>
-            Set up a new account for your treasury
+            Set up a new treasury account with custom permissions and policies
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <Tabs value={currentStep} onValueChange={setCurrentStep}>
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="basic">
-                  <Info className="h-4 w-4 mr-2" />
+                  <Settings className="h-4 w-4 mr-2" />
                   Basic Info
                 </TabsTrigger>
                 <TabsTrigger value="assets">
@@ -174,8 +171,8 @@ export default function AccountSetupDialog({ open, onOpenChange, onAccountCreate
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="basic" className="space-y-4 mt-4">
-                {/* Account Name */}
+              {/* Basic Info */}
+              <TabsContent value="basic" className="space-y-4">
                 <FormField
                   control={form.control}
                   name="name"
@@ -183,10 +180,7 @@ export default function AccountSetupDialog({ open, onOpenChange, onAccountCreate
                     <FormItem>
                       <FormLabel>Account Name</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="e.g., Main Treasury"
-                          {...field}
-                        />
+                        <Input placeholder="Main Treasury" {...field} />
                       </FormControl>
                       <FormDescription>
                         A descriptive name for this account
@@ -196,7 +190,23 @@ export default function AccountSetupDialog({ open, onOpenChange, onAccountCreate
                   )}
                 />
 
-                {/* Account Type */}
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Primary account for treasury operations..."
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="type"
@@ -206,7 +216,7 @@ export default function AccountSetupDialog({ open, onOpenChange, onAccountCreate
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue />
+                            <SelectValue placeholder="Select account type" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -216,125 +226,90 @@ export default function AccountSetupDialog({ open, onOpenChange, onAccountCreate
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        {getAccountTypeDescription(field.value)}
+                        The type determines available features
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-
-                {/* Description */}
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Additional notes about this account..."
-                          className="resize-none"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Optional description or purpose of this account
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    onClick={() => setCurrentStep('assets')}
-                    disabled={!form.getValues('name') || !form.getValues('type')}
-                  >
-                    Next: Select Assets
-                  </Button>
-                </div>
               </TabsContent>
 
-              <TabsContent value="assets" className="space-y-4 mt-4">
+              {/* Assets */}
+              <TabsContent value="assets" className="space-y-4">
                 <FormField
                   control={form.control}
                   name="assets"
-                  render={({ field }) => (
+                  render={() => (
                     <FormItem>
-                      <FormLabel>Select Assets</FormLabel>
+                      <FormLabel>Supported Assets</FormLabel>
                       <FormDescription>
-                        Choose which assets this account can hold
+                        Select which assets this account can hold
                       </FormDescription>
-                      <div className="border rounded-lg p-4 space-y-2 max-h-64 overflow-y-auto">
-                        {availableAssets.length === 0 ? (
-                          <p className="text-sm text-muted-foreground text-center py-4">
-                            No assets available. Please create assets first.
-                          </p>
-                        ) : (
-                          availableAssets.map((asset) => (
-                            <div
+                      {isLoadingAssets ? (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span className="text-sm text-muted-foreground">Loading assets...</span>
+                        </div>
+                      ) : availableAssets.length === 0 ? (
+                        <Alert>
+                          <Info className="h-4 w-4" />
+                          <AlertDescription>
+                            No assets available. Please configure assets first.
+                          </AlertDescription>
+                        </Alert>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                          {availableAssets.map((asset) => (
+                            <FormField
                               key={asset.id}
-                              className={`flex items-center justify-between p-2 rounded-md cursor-pointer transition-colors ${
-                                selectedAssets.includes(asset.id)
-                                  ? 'bg-primary/10 border border-primary'
-                                  : 'hover:bg-muted'
-                              }`}
-                              onClick={() => handleAssetToggle(asset.id)}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div>
-                                  <div className="font-medium">
-                                    {asset.symbol}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {asset.name} • {asset.blockchain}
-                                  </div>
-                                </div>
-                              </div>
-                              <Badge
-                                variant={selectedAssets.includes(asset.id) ? 'default' : 'outline'}
-                              >
-                                {selectedAssets.includes(asset.id) ? 'Selected' : 'Select'}
-                              </Badge>
-                            </div>
-                          ))
-                        )}
-                      </div>
+                              control={form.control}
+                              name="assets"
+                              render={({ field }) => {
+                                const isChecked = field.value?.includes(asset.id);
+                                return (
+                                  <FormItem
+                                    key={asset.id}
+                                    className="flex flex-row items-center space-x-3 space-y-0 border p-3 rounded-lg"
+                                  >
+                                    <FormControl>
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={(e) => {
+                                          const checked = e.target.checked;
+                                          const values = field.value || [];
+                                          if (checked) {
+                                            field.onChange([...values, asset.id]);
+                                          } else {
+                                            field.onChange(values.filter(v => v !== asset.id));
+                                          }
+                                        }}
+                                        className="h-4 w-4"
+                                      />
+                                    </FormControl>
+                                    <div className="space-y-1">
+                                      <p className="text-sm font-medium leading-none">
+                                        {asset.symbol}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {asset.name}
+                                      </p>
+                                    </div>
+                                  </FormItem>
+                                );
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-
-                {selectedAssets.length > 0 && (
-                  <Alert>
-                    <Info className="h-4 w-4" />
-                    <AlertDescription>
-                      Selected {selectedAssets.length} asset{selectedAssets.length > 1 ? 's' : ''} for this account
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                <div className="flex justify-between">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setCurrentStep('basic')}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => setCurrentStep('permissions')}
-                    disabled={selectedAssets.length === 0}
-                  >
-                    Next: Permissions
-                  </Button>
-                </div>
               </TabsContent>
 
-              <TabsContent value="permissions" className="space-y-4 mt-4">
-                {/* Transfer Permission */}
+              {/* Permissions */}
+              <TabsContent value="permissions" className="space-y-4">
                 <FormField
                   control={form.control}
                   name="transfer_permission"
@@ -344,12 +319,12 @@ export default function AccountSetupDialog({ open, onOpenChange, onAccountCreate
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue />
+                            <SelectValue placeholder="Select permission level" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="Owner">Owner Only</SelectItem>
-                          <SelectItem value="Operators">Operators & Above</SelectItem>
+                          <SelectItem value="Operators">Operators</SelectItem>
                           <SelectItem value="Members">All Members</SelectItem>
                         </SelectContent>
                       </Select>
@@ -361,7 +336,6 @@ export default function AccountSetupDialog({ open, onOpenChange, onAccountCreate
                   )}
                 />
 
-                {/* Approval Threshold */}
                 <FormField
                   control={form.control}
                   name="approval_threshold"
@@ -369,11 +343,7 @@ export default function AccountSetupDialog({ open, onOpenChange, onAccountCreate
                     <FormItem>
                       <FormLabel>Approval Threshold</FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          min="1"
-                          {...field}
-                        />
+                        <Input type="number" min="1" {...field} />
                       </FormControl>
                       <FormDescription>
                         Number of approvals required for transfers
@@ -383,16 +353,17 @@ export default function AccountSetupDialog({ open, onOpenChange, onAccountCreate
                   )}
                 />
 
-                {/* MFA Requirement */}
                 <FormField
                   control={form.control}
                   name="require_mfa"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                       <div className="space-y-0.5">
-                        <FormLabel>Require Multi-Factor Authentication</FormLabel>
+                        <FormLabel className="text-base">
+                          Require MFA
+                        </FormLabel>
                         <FormDescription>
-                          Require MFA for all transfers from this account
+                          Require multi-factor authentication for all operations
                         </FormDescription>
                       </div>
                       <FormControl>
@@ -404,23 +375,6 @@ export default function AccountSetupDialog({ open, onOpenChange, onAccountCreate
                     </FormItem>
                   )}
                 />
-
-                <Alert>
-                  <Shield className="h-4 w-4" />
-                  <AlertDescription>
-                    These permission settings can be modified later through governance proposals
-                  </AlertDescription>
-                </Alert>
-
-                <div className="flex justify-between">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setCurrentStep('assets')}
-                  >
-                    Previous
-                  </Button>
-                </div>
               </TabsContent>
             </Tabs>
 
@@ -433,10 +387,7 @@ export default function AccountSetupDialog({ open, onOpenChange, onAccountCreate
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting || currentStep !== 'permissions'}
-              >
+              <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Create Account
               </Button>
