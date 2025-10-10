@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { canisterService } from '../../services/canisterService';
+import { canisterCapabilities } from '../../utils/canisterCapabilities';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
@@ -13,10 +14,12 @@ import {
   Database,
   AlertTriangle,
   Info,
-  CheckCircle
+  CheckCircle,
+  Shield
 } from 'lucide-react';
 
-export default function CanisterSnapshots({ canister, orbitStationId, onRefresh }) {
+export default function CanisterSnapshots({ canister, privileges, orbitStationId, onRefresh }) {
+  const canManage = canisterCapabilities.canManage(privileges);
   const [snapshots, setSnapshots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [takingSnapshot, setTakingSnapshot] = useState(false);
@@ -59,6 +62,11 @@ export default function CanisterSnapshots({ canister, orbitStationId, onRefresh 
   };
 
   const handleTakeSnapshot = async () => {
+    if (!canManage) {
+      setError('You do not have permission to take snapshots of this canister.');
+      return;
+    }
+
     if (snapshots.length >= MAX_SNAPSHOTS) {
       setError(`Maximum number of snapshots (${MAX_SNAPSHOTS}) reached. Please delete old snapshots first.`);
       return;
@@ -195,6 +203,16 @@ export default function CanisterSnapshots({ canister, orbitStationId, onRefresh 
 
   return (
     <div className="space-y-6">
+      {!canManage && (
+        <Alert className="mb-4">
+          <Shield className="h-4 w-4" />
+          <AlertTitle>Read-Only Access</AlertTitle>
+          <AlertDescription>
+            You have read-only access to this canister. To take snapshots or restore, Orbit Station must be a controller.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {error && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
@@ -220,7 +238,7 @@ export default function CanisterSnapshots({ canister, orbitStationId, onRefresh 
             </span>
             <Button
               onClick={handleTakeSnapshot}
-              disabled={takingSnapshot || snapshots.length >= MAX_SNAPSHOTS}
+              disabled={takingSnapshot || snapshots.length >= MAX_SNAPSHOTS || !canManage}
             >
               <Camera className="h-4 w-4 mr-2" />
               {takingSnapshot ? 'Taking Snapshot...' : 'Take Snapshot'}
@@ -308,7 +326,7 @@ export default function CanisterSnapshots({ canister, orbitStationId, onRefresh 
                         size="sm"
                         variant="outline"
                         onClick={() => handleRestoreSnapshot(snapshot)}
-                        disabled={restoringSnapshot === snapshot.id}
+                        disabled={restoringSnapshot === snapshot.id || !canManage}
                       >
                         <RotateCcw className="h-4 w-4 mr-1" />
                         {restoringSnapshot === snapshot.id ? 'Restoring...' : 'Restore'}
@@ -317,7 +335,7 @@ export default function CanisterSnapshots({ canister, orbitStationId, onRefresh 
                         size="sm"
                         variant="outline"
                         onClick={() => handleDeleteSnapshot(snapshot)}
-                        disabled={deletingSnapshot === snapshot.id}
+                        disabled={deletingSnapshot === snapshot.id || !canManage}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

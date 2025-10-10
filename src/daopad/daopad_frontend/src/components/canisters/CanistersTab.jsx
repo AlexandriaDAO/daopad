@@ -10,6 +10,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { Loader2, Plus, Server } from 'lucide-react';
 
 export default function CanistersTab({ token, stationId }) {
+  // Filter out backend canister from management UI
+  const BACKEND_CANISTER = 'lwsav-iiaaa-aaaap-qp2qq-cai';
+
   const [canisters, setCanisters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -42,7 +45,11 @@ export default function CanistersTab({ token, stationId }) {
       );
 
       if (result.success) {
-        setCanisters(result.data || []);
+        // Filter out backend canister from display
+        const filteredCanisters = (result.data || []).filter(
+          c => c.canister_id !== BACKEND_CANISTER
+        );
+        setCanisters(filteredCanisters);
       } else {
         setError(result.error);
       }

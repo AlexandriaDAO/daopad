@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { canisterService } from '../../services/canisterService';
+import { canisterCapabilities } from '../../utils/canisterCapabilities';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Switch } from '../ui/switch';
-import { Alert, AlertDescription } from '../ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import {
   Settings,
   Save,
@@ -17,7 +18,8 @@ import {
   Tag
 } from 'lucide-react';
 
-export default function CanisterSettings({ canister, orbitStationId, onRefresh }) {
+export default function CanisterSettings({ canister, privileges, orbitStationId, onRefresh }) {
+  const canManage = canisterCapabilities.canManage(privileges);
   const [formData, setFormData] = useState({
     name: canister.name || '',
     description: canister.description || '',
@@ -176,6 +178,16 @@ export default function CanisterSettings({ canister, orbitStationId, onRefresh }
 
   return (
     <div className="space-y-6">
+      {!canManage && (
+        <Alert className="mb-4">
+          <Shield className="h-4 w-4" />
+          <AlertTitle>Read-Only Mode</AlertTitle>
+          <AlertDescription>
+            This canister is in read-only mode. Management operations require Orbit Station to be a controller.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {error && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
@@ -197,7 +209,9 @@ export default function CanisterSettings({ canister, orbitStationId, onRefresh }
             Basic Information
           </CardTitle>
           <CardDescription>
-            Update the canister's name, description, and labels
+            {canManage ?
+              'Update the canister\'s name, description, and labels' :
+              'View canister information (read-only)'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -209,6 +223,7 @@ export default function CanisterSettings({ canister, orbitStationId, onRefresh }
               value={formData.name}
               onChange={handleInputChange}
               placeholder="Canister name"
+              disabled={!canManage}
             />
           </div>
 
@@ -221,6 +236,7 @@ export default function CanisterSettings({ canister, orbitStationId, onRefresh }
               onChange={handleInputChange}
               placeholder="Canister description"
               rows={3}
+              disabled={!canManage}
             />
           </div>
 
@@ -235,10 +251,11 @@ export default function CanisterSettings({ canister, orbitStationId, onRefresh }
               value={formData.labels}
               onChange={handleInputChange}
               placeholder="production, backend, api"
+              disabled={!canManage}
             />
           </div>
 
-          <Button onClick={handleSaveMetadata} disabled={saving}>
+          <Button onClick={handleSaveMetadata} disabled={saving || !canManage}>
             <Save className="h-4 w-4 mr-2" />
             Save Metadata
           </Button>
@@ -268,6 +285,7 @@ export default function CanisterSettings({ canister, orbitStationId, onRefresh }
                 value={formData.compute_allocation}
                 onChange={handleInputChange}
                 placeholder="0"
+                disabled={!canManage}
               />
             </div>
 
@@ -282,6 +300,7 @@ export default function CanisterSettings({ canister, orbitStationId, onRefresh }
                 value={formData.memory_allocation}
                 onChange={handleInputChange}
                 placeholder="2147483648"
+                disabled={!canManage}
               />
             </div>
 
@@ -296,6 +315,7 @@ export default function CanisterSettings({ canister, orbitStationId, onRefresh }
                 value={formData.freezing_threshold}
                 onChange={handleInputChange}
                 placeholder="2592000"
+                disabled={!canManage}
               />
             </div>
 
@@ -310,6 +330,7 @@ export default function CanisterSettings({ canister, orbitStationId, onRefresh }
                 value={formData.reserved_cycles_limit}
                 onChange={handleInputChange}
                 placeholder="5000000000000"
+                disabled={!canManage}
               />
             </div>
 
@@ -324,11 +345,12 @@ export default function CanisterSettings({ canister, orbitStationId, onRefresh }
                 value={formData.wasm_memory_limit}
                 onChange={handleInputChange}
                 placeholder="4294967296"
+                disabled={!canManage}
               />
             </div>
           </div>
 
-          <Button onClick={handleUpdateNativeSettings} disabled={saving}>
+          <Button onClick={handleUpdateNativeSettings} disabled={saving || !canManage}>
             <Save className="h-4 w-4 mr-2" />
             Update Settings
           </Button>
@@ -396,6 +418,7 @@ export default function CanisterSettings({ canister, orbitStationId, onRefresh }
             <Button
               variant={(canister.state && 'Active' in canister.state) ? 'outline' : 'default'}
               onClick={handleArchive}
+              disabled={!canManage}
             >
               <Archive className="h-4 w-4 mr-2" />
               {(canister.state && 'Active' in canister.state) ? 'Archive' : 'Unarchive'}
@@ -412,6 +435,7 @@ export default function CanisterSettings({ canister, orbitStationId, onRefresh }
             <Button
               variant="destructive"
               onClick={handleDelete}
+              disabled={!canManage}
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete
