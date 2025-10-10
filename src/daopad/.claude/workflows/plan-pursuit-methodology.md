@@ -68,6 +68,31 @@ You are a **planning agent**. Your job is to:
 
 ## 📋 Planning Workflow
 
+### Step 0: Create Worktree for Feature (FIRST STEP!)
+
+**Before any planning, create an isolated worktree for this feature:**
+
+```bash
+# From main repo
+cd /home/theseus/alexandria/daopad
+git worktree add ../daopad-[FEATURE-NAME] -b feature/[feature-name] master
+cd ../daopad-[FEATURE-NAME]/src/daopad
+
+# Verify isolation
+pwd  # Should show ../daopad-[FEATURE-NAME]/src/daopad
+git branch --show-current  # Should show feature/[feature-name]
+```
+
+**Why create worktree BEFORE planning:**
+- ✅ Plan lives on feature branch (not polluting master)
+- ✅ Plan and implementation stay together
+- ✅ No sync issues between main repo and worktree
+- ✅ Multiple agents can plan in parallel without conflicts
+- ✅ Self-contained feature branches (plan + code)
+- ✅ Abandoned features don't leave orphaned plans in master
+
+**After creating worktree, do ALL research and planning from within the worktree.**
+
 ### Step 1: Research the Codebase (30-60 minutes)
 
 **Read everything relevant BEFORE planning:**
@@ -323,48 +348,59 @@ dfx canister --network ic call lwsav-iiaaa-aaaap-qp2qq-cai <method> '(args)'
 ```markdown
 ## 🚨 MANDATORY: ISOLATION CHECK AND EXECUTION PROMPT
 
+### Context: Worktree Already Created
+
+**This plan was created by the planning agent in an isolated worktree.**
+
+**Location:** `/home/theseus/alexandria/daopad-[FEATURE]/src/daopad`
+**Branch:** `feature/[feature-name]`
+**Plan file:** `FEATURE_NAME_PLAN.md` (in this worktree)
+
 ### Step 0: Verify Isolation (RUN THIS FIRST!)
 
 \`\`\`bash
-# STOP! This check MUST pass before reading further
+# STOP! Verify you are in the correct worktree
 REPO_ROOT=$(git rev-parse --show-toplevel)
-CURRENT_DIR=$(pwd)
+CURRENT_BRANCH=$(git branch --show-current)
 
-if [ "$REPO_ROOT" = "$CURRENT_DIR" ]; then
-    echo "❌ FATAL: You are in the main repository at $CURRENT_DIR"
-    echo "❌ Other agents may be working in parallel here"
-    echo "❌ You MUST create an isolated worktree first:"
+# Check you're NOT in main repo
+if [ "$REPO_ROOT" = "/home/theseus/alexandria/daopad" ]; then
+    echo "❌ FATAL: You are in the MAIN repository"
+    echo "❌ This plan was created in a worktree at:"
+    echo "    /home/theseus/alexandria/daopad-[FEATURE]"
     echo ""
-    echo "Run these commands:"
-    echo "  cd /home/theseus/alexandria/daopad/src/daopad"
-    echo "  git worktree add -b feature/[FEATURE] ../daopad-[FEATURE] master"
-    echo "  cd ../daopad-[FEATURE]/src/daopad"
-    echo ""
-    echo "THEN restart with this plan in the worktree."
+    echo "Navigate to the worktree:"
+    echo "  cd /home/theseus/alexandria/daopad-[FEATURE]/src/daopad"
+    echo "  cat FEATURE_NAME_PLAN.md  # Plan is here"
     exit 1
-else
-    echo "✅ You are isolated in: $CURRENT_DIR"
-    echo "✅ Safe to proceed with implementation"
 fi
+
+# Check you're on the right branch
+if [ "$CURRENT_BRANCH" != "feature/[feature-name]" ]; then
+    echo "❌ WARNING: You are on branch '$CURRENT_BRANCH'"
+    echo "Expected: feature/[feature-name]"
+    echo "Are you in the right worktree?"
+    exit 1
+fi
+
+echo "✅ You are in the correct worktree: $REPO_ROOT"
+echo "✅ On branch: $CURRENT_BRANCH"
+echo "✅ Safe to proceed with implementation"
 \`\`\`
 
 ### Your Execution Prompt
 
 You are an autonomous PR orchestrator implementing [FEATURE].
 
+**NOTE:** The planning agent already created this worktree and this plan. You are continuing work in the same worktree.
+
 EXECUTE THESE STEPS AUTONOMOUSLY (DO NOT ASK FOR PERMISSION):
 
-Step 0 - MANDATORY ISOLATION:
-  # If not already in worktree, create one
-  if [ "$(git rev-parse --show-toplevel)" = "$(pwd)" ]; then
-    cd /home/theseus/alexandria/daopad/src/daopad
-    git worktree add -b feature/[FEATURE] ../daopad-[FEATURE] master
-    cd ../daopad-[FEATURE]/src/daopad
-  fi
-
-  # Verify isolation
-  pwd  # MUST show ../daopad-[FEATURE]/src/daopad
-  git branch --show-current  # MUST show feature/[FEATURE]
+Step 0 - VERIFY ISOLATION (already in worktree):
+  # Verify you're in the right place
+  pwd  # Should show ../daopad-[FEATURE]/src/daopad
+  git branch --show-current  # Should show feature/[feature-name]
+  ls FEATURE_NAME_PLAN.md  # This plan should be here
 
 Step 1 - Implement Feature:
   [Summary of implementation steps from plan]
@@ -480,6 +516,12 @@ Look for similar implementations and follow the same:
 
 ## 📤 Final Output Format
 
+**After creating the plan in the worktree:**
+
+1. **Save the plan file** in the worktree (where you are now)
+2. **Commit the plan to the feature branch**
+3. **Return handoff message**
+
 Your planning session should end with:
 
 ```markdown
@@ -489,22 +531,48 @@ Your planning session should end with:
 
 **Plan Complete:** [Feature Name]
 
-**Document:** `FEATURE_NAME_PLAN.md`
+**Location:** `/home/theseus/alexandria/daopad-[FEATURE]/src/daopad`
+**Branch:** `feature/[feature-name]`
+**Document:** `FEATURE_NAME_PLAN.md` (committed to feature branch)
 
 **Estimated:** [X] hours, [Y] PRs
 
-**Prompt for next agent:**
+**Handoff instructions for implementing agent:**
+
+\`\`\`bash
+# Navigate to the worktree where the plan lives
+cd /home/theseus/alexandria/daopad-[FEATURE]/src/daopad
+
+# Read the plan
+cat FEATURE_NAME_PLAN.md
+
+# Then pursue it
+# (The plan contains the full orchestrator prompt)
+\`\`\`
+
+**Or use this prompt:**
 
 \`\`\`
-Pursue the @FEATURE_NAME_PLAN.md
+cd /home/theseus/alexandria/daopad-[FEATURE]/src/daopad && pursue FEATURE_NAME_PLAN.md
 \`\`\`
 
-**WARNING**: The plan starts with a mandatory isolation check that will EXIT if not in a worktree. The implementing agent MUST follow the embedded orchestrator prompt, not skip to implementation details.
-
-CRITICAL: The plan document starts with a MANDATORY isolation check and embedded orchestrator prompt. The implementing agent should copy the "Your Execution Prompt" section and run it, not read and implement manually.
+**CRITICAL**:
+- Plan is IN the worktree (not main repo)
+- Plan is already committed to feature branch
+- Implementing agent works in SAME worktree
+- Plan and implementation stay together on feature branch
 ```
 
-Then you create the `FEATURE_NAME_PLAN.md` file with ALL the content above.
+**Then:**
+
+1. Create the `FEATURE_NAME_PLAN.md` file with ALL the content
+2. Commit it to the feature branch:
+   ```bash
+   git add FEATURE_NAME_PLAN.md
+   git commit -m "Add implementation plan for [feature]"
+   git push -u origin feature/[feature-name]
+   ```
+3. Return the handoff message above
 
 ---
 
@@ -535,48 +603,70 @@ Add member management feature for Orbit Station integration
 Use @.claude/workflows/plan-pursuit-methodology.md
 ```
 
-**Your Response:**
+**Agent Actions:**
+
+1. **Creates worktree (Step 0):**
+```bash
+cd /home/theseus/alexandria/daopad
+git worktree add ../daopad-member-mgmt -b feature/member-management master
+cd ../daopad-member-mgmt/src/daopad
+```
+
+2. **Researches codebase extensively...**
+
+3. **Creates plan** `MEMBER_MANAGEMENT_PLAN.md` in worktree
+
+4. **Commits plan:**
+```bash
+git add MEMBER_MANAGEMENT_PLAN.md
+git commit -m "Add implementation plan for member management"
+git push -u origin feature/member-management
+```
+
+5. **Responds with handoff:**
 
 ```markdown
-I'll create an exhaustive plan for member management feature.
-
-[You research the codebase extensively...]
-
 ✅ Plan Complete: Member Management Feature
 
-Created: `MEMBER_MANAGEMENT_PLAN.md`
+Location: /home/theseus/alexandria/daopad-member-mgmt/src/daopad
+Branch: feature/member-management
+Document: MEMBER_MANAGEMENT_PLAN.md (committed)
+
 - Current state analyzed (backend + frontend)
 - Implementation strategy defined
 - Test requirements specified
 - Estimated: 5 hours, 2 PRs
 
-**Prompt for implementing agent:**
+**Handoff for implementing agent:**
 
-\`\`\`
-Pursue the @MEMBER_MANAGEMENT_PLAN.md
-\`\`\`
+cd /home/theseus/alexandria/daopad-member-mgmt/src/daopad && pursue MEMBER_MANAGEMENT_PLAN.md
+
+🛑 PLANNING AGENT - YOUR JOB IS DONE
 ```
 
-**The MEMBER_MANAGEMENT_PLAN.md file contains:**
+**The MEMBER_MANAGEMENT_PLAN.md file (in worktree) contains:**
 - All research findings
 - Complete implementation details for backend and frontend
 - Testing requirements with mainnet deployment
 - Candid extraction and declaration sync steps
-- Reference to autonomous-pr-orchestrator.md
+- Embedded orchestrator prompt
 - Everything implementing agent needs
 
 ---
 
 ## 🔑 Key Principles
 
-1. **Be exhaustive** - Better too much detail than too little
-2. **Use pseudocode** - Implementing agent writes real code
-3. **Don't guess** - Test and verify everything with dfx
-4. **Show file structure** - Before/after is crucial for both backend and frontend
-5. **Include build steps** - Candid extraction and declaration sync are critical
-6. **Estimate scope** - LOC and time help set expectations
-7. **Embed orchestrator** - Don't reference it, EMBED the full prompt with isolation check
-8. **Think, don't implement** - You're the planner, not the builder
+1. **Create worktree FIRST** - Before any planning, isolate your work
+2. **Plan lives with code** - Create plan in worktree (not main repo)
+3. **Be exhaustive** - Better too much detail than too little
+4. **Use pseudocode** - Implementing agent writes real code
+5. **Don't guess** - Test and verify everything with dfx
+6. **Show file structure** - Before/after is crucial for both backend and frontend
+7. **Include build steps** - Candid extraction and declaration sync are critical
+8. **Estimate scope** - LOC and time help set expectations
+9. **Embed orchestrator** - Don't reference it, EMBED the full prompt with isolation check
+10. **Commit the plan** - Push to feature branch before handing off
+11. **Think, don't implement** - You're the planner, not the builder
 
 ---
 
@@ -599,38 +689,49 @@ Those are the implementing agent's job.
 ```
 Planning Agent (Any conversation, any context):
   Input: Feature request
-  Process: Research + think + document
-  Output: Exhaustive plan + simple prompt
+  Process:
+    1. Create isolated worktree
+    2. Research + think + document IN WORKTREE
+    3. Commit plan to feature branch
+  Output: Plan on feature branch + handoff instructions
   🛑 THEN STOPS (does not implement)
 
-Fresh Implementing Agent (New conversation, fresh context):
-  Input: Simple prompt → reads plan
+Fresh Implementing Agent (New conversation, same worktree):
+  Input: Navigate to worktree → read plan
   Process: Execute using orchestrator workflow
-  Output: Working feature on mainnet
+  Output: Working feature on mainnet + PR with plan + implementation
 ```
 
 **Benefits:**
 - Planning agent can use lots of context researching
 - Implementing agent starts fresh (no context pollution)
 - Plan is complete (implementing agent doesn't need to ask questions)
+- Plan and implementation live together on feature branch
+- No master pollution with unimplemented plans
+- Multiple agents can plan in parallel without conflicts
+- Self-contained feature branches
 - Reusable across ANY feature/project
 
 ---
 
 ## 🛑 FINAL INSTRUCTIONS: When You're Done Planning
 
-Your final message should be:
+**After saving and committing the plan to the feature branch**, your final message should be:
 
 ```markdown
 ✅ Plan Complete: [Feature Name]
 
-**Document:** `[PLAN_NAME].md`
+**Location:** `/home/theseus/alexandria/daopad-[FEATURE]/src/daopad`
+**Branch:** `feature/[feature-name]`
+**Document:** `[PLAN_NAME].md` (committed to feature branch)
 
 **Estimated:** [X] hours, [Y] PRs
 
-**Handoff prompt for fresh agent:**
+**Handoff for implementing agent:**
 
-Pursue @[PLAN_NAME].md
+\`\`\`bash
+cd /home/theseus/alexandria/daopad-[FEATURE]/src/daopad && pursue [PLAN_NAME].md
+\`\`\`
 
 ---
 
@@ -638,13 +739,17 @@ Pursue @[PLAN_NAME].md
 
 DO NOT:
 - ❌ Implement code
-- ❌ Make edits
-- ❌ Create PRs
+- ❌ Make additional edits beyond the plan
+- ❌ Create PRs (that's implementing agent's job)
 - ❌ Deploy
 - ❌ Ask "should I continue?" and then execute
 - ❌ Use ExitPlanMode and then implement
 
-The implementing agent will execute this plan in a fresh conversation.
+The implementing agent will:
+1. Navigate to the worktree
+2. Read the plan
+3. Execute the plan
+4. Create PR with both plan + implementation
 
 **🛑 END CONVERSATION HERE 🛑**
 ```
@@ -656,9 +761,9 @@ The implementing agent will execute this plan in a fresh conversation.
 **Still DO NOT implement!** Respond:
 
 ```
-Thank you! The plan is complete and ready for a fresh implementing agent.
+Thank you! The plan is committed to the feature branch and ready for implementation.
 
-Start a new conversation and use:
+The implementing agent should navigate to the worktree and pursue the plan:
 
 Pursue @[PLAN_NAME].md
 
@@ -697,16 +802,33 @@ Proper handoff:
 Plan member management for Orbit Station using @.claude/workflows/plan-pursuit-methodology.md
 ```
 
-**Agent researches, creates plan, responds:**
+**Agent (Step 0):** Creates worktree
+```bash
+cd /home/theseus/alexandria/daopad
+git worktree add ../daopad-member-mgmt -b feature/member-management master
+cd ../daopad-member-mgmt/src/daopad
+```
+
+**Agent:** Researches, creates plan, commits it:
+```bash
+# Create MEMBER_MANAGEMENT_PLAN.md in worktree
+git add MEMBER_MANAGEMENT_PLAN.md
+git commit -m "Add implementation plan for member management"
+git push -u origin feature/member-management
+```
+
+**Agent responds:**
 ```
 ✅ Plan Complete: Member Management for Orbit Station
 
-Document: MEMBER_MANAGEMENT_PLAN.md
+Location: /home/theseus/alexandria/daopad-member-mgmt/src/daopad
+Branch: feature/member-management
+Document: MEMBER_MANAGEMENT_PLAN.md (committed)
 Estimated: 5 hours, 2 PRs
 
-Handoff prompt for fresh agent:
+Handoff for implementing agent:
 
-Pursue @MEMBER_MANAGEMENT_PLAN.md
+cd /home/theseus/alexandria/daopad-member-mgmt/src/daopad && pursue MEMBER_MANAGEMENT_PLAN.md
 
 ---
 
@@ -717,12 +839,16 @@ Pursue @MEMBER_MANAGEMENT_PLAN.md
 🛑 END CONVERSATION HERE 🛑
 ```
 
-**User exits plan mode, starts new conversation:**
+**User exits plan mode, starts new conversation in the worktree:**
 ```
-Pursue @MEMBER_MANAGEMENT_PLAN.md
+cd /home/theseus/alexandria/daopad-member-mgmt/src/daopad
+```
+Then in Claude:
+```
+pursue MEMBER_MANAGEMENT_PLAN.md
 ```
 
-**Fresh agent implements autonomously** ✅
+**Fresh agent implements autonomously in same worktree** ✅
 
 ### Example: Without Plan Mode (Fallback)
 
@@ -731,16 +857,20 @@ Pursue @MEMBER_MANAGEMENT_PLAN.md
 Plan the treasury transfer feature using @.claude/workflows/plan-pursuit-methodology.md
 ```
 
-**Agent researches, creates plan, responds:**
+**Agent (Step 0):** Creates worktree and navigates to it
+
+**Agent researches, creates plan, commits, responds:**
 ```
 ✅ Plan Complete: Treasury Transfer Feature
 
-Document: TREASURY_TRANSFER_PLAN.md
+Location: /home/theseus/alexandria/daopad-treasury/src/daopad
+Branch: feature/treasury-transfer
+Document: TREASURY_TRANSFER_PLAN.md (committed)
 Estimated: 4 hours, 1 PR
 
-Handoff prompt for fresh agent:
+Handoff for implementing agent:
 
-Pursue @TREASURY_TRANSFER_PLAN.md
+cd /home/theseus/alexandria/daopad-treasury/src/daopad && pursue TREASURY_TRANSFER_PLAN.md
 
 ---
 
@@ -748,12 +878,16 @@ Pursue @TREASURY_TRANSFER_PLAN.md
 🛑 END CONVERSATION HERE 🛑
 ```
 
-**User (hopefully!) starts new conversation:**
+**User (hopefully!) starts new conversation in worktree:**
+```bash
+cd /home/theseus/alexandria/daopad-treasury/src/daopad
 ```
-Pursue @TREASURY_TRANSFER_PLAN.md
+Then in Claude:
+```
+pursue TREASURY_TRANSFER_PLAN.md
 ```
 
-**Fresh agent implements** ✅
+**Fresh agent implements in same worktree** ✅
 
 **Risk:** If user says "looks good, proceed" in same conversation, agent might implement despite warnings. Plan Mode eliminates this risk.
 
@@ -765,20 +899,34 @@ When user says: "Use plan-pursuit-methodology"
 
 ### Your Workflow:
 
+0. **Create worktree for the feature** (FIRST STEP!)
+   ```bash
+   cd /home/theseus/alexandria/daopad
+   git worktree add ../daopad-[FEATURE] -b feature/[feature-name] master
+   cd ../daopad-[FEATURE]/src/daopad
+   ```
 1. Ask clarifying questions (if needed)
 2. Research codebase exhaustively (Read, Grep, both backend and frontend)
-3. Create exhaustive plan document
-4. Return simple prompt: "Pursue @plan_document.md"
-5. **🛑 STOP - Do not implement**
+3. Create exhaustive plan document **IN THE WORKTREE**
+4. Commit plan to feature branch
+   ```bash
+   git add [PLAN_NAME].md
+   git commit -m "Add implementation plan for [feature]"
+   git push -u origin feature/[feature-name]
+   ```
+5. Return handoff message with worktree path
+6. **🛑 STOP - Do not implement**
 
 ### If in Plan Mode:
 - User will exit plan mode
-- User will start fresh conversation
+- User will navigate to worktree
+- User will start fresh conversation there
 - Implementing agent will execute
 
 ### If NOT in Plan Mode:
+- User should navigate to worktree
 - User should start fresh conversation
-- If user says "go ahead" → redirect to fresh conversation
+- If user says "go ahead" → redirect to worktree + fresh conversation
 - Do not implement under any circumstances
 
 **START PLANNING.**
