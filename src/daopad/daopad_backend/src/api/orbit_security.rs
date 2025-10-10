@@ -82,63 +82,92 @@ impl Default for RiskWeights {
     }
 }
 
-// ===== MAIN ORCHESTRATOR =====
+// ===== CATEGORY-BASED ENDPOINTS (8 separate lightweight endpoints) =====
 
+/// Check admin control layer: admin count, backend admin status, operator group size
 #[ic_cdk::update]
-pub async fn perform_security_check(station_id: Principal) -> Result<EnhancedSecurityDashboard, String> {
+pub async fn check_admin_control(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
     let backend_principal = ic_cdk::id();
-    let mut all_checks = Vec::new();
 
-    // Fetch all data sequentially (IC doesn't support tokio::join!)
-    let users_result = fetch_users(station_id).await;
-    let perms_result = fetch_permissions(station_id).await;
-    let policies_result = fetch_policies(station_id).await;
-    let system_result = fetch_system_info(station_id).await;
+    let users_data = fetch_users(station_id).await.map_err(|e| {
+        format!("Failed to fetch users: {}", e)
+    })?;
 
-    // Extract data or create error checks
-    let users_data = match users_result {
-        Ok(data) => data,
-        Err(e) => {
-            all_checks.push(create_error_check("Admin Control", "User Management", Severity::Critical, &e));
-            return build_dashboard(station_id, all_checks);
-        }
-    };
+    Ok(check_admin_control_layer(&users_data, backend_principal))
+}
 
-    let perms_data = match perms_result {
-        Ok(data) => data,
-        Err(e) => {
-            all_checks.push(create_error_check("Permission Analysis", "Permissions", Severity::High, &e));
-            return build_dashboard(station_id, all_checks);
-        }
-    };
+/// Check treasury control: account transfers, asset management, treasury permissions
+#[ic_cdk::update]
+pub async fn check_treasury_control(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
+    let perms_data = fetch_permissions(station_id).await.map_err(|e| {
+        format!("Failed to fetch permissions: {}", e)
+    })?;
 
-    let policies_data = match policies_result {
-        Ok(data) => data,
-        Err(e) => {
-            all_checks.push(create_error_check("Request Policies", "Policies", Severity::Critical, &e));
-            return build_dashboard(station_id, all_checks);
-        }
-    };
+    Ok(check_treasury_control_impl(&perms_data.permissions, &perms_data.user_groups))
+}
 
-    let system_data = match system_result {
-        Ok(data) => data,
-        Err(e) => {
-            all_checks.push(create_error_check("System Settings", "Configuration", Severity::Medium, &e));
-            return build_dashboard(station_id, all_checks);
-        }
-    };
+/// Check governance permissions: who can change permissions, policies, users, groups
+#[ic_cdk::update]
+pub async fn check_governance_permissions(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
+    let perms_data = fetch_permissions(station_id).await.map_err(|e| {
+        format!("Failed to fetch permissions: {}", e)
+    })?;
 
-    // Run comprehensive security checks
-    all_checks.extend(check_admin_control_layer(&users_data, backend_principal));
-    all_checks.extend(check_treasury_control(&perms_data.permissions, &perms_data.user_groups));
-    all_checks.extend(check_governance_permissions(&perms_data.permissions, &perms_data.user_groups));
-    all_checks.extend(check_proposal_policies(&policies_data));
-    all_checks.extend(check_external_canister_control(&perms_data.permissions, &perms_data.user_groups));
-    all_checks.extend(check_asset_management(&perms_data.permissions, &perms_data.user_groups));
-    all_checks.extend(check_system_configuration(&system_data, &perms_data.permissions, &perms_data.user_groups));
-    all_checks.extend(check_operational_permissions(&perms_data.permissions));
+    Ok(check_governance_permissions_impl(&perms_data.permissions, &perms_data.user_groups))
+}
 
-    build_dashboard(station_id, all_checks)
+/// Check proposal policies: auto-approvals, bypasses, quorum settings
+#[ic_cdk::update]
+pub async fn check_proposal_policies(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
+    let policies_data = fetch_policies(station_id).await.map_err(|e| {
+        format!("Failed to fetch policies: {}", e)
+    })?;
+
+    Ok(check_proposal_policies_impl(&policies_data))
+}
+
+/// Check external canister control: create, change, fund permissions
+#[ic_cdk::update]
+pub async fn check_external_canisters(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
+    let perms_data = fetch_permissions(station_id).await.map_err(|e| {
+        format!("Failed to fetch permissions: {}", e)
+    })?;
+
+    Ok(check_external_canister_control_impl(&perms_data.permissions, &perms_data.user_groups))
+}
+
+/// Check asset management: asset create/update/delete permissions
+#[ic_cdk::update]
+pub async fn check_asset_management(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
+    let perms_data = fetch_permissions(station_id).await.map_err(|e| {
+        format!("Failed to fetch permissions: {}", e)
+    })?;
+
+    Ok(check_asset_management_impl(&perms_data.permissions, &perms_data.user_groups))
+}
+
+/// Check system configuration: upgrade access, disaster recovery, system info management
+#[ic_cdk::update]
+pub async fn check_system_configuration(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
+    let system_data = fetch_system_info(station_id).await.map_err(|e| {
+        format!("Failed to fetch system info: {}", e)
+    })?;
+
+    let perms_data = fetch_permissions(station_id).await.map_err(|e| {
+        format!("Failed to fetch permissions: {}", e)
+    })?;
+
+    Ok(check_system_configuration_impl(&system_data, &perms_data.permissions, &perms_data.user_groups))
+}
+
+/// Check operational permissions: request visibility, notifications, etc.
+#[ic_cdk::update]
+pub async fn check_operational_permissions(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
+    let perms_data = fetch_permissions(station_id).await.map_err(|e| {
+        format!("Failed to fetch permissions: {}", e)
+    })?;
+
+    Ok(check_operational_permissions_impl(&perms_data.permissions))
 }
 
 // ===== DATA FETCHING =====
@@ -317,7 +346,7 @@ fn check_admin_control_layer(users: &Vec<UserDTO>, backend_principal: Principal)
 
 // ===== CHECK CATEGORY 2: TREASURY CONTROL =====
 
-fn check_treasury_control(
+fn check_treasury_control_impl(
     permissions: &Vec<Permission>,
     user_groups: &Vec<crate::types::orbit::UserGroup>
 ) -> Vec<SecurityCheck> {
@@ -376,7 +405,7 @@ fn check_treasury_control(
 
 // ===== CHECK CATEGORY 3: GOVERNANCE PERMISSIONS =====
 
-fn check_governance_permissions(
+fn check_governance_permissions_impl(
     permissions: &Vec<Permission>,
     user_groups: &Vec<crate::types::orbit::UserGroup>
 ) -> Vec<SecurityCheck> {
@@ -459,7 +488,7 @@ fn check_governance_permissions(
 
 // ===== CHECK CATEGORY 4: PROPOSAL POLICIES =====
 
-fn check_proposal_policies(policies: &Vec<crate::types::orbit::RequestPolicy>) -> Vec<SecurityCheck> {
+fn check_proposal_policies_impl(policies: &Vec<crate::types::orbit::RequestPolicy>) -> Vec<SecurityCheck> {
     let mut checks = Vec::new();
     let mut auto_approved_count = 0;
     let mut bypass_count = 0;
@@ -531,7 +560,7 @@ fn check_proposal_policies(policies: &Vec<crate::types::orbit::RequestPolicy>) -
 
 // ===== CHECK CATEGORY 5: EXTERNAL CANISTER CONTROL =====
 
-fn check_external_canister_control(
+fn check_external_canister_control_impl(
     permissions: &Vec<Permission>,
     user_groups: &Vec<crate::types::orbit::UserGroup>
 ) -> Vec<SecurityCheck> {
@@ -578,7 +607,7 @@ fn check_external_canister_control(
 
 // ===== CHECK CATEGORY 6: ASSET MANAGEMENT =====
 
-fn check_asset_management(
+fn check_asset_management_impl(
     permissions: &Vec<Permission>,
     user_groups: &Vec<crate::types::orbit::UserGroup>
 ) -> Vec<SecurityCheck> {
@@ -625,7 +654,7 @@ fn check_asset_management(
 
 // ===== CHECK CATEGORY 7: SYSTEM CONFIGURATION =====
 
-fn check_system_configuration(
+fn check_system_configuration_impl(
     system: &crate::types::orbit::SystemInfo,
     permissions: &Vec<Permission>,
     user_groups: &Vec<crate::types::orbit::UserGroup>
@@ -690,7 +719,7 @@ fn check_system_configuration(
 
 // ===== CHECK CATEGORY 8: OPERATIONAL PERMISSIONS =====
 
-fn check_operational_permissions(permissions: &Vec<Permission>) -> Vec<SecurityCheck> {
+fn check_operational_permissions_impl(permissions: &Vec<Permission>) -> Vec<SecurityCheck> {
     let mut checks = Vec::new();
 
     // Check Request.Read permissions (visibility)
