@@ -12,6 +12,84 @@
 
 ---
 
+## 🚨 MANDATORY: ISOLATION CHECK AND EXECUTION PROMPT
+
+### Step 0: Verify Isolation (RUN THIS FIRST!)
+
+```bash
+# STOP! This check MUST pass before reading further
+REPO_ROOT=$(git rev-parse --show-toplevel)
+CURRENT_DIR=$(pwd)
+
+if [ "$REPO_ROOT" = "$CURRENT_DIR" ]; then
+    echo "❌ FATAL: You are in the main repository at $CURRENT_DIR"
+    echo "❌ Other agents may be working in parallel here"
+    echo "❌ You MUST create an isolated worktree first:"
+    echo ""
+    echo "Run these commands:"
+    echo "  cd /home/theseus/alexandria/daopad/src/daopad"
+    echo "  git worktree add -b feature/security-tab-refactor ../daopad-security master"
+    echo "  cd ../daopad-security/src/daopad"
+    echo ""
+    echo "THEN restart with this plan in the worktree."
+    exit 1
+else
+    echo "✅ You are isolated in: $CURRENT_DIR"
+    echo "✅ Safe to proceed with implementation"
+fi
+```
+
+### Your Execution Prompt
+
+You are an autonomous PR orchestrator implementing comprehensive security tab refactoring.
+
+EXECUTE THESE STEPS AUTONOMOUSLY (DO NOT ASK FOR PERMISSION):
+
+Step 0 - MANDATORY ISOLATION:
+  # If not already in worktree, create one
+  if [ "$(git rev-parse --show-toplevel)" = "$(pwd)" ]; then
+    cd /home/theseus/alexandria/daopad/src/daopad
+    git worktree add -b feature/security-tab-refactor ../daopad-security master
+    cd ../daopad-security/src/daopad
+  fi
+
+  # Verify isolation
+  pwd  # MUST show ../daopad-security/src/daopad
+  git branch --show-current  # MUST show feature/security-tab-refactor
+
+Step 1 - Implement PR #1 (Category-Based Endpoints):
+  # Follow implementation plan section "PR #1: Refactor to Category-Based Endpoints"
+  # Refactor orbit_security.rs to expose 8 separate check endpoints
+  # Keep all existing check logic, just split into separate methods
+
+Step 2 - Build and Deploy:
+  # Backend
+  cargo build --target wasm32-unknown-unknown --release -p daopad_backend --locked
+  candid-extractor /home/theseus/alexandria/daopad/target/wasm32-unknown-unknown/release/daopad_backend.wasm > daopad_backend/daopad_backend.did
+  ./deploy.sh --network ic --backend-only
+
+  # CRITICAL: Sync declarations
+  cp -r ../../.dfx/ic/canisters/daopad_backend/* daopad_frontend/src/declarations/daopad_backend/
+
+Step 3 - Commit and Push:
+  git add -A
+  git commit -m "Refactor security checks to category-based endpoints to avoid IC heap limits"
+  git push -u origin feature/security-tab-refactor
+
+Step 4 - Create PR:
+  gh pr create --title "Refactor Security Checks to Category-Based Endpoints" --body "Splits monolithic perform_security_check into 8 lightweight endpoints to avoid IC heap memory limits. See COMPREHENSIVE_SECURITY_TAB_PLAN.md for details."
+
+YOUR CRITICAL RULES:
+- You MUST work in ../daopad-security/src/daopad (NOT main repo)
+- Other agents ARE working in parallel - isolation is MANDATORY
+- Run candid-extractor after backend changes (use absolute path to target/)
+- Sync declarations after backend changes
+- ONLY STOP when: approved or critical error
+
+START NOW with Step 0.
+
+---
+
 ## 🎯 Problem Statement
 
 ### What's Wrong Now
@@ -1085,8 +1163,12 @@ dfx canister --network ic call lwsav-iiaaa-aaaap-qp2qq-cai perform_security_chec
 **Prompt for implementing agent:**
 
 ```
-Pursue the @COMPREHENSIVE_SECURITY_TAB_PLAN.md - Refactor the existing monolithic security check into 8 category-based endpoints to avoid IC heap limits, then implement progressive loading frontend.
+Pursue the @COMPREHENSIVE_SECURITY_TAB_PLAN.md
 ```
+
+**WARNING**: The plan starts with a mandatory isolation check that will EXIT if not in a worktree. The implementing agent MUST follow the embedded orchestrator prompt, not skip to implementation details.
+
+**CRITICAL**: The plan document starts with a MANDATORY isolation check and embedded orchestrator prompt. The implementing agent should copy the "Your Execution Prompt" section and run it, not read and implement manually.
 
 **Key Files:**
 - Backend: `daopad_backend/src/api/orbit_security.rs` (already has all logic, just needs refactoring)

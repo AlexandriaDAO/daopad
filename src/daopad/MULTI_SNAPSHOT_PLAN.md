@@ -6,6 +6,90 @@ Enable full 10-snapshot support for DAOPad canisters by exposing Orbit Station's
 ## Key Discovery
 **CRITICAL:** Orbit Station ALREADY supports 10 snapshots in the backend! The limitation to 1 snapshot is only in Orbit's frontend Vue component. This makes our implementation much simpler than initially anticipated.
 
+---
+
+## 🚨 MANDATORY: ISOLATION CHECK AND EXECUTION PROMPT
+
+### Step 0: Verify Isolation (RUN THIS FIRST!)
+
+```bash
+# STOP! This check MUST pass before reading further
+REPO_ROOT=$(git rev-parse --show-toplevel)
+CURRENT_DIR=$(pwd)
+
+if [ "$REPO_ROOT" = "$CURRENT_DIR" ]; then
+    echo "❌ FATAL: You are in the main repository at $CURRENT_DIR"
+    echo "❌ Other agents may be working in parallel here"
+    echo "❌ You MUST create an isolated worktree first:"
+    echo ""
+    echo "Run these commands:"
+    echo "  cd /home/theseus/alexandria/daopad/src/daopad"
+    echo "  git worktree add -b feature/multi-snapshot ../daopad-snapshot master"
+    echo "  cd ../daopad-snapshot/src/daopad"
+    echo ""
+    echo "THEN restart with this plan in the worktree."
+    exit 1
+else
+    echo "✅ You are isolated in: $CURRENT_DIR"
+    echo "✅ Safe to proceed with implementation"
+fi
+```
+
+### Your Execution Prompt
+
+You are an autonomous PR orchestrator implementing multi-snapshot support.
+
+EXECUTE THESE STEPS AUTONOMOUSLY (DO NOT ASK FOR PERMISSION):
+
+Step 0 - MANDATORY ISOLATION:
+  # If not already in worktree, create one
+  if [ "$(git rev-parse --show-toplevel)" = "$(pwd)" ]; then
+    cd /home/theseus/alexandria/daopad/src/daopad
+    git worktree add -b feature/multi-snapshot ../daopad-snapshot master
+    cd ../daopad-snapshot/src/daopad
+  fi
+
+  # Verify isolation
+  pwd  # MUST show ../daopad-snapshot/src/daopad
+  git branch --show-current  # MUST show feature/multi-snapshot
+
+Step 1 - Implement Phase 1 (Multi-Snapshot Support):
+  # Follow implementation plan section "Phase 1: Enable Multi-Snapshot Support"
+  # Add get_canister_snapshots() to backend
+  # Fix listSnapshots() in frontend service
+  # Update CanisterSnapshots component
+
+Step 2 - Build and Deploy:
+  # Backend
+  cargo build --target wasm32-unknown-unknown --release -p daopad_backend --locked
+  candid-extractor /home/theseus/alexandria/daopad/target/wasm32-unknown-unknown/release/daopad_backend.wasm > daopad_backend/daopad_backend.did
+  ./deploy.sh --network ic --backend-only
+
+  # CRITICAL: Sync declarations
+  cp -r ../../.dfx/ic/canisters/daopad_backend/* daopad_frontend/src/declarations/daopad_backend/
+
+  # Frontend
+  ./deploy.sh --network ic --frontend-only
+
+Step 3 - Commit and Push:
+  git add -A
+  git commit -m "Enable full 10-snapshot support for DAOPad canisters"
+  git push -u origin feature/multi-snapshot
+
+Step 4 - Create PR:
+  gh pr create --title "Enable Multi-Snapshot Management (10 snapshots)" --body "Exposes Orbit Station's existing 10-snapshot capability. Adds get_canister_snapshots backend method and fixes frontend listSnapshots service. See MULTI_SNAPSHOT_PLAN.md for details."
+
+YOUR CRITICAL RULES:
+- You MUST work in ../daopad-snapshot/src/daopad (NOT main repo)
+- Other agents ARE working in parallel - isolation is MANDATORY
+- Run candid-extractor after backend changes (use absolute path to target/)
+- Sync declarations after backend changes
+- ONLY STOP when: approved or critical error
+
+START NOW with Step 0.
+
+---
+
 ## Current State
 
 ### File Tree (Relevant Sections)
@@ -490,4 +574,21 @@ dfx canister --network ic call $TEST_STATION canister_snapshots '(record { canis
 Pursue the @MULTI_SNAPSHOT_PLAN.md
 ```
 
-That's it! The plan document contains all details and references the PR orchestrator.
+**WARNING**: The plan starts with a mandatory isolation check that will EXIT if not in a worktree. The implementing agent MUST follow the embedded orchestrator prompt, not skip to implementation details.
+
+**CRITICAL**: The plan document starts with a MANDATORY isolation check and embedded orchestrator prompt. The implementing agent should copy the "Your Execution Prompt" section and run it, not read and implement manually.
+
+---
+
+## 🛑 PLANNING AGENT - YOUR JOB IS DONE
+
+DO NOT:
+- ❌ Implement code
+- ❌ Make edits
+- ❌ Create PRs
+- ❌ Deploy
+- ❌ Ask "should I continue?" and then execute
+
+The implementing agent will execute this plan in a fresh conversation.
+
+**🛑 END CONVERSATION HERE 🛑**

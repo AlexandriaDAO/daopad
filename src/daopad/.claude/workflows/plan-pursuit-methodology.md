@@ -316,24 +316,89 @@ dfx canister --network ic call lwsav-iiaaa-aaaap-qp2qq-cai <method> '(args)'
 - **Total:** 5-7 hours
 ```
 
-### Step 6: Reference the Orchestrator
+### Step 6: Embed Mandatory Isolation Check and Orchestrator
 
-**Critical section in your plan:**
+**Your plan MUST start with an embedded orchestrator prompt, not just reference it:**
 
 ```markdown
-## How to Execute This Plan
+## 🚨 MANDATORY: ISOLATION CHECK AND EXECUTION PROMPT
 
-This plan should be executed using the **PR Orchestration workflow**.
+### Step 0: Verify Isolation (RUN THIS FIRST!)
 
-**Implementing agent: Read @.claude/prompts/autonomous-pr-orchestrator.md**
+\`\`\`bash
+# STOP! This check MUST pass before reading further
+REPO_ROOT=$(git rev-parse --show-toplevel)
+CURRENT_DIR=$(pwd)
 
-That document explains:
-- Creating git worktrees for isolated work
-- Building and deploying changes (backend and frontend)
-- Handling candid extraction and declaration sync
-- Creating PRs with proper descriptions
-- Iterating on review feedback
-- Merging when approved
+if [ "$REPO_ROOT" = "$CURRENT_DIR" ]; then
+    echo "❌ FATAL: You are in the main repository at $CURRENT_DIR"
+    echo "❌ Other agents may be working in parallel here"
+    echo "❌ You MUST create an isolated worktree first:"
+    echo ""
+    echo "Run these commands:"
+    echo "  cd /home/theseus/alexandria/daopad/src/daopad"
+    echo "  git worktree add -b feature/[FEATURE] ../daopad-[FEATURE] master"
+    echo "  cd ../daopad-[FEATURE]/src/daopad"
+    echo ""
+    echo "THEN restart with this plan in the worktree."
+    exit 1
+else
+    echo "✅ You are isolated in: $CURRENT_DIR"
+    echo "✅ Safe to proceed with implementation"
+fi
+\`\`\`
+
+### Your Execution Prompt
+
+You are an autonomous PR orchestrator implementing [FEATURE].
+
+EXECUTE THESE STEPS AUTONOMOUSLY (DO NOT ASK FOR PERMISSION):
+
+Step 0 - MANDATORY ISOLATION:
+  # If not already in worktree, create one
+  if [ "$(git rev-parse --show-toplevel)" = "$(pwd)" ]; then
+    cd /home/theseus/alexandria/daopad/src/daopad
+    git worktree add -b feature/[FEATURE] ../daopad-[FEATURE] master
+    cd ../daopad-[FEATURE]/src/daopad
+  fi
+
+  # Verify isolation
+  pwd  # MUST show ../daopad-[FEATURE]/src/daopad
+  git branch --show-current  # MUST show feature/[FEATURE]
+
+Step 1 - Implement Feature:
+  [Summary of implementation steps from plan]
+
+Step 2 - Build and Deploy:
+  # Backend (if modified):
+  cargo build --target wasm32-unknown-unknown --release -p daopad_backend --locked
+  candid-extractor target/wasm32-unknown-unknown/release/daopad_backend.wasm > daopad_backend/daopad_backend.did
+  ./deploy.sh --network ic --backend-only
+
+  # CRITICAL: Sync declarations
+  cp -r ../../.dfx/ic/canisters/daopad_backend/* daopad_frontend/src/declarations/daopad_backend/
+
+  # Frontend (if modified):
+  ./deploy.sh --network ic --frontend-only
+
+Step 3 - Commit and Push:
+  git add -A
+  git commit -m "[Feature description]"
+  git push -u origin feature/[FEATURE]
+
+Step 4 - Create PR:
+  gh pr create --title "[Title]" --body "[Detailed description]"
+
+YOUR CRITICAL RULES:
+- You MUST work in ../daopad-[FEATURE]/src/daopad (NOT main repo)
+- Other agents ARE working in parallel - isolation is MANDATORY
+- After sleep: IMMEDIATELY continue (no "should I check?" questions)
+- Run candid-extractor after backend changes
+- Sync declarations after backend changes
+- ONLY STOP when: approved or critical error
+
+START NOW with Step 0.
+\`\`\`
 
 ### Checkpoint Strategy
 
@@ -356,6 +421,13 @@ Choose based on feature complexity and review feedback.
 
 ```markdown
 ## Critical Implementation Notes
+
+### 🚨 ISOLATION IS MANDATORY
+**The implementing agent MUST work in an isolated worktree because:**
+- Other agents are working in parallel in the main repo
+- File changes from other agents will corrupt your work
+- Git operations by other agents will change your files
+- The orchestrator prompt above ENFORCES this with exit checks
 
 ### DAOPad-Specific Requirements
 
@@ -427,7 +499,9 @@ Your planning session should end with:
 Pursue the @FEATURE_NAME_PLAN.md
 \`\`\`
 
-That's it! The plan document contains all details and references the PR orchestrator.
+**WARNING**: The plan starts with a mandatory isolation check that will EXIT if not in a worktree. The implementing agent MUST follow the embedded orchestrator prompt, not skip to implementation details.
+
+CRITICAL: The plan document starts with a MANDATORY isolation check and embedded orchestrator prompt. The implementing agent should copy the "Your Execution Prompt" section and run it, not read and implement manually.
 ```
 
 Then you create the `FEATURE_NAME_PLAN.md` file with ALL the content above.
@@ -446,7 +520,8 @@ Before returning prompt, verify your plan has:
 - [ ] **Candid extraction** - Required for backend changes
 - [ ] **Declaration sync** - Critical for frontend to see backend changes
 - [ ] **Scope estimate** - Files modified, LOC, time
-- [ ] **Reference to orchestrator** - Points implementing agent to workflow
+- [ ] **Embedded orchestrator** - Full isolation check and execution prompt at TOP of plan
+- [ ] **Isolation enforcement** - Bash script that exits if not in worktree
 - [ ] **Critical reminders** - Don't guess types, test everything, fix code not tests
 - [ ] **Success criteria** - What "done" looks like
 
@@ -500,7 +575,7 @@ Pursue the @MEMBER_MANAGEMENT_PLAN.md
 4. **Show file structure** - Before/after is crucial for both backend and frontend
 5. **Include build steps** - Candid extraction and declaration sync are critical
 6. **Estimate scope** - LOC and time help set expectations
-7. **Reference orchestrator** - Implementing agent needs the HOW
+7. **Embed orchestrator** - Don't reference it, EMBED the full prompt with isolation check
 8. **Think, don't implement** - You're the planner, not the builder
 
 ---
