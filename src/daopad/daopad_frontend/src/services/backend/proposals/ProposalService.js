@@ -113,6 +113,24 @@ export class ProposalService extends BackendServiceBase {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Cleanup expired proposals (admin function)
+   */
+  async cleanupExpiredProposals() {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.cleanup_expired_proposals();
+      if ('Ok' in result) {
+        return { success: true, data: Number(result.Ok) };
+      } else {
+        return { success: false, error: result.Err };
+      }
+    } catch (error) {
+      console.error('Failed to cleanup expired proposals:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 export const getProposalService = (identity) => {

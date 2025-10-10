@@ -16,6 +16,7 @@ import { OrbitRequestsService } from './orbit/OrbitRequestsService';
 import { OrbitMembersService } from './orbit/OrbitMembersService';
 import { OrbitAccountsService } from './orbit/OrbitAccountsService';
 import { TokenService } from './tokens/TokenService';
+import { UtilityService } from './utility/UtilityService';
 
 export class UnifiedBackendService {
   constructor(identity) {
@@ -28,6 +29,7 @@ export class UnifiedBackendService {
     this.orbitMembers = new OrbitMembersService(identity);
     this.orbitAccounts = new OrbitAccountsService(identity);
     this.tokens = new TokenService(identity);
+    this.utility = new UtilityService(identity);
   }
 
   // ============================================================================
@@ -90,6 +92,10 @@ export class UnifiedBackendService {
     return this.proposals.getVotes(proposalId);
   }
 
+  async cleanupExpiredProposals() {
+    return this.proposals.cleanupExpiredProposals();
+  }
+
   // ============================================================================
   // ORBIT REQUESTS METHODS
   // ============================================================================
@@ -116,6 +122,14 @@ export class UnifiedBackendService {
 
   async cancelOrbitRequest(stationId, requestId) {
     return this.orbitRequests.cancel(stationId, requestId);
+  }
+
+  async getUserPendingRequests(stationId, userPrincipal) {
+    return this.orbitRequests.getUserPendingRequests(stationId, userPrincipal);
+  }
+
+  async batchApproveRequests(stationId, requestIds) {
+    return this.orbitRequests.batchApproveRequests(stationId, requestIds);
   }
 
   // ============================================================================
@@ -178,6 +192,14 @@ export class UnifiedBackendService {
     return this.orbitMembers.getUserVotingTier(stationId, userPrincipal);
   }
 
+  async getPredefinedGroups() {
+    return this.orbitMembers.getPredefinedGroups();
+  }
+
+  async verifySoleAdmin(stationId) {
+    return this.orbitMembers.verifySoleAdmin(stationId);
+  }
+
   // ============================================================================
   // ORBIT ACCOUNTS METHODS
   // ============================================================================
@@ -236,6 +258,26 @@ export class UnifiedBackendService {
 
   async getKongLockerFactoryPrincipal() {
     return this.tokens.getKongLockerFactory();
+  }
+
+  // ============================================================================
+  // UTILITY METHODS
+  // ============================================================================
+
+  async getBackendPrincipal() {
+    return this.utility.getBackendPrincipal();
+  }
+
+  async healthCheck() {
+    return this.utility.healthCheck();
+  }
+
+  async testBackendIntegration(payload = {}) {
+    return this.utility.testBackendIntegration(payload);
+  }
+
+  static async getTokenMetadata(tokenCanisterId) {
+    return UtilityService.getTokenMetadata(tokenCanisterId);
   }
 }
 

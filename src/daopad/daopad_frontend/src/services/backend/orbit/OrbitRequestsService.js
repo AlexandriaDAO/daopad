@@ -1,5 +1,5 @@
 import { BackendServiceBase } from '../base/BackendServiceBase';
-import { parseOrbitResult } from '../utils/errorParsers';
+import { parseOrbitResult, formatOrbitError } from '../utils/errorParsers';
 
 export class OrbitRequestsService extends BackendServiceBase {
   /**
@@ -125,6 +125,60 @@ export class OrbitRequestsService extends BackendServiceBase {
       return parseOrbitResult(result);
     } catch (error) {
       console.error('Failed to cancel request:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get user's pending requests
+   */
+  async getUserPendingRequests(stationId, userPrincipal) {
+    try {
+      const actor = await this.getActor();
+      const stationPrincipal = this.toPrincipal(stationId);
+      const principal = this.toPrincipal(userPrincipal);
+      const result = await actor.get_user_pending_requests(stationPrincipal, principal);
+      if ('Ok' in result) {
+        return { success: true, data: result.Ok };
+      } else {
+        return { success: false, error: result.Err };
+      }
+    } catch (error) {
+      console.error('Failed to get user pending requests:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Batch approve multiple requests
+   */
+  async batchApproveRequests(stationId, requestIds) {
+    try {
+      const actor = await this.getActor();
+      const stationPrincipal = this.toPrincipal(stationId);
+      const outcomes = [];
+
+      for (const requestId of requestIds) {
+        try {
+          const response = await actor.submit_request_approval(
+            stationPrincipal,
+            requestId,
+            { Approved: null },
+            [],
+          );
+          if ('Ok' in response) {
+            outcomes.push(`✓ ${requestId}: approved`);
+          } else {
+            outcomes.push(`✗ ${requestId}: ${formatOrbitError(response.Err)}`);
+          }
+        } catch (err) {
+          outcomes.push(`✗ ${requestId}: ${err.message || 'approval failed'}`);
+        }
+      }
+
+      return { success: true, data: outcomes };
+    } catch (error) {
+      console.error('Failed to batch approve requests:', error);
       return { success: false, error: error.message };
     }
   }
