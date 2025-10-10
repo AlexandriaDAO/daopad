@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { Principal } from '@dfinity/principal';
 import { useDispatch } from 'react-redux';
 import { DAOPadBackendService } from '../services/daopadBackend';
@@ -33,7 +33,7 @@ import { upsertStationMapping } from '../features/dao/daoSlice';
 import { useActiveStation } from '../hooks/useActiveStation';
 import OrbitStationPlaceholder from './orbit/OrbitStationPlaceholder';
 
-const TokenDashboard = ({
+const TokenDashboard = memo(function TokenDashboard({
   token,
   tokens = null,
   activeTokenIndex = 0,
@@ -43,7 +43,7 @@ const TokenDashboard = ({
   votingPower,
   lpPositions,
   onRefresh
-}) => {
+}) {
   const dispatch = useDispatch();
   const activeStation = useActiveStation(token?.canister_id);
   const [orbitStation, setOrbitStation] = useState(null);
@@ -633,6 +633,17 @@ const TokenDashboard = ({
       )}
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  // Only re-render if these specific props changed
+  // Note: tokenVotingPowers excluded as it's typically a stable reference
+  // If it changes, a re-render is acceptable and rare
+  return (
+    prevProps.token?.canister_id === nextProps.token?.canister_id &&
+    prevProps.activeTokenIndex === nextProps.activeTokenIndex &&
+    prevProps.votingPower === nextProps.votingPower &&
+    prevProps.lpPositions === nextProps.lpPositions && // Reference equality is sufficient
+    prevProps.tokens === nextProps.tokens // Reference equality is sufficient
+  );
+});
 
 export default TokenDashboard;
