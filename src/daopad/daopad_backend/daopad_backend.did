@@ -173,6 +173,16 @@ type EditAddressBookEntryOperationInput = record {
   address_book_entry_id : text;
   address_owner : opt text;
 };
+type EnhancedSecurityDashboard = record {
+  overall_status : text;
+  risk_summary : text;
+  station_id : principal;
+  checks : vec SecurityCheck;
+  last_checked : nat64;
+  recommended_actions : vec text;
+  critical_issues : vec SecurityCheck;
+  decentralization_score : nat8;
+};
 type Error = record {
   code : text;
   message : opt text;
@@ -582,7 +592,8 @@ type Result_22 = variant { Ok : bool; Err : text };
 type Result_23 = variant { Ok : ListAccountsResult; Err : text };
 type Result_24 = variant { Ok : ListExternalCanistersResult; Err : text };
 type Result_25 = variant { Ok : ListOrbitRequestsResponse; Err : text };
-type Result_26 = variant { Ok; Err : ProposalError };
+type Result_26 = variant { Ok : EnhancedSecurityDashboard; Err : text };
+type Result_27 = variant { Ok; Err : ProposalError };
 type Result_3 = variant { Ok : BackendStatusCheck; Err : text };
 type Result_4 = variant { Ok : nat32; Err : text };
 type Result_5 = variant { Ok : text; Err : text };
@@ -810,6 +821,12 @@ service : () -> {
   // - Frontend components that need all checks at once
   // - Simplifying frontend code by providing a single endpoint
   perform_all_security_checks : (principal) -> (Result_2);
+  // Perform comprehensive security analysis and return dashboard with score
+  // 
+  // This is the public-facing endpoint that frontend calls.
+  // It combines perform_all_security_checks + build_dashboard to return
+  // the full EnhancedSecurityDashboard with decentralization score.
+  perform_security_check : (principal) -> (Result_26);
   propose_orbit_station_link : (principal, principal) -> (Result_14);
   prune_orbit_canister_snapshots_request : (
       principal,
@@ -845,5 +862,5 @@ service : () -> {
   // 
   // When threshold is reached, executes immediately by approving the Orbit request.
   // Follows the same pattern as orbit_link.rs vote_on_proposal.
-  vote_on_treasury_proposal : (nat64, bool) -> (Result_26);
+  vote_on_treasury_proposal : (nat64, bool) -> (Result_27);
 }
