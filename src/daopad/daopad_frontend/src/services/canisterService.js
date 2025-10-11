@@ -28,9 +28,15 @@ function getField(fields, name) {
 
 // Parse external canister from Candid response (handles hash IDs)
 function parseCanisterFromCandid(canister) {
-  if (!canister) return null;
+  if (!canister) {
+    console.warn('parseCanisterFromCandid: received null/undefined canister');
+    return null;
+  }
 
-  // Helper to convert Principal objects to strings
+  console.log('Parsing canister:', JSON.stringify(canister, (key, value) =>
+    typeof value === 'bigint' ? value.toString() : value
+  ));
+
   const principalToString = (value) => {
     if (value && typeof value === 'object' && value._isPrincipal) {
       return value.toText();
@@ -38,22 +44,25 @@ function parseCanisterFromCandid(canister) {
     return value;
   };
 
-  // If it's already a proper object, ensure Principal is string
+  // Try direct properties first (most common case)
   if (canister.id && canister.canister_id) {
-    return {
+    const parsed = {
       ...canister,
       canister_id: principalToString(canister.canister_id)
     };
+    console.log('Parsed canister (direct):', parsed.id, parsed.canister_id);
+    return parsed;
   }
 
-  // Handle Candid record with potentially hashed fields
+  // Handle Candid record with hashed fields (fallback)
   if (canister.Record?.fields) {
+    console.log('Parsing hashed Candid record with', canister.Record.fields.length, 'fields');
     const fields = canister.Record.fields;
-    return {
+    const parsed = {
       id: getField(fields, 'id'),
       canister_id: principalToString(getField(fields, 'canister_id')),
       name: getField(fields, 'name'),
-      description: getField(fields, 'description'),
+      description: getField(fields, 'description') || '',
       labels: getField(fields, 'labels') || [],
       metadata: getField(fields, 'metadata') || [],
       state: getField(fields, 'state'),
@@ -63,9 +72,12 @@ function parseCanisterFromCandid(canister) {
       modified_at: getField(fields, 'modified_at'),
       monitoring: getField(fields, 'monitoring'),
     };
+    console.log('Parsed canister (hashed):', parsed.id, parsed.canister_id);
+    return parsed;
   }
 
-  // Fallback to direct properties with Principal conversion
+  // Last resort: return as-is with Principal conversion
+  console.warn('Canister format unexpected, using fallback:', canister);
   return {
     ...canister,
     canister_id: principalToString(canister.canister_id)
@@ -109,24 +121,46 @@ export const canisterService = {
       if (result.Ok) {
         const orbitResult = result.Ok;
         if (orbitResult.Ok) {
-          // Parse canisters handling potential hash IDs
-          const canisters = orbitResult.Ok.canisters.map(parseCanisterFromCandid);
+          // Validate response structure
+          if (!orbitResult.Ok.canisters) {
+            console.error('Orbit returned Ok but no canisters array:', orbitResult.Ok);
+            return {
+              success: false,
+              error: 'Invalid response from Orbit Station: missing canisters array'
+            };
+          }
+
+          const canisters = orbitResult.Ok.canisters
+            .map(parseCanisterFromCandid)
+            .filter(c => c !== null); // Remove any failed parses
+
+          console.log(`Successfully parsed ${canisters.length} canisters from Orbit`);
+
           return {
             success: true,
             data: canisters,
-            total: Number(orbitResult.Ok.total), // Convert BigInt to number for UI
+            total: orbitResult.Ok.total ? Number(orbitResult.Ok.total) : canisters.length,
             privileges: orbitResult.Ok.privileges
           };
         } else {
+          // Extract detailed error message
+          const errorMsg = orbitResult.Err?.message
+            || orbitResult.Err?.code
+            || JSON.stringify(orbitResult.Err)
+            || 'Failed to list canisters';
+
+          console.error('Orbit Station returned Err:', orbitResult.Err);
+
           return {
             success: false,
-            error: orbitResult.Err?.message || 'Failed to list canisters'
+            error: `Orbit Station error: ${errorMsg}`
           };
         }
       } else {
+        console.error('Backend returned Err:', result.Err);
         return {
           success: false,
-          error: result.Err
+          error: `Backend error: ${result.Err || 'Unknown error'}`
         };
       }
     } catch (error) {
@@ -745,36 +779,6 @@ export const canisterService = {
         Principal.fromText(tokenCanisterId),
         request,
         archive ? 'Archive canister' : 'Unarchive canister',
-        []
-      );
-
-      return result;
-    } catch (error) {
-      console.error('Failed to archive canister:', error);
-      return {
-        Err: error.message
-      };
-    }
-  },
-
-  // Archive canister (mark as archived, not delete)
-  archiveCanister: async (tokenCanisterId, externalCanisterId) => {
-    try {
-      const actor = await getBackendActor();
-
-      const request = {
-        external_canister_id: externalCanisterId,
-        kind: {
-          UpdateState: {
-            state: { Archived: null }
-          }
-        }
-      };
-
-      const result = await actor.change_orbit_canister_request(
-        Principal.fromText(tokenCanisterId),
-        request,
-        'Archive canister',
         []
       );
 

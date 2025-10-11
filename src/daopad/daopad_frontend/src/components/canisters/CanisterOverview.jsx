@@ -38,10 +38,10 @@ export default function CanisterOverview({ canister, privileges, orbitStationId,
         setStatus(result.Ok);
       } else {
         // Don't set error - IC status is optional if no controller access
-        console.log('IC status unavailable:', result.Err);
+        console.log(`IC status unavailable for ${canister.canister_id}:`, result.Err);
       }
     } catch (err) {
-      console.error('Error fetching canister status:', err);
+      console.error(`Error fetching canister status for ${canister.canister_id}:`, err);
       // Don't set error - graceful degradation
     } finally {
       setLoading(false);
@@ -62,11 +62,37 @@ export default function CanisterOverview({ canister, privileges, orbitStationId,
 
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A';
-    // Handle both RFC3339 strings and nanosecond timestamps
-    const date = typeof timestamp === 'string'
-      ? new Date(timestamp)
-      : new Date(Number(timestamp) / 1e6); // Convert from nanoseconds if number
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+
+    try {
+      let date;
+
+      if (typeof timestamp === 'string') {
+        // RFC3339 string
+        date = new Date(timestamp);
+      } else if (typeof timestamp === 'bigint') {
+        // Orbit returns nat64 in nanoseconds (1e9 per second)
+        // Convert to milliseconds for JS Date (1e3 per second)
+        // Divide bigint first to avoid precision loss, then convert to Number
+        const ms = Number(timestamp / 1_000_000n); // nano to milli: divide by 1,000,000
+        date = new Date(ms);
+      } else if (typeof timestamp === 'number') {
+        // Already a number - assume nanoseconds
+        const ms = timestamp / 1e6; // nano to milli: divide by 1,000,000
+        date = new Date(ms);
+      } else {
+        return 'Invalid date format';
+      }
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return 'Invalid date';
+      }
+
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    } catch (err) {
+      console.error('Failed to format date:', timestamp, err);
+      return 'N/A';
+    }
   };
 
   const getCyclesPercentage = (cycles) => {
@@ -88,7 +114,24 @@ export default function CanisterOverview({ canister, privileges, orbitStationId,
       const amount = prompt('Enter cycles to send (in T):');
       if (!amount) return;
 
-      const cycles = BigInt(parseFloat(amount) * 1e12);
+      // Validate input
+      const parsed = parseFloat(amount);
+      if (isNaN(parsed)) {
+        alert('Please enter a valid number');
+        return;
+      }
+      if (parsed <= 0) {
+        alert('Please enter a positive number');
+        return;
+      }
+      if (parsed > 100) {
+        // Sanity check for very large amounts
+        if (!confirm(`Send ${parsed}T cycles? This is a large amount.`)) {
+          return;
+        }
+      }
+
+      const cycles = BigInt(Math.floor(parsed * 1e12));
       const result = await canisterService.fundCanister(
         orbitStationId,
         canister.id,
