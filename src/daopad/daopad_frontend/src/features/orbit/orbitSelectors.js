@@ -137,11 +137,14 @@ export const selectAccountsWithMinBalance = createSelector(
 export const selectTotalBalance = createSelector(
   [(state, stationId, tokenSymbol) => selectFormattedAccounts(state, stationId, tokenSymbol)],
   (accounts) => {
-    const total = accounts.reduce((sum, acc) => sum + (acc.balanceFloat || 0), 0);
-
     // Use first account's decimals (assuming same asset)
     const decimals = accounts[0]?.decimals || 8;
-    const totalBigInt = BigInt(Math.floor(total * Math.pow(10, decimals)));
+
+    // Sum raw BigInt values directly to avoid precision loss
+    const totalBigInt = accounts.reduce((sum, acc) => sum + (acc.balance || 0n), 0n);
+
+    // Convert to float only for display
+    const total = bigintToFloat(totalBigInt, decimals);
 
     const formatted = formatBalance(totalBigInt, decimals, {
       symbol: accounts[0]?.balanceFormatted?.split(' ')[1] || ''

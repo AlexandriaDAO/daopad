@@ -98,6 +98,17 @@ describe('parseBalanceInput', () => {
     expect(() => parseBalanceInput('abc', 8)).toThrow(/Invalid balance input/);
   });
 
+  test('rejects multiple decimal points', () => {
+    expect(() => parseBalanceInput('1.2.3', 8)).toThrow(/Multiple decimal points are not allowed/);
+    expect(() => parseBalanceInput('5..5', 8)).toThrow(/Multiple decimal points are not allowed/);
+  });
+
+  test('rejects scientific notation', () => {
+    expect(() => parseBalanceInput('1e8', 8)).toThrow(/Scientific notation is not supported/);
+    expect(() => parseBalanceInput('5E-3', 8)).toThrow(/Scientific notation is not supported/);
+    expect(() => parseBalanceInput('1.5e10', 8)).toThrow(/Scientific notation is not supported/);
+  });
+
   test('handles whitespace', () => {
     expect(parseBalanceInput('  5.5  ', 8)).toBe(550000000n);
   });

@@ -147,15 +147,26 @@ export function parseBalanceInput(input, decimals = 8) {
     throw new Error('Invalid balance input');
   }
 
-  // 2. Split into whole and fractional parts
+  // 2. Reject scientific notation
+  if (cleaned.toLowerCase().includes('e')) {
+    throw new Error('Scientific notation is not supported');
+  }
+
+  // 3. Validate only one decimal point
+  const decimalCount = (cleaned.match(/\./g) || []).length;
+  if (decimalCount > 1) {
+    throw new Error('Multiple decimal points are not allowed');
+  }
+
+  // 4. Split into whole and fractional parts
   const [whole = '0', fractional = '0'] = cleaned.split('.');
 
-  // 3. Validate decimal places don't exceed token decimals
+  // 5. Validate decimal places don't exceed token decimals
   if (fractional.length > decimals) {
     throw new Error(`Too many decimal places (max ${decimals})`);
   }
 
-  // 4. Build BigInt
+  // 6. Build BigInt
   const paddedFractional = fractional.padEnd(decimals, '0');
   const combined = whole + paddedFractional;
 
