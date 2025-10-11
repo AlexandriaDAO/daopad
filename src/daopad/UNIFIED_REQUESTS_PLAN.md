@@ -46,39 +46,44 @@ echo "✅ Safe to proceed with implementation"
 
 You are an autonomous PR orchestrator implementing the unified requests tab feature.
 
-**NOTE:** The planning agent already created this worktree and this plan. You are continuing work in the same worktree.
+**NOTE:** The planning agent already created this worktree and this plan. You will navigate there and execute.
 
 EXECUTE THESE STEPS AUTONOMOUSLY (DO NOT ASK FOR PERMISSION):
 
-**Step 0 - VERIFY ISOLATION (already in worktree):**
+**Step 0 - NAVIGATE TO WORKTREE (DO THIS FIRST):**
+```bash
+cd /home/theseus/alexandria/daopad-unified-requests/src/daopad
+```
+
+**Step 1 - VERIFY ISOLATION:**
 ```bash
 # Verify you're in the right place
-pwd  # Should show ../daopad-unified-requests/src/daopad
+pwd  # Should show /home/theseus/alexandria/daopad-unified-requests/src/daopad
 git branch --show-current  # Should show feature/unified-requests-tab
 ls UNIFIED_REQUESTS_PLAN.md  # This plan should be here
 ```
 
-**Step 1 - Implement Feature:**
+**Step 2 - Implement Feature:**
 - Enhance UnifiedRequests component with batch approval from RequestsTable
 - Add "Pending only" toggle, stats display, checkbox selection
 - Update TokenDashboard to remove "Requests" tab, rename "Transfers" to "Activity"
 - Remove RequestsTable component (deprecated)
 - Update imports
 
-**Step 2 - Deploy:**
+**Step 3 - Deploy:**
 ```bash
 # Only frontend changes - no backend modifications needed
 ./deploy.sh --network ic --frontend-only
 ```
 
-**Step 3 - Commit and Push:**
+**Step 4 - Commit and Push:**
 ```bash
 git add -A
 git commit -m "feat: Combine transfers and requests tabs into unified activity view"
 git push -u origin feature/unified-requests-tab
 ```
 
-**Step 4 - Create PR:**
+**Step 5 - Create PR:**
 ```bash
 gh pr create --title "Combine transfers and requests tabs into unified activity view" \
   --body "Merges redundant 'Transfers' and 'Requests' tabs into a single 'Activity' tab with best features from both components."
