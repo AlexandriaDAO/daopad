@@ -791,36 +791,6 @@ export const canisterService = {
     }
   },
 
-  // Archive canister (mark as archived, not delete)
-  archiveCanister: async (tokenCanisterId, externalCanisterId) => {
-    try {
-      const actor = await getBackendActor();
-
-      const request = {
-        external_canister_id: externalCanisterId,
-        kind: {
-          UpdateState: {
-            state: { Archived: null }
-          }
-        }
-      };
-
-      const result = await actor.change_orbit_canister_request(
-        Principal.fromText(tokenCanisterId),
-        request,
-        'Archive canister',
-        []
-      );
-
-      return result;
-    } catch (error) {
-      console.error('Failed to archive canister:', error);
-      return {
-        Err: error.message
-      };
-    }
-  },
-
   // Validate method call arguments
   validateMethodCall: async (tokenCanisterId, externalCanisterId, validationMethod, args) => {
     try {
