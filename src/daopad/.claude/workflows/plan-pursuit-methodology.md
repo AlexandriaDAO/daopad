@@ -392,20 +392,23 @@ echo "✅ Safe to proceed with implementation"
 
 You are an autonomous PR orchestrator implementing [FEATURE].
 
-**NOTE:** The planning agent already created this worktree and this plan. You are continuing work in the same worktree.
+**NOTE:** The planning agent already created this worktree and this plan. You will navigate there and execute.
 
 EXECUTE THESE STEPS AUTONOMOUSLY (DO NOT ASK FOR PERMISSION):
 
-Step 0 - VERIFY ISOLATION (already in worktree):
+Step 0 - NAVIGATE TO WORKTREE (DO THIS FIRST):
+  cd /home/theseus/alexandria/daopad-[FEATURE]/src/daopad
+
+Step 1 - VERIFY ISOLATION:
   # Verify you're in the right place
-  pwd  # Should show ../daopad-[FEATURE]/src/daopad
+  pwd  # Should show /home/theseus/alexandria/daopad-[FEATURE]/src/daopad
   git branch --show-current  # Should show feature/[feature-name]
   ls FEATURE_NAME_PLAN.md  # This plan should be here
 
-Step 1 - Implement Feature:
+Step 2 - Implement Feature:
   [Summary of implementation steps from plan]
 
-Step 2 - Build and Deploy:
+Step 3 - Build and Deploy:
   # Backend (if modified):
   cargo build --target wasm32-unknown-unknown --release -p daopad_backend --locked
   candid-extractor target/wasm32-unknown-unknown/release/daopad_backend.wasm > daopad_backend/daopad_backend.did
@@ -417,16 +420,16 @@ Step 2 - Build and Deploy:
   # Frontend (if modified):
   ./deploy.sh --network ic --frontend-only
 
-Step 3 - Commit and Push:
+Step 4 - Commit and Push:
   git add -A
   git commit -m "[Feature description]"
   git push -u origin feature/[FEATURE]
 
-Step 4 - Create PR:
+Step 5 - Create PR:
   gh pr create --title "[Title]" --body "[Detailed description]"
 
 YOUR CRITICAL RULES:
-- You MUST work in ../daopad-[FEATURE]/src/daopad (NOT main repo)
+- You MUST work in /home/theseus/alexandria/daopad-[FEATURE]/src/daopad (NOT main repo)
 - Other agents ARE working in parallel - isolation is MANDATORY
 - After sleep: IMMEDIATELY continue (no "should I check?" questions)
 - Run candid-extractor after backend changes
@@ -716,58 +719,27 @@ Fresh Implementing Agent (New conversation, same worktree):
 
 ## 🛑 FINAL INSTRUCTIONS: When You're Done Planning
 
-**After saving and committing the plan to the feature branch**, your final message should be:
+**After saving and committing the plan to the feature branch**, your final message should be ONLY:
 
-```markdown
-✅ Plan Complete: [Feature Name]
-
-**Location:** `/home/theseus/alexandria/daopad-[FEATURE]/src/daopad`
-**Branch:** `feature/[feature-name]`
-**Document:** `[PLAN_NAME].md` (committed to feature branch)
-
-**Estimated:** [X] hours, [Y] PRs
-
-**Handoff for implementing agent:**
-
-\`\`\`bash
-cd /home/theseus/alexandria/daopad-[FEATURE]/src/daopad && pursue [PLAN_NAME].md
-\`\`\`
-
----
-
-🚨 **PLANNING AGENT - YOUR JOB IS DONE**
-
-DO NOT:
-- ❌ Implement code
-- ❌ Make additional edits beyond the plan
-- ❌ Create PRs (that's implementing agent's job)
-- ❌ Deploy
-- ❌ Ask "should I continue?" and then execute
-- ❌ Use ExitPlanMode and then implement
-
-The implementing agent will:
-1. Navigate to the worktree
-2. Read the plan
-3. Execute the plan
-4. Create PR with both plan + implementation
-
-**🛑 END CONVERSATION HERE 🛑**
+```
+pursue @/home/theseus/alexandria/daopad-[FEATURE]/src/daopad/[PLAN_NAME].md
 ```
 
-**Then STOP immediately.**
+**That's it. No additional commentary, no explanations, just the pursue command.**
+
+### Why This Format?
+
+- User can copy-paste directly to implementing agent from ANY directory
+- Plan contains ALL context (navigation, isolation checks, implementation steps)
+- Implementing agent reads plan first, then navigates to worktree
+- No manual cd required - the plan handles everything
 
 ### If User Says "Looks Good" or "Go Ahead"
 
 **Still DO NOT implement!** Respond:
 
 ```
-Thank you! The plan is committed to the feature branch and ready for implementation.
-
-The implementing agent should navigate to the worktree and pursue the plan:
-
-Pursue @[PLAN_NAME].md
-
-That agent will execute the plan using the autonomous-pr-orchestrator workflow.
+pursue @/home/theseus/alexandria/daopad-[FEATURE]/src/daopad/[PLAN_NAME].md
 ```
 
 **Then STOP.**
