@@ -6,7 +6,6 @@ import { Button } from './ui/button';
 import { Copy, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { DAOPadBackendService } from '../services/daopadBackend';
-import PermissionsTable from './permissions/PermissionsTable';
 
 const DAOSettings = ({ tokenCanisterId, identity }) => {
     const [systemInfo, setSystemInfo] = useState(null);
@@ -228,15 +227,6 @@ const DAOSettings = ({ tokenCanisterId, identity }) => {
                         </div>
                     </CardContent>
                 </Card>
-            )}
-
-            {/* Permissions Management */}
-            {systemInfo?.station_id && (
-                <PermissionsTable
-                    tokenId={tokenCanisterId}
-                    stationId={systemInfo.station_id.toText()}
-                    identity={identity}
-                />
             )}
         </div>
     );

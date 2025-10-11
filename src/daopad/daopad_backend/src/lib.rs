@@ -13,9 +13,8 @@ pub use proposals::{
     ProposalError, ProposalId, ProposalType, TransferDetails, TreasuryProposal, VoteChoice,
 };
 pub use types::orbit::{
-    AccountBalance, AuthScope, GetPermissionResponse, GetUserGroupResponse, ListAccountsResult,
-    ListPermissionsResponse, ListUserGroupsResponse, PaginationInput, Permission,
-    Resource, SystemInfoResponse,
+    AccountBalance, ListAccountsResult,
+    PaginationInput, Resource, SystemInfoResponse,
     // External canister types
     ChangeExternalCanisterOperationInput, ConfigureExternalCanisterOperationInput,
     CreateExternalCanisterOperationInput, ExternalCanister, ExternalCanisterCallerMethodCallInput,
@@ -27,7 +26,7 @@ pub use types::orbit::{
     // Snapshot query types
     CanisterSnapshot, CanisterSnapshotsInput, CanisterSnapshotsResponse, CanisterSnapshotsResult,
 };
-pub use types::{TokenInfo, UserStatus, VotingThresholds};
+pub use types::{TokenInfo, VotingThresholds};
 
 #[init]
 fn init() {

@@ -303,21 +303,6 @@ export class DAOPadBackendService {
     }
   }
 
-  async joinOrbitStation(tokenCanisterId, displayName) {
-    try {
-      const actor = await this.getActor();
-      const result = await actor.join_orbit_station(tokenCanisterId, displayName);
-      if ('Ok' in result) {
-        return { success: true, data: result.Ok };
-      } else {
-        return { success: false, error: result.Err };
-      }
-    } catch (error) {
-      console.error('Failed to join orbit station:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
   async getUserPendingRequests(tokenCanisterId, userPrincipal) {
     try {
       const actor = await this.getActor();
@@ -332,113 +317,6 @@ export class DAOPadBackendService {
       return { success: false, error: error.message };
     }
   }
-
-  // User Management Methods
-
-  async addUserToOrbit(tokenCanisterId, userPrincipal, userName, groups = [], status = { 'Active': null }) {
-    try {
-      const actor = await this.getActor();
-      const result = await actor.add_user_to_orbit(tokenCanisterId, userPrincipal, userName, groups, status);
-      if ('Ok' in result) {
-        return { success: true, data: result.Ok };
-      } else {
-        return { success: false, error: result.Err };
-      }
-    } catch (error) {
-      console.error('Failed to add user to orbit station:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async removeUserFromOrbit(tokenCanisterId, userId) {
-    try {
-      const actor = await this.getActor();
-      const result = await actor.remove_user_from_orbit(tokenCanisterId, userId);
-      if ('Ok' in result) {
-        return { success: true, data: result.Ok };
-      } else {
-        return { success: false, error: result.Err };
-      }
-    } catch (error) {
-      console.error('Failed to remove user from orbit station:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async listOrbitUsers(tokenCanisterId) {
-    try {
-      const actor = await this.getActor();
-      const result = await actor.list_orbit_users(tokenCanisterId);
-      if ('Ok' in result) {
-        return { success: true, data: result.Ok };
-      } else {
-        return { success: false, error: result.Err };
-      }
-    } catch (error) {
-      console.error('Failed to list orbit users:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async listOrbitUserGroups(tokenCanisterId) {
-    try {
-      const actor = await this.getActor();
-      const result = await actor.list_orbit_user_groups(tokenCanisterId);
-      if ('Ok' in result) {
-        return { success: true, data: result.Ok };
-      } else {
-        return { success: false, error: result.Err };
-      }
-    } catch (error) {
-      console.error('Failed to list orbit user groups:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async getPredefinedGroups() {
-    try {
-      const actor = await this.getActor();
-      const result = await actor.get_predefined_groups();
-      return { success: true, data: result };
-    } catch (error) {
-      console.error('Failed to get predefined groups:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  // DAO Transition Methods
-
-
-  async listAllAdmins(tokenCanisterId) {
-    try {
-      const actor = await this.getActor();
-      const result = await actor.list_all_admins(tokenCanisterId);
-      if ('Ok' in result) {
-        return { success: true, data: result.Ok };
-      } else {
-        return { success: false, error: result.Err };
-      }
-    } catch (error) {
-      console.error('Failed to list admins:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async removeAdminRole(tokenCanisterId, userId) {
-    try {
-      const actor = await this.getActor();
-      const result = await actor.remove_admin_role(tokenCanisterId, userId);
-      if ('Ok' in result) {
-        return { success: true, data: result.Ok };
-      } else {
-        return { success: false, error: result.Err };
-      }
-    } catch (error) {
-      console.error('Failed to remove admin role:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
 
   // Request Management Methods
   async listOrbitRequests(tokenCanisterId, includeCompleted = false) {
@@ -543,36 +421,6 @@ export class DAOPadBackendService {
       return { success: true, data: outcomes };
     } catch (error) {
       console.error('Failed to batch approve requests:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async downgradeToOperator(tokenCanisterId, userId) {
-    try {
-      const actor = await this.getActor();
-      const result = await actor.downgrade_to_operator(tokenCanisterId, userId);
-      if ('Ok' in result) {
-        return { success: true, data: result.Ok };
-      } else {
-        return { success: false, error: result.Err };
-      }
-    } catch (error) {
-      console.error('Failed to downgrade to operator:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async verifySoleAdmin(tokenCanisterId) {
-    try {
-      const actor = await this.getActor();
-      const result = await actor.verify_sole_admin(tokenCanisterId);
-      if ('Ok' in result) {
-        return { success: true, data: result.Ok };
-      } else {
-        return { success: false, error: result.Err };
-      }
-    } catch (error) {
-      console.error('Failed to verify sole admin:', error);
       return { success: false, error: error.message };
     }
   }
