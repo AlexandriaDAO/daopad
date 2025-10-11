@@ -13,6 +13,7 @@ import RequestDomainSelector from './RequestDomainSelector';
 import RequestList from './RequestList';
 import RequestFiltersCompact from './RequestFiltersCompact';
 import { REQUEST_DOMAIN_FILTERS, RequestDomains } from '../../utils/requestDomains';
+import { Zap, Clock } from 'lucide-react';
 
 const UnifiedRequests = ({ tokenId, identity }) => {
   // State management
@@ -36,6 +37,9 @@ const UnifiedRequests = ({ tokenId, identity }) => {
     page: 0,
     hasMore: false
   });
+  const [selectedRequests, setSelectedRequests] = useState([]);
+  const [batchApproving, setBatchApproving] = useState(false);
+  const [showOnlyPending, setShowOnlyPending] = useState(false);
 
   const { toast } = useToast();
 
@@ -58,7 +62,11 @@ const UnifiedRequests = ({ tokenId, identity }) => {
       const domainFilter = REQUEST_DOMAIN_FILTERS[selectedDomain];
 
       // Prepare ListRequestsInput for backend
-      const statusVariants = filters.statuses.map((status) => ({ [status]: null }));
+      // If "Pending only" is enabled, filter to Created and Scheduled statuses
+      const activeStatuses = showOnlyPending
+        ? ['Created', 'Scheduled']
+        : filters.statuses;
+      const statusVariants = activeStatuses.map((status) => ({ [status]: null }));
 
       const listRequestsInput = {
         statuses: statusVariants.length > 0 ? [statusVariants] : [],
@@ -107,7 +115,7 @@ const UnifiedRequests = ({ tokenId, identity }) => {
     } finally {
       setLoading(false);
     }
-  }, [tokenId, identity, selectedDomain, filters, toast]);
+  }, [tokenId, identity, selectedDomain, filters, showOnlyPending, toast]);
 
   // Handle approval/rejection
   const handleApprovalDecision = async (requestId, decision, reason) => {
@@ -134,6 +142,51 @@ const UnifiedRequests = ({ tokenId, identity }) => {
       toast.error(err.message || `Failed to ${decision.toLowerCase()} request`);
     }
   };
+
+  // Handle batch approval
+  const handleBatchApprove = async () => {
+    if (selectedRequests.length === 0) return;
+
+    setBatchApproving(true);
+    try {
+      const backend = new DAOPadBackendService(identity);
+      const result = await backend.batchApproveRequests(
+        Principal.fromText(tokenId),
+        selectedRequests
+      );
+
+      if (result.success) {
+        const successCount = result.data.filter(r => r.includes('✓')).length;
+        const failCount = result.data.filter(r => r.includes('✗')).length;
+        toast.success(`Batch approval: ${successCount} succeeded, ${failCount} failed`);
+        setSelectedRequests([]);
+        await fetchRequests();
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (err) {
+      toast.error(`Batch approval failed: ${err.message}`);
+    } finally {
+      setBatchApproving(false);
+    }
+  };
+
+  const toggleRequestSelection = (requestId) => {
+    setSelectedRequests(prev =>
+      prev.includes(requestId)
+        ? prev.filter(id => id !== requestId)
+        : [...prev, requestId]
+    );
+  };
+
+  const selectAllPending = () => {
+    const pendingRequests = requests.filter(r =>
+      r.status === 'Created' || r.status === 'Scheduled'
+    );
+    setSelectedRequests(pendingRequests.map(r => r.id));
+  };
+
+  const clearSelection = () => setSelectedRequests([]);
 
   // Set up polling
   useEffect(() => {
@@ -190,6 +243,75 @@ const UnifiedRequests = ({ tokenId, identity }) => {
           </div>
           <div className="text-sm text-muted-foreground">
             Showing {requests.length} of {pagination.total} requests
+          </div>
+        </div>
+
+        {/* Stats and batch actions bar */}
+        <div className="flex justify-between items-center py-2 border-y">
+          <div className="flex gap-4 items-center">
+            {/* Stats */}
+            <div className="text-sm">
+              <span className="font-semibold">{pagination.total}</span>
+              <span className="text-muted-foreground"> total</span>
+            </div>
+            <div className="text-sm">
+              <span className="font-semibold text-yellow-600">
+                {requests.filter(r => r.status === 'Created' || r.status === 'Scheduled').length}
+              </span>
+              <span className="text-muted-foreground"> pending</span>
+            </div>
+
+            {/* Pending only toggle */}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showOnlyPending}
+                onChange={(e) => setShowOnlyPending(e.target.checked)}
+              />
+              <span className="text-sm">Pending only</span>
+            </label>
+          </div>
+
+          {/* Batch actions */}
+          <div className="flex gap-2">
+            {selectedRequests.length === 0 ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={selectAllPending}
+                disabled={requests.filter(r => r.status === 'Created' || r.status === 'Scheduled').length === 0}
+              >
+                Select All Pending
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearSelection}
+                >
+                  Clear ({selectedRequests.length})
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleBatchApprove}
+                  disabled={batchApproving}
+                >
+                  {batchApproving ? (
+                    <>
+                      <Clock className="mr-2 h-4 w-4 animate-spin" />
+                      Approving...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="mr-2 h-4 w-4" />
+                      Approve {selectedRequests.length}
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
