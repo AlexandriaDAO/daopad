@@ -744,6 +744,115 @@ fn check_operational_permissions_impl(permissions: &Vec<Permission>) -> Vec<Secu
     checks
 }
 
+// ===== AGGREGATOR METHOD: ALL SECURITY CHECKS =====
+
+/// Perform all security checks in one call
+///
+/// This is a convenience method that calls all 8 individual security check methods
+/// and combines their results into a single response. This is useful for:
+/// - Getting a complete security overview in one call
+/// - Frontend components that need all checks at once
+/// - Simplifying frontend code by providing a single endpoint
+#[ic_cdk::update]
+pub async fn perform_all_security_checks(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
+    // Call all 8 individual checks sequentially
+    // Note: These are already async and make inter-canister calls
+    let admin_result = check_admin_control(station_id).await;
+    let treasury_result = check_treasury_control(station_id).await;
+    let governance_result = check_governance_permissions(station_id).await;
+    let policies_result = check_proposal_policies(station_id).await;
+    let canisters_result = check_external_canisters(station_id).await;
+    let assets_result = check_asset_management(station_id).await;
+    let system_result = check_system_configuration(station_id).await;
+    let operational_result = check_operational_permissions(station_id).await;
+
+    // Combine all checks into a single vector
+    let mut all_checks = Vec::new();
+
+    // Add results from each check, handling errors gracefully
+    match admin_result {
+        Ok(checks) => all_checks.extend(checks),
+        Err(ref e) => all_checks.push(create_error_check(
+            "Admin Control",
+            "Admin Control",
+            Severity::Critical,
+            e
+        )),
+    }
+
+    match treasury_result {
+        Ok(checks) => all_checks.extend(checks),
+        Err(ref e) => all_checks.push(create_error_check(
+            "Treasury Control",
+            "Treasury Control",
+            Severity::Critical,
+            e
+        )),
+    }
+
+    match governance_result {
+        Ok(checks) => all_checks.extend(checks),
+        Err(ref e) => all_checks.push(create_error_check(
+            "Governance Control",
+            "Governance Control",
+            Severity::Critical,
+            e
+        )),
+    }
+
+    match policies_result {
+        Ok(checks) => all_checks.extend(checks),
+        Err(ref e) => all_checks.push(create_error_check(
+            "Request Policies",
+            "Request Policies",
+            Severity::High,
+            e
+        )),
+    }
+
+    match canisters_result {
+        Ok(checks) => all_checks.extend(checks),
+        Err(ref e) => all_checks.push(create_error_check(
+            "External Canister Control",
+            "External Canister Control",
+            Severity::Medium,
+            e
+        )),
+    }
+
+    match assets_result {
+        Ok(checks) => all_checks.extend(checks),
+        Err(ref e) => all_checks.push(create_error_check(
+            "Asset Management",
+            "Asset Management",
+            Severity::Medium,
+            e
+        )),
+    }
+
+    match system_result {
+        Ok(checks) => all_checks.extend(checks),
+        Err(ref e) => all_checks.push(create_error_check(
+            "System Configuration",
+            "System Configuration",
+            Severity::High,
+            e
+        )),
+    }
+
+    match operational_result {
+        Ok(checks) => all_checks.extend(checks),
+        Err(ref e) => all_checks.push(create_error_check(
+            "Operational Access",
+            "Operational Access",
+            Severity::Low,
+            e
+        )),
+    }
+
+    Ok(all_checks)
+}
+
 // ===== HELPER FUNCTIONS =====
 
 fn check_permission_by_resource<F>(

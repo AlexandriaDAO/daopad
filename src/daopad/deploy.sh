@@ -18,6 +18,7 @@ ALEXANDRIA_STATION_ID="fec7w-zyaaa-aaaaa-qaffq-cai"
 # Track deployment success
 BACKEND_DEPLOYED=false
 FRONTEND_DEPLOYED=false
+RUN_TESTS=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -37,6 +38,10 @@ while [[ $# -gt 0 ]]; do
             DEPLOY_TARGET="frontend"
             shift
             ;;
+        --test)
+            RUN_TESTS=true
+            shift
+            ;;
         --help)
             echo "Usage: ./deploy.sh [options]"
             echo ""
@@ -45,6 +50,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --fresh            Clean deployment (uninstalls code first)"
             echo "  --backend-only     Deploy only the backend"
             echo "  --frontend-only    Deploy only the frontend"
+            echo "  --test             Run post-deployment tests"
             echo "  --help             Show this help message"
             echo ""
             echo "Examples:"
@@ -52,6 +58,7 @@ while [[ $# -gt 0 ]]; do
             echo "  ./deploy.sh --network ic       # Deploy to mainnet"
             echo "  ./deploy.sh --fresh            # Fresh local deployment"
             echo "  ./deploy.sh --network ic --backend-only  # Deploy only backend to mainnet"
+            echo "  ./deploy.sh --network ic --test          # Deploy to mainnet and run tests"
             exit 0
             ;;
         *)
@@ -356,3 +363,37 @@ else
 fi
 
 echo "================================================"
+
+# Run post-deployment tests if requested
+if [ "$RUN_TESTS" == true ]; then
+    echo ""
+    echo "================================================"
+    echo "Running Post-Deployment Tests"
+    echo "================================================"
+
+    if [ -f "$SCRIPT_DIR/scripts/test-deployment.sh" ]; then
+        echo "Running backend smoke tests..."
+        if bash "$SCRIPT_DIR/scripts/test-deployment.sh" "$NETWORK"; then
+            echo ""
+            echo "✅ All smoke tests passed"
+        else
+            echo ""
+            echo "❌ Some smoke tests failed"
+            echo "⚠️  Deployment succeeded but tests indicate issues"
+            echo "   Check backend methods and declarations"
+            echo "   Review the test output above for details"
+        fi
+    else
+        echo "⚠️  Test script not found at $SCRIPT_DIR/scripts/test-deployment.sh"
+    fi
+
+    if [ -f "$SCRIPT_DIR/scripts/test-frontend-integration.sh" ]; then
+        echo ""
+        bash "$SCRIPT_DIR/scripts/test-frontend-integration.sh"
+    fi
+
+    echo ""
+    echo "================================================"
+    echo "Test Execution Complete"
+    echo "================================================"
+fi
