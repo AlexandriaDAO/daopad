@@ -853,6 +853,22 @@ pub async fn perform_all_security_checks(station_id: Principal) -> Result<Vec<Se
     Ok(all_checks)
 }
 
+// ===== PUBLIC DASHBOARD ENDPOINT =====
+
+/// Perform comprehensive security analysis and return dashboard with score
+///
+/// This is the public-facing endpoint that frontend calls.
+/// It combines perform_all_security_checks + build_dashboard to return
+/// the full EnhancedSecurityDashboard with decentralization score.
+#[ic_cdk::update]
+pub async fn perform_security_check(station_id: Principal) -> Result<EnhancedSecurityDashboard, String> {
+    // Execute all security checks
+    let checks = perform_all_security_checks(station_id).await?;
+
+    // Build dashboard with scoring and analysis
+    build_dashboard(station_id, checks)
+}
+
 // ===== HELPER FUNCTIONS =====
 
 fn check_permission_by_resource<F>(
