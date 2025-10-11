@@ -4,7 +4,6 @@ import { useDispatch } from 'react-redux';
 import { DAOPadBackendService } from '../services/daopadBackend';
 import { OrbitStationService } from '../services/orbitStation';
 import AccountsTable from './tables/AccountsTable';
-import MembersTable from './tables/MembersTable';
 import UnifiedRequests from './orbit/UnifiedRequests';
 import AddressBookPage from '../pages/AddressBookPage';
 import DAOSettings from './DAOSettings';
@@ -408,10 +407,9 @@ const TokenDashboard = memo(function TokenDashboard({
 
           {/* Tabs for different views */}
           <Tabs defaultValue="accounts" className="w-full" onValueChange={(value) => setActiveTab(value)}>
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="accounts">Treasury</TabsTrigger>
               <TabsTrigger value="activity">Activity</TabsTrigger>
-              <TabsTrigger value="members">Members</TabsTrigger>
               <TabsTrigger value="canisters">Canisters</TabsTrigger>
               <TabsTrigger value="security">Security</TabsTrigger>
               <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -441,12 +439,6 @@ const TokenDashboard = memo(function TokenDashboard({
             <TabsContent value="activity" className="mt-4">
               {activeTab === 'activity' && (
                 <UnifiedRequests tokenId={token.canister_id} identity={identity} />
-              )}
-            </TabsContent>
-
-            <TabsContent value="members" className="mt-4">
-              {activeTab === 'members' && (
-                <MembersTable stationId={orbitStation.station_id} identity={identity} token={token} />
               )}
             </TabsContent>
 

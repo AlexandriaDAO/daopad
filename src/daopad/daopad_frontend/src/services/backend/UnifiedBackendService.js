@@ -13,11 +13,9 @@
 import { KongLockerService } from './kong-locker/KongLockerService';
 import { ProposalService } from './proposals/ProposalService';
 import { OrbitRequestsService } from './orbit/OrbitRequestsService';
-import { OrbitMembersService } from './orbit/OrbitMembersService';
 import { OrbitAccountsService } from './orbit/OrbitAccountsService';
 import { TokenService } from './tokens/TokenService';
 import { UtilityService } from './utility/UtilityService';
-import { OrbitPermissionsService } from './orbit/permissions/OrbitPermissionsService';
 import { OrbitSecurityService } from './orbit/security/OrbitSecurityService';
 import { OrbitCanisterService } from './orbit/canisters/OrbitCanisterService';
 import { OrbitGovernanceService } from './orbit/governance/OrbitGovernanceService';
@@ -30,11 +28,9 @@ export class UnifiedBackendService {
     this.kongLocker = new KongLockerService(identity);
     this.proposals = new ProposalService(identity);
     this.orbitRequests = new OrbitRequestsService(identity);
-    this.orbitMembers = new OrbitMembersService(identity);
     this.orbitAccounts = new OrbitAccountsService(identity);
     this.tokens = new TokenService(identity);
     this.utility = new UtilityService(identity);
-    this.orbitPermissions = new OrbitPermissionsService(identity);
     this.orbitSecurity = new OrbitSecurityService(identity);
     this.orbitCanisters = new OrbitCanisterService(identity);
     this.orbitGovernance = new OrbitGovernanceService(identity);

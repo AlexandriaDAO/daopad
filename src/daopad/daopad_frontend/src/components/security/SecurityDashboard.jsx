@@ -4,9 +4,6 @@ import { Alert, AlertDescription } from '../ui/alert';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { DAOPadBackendService } from '../../services/daopadBackend';
 import DAOTransitionChecklist from './DAOTransitionChecklist';
-import VotingTierDisplay from '../permissions/VotingTierDisplay';
-import VotingPowerSync from '../permissions/VotingPowerSync';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 
 const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
     const [securityData, setSecurityData] = useState(null);
@@ -72,40 +69,16 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
 
     if (!securityData) return null;
 
-    // Enhanced security dashboard with voting tiers
+    // Security dashboard showing DAO transition checklist
     return (
-        <Tabs defaultValue="transition" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="transition">DAO Transition</TabsTrigger>
-                <TabsTrigger value="voting">Voting Tiers</TabsTrigger>
-                <TabsTrigger value="sync">VP Sync</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="transition" className="space-y-4">
-                <DAOTransitionChecklist
-                    securityData={securityData}
-                    stationId={stationId}
-                    tokenSymbol={tokenSymbol}
-                    onRefresh={fetchSecurityStatus}
-                />
-            </TabsContent>
-
-            <TabsContent value="voting" className="space-y-4">
-                <VotingTierDisplay
-                    tokenId={tokenId}
-                    actor={actor}
-                    identity={identity}
-                />
-            </TabsContent>
-
-            <TabsContent value="sync" className="space-y-4">
-                <VotingPowerSync
-                    tokenId={tokenId}
-                    actor={actor}
-                    stationId={stationId}
-                />
-            </TabsContent>
-        </Tabs>
+        <div className="w-full space-y-4">
+            <DAOTransitionChecklist
+                securityData={securityData}
+                stationId={stationId}
+                tokenSymbol={tokenSymbol}
+                onRefresh={fetchSecurityStatus}
+            />
+        </div>
     );
 };
 

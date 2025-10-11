@@ -57,25 +57,6 @@ export const fetchOrbitRequests = createAsyncThunk(
   }
 );
 
-// Fetch Orbit members
-export const fetchOrbitMembers = createAsyncThunk(
-  'orbit/fetchMembers',
-  async ({ stationId, identity }, { rejectWithValue }) => {
-    try {
-      const service = new DAOPadBackendService(identity);
-      const stationPrincipal = Principal.fromText(stationId);
-      const result = await service.listOrbitMembers(stationPrincipal);
-
-      if (result.success) {
-        return { stationId, data: result.data };
-      }
-      throw new Error(result.error || 'Failed to fetch members');
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
-
 // Fetch Orbit accounts with balances
 export const fetchOrbitAccounts = createAsyncThunk(
   'orbit/fetchAccounts',
@@ -311,14 +292,6 @@ const initialState = {
     filters: {}, // Track active filters per station
   },
 
-  // Members (keyed by stationId)
-  members: {
-    data: {}, // stationId -> { members, total }
-    loading: {},
-    error: {},
-    lastFetch: {},
-  },
-
   // Accounts (keyed by stationId)
   accounts: {
     data: {}, // stationId -> { accounts, total, balances }
@@ -423,25 +396,6 @@ const orbitSlice = createSlice({
         const { stationId } = action.meta.arg;
         state.requests.loading[stationId] = false;
         state.requests.error[stationId] = action.payload;
-      });
-
-    // Members
-    builder
-      .addCase(fetchOrbitMembers.pending, (state, action) => {
-        const { stationId } = action.meta.arg;
-        state.members.loading[stationId] = true;
-        state.members.error[stationId] = null;
-      })
-      .addCase(fetchOrbitMembers.fulfilled, (state, action) => {
-        const { stationId, data } = action.payload;
-        state.members.data[stationId] = data;
-        state.members.loading[stationId] = false;
-        state.members.lastFetch[stationId] = Date.now();
-      })
-      .addCase(fetchOrbitMembers.rejected, (state, action) => {
-        const { stationId } = action.meta.arg;
-        state.members.loading[stationId] = false;
-        state.members.error[stationId] = action.payload;
       });
 
     // Accounts
@@ -557,14 +511,6 @@ export const selectOrbitRequestsError = (state, stationId) =>
   state.orbit.requests.error[stationId];
 export const selectRequestFilters = (state, stationId) =>
   state.orbit.requests.filters[stationId] || {};
-
-// Members selectors
-export const selectOrbitMembers = (state, stationId) =>
-  state.orbit.members.data[stationId] || { members: [], total: 0 };
-export const selectOrbitMembersLoading = (state, stationId) =>
-  state.orbit.members.loading[stationId] || false;
-export const selectOrbitMembersError = (state, stationId) =>
-  state.orbit.members.error[stationId];
 
 // Accounts selectors
 export const selectOrbitAccounts = (state, stationId) =>
