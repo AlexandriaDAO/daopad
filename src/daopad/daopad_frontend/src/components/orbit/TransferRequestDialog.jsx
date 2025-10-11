@@ -21,6 +21,7 @@ import { DAOPadBackendService } from '@/services/daopadBackend';
 import { Principal } from '@dfinity/principal';
 import AddressInput from '@/components/inputs/AddressInput';
 import { validateAddress, BlockchainType } from '@/utils/addressValidation';
+import { bigintToFloat } from '@/utils/format';
 
 // Validation schema with improved address validation
 const transferSchema = z.object({
@@ -112,7 +113,7 @@ export default function TransferRequestDialog({
 
   // Calculate max transferable amount
   const maxAmount = account.balance
-    ? (parseFloat(account.balance) / Math.pow(10, asset.decimals)).toFixed(asset.decimals)
+    ? bigintToFloat(account.balance, asset.decimals).toFixed(asset.decimals)
     : '0';
 
   return (

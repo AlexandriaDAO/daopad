@@ -10,19 +10,22 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Search, RefreshCw } from 'lucide-react';
 import {
   fetchOrbitAccounts,
-  selectOrbitAccounts,
   selectOrbitAccountsLoading,
   selectOrbitAccountsError,
 } from '@/features/orbit/orbitSlice';
+import { selectFormattedAccounts } from '@/features/orbit/orbitSelectors';
 
 export default function AccountsTable({ stationId, identity, tokenId, tokenSymbol }) {
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState('');
   const [pagination, setPagination] = useState({ limit: 20, offset: 0 });
 
-  // Select data from Redux
-  const { accounts = [], total = 0, balances = {} } = useSelector(state =>
-    selectOrbitAccounts(state, stationId)
+  // Select data from Redux with formatted balances
+  const accounts = useSelector(state =>
+    selectFormattedAccounts(state, stationId, tokenSymbol)
+  );
+  const total = useSelector(state =>
+    state.orbit.accounts.data[stationId]?.total || 0
   );
   const isLoading = useSelector(state =>
     selectOrbitAccountsLoading(state, stationId)
@@ -63,16 +66,6 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
 
   const handlePrevPage = () => {
     setPagination({ ...pagination, offset: Math.max(0, pagination.offset - pagination.limit) });
-  };
-
-  const formatBalance = (accountId) => {
-    const balance = balances[accountId];
-    if (!balance) return 'N/A';
-
-    const amount = balance.balance || 0;
-    const decimals = balance.decimals || 8;
-    const displayAmount = (amount / Math.pow(10, decimals)).toFixed(4);
-    return `${displayAmount} ${tokenSymbol || ''}`;
   };
 
   if (error) {
@@ -157,7 +150,7 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          {formatBalance(account.id)}
+                          {account.balanceFormatted}
                         </TableCell>
                       </TableRow>
                     ))
