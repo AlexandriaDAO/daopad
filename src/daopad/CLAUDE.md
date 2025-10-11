@@ -72,6 +72,48 @@ if (result.success && result.data) {
 
 Since we're not storing anything, we can't break anything. Also this product isn't live so be liberal about edits. The goal is not to preserve anything, but constantly be removing all bloat and tech debt. Never worry about backwards compatability at the expense of optimization.
 
+### 🗳️ Governance Architecture: Liquid Voting, Not Role-Based
+
+**Core Principle**: Orbit Station is the **execution engine**, NOT the governance layer. Real voting happens in DAOPad using Kong Locker voting power.
+
+#### The Problem We're Solving:
+- ❌ Orbit's built-in voting: Static user roles (Quorum of 3 admins, 50% of group, etc.)
+- ❌ Traditional DAOs: Growing role bloat, human admins creating roles "for show"
+- ❌ Fake decentralization: Vote count, not voting weight
+
+#### Our Solution:
+```
+Proposal Created
+    ↓
+Users Vote (weighted by Kong Locker voting power)
+    ↓
+Vote Threshold Reached? (e.g., 50% of total voting power)
+    ↓ YES
+DAOPad Backend Exercises Admin Authority
+    ↓
+Orbit Station Executes (AutoApproved policy)
+```
+
+#### Implementation:
+1. **Orbit Station Setup**: Set policy to `AutoApproved` or `Quorum(backend_only, 1)`
+   - Backend is the ONLY admin/user in Orbit
+   - No user roles, no permission complexity
+   - Orbit is just a secure treasury execution engine
+
+2. **DAOPad Governance Layer**:
+   - Store proposals in DAOPad backend
+   - Track votes weighted by Kong Locker voting power (locked LP value)
+   - Simple threshold: `sum(votes_for) >= (total_voting_power × threshold_percentage)`
+   - When threshold reached, backend submits approval to Orbit
+
+3. **What We DON'T Build**:
+   - ❌ No Orbit user management
+   - ❌ No role/permission systems
+   - ❌ No complex policy evaluation
+   - ❌ No mirroring Orbit's request state
+
+**Result**: Liquid democracy based on locked liquidity, not infinite static user roles. Voting power changes with LP token value - real skin in the game.
+
 ### Orbit Station Query Strategy
 
 #### The Challenge:
