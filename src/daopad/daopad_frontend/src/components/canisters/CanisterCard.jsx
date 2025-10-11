@@ -22,12 +22,17 @@ const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure
           canister.canister_id  // This is the Principal
         );
         // Only update state if component is still mounted and this is the latest request
-        if (!isCancelled && result.success) {
-          setStatus(result.data);
+        if (!isCancelled) {
+          if (result.success) {
+            setStatus(result.data);
+          } else {
+            // Log specific error for debugging
+            console.log(`IC status unavailable for ${canister.canister_id}:`, result.error);
+          }
         }
       } catch (error) {
         if (!isCancelled) {
-          console.error('Failed to fetch status:', error);
+          console.error(`Failed to fetch IC status for ${canister.canister_id}:`, error);
         }
       } finally {
         if (!isCancelled) {

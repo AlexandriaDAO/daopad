@@ -37,20 +37,29 @@ export default function CanistersTab({ token, stationId }) {
     setError(null);
 
     try {
-      console.log('Fetching canisters with filters:', filters);
+      console.log('=== FETCHING CANISTERS ===');
+      console.log('Token canister ID:', token.canister_id);
+      console.log('Filters:', JSON.stringify(filters, null, 2));
 
       const result = await canisterService.listCanisters(
         token.canister_id,
         filters
       );
 
+      console.log('=== LIST CANISTERS RESULT ===');
+      console.log('Success:', result.success);
       if (result.success) {
+        console.log('Total canisters:', result.total);
+        console.log('Raw canisters:', result.data);
+        console.log('Privileges:', result.privileges);
+
         // Filter out backend canister from display
         const filteredCanisters = (result.data || []).filter(
           c => c.canister_id !== BACKEND_CANISTER
         );
         setCanisters(filteredCanisters);
       } else {
+        console.error('Error:', result.error);
         setError(result.error);
       }
     } catch (err) {
