@@ -976,6 +976,14 @@ service : () -> {
       text,
       opt text,
     ) -> (Result_2);
+  // Perform all security checks in one call
+  // 
+  // This is a convenience method that calls all 8 individual security check methods
+  // and combines their results into a single response. This is useful for:
+  // - Getting a complete security overview in one call
+  // - Frontend components that need all checks at once
+  // - Simplifying frontend code by providing a single endpoint
+  perform_all_security_checks : (principal) -> (Result_3);
   propose_orbit_station_link : (principal, principal) -> (Result_17);
   prune_orbit_canister_snapshots_request : (
       principal,
