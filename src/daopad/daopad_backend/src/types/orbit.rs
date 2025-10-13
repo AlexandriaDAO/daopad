@@ -563,10 +563,10 @@ pub struct ListPermissionsResponse {
 pub enum ListPermissionsResult {
     Ok {
         permissions: Vec<Permission>,
-        privileges: Vec<PermissionCallerPrivileges>,
         total: u64,
+        privileges: Vec<PermissionCallerPrivileges>,
         user_groups: Vec<UserGroup>,
-        users: Vec<UserDTO>,  // Missing field causing decode failure
+        users: Vec<UserDTO>,
         next_offset: Option<u64>,
     },
     Err(Error),

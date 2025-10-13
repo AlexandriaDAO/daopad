@@ -30,11 +30,27 @@ export class OrbitServiceBase {
   /**
    * Common error handling with service context
    * Handles Orbit's Result<T, Error> pattern consistently
+   * Includes caching for read operations (list_, get_)
    */
-  async handleOrbitCall(methodName, params, decoder) {
+  async handleOrbitCall(methodName, params, decoder, options = {}) {
+    const { bypassCache = false, cacheKey = null } = options;
+
+    // Generate cache key from method + params
+    const key = cacheKey || `${methodName}:${JSON.stringify(params)}`;
+
+    // Check cache for read operations (list_, get_)
+    if (!bypassCache && (methodName.startsWith('list_') || methodName.startsWith('get_'))) {
+      const cached = this.getCached(key);
+      if (cached) {
+        return cached;
+      }
+    }
+
     try {
       console.log(`[${this.serviceName}] Calling ${methodName}:`, params);
       const result = await this.actor[methodName](params);
+
+      let finalResult;
 
       if (result && typeof result === 'object') {
         // Handle Orbit's double-wrapped results: Result::Ok(Result::Ok/Err)
@@ -42,18 +58,28 @@ export class OrbitServiceBase {
           const innerResult = result.Ok;
           // Check for inner Result
           if (innerResult && typeof innerResult === 'object' && 'Ok' in innerResult) {
-            return decoder ? decoder(innerResult.Ok) : innerResult.Ok;
+            finalResult = decoder ? decoder(innerResult.Ok) : innerResult.Ok;
           } else if (innerResult && typeof innerResult === 'object' && 'Err' in innerResult) {
             throw new Error(innerResult.Err.message || JSON.stringify(innerResult.Err));
+          } else {
+            // Single-wrapped Ok
+            finalResult = decoder ? decoder(innerResult) : innerResult;
           }
-          // Single-wrapped Ok
-          return decoder ? decoder(innerResult) : innerResult;
         } else if ('Err' in result) {
           throw new Error(result.Err.message || JSON.stringify(result.Err));
+        } else {
+          finalResult = decoder ? decoder(result) : result;
         }
+      } else {
+        finalResult = decoder ? decoder(result) : result;
       }
 
-      return decoder ? decoder(result) : result;
+      // Cache successful results for read operations
+      if (!bypassCache && (methodName.startsWith('list_') || methodName.startsWith('get_'))) {
+        this.setCache(key, finalResult);
+      }
+
+      return finalResult;
     } catch (error) {
       console.error(`[${this.serviceName}] ${methodName} failed:`, error);
       throw error;

@@ -206,7 +206,14 @@ async fn fetch_permissions(station_id: Principal) -> Result<PermissionsData, Str
         .map_err(|e| format!("Failed to list permissions: {:?}", e))?;
 
     match result.0 {
-        ListPermissionsResult::Ok { permissions, user_groups, .. } => {
+        ListPermissionsResult::Ok {
+            permissions,
+            total: _,
+            privileges: _,
+            user_groups,
+            users: _,
+            next_offset: _,
+        } => {
             Ok(PermissionsData { permissions, user_groups })
         }
         ListPermissionsResult::Err(e) => Err(format!("Orbit returned error: {}", e)),

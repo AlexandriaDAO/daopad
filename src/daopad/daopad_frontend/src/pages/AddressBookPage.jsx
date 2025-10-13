@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, Plus } from 'lucide-react';
 import { addressBookService } from '../services/addressBookService';
 import AddressBookDialog from '../components/address-book/AddressBookDialog';
@@ -42,6 +42,9 @@ const AddressBookPage = ({ identity }) => {
   const canCreate = hasPermission('AddressBook.Create');
   const canList = hasPermission('AddressBook.List');
 
+  // Track initial load to prevent duplicate calls on mount
+  const initialLoadRef = useRef(false);
+
   // Fetch data function - Lines 177-198 in Vue component
   const fetchList = useCallback(async () => {
     if (!canList) return;
@@ -83,18 +86,27 @@ const AddressBookPage = ({ identity }) => {
     }
   }, [searchTerm, pagination.offset, pagination.limit, canList]);
 
-  // Auto-refresh every 30 seconds - adjusted for performance
+  // Single effect for initial load + auto-refresh to prevent duplicate calls
   useEffect(() => {
+    // Initial load only once on mount
+    if (!initialLoadRef.current) {
+      initialLoadRef.current = true;
+      fetchList();
+    }
+
+    // Auto-refresh every 30 seconds (but not immediately after mount)
     if (!disableRefresh) {
       const interval = setInterval(fetchList, 30000);
       return () => clearInterval(interval);
     }
   }, [fetchList, disableRefresh]);
 
-  // Initial load
+  // Manual reload trigger only when forceReload increments
   useEffect(() => {
-    fetchList();
-  }, [forceReload]);
+    if (forceReload > 0) {
+      fetchList();
+    }
+  }, [forceReload, fetchList]);
 
   // Copy to clipboard - Lines 89-94 in Vue component
   const handleCopy = (address) => {
