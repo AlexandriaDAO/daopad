@@ -775,8 +775,6 @@ service : () -> {
   get_my_locked_tokens : () -> (Result_12);
   get_my_voting_power_for_token : (principal) -> (Result_13);
   get_orbit_canister : (principal, principal) -> (Result_14);
-  // Get a single request by ID (deprecated - kept for compatibility)
-  get_orbit_request : (principal, text) -> (Result_4);
   // EXPERIMENTAL: Ultra-simple request fetching - returns basic info only
   get_orbit_requests_simple : () -> (Result_15);
   get_orbit_station_for_token : (principal) -> (opt principal) query;

@@ -25,8 +25,7 @@ fn label_name(label: &Label) -> Option<String> {
                 1821510295 => "Approved".to_string(),
                 2442362239 => "Rejected".to_string(),
                 3456837432 => "Cancelled".to_string(),
-                479410653 => "Failed".to_string(), // CORRECTED: This is the actual Failed hash
-                1569634545 => "Failed".to_string(), // Keep old mapping for compatibility
+                479410653 => "Failed".to_string(),
                 1598796536 => "Scheduled".to_string(),
                 1131829668 => "Processing".to_string(),
                 _ => {
@@ -696,15 +695,6 @@ pub async fn list_orbit_requests(
         .map_err(|(code, msg)| format!("IC call failed: ({:?}, {})", code, msg))?;
 
     parse_list_requests_response(raw_bytes)
-}
-
-/// Get a single request by ID (deprecated - kept for compatibility)
-#[update]
-pub async fn get_orbit_request(
-    _token_canister_id: Principal,
-    _request_id: String,
-) -> Result<String, String> {
-    Err("This method is deprecated. Use list_orbit_requests instead.".to_string())
 }
 
 /// Submit approval decision for a request
