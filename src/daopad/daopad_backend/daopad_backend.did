@@ -901,7 +901,7 @@ service : () -> {
     ) -> (Result_1);
   // Perform all security checks in one call
   // 
-  // This is a convenience method that calls all 8 individual security check methods
+  // This is a convenience method that calls all 16 individual security check methods
   // and combines their results into a single response. This is useful for:
   // - Getting a complete security overview in one call
   // - Frontend components that need all checks at once

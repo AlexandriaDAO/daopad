@@ -441,6 +441,7 @@ pub enum ResourceAction {
     Delete(ResourceSpecifier),
     Read(ResourceSpecifier),
     Transfer(ResourceSpecifier), // For accounts only
+    Remove(ResourceSpecifier), // Distinguish from Delete for policies/rules
     List,
 }
 
@@ -449,7 +450,11 @@ pub enum ResourceAction {
 pub enum ExternalCanisterAction {
     Create,
     Change(ExternalCanisterSpecifier),
+    Configure(ExternalCanisterSpecifier), // For NativeSettings controller modification
     Fund(ExternalCanisterSpecifier),
+    Call(ExternalCanisterSpecifier), // For arbitrary method calls
+    Monitor(ExternalCanisterSpecifier), // For automatic cycle funding
+    Snapshot(ExternalCanisterSpecifier), // For snapshot/restore/prune operations
     Read(ExternalCanisterSpecifier),
     List,
 }
@@ -471,6 +476,7 @@ pub enum PermissionAction {
 pub enum SystemAction {
     ManageSystemInfo,
     Upgrade,
+    Restore, // For system restore time-travel attacks
     Capabilities,
     SystemInfo,
 }
@@ -514,6 +520,43 @@ pub enum Resource {
     System(SystemAction),
     User(UserAction),
     UserGroup(ResourceAction),
+}
+
+// ===== NEW TYPES FOR SECURITY BYPASS DETECTION =====
+
+// System restore types for time-travel attack detection
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub enum SystemRestoreTarget {
+    RestoreStation,
+    RestoreUpgrader,
+}
+
+// AddressBook metadata for whitelist injection detection
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub struct AddressBookMetadata {
+    pub key: String,
+    pub value: String,
+}
+
+// External canister call types for arbitrary execution detection
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub struct CanisterMethod {
+    pub canister_id: Principal,
+    pub method_name: String,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub enum CallExternalCanisterResourceTarget {
+    Any,
+    Canister(Principal),
+}
+
+// Snapshot operation types for state manipulation detection
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub enum SnapshotOperation {
+    Snapshot,
+    Restore,
+    Prune,
 }
 
 // Permission structure matching Orbit
