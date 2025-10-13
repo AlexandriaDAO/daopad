@@ -341,16 +341,29 @@ const TokenDashboard = memo(function TokenDashboard({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {tokens.map((t, index) => (
-                    <SelectItem key={t.canister_id} value={index.toString()}>
-                      <div className="flex items-center justify-between gap-2 w-full">
-                        <span>{t.symbol}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {((tokenVotingPowers && tokenVotingPowers[t.canister_id]) || 0).toLocaleString()} VP
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {tokens.map((t, index) => {
+                    const tokenPositions = lpPositions.filter(pos =>
+                      pos.address_0 === t.canister_id || pos.address_1 === t.canister_id
+                    );
+                    const tokenUsdValue = tokenPositions.reduce((sum, pos) =>
+                      sum + (pos.usd_balance || 0), 0
+                    );
+                    return (
+                      <SelectItem key={t.canister_id} value={index.toString()}>
+                        <div className="flex items-center justify-between gap-2 w-full">
+                          <span>{t.symbol}</span>
+                          <div className="flex flex-col items-end">
+                            <span className="text-xs font-mono">
+                              {((tokenVotingPowers && tokenVotingPowers[t.canister_id]) || 0).toLocaleString()} VP
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {formatUsdValue(tokenUsdValue)}
+                            </span>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             )}
@@ -379,11 +392,31 @@ const TokenDashboard = memo(function TokenDashboard({
           </div>
         </div>
 
-        {/* Voting Power */}
+        {/* Voting Power with Prominent USD */}
         <div className="text-right flex-shrink-0">
-          <div className="text-2xl font-mono font-bold">{votingPower.toLocaleString()}</div>
-          <div className="text-xs text-muted-foreground">Voting Power</div>
-          <div className="text-sm text-muted-foreground">{formatUsdValue(totalUsdValue)} LP Value</div>
+          {/* Primary: USD Value */}
+          <div className="text-2xl font-bold text-green-600">
+            {formatUsdValue(totalUsdValue)}
+          </div>
+          <div className="text-xs text-muted-foreground">LP Value</div>
+
+          {/* Secondary: VP with tooltip */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="text-lg font-mono cursor-help border-b border-dotted border-muted-foreground inline-block">
+                  {votingPower.toLocaleString()} VP
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Voting Power = USD Value × 100</p>
+                <p className="text-xs text-muted-foreground">
+                  ${(votingPower / 100).toLocaleString()} × 100 = {votingPower.toLocaleString()} VP
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
           {orbitStation && daoStatus && (
             <div className="mt-2">
               {daoStatus === 'real' && <Badge className="bg-green-100 text-green-800">✓ Decentralized</Badge>}
@@ -513,7 +546,11 @@ const TokenDashboard = memo(function TokenDashboard({
                 disabled={voting}
                 className="flex-1 bg-green-600 hover:bg-green-700"
               >
-                {voting ? 'Voting...' : `Vote Yes (${userVotingPower?.toLocaleString()} VP)`}
+                {voting ? 'Voting...' : (
+                  <span>
+                    Vote Yes ({userVotingPower?.toLocaleString()} VP / {formatUsdValue((userVotingPower || 0) / 100)})
+                  </span>
+                )}
               </Button>
               <Button
                 onClick={() => handleVote(false)}
@@ -521,7 +558,11 @@ const TokenDashboard = memo(function TokenDashboard({
                 variant="destructive"
                 className="flex-1"
               >
-                {voting ? 'Voting...' : `Vote No (${userVotingPower?.toLocaleString()} VP)`}
+                {voting ? 'Voting...' : (
+                  <span>
+                    Vote No ({userVotingPower?.toLocaleString()} VP / {formatUsdValue((userVotingPower || 0) / 100)})
+                  </span>
+                )}
               </Button>
             </div>
           )}
@@ -547,16 +588,29 @@ const TokenDashboard = memo(function TokenDashboard({
                 <div className="text-muted-foreground">Loading voting power...</div>
               ) : userVotingPower !== null ? (
                 <div className="space-y-2">
+                  {/* Show VP with USD equivalent */}
                   <div className={userVotingPower >= 10000 ? 'text-green-600' : 'text-red-600'}>
                     Your voting power: <strong>{userVotingPower.toLocaleString()} VP</strong>
+                    <span className="text-sm ml-2">
+                      ({formatUsdValue(userVotingPower / 100)})
+                    </span>
                   </div>
+
+                  {/* If insufficient VP, show USD needed too */}
                   {userVotingPower < 10000 && (
-                    <Badge variant="destructive">
-                      Need {(10000 - userVotingPower).toLocaleString()} more VP
-                    </Badge>
+                    <div className="space-y-1">
+                      <Badge variant="destructive">
+                        Need {(10000 - userVotingPower).toLocaleString()} more VP
+                      </Badge>
+                      <div className="text-xs text-muted-foreground">
+                        That's {formatUsdValue((10000 - userVotingPower) / 100)} more LP value needed
+                      </div>
+                    </div>
                   )}
+
+                  {/* Explanation text */}
                   <div className="text-xs text-muted-foreground">
-                    Minimum 10,000 VP required to propose station linking
+                    Minimum 10,000 VP ({formatUsdValue(100)}) required to propose station linking
                   </div>
                 </div>
               ) : null}
