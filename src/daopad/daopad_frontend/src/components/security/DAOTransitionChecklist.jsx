@@ -54,17 +54,17 @@ const DAOTransitionChecklist = ({ securityData, stationId, tokenSymbol, onRefres
   };
 
   const getScoreColorClass = (score) => {
-    if (score < 30) return 'border-red-500 bg-red-50 text-red-900';
-    if (score < 60) return 'border-orange-500 bg-orange-50 text-orange-900';
-    if (score < 85) return 'border-yellow-500 bg-yellow-50 text-yellow-900';
-    return 'border-green-500 bg-green-50 text-green-900';
+    if (score < 30) return 'border-red-500 bg-red-950 text-red-200';
+    if (score < 60) return 'border-orange-500 bg-orange-950 text-orange-200';
+    if (score < 85) return 'border-yellow-500 bg-yellow-950 text-yellow-200';
+    return 'border-green-500 bg-green-950 text-green-200';
   };
 
   const getScoreColor = (score) => {
-    if (score < 30) return 'text-red-600';
-    if (score < 60) return 'text-orange-600';
-    if (score < 85) return 'text-yellow-600';
-    return 'text-green-600';
+    if (score < 30) return 'text-red-400';
+    if (score < 60) return 'text-orange-400';
+    if (score < 85) return 'text-yellow-400';
+    return 'text-green-400';
   };
 
   const getScoreLabel = (score) => {
@@ -136,8 +136,8 @@ const DAOTransitionChecklist = ({ securityData, stationId, tokenSymbol, onRefres
           checks={groupedChecks.critical}
           expanded={true}
           alwaysExpanded={true}
-          colorClass="border-red-500 bg-red-50"
-          badgeClass="bg-red-100 text-red-800"
+          colorClass="border-red-500 bg-red-950/50"
+          badgeClass="bg-red-900 text-red-200"
           description="These issues prevent true DAO governance. Individual admins can bypass community."
         />
       )}
@@ -149,8 +149,8 @@ const DAOTransitionChecklist = ({ securityData, stationId, tokenSymbol, onRefres
           checks={groupedChecks.high}
           expanded={expandedSections.high}
           onToggle={() => toggleSection('high')}
-          colorClass="border-orange-500 bg-orange-50"
-          badgeClass="bg-orange-100 text-orange-800"
+          colorClass="border-orange-500 bg-orange-950/50"
+          badgeClass="bg-orange-900 text-orange-200"
           description="These issues create backdoors that could undermine governance."
         />
       )}
@@ -162,8 +162,8 @@ const DAOTransitionChecklist = ({ securityData, stationId, tokenSymbol, onRefres
           checks={groupedChecks.medium}
           expanded={expandedSections.medium}
           onToggle={() => toggleSection('medium')}
-          colorClass="border-yellow-500 bg-yellow-50"
-          badgeClass="bg-yellow-100 text-yellow-800"
+          colorClass="border-yellow-500 bg-yellow-950/50"
+          badgeClass="bg-yellow-900 text-yellow-200"
           description="These configurations may need adjustment for production."
         />
       )}
@@ -175,8 +175,8 @@ const DAOTransitionChecklist = ({ securityData, stationId, tokenSymbol, onRefres
           checks={groupedChecks.low}
           expanded={expandedSections.low}
           onToggle={() => toggleSection('low')}
-          colorClass="border-blue-500 bg-blue-50"
-          badgeClass="bg-blue-100 text-blue-800"
+          colorClass="border-blue-500 bg-blue-950/50"
+          badgeClass="bg-blue-900 text-blue-200"
           description="Low priority items that may be reviewed later."
         />
       )}
@@ -188,17 +188,17 @@ const DAOTransitionChecklist = ({ securityData, stationId, tokenSymbol, onRefres
           checks={groupedChecks.passing}
           expanded={expandedSections.passing}
           onToggle={() => toggleSection('passing')}
-          colorClass="border-green-500 bg-green-50"
-          badgeClass="bg-green-100 text-green-800"
+          colorClass="border-green-500 bg-green-950/50"
+          badgeClass="bg-green-900 text-green-200"
           description="These settings are secure and properly configured."
         />
       )}
 
       {/* RECOMMENDED ACTIONS */}
       {securityData.recommended_actions && securityData.recommended_actions.length > 0 && (
-        <Card className="border-2 border-blue-500 bg-blue-50">
+        <Card className="border-2 border-blue-500 bg-blue-950/50">
           <CardHeader>
-            <h3 className="text-lg font-bold text-blue-900 flex items-center gap-2">
+            <h3 className="text-lg font-bold text-blue-300 flex items-center gap-2">
               <TrendingUp className="w-5 h-5" />
               Next Steps to Full Decentralization
             </h3>
@@ -206,10 +206,10 @@ const DAOTransitionChecklist = ({ securityData, stationId, tokenSymbol, onRefres
           <CardContent className="space-y-3">
             {securityData.recommended_actions.map((action, idx) => (
               <div key={idx} className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
                   {idx + 1}
                 </div>
-                <p className="text-sm text-blue-900 flex-1">{action}</p>
+                <p className="text-sm text-blue-200 flex-1">{action}</p>
               </div>
             ))}
           </CardContent>
@@ -235,8 +235,8 @@ const RiskSection = ({ title, checks, expanded, onToggle, alwaysExpanded, colorC
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <h3 className="text-lg font-bold">{title}</h3>
-          <p className="text-sm mt-1 opacity-80">{description}</p>
+          <h3 className="text-lg font-bold text-gray-100">{title}</h3>
+          <p className="text-sm mt-1 opacity-80 text-gray-300">{description}</p>
         </div>
         <div className="flex items-center gap-3">
           <span className={`px-2 py-1 rounded text-xs font-semibold ${badgeClass}`}>
@@ -267,16 +267,16 @@ const CheckItem = ({ check }) => {
 
   const getStatusBadge = (status) => {
     const badges = {
-      'Fail': 'bg-red-100 text-red-800',
-      'Warn': 'bg-yellow-100 text-yellow-800',
-      'Pass': 'bg-green-100 text-green-800',
-      'Error': 'bg-gray-100 text-gray-800',
+      'Fail': 'bg-red-900 text-red-200',
+      'Warn': 'bg-yellow-900 text-yellow-200',
+      'Pass': 'bg-green-900 text-green-200',
+      'Error': 'bg-gray-800 text-gray-200',
     };
-    return badges[status] || 'bg-gray-100 text-gray-800';
+    return badges[status] || 'bg-gray-800 text-gray-200';
   };
 
   return (
-    <div className="border rounded-lg p-3 hover:bg-gray-50 transition-colors">
+    <div className="border rounded-lg p-3 hover:bg-gray-800/50 transition-colors">
       <div className="cursor-pointer" onClick={() => setExpanded(!expanded)}>
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -291,7 +291,7 @@ const CheckItem = ({ check }) => {
               )}
               <h4 className="font-semibold">{check.name}</h4>
             </div>
-            <p className="text-sm text-gray-700">{check.message}</p>
+            <p className="text-sm text-gray-300">{check.message}</p>
           </div>
           <ChevronRight
             className={`w-4 h-4 text-gray-500 transition-transform ${expanded ? 'rotate-90' : ''}`}
@@ -304,18 +304,18 @@ const CheckItem = ({ check }) => {
           {check.details && (
             <div className="text-sm">
               <span className="font-semibold">Details:</span>
-              <p className="text-gray-700 mt-1">{check.details}</p>
+              <p className="text-gray-300 mt-1">{check.details}</p>
             </div>
           )}
 
           {check.recommendation && (
             <div className="text-sm">
-              <span className="font-semibold text-blue-700">How to Fix:</span>
-              <p className="text-gray-700 mt-1">{check.recommendation}</p>
+              <span className="font-semibold text-blue-400">How to Fix:</span>
+              <p className="text-gray-300 mt-1">{check.recommendation}</p>
             </div>
           )}
 
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-gray-400">
             Category: {check.category}
             {check.severity && check.severity !== 'None' && ` | Severity: ${check.severity}`}
           </div>
