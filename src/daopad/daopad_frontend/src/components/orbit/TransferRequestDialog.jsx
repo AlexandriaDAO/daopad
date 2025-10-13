@@ -51,6 +51,7 @@ export default function TransferRequestDialog({
   tokenId,      // Principal of the token
   identity,     // User's identity
   onSuccess,    // Callback after successful creation
+  votingPower = 0, // User's voting power
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -74,37 +75,54 @@ export default function TransferRequestDialog({
     try {
       const backend = new DAOPadBackendService(identity);
 
+      // Check voting power requirement
+      if (votingPower < 10000) {
+        toast({
+          variant: 'destructive',
+          title: 'Insufficient Voting Power',
+          description: `You need at least 10,000 VP to create transfer proposals. Current: ${votingPower.toLocaleString()} VP`
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       // Convert amount to smallest units
       const amountInSmallest = BigInt(
         parseFloat(data.amount) * Math.pow(10, asset.decimals)
       );
 
-      // Create transfer request directly in Orbit
-      const result = await backend.createTransferRequest(
-        account.id,           // from_account_id (UUID)
-        asset.id,            // from_asset_id (UUID)
-        data.to_address,     // destination
-        amountInSmallest,    // Pass BigInt directly, not string
-        data.title,
-        data.description,
-        data.memo || null,
-        tokenId
+      // Create transfer details for treasury proposal
+      const transferDetails = {
+        from_account_id: account.id,
+        from_asset_id: asset.id,
+        to: data.to_address,
+        amount: amountInSmallest,
+        memo: data.memo || null,
+        title: data.title,
+        description: data.description
+      };
+
+      // Call the treasury proposal endpoint
+      const result = await backend.createTreasuryTransferProposal(
+        Principal.fromText(tokenId),
+        transferDetails
       );
 
       if (result.success) {
-        // Sonner toast expects a message string, not an object
-        toast.success(`Transfer Request Created - ID: ${result.data}. Members can now vote.`);
-
+        toast({
+          title: 'Transfer Proposal Created',
+          description: 'Community can now vote on this transfer request'
+        });
         onOpenChange(false);
         if (onSuccess) onSuccess();
 
         // Reset form
         form.reset();
       } else {
-        setError(result.error || 'Failed to create request');
+        throw new Error(result.error || 'Failed to create proposal');
       }
     } catch (err) {
-      console.error('Error creating transfer request:', err);
+      console.error('Error creating transfer proposal:', err);
       setError(err.message || 'An unexpected error occurred');
     } finally {
       setIsSubmitting(false);
@@ -120,9 +138,9 @@ export default function TransferRequestDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Create Transfer Request</DialogTitle>
+          <DialogTitle>Create Transfer Proposal</DialogTitle>
           <DialogDescription>
-            Request a transfer from {account.name} ({asset.symbol})
+            Propose a transfer from {account.name} ({asset.symbol}). Community will vote on this proposal.
           </DialogDescription>
         </DialogHeader>
 
@@ -157,6 +175,16 @@ export default function TransferRequestDialog({
               </p>
             )}
           </div>
+
+          {votingPower < 10000 && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                You need at least 10,000 VP to create transfer proposals.
+                Current: {votingPower.toLocaleString()} VP
+              </AlertDescription>
+            </Alert>
+          )}
 
           <div>
             <AddressInput
@@ -225,14 +253,14 @@ export default function TransferRequestDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || votingPower < 10000}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating...
                 </>
               ) : (
-                'Create Request'
+                'Create Proposal'
               )}
             </Button>
           </DialogFooter>
