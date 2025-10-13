@@ -9,6 +9,7 @@
  * - Secure random generation
  */
 
+import DOMPurify from 'isomorphic-dompurify';
 import { logger } from '../services/logging/Logger';
 
 /**
@@ -165,7 +166,7 @@ export class SecurityManager {
 
   /**
    * Sanitize user input for display
-   * Removes potential XSS vectors
+   * Removes potential XSS vectors using DOMPurify
    *
    * @param {string} input - Input to sanitize
    * @param {object} options - Sanitization options
@@ -179,40 +180,46 @@ export class SecurityManager {
     const {
       allowedTags = [],
       allowedAttributes = {},
-      maxLength = 10000
+      maxLength = 10000,
+      keepContent = true
     } = options;
 
     // Truncate if too long
-    let sanitized = input.substring(0, maxLength);
+    const truncated = input.substring(0, maxLength);
 
-    // If no tags allowed, escape everything
+    // If no tags allowed, escape everything (plain text mode)
     if (allowedTags.length === 0) {
-      return sanitized
+      const escaped = truncated
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#x27;')
         .replace(/\//g, '&#x2F;');
+
+      logger.debug('Input sanitized (plain text mode)', {
+        originalLength: input.length,
+        truncated: input.length > maxLength
+      });
+
+      return escaped;
     }
 
-    // For production, use DOMPurify library
-    // This is a basic implementation for demonstration
-    // Remove script tags
-    sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    // Use DOMPurify for production-grade HTML sanitization
+    const sanitized = DOMPurify.sanitize(truncated, {
+      ALLOWED_TAGS: allowedTags,
+      ALLOWED_ATTR: allowedAttributes,
+      KEEP_CONTENT: keepContent,
+      RETURN_DOM_FRAGMENT: false,
+      RETURN_DOM: false,
+      RETURN_TRUSTED_TYPE: false
+    });
 
-    // Remove event handlers
-    sanitized = sanitized.replace(/on\w+\s*=\s*["'][^"']*["']/gi, '');
-    sanitized = sanitized.replace(/on\w+\s*=\s*[^\s>]*/gi, '');
-
-    // Remove javascript: and data: URIs
-    sanitized = sanitized.replace(/href\s*=\s*["']javascript:[^"']*["']/gi, 'href="#"');
-    sanitized = sanitized.replace(/src\s*=\s*["']data:[^"']*["']/gi, 'src=""');
-
-    logger.debug('Input sanitized for display', {
+    logger.debug('Input sanitized with DOMPurify', {
       originalLength: input.length,
       sanitizedLength: sanitized.length,
-      truncated: input.length > maxLength
+      truncated: input.length > maxLength,
+      allowedTags: allowedTags.length
     });
 
     return sanitized;

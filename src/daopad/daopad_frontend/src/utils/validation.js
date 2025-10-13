@@ -10,6 +10,7 @@
  */
 
 import { Principal } from '@dfinity/principal';
+import DOMPurify from 'isomorphic-dompurify';
 import { logger } from '../services/logging/Logger';
 
 /**
@@ -161,36 +162,24 @@ export class Validator {
 
     const {
       allowedTags = ['b', 'i', 'em', 'strong', 'a', 'p', 'br'],
-      allowedAttributes = { a: ['href', 'title'] }
+      allowedAttributes = { a: ['href', 'title'] },
+      keepContent = true
     } = options;
 
-    // Simple HTML sanitization (in production, use DOMPurify library)
-    // This is a basic implementation for demonstration
-    let sanitized = dirty;
+    // Use DOMPurify for production-grade HTML sanitization
+    const sanitized = DOMPurify.sanitize(dirty, {
+      ALLOWED_TAGS: allowedTags,
+      ALLOWED_ATTR: allowedAttributes,
+      KEEP_CONTENT: keepContent,
+      RETURN_DOM_FRAGMENT: false,
+      RETURN_DOM: false,
+      RETURN_TRUSTED_TYPE: false
+    });
 
-    // Remove script tags and content
-    sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-
-    // Remove event handlers
-    sanitized = sanitized.replace(/on\w+\s*=\s*["'][^"']*["']/gi, '');
-    sanitized = sanitized.replace(/on\w+\s*=\s*[^\s>]*/gi, '');
-
-    // Remove javascript: links
-    sanitized = sanitized.replace(/href\s*=\s*["']javascript:[^"']*["']/gi, 'href="#"');
-
-    // Remove data: URIs (potential XSS vector)
-    sanitized = sanitized.replace(/src\s*=\s*["']data:[^"']*["']/gi, 'src=""');
-
-    // For production use, integrate DOMPurify:
-    // import DOMPurify from 'dompurify';
-    // return DOMPurify.sanitize(dirty, {
-    //   ALLOWED_TAGS: allowedTags,
-    //   ALLOWED_ATTR: allowedAttributes
-    // });
-
-    logger.debug('HTML sanitized', {
-      original: dirty.substring(0, 100),
-      sanitized: sanitized.substring(0, 100)
+    logger.debug('HTML sanitized with DOMPurify', {
+      originalLength: dirty.length,
+      sanitizedLength: sanitized.length,
+      allowedTags: allowedTags.length
     });
 
     return sanitized;

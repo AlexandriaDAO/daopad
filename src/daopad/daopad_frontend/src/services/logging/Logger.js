@@ -189,8 +189,15 @@ class Logger {
 
   /**
    * Start periodic flush timer
+   * Clears existing timer to prevent memory leaks
    */
   startPeriodicFlush() {
+    // Clear existing timer if any (prevents memory leak on re-instantiation)
+    if (this.flushTimer) {
+      clearInterval(this.flushTimer);
+      this.flushTimer = null;
+    }
+
     this.flushTimer = setInterval(() => {
       this.flush();
     }, this.flushInterval);

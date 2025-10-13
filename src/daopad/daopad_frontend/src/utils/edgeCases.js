@@ -16,15 +16,88 @@ import { logger } from '../services/logging/Logger';
  */
 export class EdgeCaseHandlers {
   /**
+   * Safely convert BigInt to Number with overflow protection
+   *
+   * @param {bigint} bigInt - BigInt value to convert
+   * @param {object} options - Conversion options
+   * @returns {number} Converted number
+   * @throws {Error} If overflow and throwOnOverflow is true
+   */
+  static safeBigIntToNumber(bigInt, options = {}) {
+    const {
+      throwOnOverflow = true,
+      maxValue = Number.MAX_SAFE_INTEGER,
+      minValue = Number.MIN_SAFE_INTEGER,
+      clampOnOverflow = false
+    } = options;
+
+    // Validate input
+    if (typeof bigInt !== 'bigint') {
+      try {
+        bigInt = BigInt(bigInt);
+      } catch (error) {
+        throw new Error(`Cannot convert to BigInt: ${error.message}`);
+      }
+    }
+
+    // Check overflow
+    const exceedsMax = bigInt > BigInt(maxValue);
+    const exceedsMin = bigInt < BigInt(minValue);
+
+    if (exceedsMax || exceedsMin) {
+      const direction = exceedsMax ? 'maximum' : 'minimum';
+      const limit = exceedsMax ? maxValue : minValue;
+      const message = `BigInt ${bigInt} exceeds safe ${direction} value ${limit}`;
+
+      logger.error('BigInt overflow detected', {
+        bigInt: bigInt.toString(),
+        maxValue,
+        minValue,
+        exceedsMax,
+        exceedsMin
+      });
+
+      if (throwOnOverflow && !clampOnOverflow) {
+        throw new Error(message);
+      }
+
+      if (clampOnOverflow) {
+        logger.warn('Clamping BigInt to safe range', {
+          original: bigInt.toString(),
+          clamped: limit
+        });
+        return limit;
+      }
+
+      // If neither throw nor clamp, warn and convert anyway (unsafe)
+      logger.warn('Converting unsafe BigInt to Number', {
+        bigInt: bigInt.toString()
+      });
+    }
+
+    const result = Number(bigInt);
+
+    logger.debug('BigInt converted to Number', {
+      bigInt: bigInt.toString(),
+      result,
+      safe: !exceedsMax && !exceedsMin
+    });
+
+    return result;
+  }
+
+  /**
    * Perform BigInt operations safely with overflow checking
    *
    * @param {string} operation - Operation to perform (add, subtract, multiply, divide)
    * @param {bigint|number|string} a - First operand
    * @param {bigint|number|string} b - Second operand
+   * @param {object} options - Operation options
    * @returns {bigint} Result of operation
    * @throws {Error} If operation fails or overflows
    */
-  static safeBigIntOperation(operation, a, b) {
+  static safeBigIntOperation(operation, a, b, options = {}) {
+    const { throwOnOverflow = false } = options;
     try {
       // Convert to BigInt
       const bigA = typeof a === 'bigint' ? a : BigInt(a);
@@ -51,14 +124,19 @@ export class EdgeCaseHandlers {
 
         case 'multiply':
           result = bigA * bigB;
-          // Warn if result exceeds safe integer range
+          // Check if result exceeds safe integer range
           if (result > BigInt(Number.MAX_SAFE_INTEGER)) {
-            logger.warn('BigInt multiplication exceeds safe integer range', {
+            const message = 'BigInt multiplication exceeds safe integer range';
+            logger.warn(message, {
               a: a.toString(),
               b: b.toString(),
               result: result.toString(),
               maxSafeInteger: Number.MAX_SAFE_INTEGER
             });
+
+            if (throwOnOverflow) {
+              throw new Error(`${message}: ${result.toString()}`);
+            }
           }
           break;
 

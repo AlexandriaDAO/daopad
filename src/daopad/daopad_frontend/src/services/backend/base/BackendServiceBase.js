@@ -15,8 +15,10 @@ const BACKEND_CANISTER_ID = canisterId ?? DEFAULT_BACKEND_ID;
  * - Error handling with retry logic
  * - Input validation
  * - Request logging
- * - Rate limiting
  * - Timeout handling
+ *
+ * Note: Rate limiting removed from base class for better UX.
+ * Implement per-method using SecurityManager.createRateLimiter() if needed.
  */
 export class BackendServiceBase {
   constructor(identity = null) {
@@ -24,8 +26,6 @@ export class BackendServiceBase {
     this.actor = null;
     this.lastIdentity = null;
     this.requestCounter = 0;
-    this.lastRequestTime = 0;
-    this.minRequestInterval = 100; // Minimum 100ms between requests
   }
 
   async getActor() {
@@ -116,23 +116,10 @@ export class BackendServiceBase {
   }
 
   /**
-   * Rate limiting - ensure minimum interval between requests
-   */
-  async rateLimit() {
-    const now = Date.now();
-    const timeSinceLastRequest = now - this.lastRequestTime;
-
-    if (timeSinceLastRequest < this.minRequestInterval) {
-      const waitTime = this.minRequestInterval - timeSinceLastRequest;
-      logger.debug('Rate limiting - waiting', { waitTime });
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-    }
-
-    this.lastRequestTime = Date.now();
-  }
-
-  /**
    * Execute actor method with comprehensive error handling
+   *
+   * Note: Rate limiting removed from base class - implement per-method if needed
+   * using SecurityManager.createRateLimiter() for specific high-traffic operations
    *
    * @param {string} method - Method name to call
    * @param {Array} args - Method arguments
@@ -159,8 +146,6 @@ export class BackendServiceBase {
     }
 
     try {
-      // Rate limiting
-      await this.rateLimit();
 
       // Execute with retry logic and timeout
       const result = await ErrorHandler.handleWithRetry(
