@@ -63,23 +63,77 @@ export function Component() {
 - Sync declarations: cp -r src/declarations/* frontend/src/declarations/
 ```
 
-### 5. Reference Orchestrator (TOP OF PLAN)
+### 5. Embed Orchestrator (MANDATORY TOP OF PLAN)
+Every plan MUST start with this exact header (fill in placeholders):
 ```markdown
-## 🚨 EXECUTION
+# 🤖 AUTONOMOUS PR ORCHESTRATOR - DO NOT SKIP
 
-This plan uses: @.claude/prompts/autonomous-pr-orchestrator-condensed.md
+**You are an autonomous PR orchestrator. Your ONLY job is to implement this plan and create a PR.**
 
-**Worktree:** `/home/theseus/alexandria/daopad-[FEATURE]/src/daopad`
+## Isolation Check (RUN FIRST)
+\`\`\`bash
+REPO_ROOT=$(git rev-parse --show-toplevel)
+if [ "$REPO_ROOT" = "/home/theseus/alexandria/daopad" ]; then
+    echo "❌ FATAL: In main repo. Must be in worktree."
+    echo "Worktree: /home/theseus/alexandria/daopad-[FEATURE]/src/daopad"
+    exit 1
+fi
+echo "✅ In isolated worktree: $REPO_ROOT"
+\`\`\`
+
+## Your Autonomous Workflow (NO QUESTIONS ALLOWED)
+1. **Verify isolation** - You must be in worktree: `/home/theseus/alexandria/daopad-[FEATURE]/src/daopad`
+2. **Implement feature** - Follow plan sections below
+3. **Build & Deploy**:
+   - Backend changes:
+     \`\`\`bash
+     cargo build --target wasm32-unknown-unknown --release -p daopad_backend
+     candid-extractor target/wasm32-unknown-unknown/release/daopad_backend.wasm > daopad_backend/daopad_backend.did
+     ./deploy.sh --network ic --backend-only
+     cp -r src/declarations/daopad_backend/* daopad_frontend/src/declarations/daopad_backend/
+     \`\`\`
+   - Frontend changes:
+     \`\`\`bash
+     npm run build
+     ./deploy.sh --network ic --frontend-only
+     \`\`\`
+4. **Create PR** (MANDATORY):
+   \`\`\`bash
+   git add .
+   git commit -m "[Descriptive message]"
+   git push -u origin feature/[feature-name]
+   gh pr create --title "[Feature]: [Title]" --body "Implements [PLAN].md"
+   \`\`\`
+5. **Iterate autonomously**:
+   - FOR i=1 to 5:
+     - Check review: `gh pr view [NUM] --json comments`
+     - Count P0 issues
+     - IF P0 > 0: Fix immediately, commit, push, sleep 300s, continue
+     - IF P0 = 0: Report success, EXIT
+   - After 5 iterations: Escalate to human
+
+## CRITICAL RULES
+- ❌ NO questions ("should I?", "want me to?", "is it done?")
+- ❌ NO skipping PR creation - it's MANDATORY
+- ❌ NO stopping after implementation - create PR immediately
+- ✅ After sleep: IMMEDIATELY continue (no pause)
+- ✅ ONLY stop at: approved, max iterations, or error
+
 **Branch:** `feature/[feature-name]`
-**Plan:** This file (`[PLAN].md`)
+**Worktree:** `/home/theseus/alexandria/daopad-[FEATURE]/src/daopad`
 
-### For Implementing Agent:
-1. Navigate to worktree above
-2. Use orchestrator Feature Implementation Prompt
-3. Follow plan sections below
+---
 
-[Implementation sections follow...]
+# Implementation Plan
+
+[Plan sections follow below...]
 ```
+
+**Template Structure:**
+1. Orchestrator header (above) at top
+2. Current state documentation
+3. Implementation pseudocode
+4. Testing requirements
 
 ### 6. Commit Plan & Handoff
 ```bash
@@ -90,7 +144,16 @@ git push -u origin feature/[name]
 
 **Final response:**
 ```
-pursue @/home/theseus/alexandria/daopad-[FEATURE]/src/daopad/[PLAN].md
+The plan is ready with embedded PR orchestrator.
+
+To execute: pursue @/home/theseus/alexandria/daopad-[FEATURE]/src/daopad/[PLAN].md
+
+The implementing agent MUST:
+1. Read the orchestrator header (cannot skip - it's at the top)
+2. Verify worktree isolation
+3. Implement the plan
+4. Create PR (mandatory step)
+5. Iterate autonomously until approved
 ```
 Then STOP. Do not implement.
 
@@ -124,12 +187,12 @@ cp -r src/declarations/daopad_backend/* daopad_frontend/src/declarations/daopad_
 ## Plan Checklist
 
 - [ ] Worktree created first
+- [ ] Orchestrator header EMBEDDED at top of plan (not referenced)
 - [ ] Current state documented
 - [ ] Implementation in pseudocode
 - [ ] Testing strategy defined
-- [ ] Orchestrator referenced (not embedded)
 - [ ] Plan committed to feature branch
-- [ ] Handoff command provided
+- [ ] Handoff command provided with PR creation reminder
 
 ## Critical Reminders
 
