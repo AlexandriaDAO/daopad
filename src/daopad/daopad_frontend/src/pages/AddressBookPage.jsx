@@ -86,22 +86,26 @@ const AddressBookPage = ({ identity }) => {
     }
   }, [searchTerm, pagination.offset, pagination.limit, canList]);
 
-  // Single effect for initial load + auto-refresh to prevent duplicate calls
+  // Effect 1: Initial load only (runs once on mount)
   useEffect(() => {
-    // Initial load only once on mount
     if (!initialLoadRef.current) {
       initialLoadRef.current = true;
       fetchList();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run on mount
 
-    // Auto-refresh every 30 seconds (but not immediately after mount)
-    if (!disableRefresh) {
-      const interval = setInterval(fetchList, 30000);
+  // Effect 2: Auto-refresh interval (stable reference)
+  useEffect(() => {
+    if (!disableRefresh && initialLoadRef.current) {
+      const interval = setInterval(() => {
+        fetchList();
+      }, 30000);
       return () => clearInterval(interval);
     }
   }, [fetchList, disableRefresh]);
 
-  // Manual reload trigger only when forceReload increments
+  // Effect 3: Manual reload trigger only when forceReload increments
   useEffect(() => {
     if (forceReload > 0) {
       fetchList();
