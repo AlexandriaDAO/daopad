@@ -11,6 +11,7 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
     const [error, setError] = useState(null);
     const [viewMode, setViewMode] = useState('user-friendly'); // 'user-friendly' or 'technical'
     const [progressData, setProgressData] = useState({
+        // Existing 8 checks
         admin_control: null,
         treasury_control: null,
         governance_permissions: null,
@@ -19,6 +20,16 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
         asset_management: null,
         system_configuration: null,
         operational_permissions: null,
+
+        // NEW: 8 additional bypass detection checks
+        controller_manipulation: null,
+        external_canister_calls: null,
+        system_restore: null,
+        addressbook_injection: null,
+        monitoring_drain: null,
+        snapshot_operations: null,
+        named_rule_bypass: null,
+        remove_operations: null,
     });
     const [completedCount, setCompletedCount] = useState(0);
 
@@ -84,7 +95,7 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
                         <div className="flex items-center justify-center gap-2">
                             <RefreshCw className="w-5 h-5 animate-spin text-blue-500" />
                             <span className="text-gray-600">
-                                Analyzing DAO security... ({completedCount}/8 checks complete)
+                                Analyzing DAO security... ({completedCount}/16 checks complete)
                             </span>
                         </div>
 

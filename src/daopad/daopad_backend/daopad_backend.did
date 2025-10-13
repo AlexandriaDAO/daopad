@@ -691,21 +691,37 @@ service : () -> {
       text,
       opt text,
     ) -> (Result);
+  // Check addressbook injection with allowlisted policies
+  check_addressbook_injection : (principal) -> (Result_1);
   // Check admin control layer: admin count, backend admin status, operator group size
   check_admin_control : (principal) -> (Result_1);
   // Check asset management: asset create/update/delete permissions
   check_asset_management : (principal) -> (Result_1);
   check_backend_status : (principal) -> (Result_2);
+  // Check controller manipulation: NativeSettings controller changes
+  check_controller_manipulation : (principal) -> (Result_1);
+  // Check external canister call permissions
+  check_external_canister_calls : (principal) -> (Result_1);
   // Check external canister control: create, change, fund permissions
   check_external_canisters : (principal) -> (Result_1);
   // Check governance permissions: who can change permissions, policies, users, groups
   check_governance_permissions : (principal) -> (Result_1);
+  // Check monitoring cycle drain
+  check_monitoring_drain : (principal) -> (Result_1);
+  // Check named rule bypass
+  check_named_rule_bypass : (principal) -> (Result_1);
   // Check operational permissions: request visibility, notifications, etc.
   check_operational_permissions : (principal) -> (Result_1);
   // Check proposal policies: auto-approvals, bypasses, quorum settings
   check_proposal_policies : (principal) -> (Result_1);
+  // Check remove operations
+  check_remove_operations : (principal) -> (Result_1);
+  // Check snapshot operations
+  check_snapshot_operations : (principal) -> (Result_1);
   // Check system configuration: upgrade access, disaster recovery, system info management
   check_system_configuration : (principal) -> (Result_1);
+  // Check system restore permissions
+  check_system_restore : (principal) -> (Result_1);
   // Check treasury control: account transfers, asset management, treasury permissions
   check_treasury_control : (principal) -> (Result_1);
   cleanup_expired_proposals : () -> (Result_3);
@@ -815,7 +831,7 @@ service : () -> {
     ) -> (Result);
   // Perform all security checks in one call
   // 
-  // This is a convenience method that calls all 8 individual security check methods
+  // This is a convenience method that calls all 16 individual security check methods
   // and combines their results into a single response. This is useful for:
   // - Getting a complete security overview in one call
   // - Frontend components that need all checks at once
