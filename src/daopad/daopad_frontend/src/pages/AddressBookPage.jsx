@@ -100,8 +100,7 @@ const AddressBookPage = ({ identity }) => {
   // Copy to clipboard - Lines 89-94 in Vue component
   const handleCopy = (address) => {
     navigator.clipboard.writeText(address);
-    // Show a toast notification (implement toast later)
-    console.log(`Copied: ${address}`);
+    // TODO: Show toast notification when toast system is implemented
   };
 
   // Permission helpers - Lines 101-102, 108-111 in Vue component
@@ -220,13 +219,11 @@ const AddressBookPage = ({ identity }) => {
               loading={loading}
               onCopy={handleCopy}
               onEdit={(entry) => {
-                // Will implement edit dialog later
-                console.log('Edit:', entry);
+                // TODO: Implement edit dialog
               }}
               onDelete={handleDelete}
               onView={(entry) => {
-                // Will implement view dialog later
-                console.log('View:', entry);
+                // TODO: Implement view dialog
               }}
               className="[&_tr]:hover:bg-executive-gold/5 [&_tr]:transition-colors [&_tr]:duration-150"
             />
