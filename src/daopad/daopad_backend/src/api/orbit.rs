@@ -8,7 +8,7 @@ use crate::types::orbit::{
 use crate::types::StorablePrincipal;
 use crate::types::TokenInfo;
 use crate::{
-    approve_transfer_orbit_request, create_transfer_request_in_orbit,
+    approve_transfer_orbit_request,
     get_transfer_requests_from_orbit,
 };
 use candid::{Nat, Principal};
@@ -229,31 +229,22 @@ pub async fn create_transfer_request(
     memo: Option<String>,
     token_id: Principal,
 ) -> Result<String, String> {
-    let caller = ic_cdk::caller();
+    // Route all transfer requests through the proposal system
+    use crate::proposals::treasury::{TransferDetails, create_treasury_transfer_proposal};
 
-    // Get station for this token
-    let station_id = TOKEN_ORBIT_STATIONS
-        .with(|stations| {
-            stations
-                .borrow()
-                .get(&StorablePrincipal(token_id))
-                .map(|s| s.0)
-        })
-        .ok_or("No treasury for this token")?;
-
-    create_transfer_request_in_orbit(
-        station_id,
-        caller,
-        token_id,
+    let transfer_details = TransferDetails {
         from_account_id,
         from_asset_id,
-        to_address,
+        to: to_address,
         amount,
-        title,
-        description,
         memo,
-    )
-    .await
+    };
+
+    // Call the proposal creation (it handles VP checks, Orbit request, etc.)
+    match create_treasury_transfer_proposal(token_id, transfer_details).await {
+        Ok(proposal_id) => Ok(format!("Proposal created: {:?}", proposal_id)),
+        Err(e) => Err(format!("Failed to create proposal: {:?}", e))
+    }
 }
 
 #[update]
