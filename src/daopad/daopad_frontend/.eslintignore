@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+*.did.js
+*.did.d.ts
+src/declarations/
+src/generated/
+# Test files can have looser rules
+src/**/*.test.js
+src/**/*.test.jsx
+src/**/__tests__/
