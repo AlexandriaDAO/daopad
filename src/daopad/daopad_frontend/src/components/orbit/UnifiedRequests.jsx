@@ -18,6 +18,7 @@ import { Zap, Clock } from 'lucide-react';
 const UnifiedRequests = ({ tokenId, identity }) => {
   // State management
   const [requests, setRequests] = useState([]);
+  const [treasuryProposal, setTreasuryProposal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedDomain, setSelectedDomain] = useState(RequestDomains.All);
@@ -99,7 +100,44 @@ const UnifiedRequests = ({ tokenId, identity }) => {
       if ('Ok' in result) {
         const response = result.Ok;
         // Backend already returns properly formatted data
-        setRequests(response.requests || []);
+        let allRequests = response.requests || [];
+
+        // Also fetch treasury proposal
+        try {
+          const treasuryResult = await backend.getTreasuryProposal(Principal.fromText(tokenId));
+          if (treasuryResult.success && treasuryResult.data) {
+            setTreasuryProposal(treasuryResult.data);
+
+            // Extract status from variant object (backend returns { Active: null } not string)
+            const statusVariant = treasuryResult.data.status;
+            const statusKey = typeof statusVariant === 'object' && statusVariant !== null
+              ? Object.keys(statusVariant)[0]
+              : statusVariant;
+
+            // Convert proposal to request-like format for display
+            const proposalAsRequest = {
+              id: treasuryResult.data.orbit_request_id,
+              title: `Treasury Transfer Proposal`,
+              status: statusKey === 'Active' ? 'Created' : statusKey,
+              operation: { Transfer: null },
+              created_at: treasuryResult.data.created_at,
+              expires_at: treasuryResult.data.expires_at,
+              yes_votes: treasuryResult.data.yes_votes,
+              no_votes: treasuryResult.data.no_votes,
+              total_voting_power: treasuryResult.data.total_voting_power,
+              is_treasury_proposal: true,
+              proposal_id: treasuryResult.data.id
+            };
+
+            // Prepend to requests list
+            allRequests = [proposalAsRequest, ...allRequests];
+          }
+        } catch (err) {
+          console.warn('Failed to fetch treasury proposal:', err);
+          // Don't fail the whole fetch if treasury proposal fails
+        }
+
+        setRequests(allRequests);
         setPagination({
           total: Number(response.total || 0),
           page: filters.page,
@@ -187,6 +225,26 @@ const UnifiedRequests = ({ tokenId, identity }) => {
   };
 
   const clearSelection = () => setSelectedRequests([]);
+
+  // Handle voting on treasury proposals
+  const handleTreasuryVote = async (proposalId, vote) => {
+    if (!identity) return;
+
+    try {
+      const backend = new DAOPadBackendService(identity);
+      const result = await backend.voteOnTreasuryProposal(proposalId, vote);
+
+      if (result.success) {
+        toast.success(`Vote ${vote ? 'Yes' : 'No'} recorded`);
+        // Refresh requests to get updated vote counts
+        await fetchRequests();
+      } else {
+        throw new Error(result.error || 'Failed to vote');
+      }
+    } catch (err) {
+      toast.error(err.message || `Failed to vote`);
+    }
+  };
 
   // Set up polling
   useEffect(() => {
@@ -320,8 +378,22 @@ const UnifiedRequests = ({ tokenId, identity }) => {
           requests={requests}
           loading={loading}
           error={error}
-          onApprove={(id) => handleApprovalDecision(id, 'Approved', null)}
-          onReject={(id, reason) => handleApprovalDecision(id, 'Rejected', reason)}
+          onApprove={(id, request) => {
+            // Handle treasury proposals differently
+            if (request?.is_treasury_proposal) {
+              handleTreasuryVote(request.proposal_id, true);
+            } else {
+              handleApprovalDecision(id, 'Approved', null);
+            }
+          }}
+          onReject={(id, reason, request) => {
+            // Handle treasury proposals differently
+            if (request?.is_treasury_proposal) {
+              handleTreasuryVote(request.proposal_id, false);
+            } else {
+              handleApprovalDecision(id, 'Rejected', reason);
+            }
+          }}
           onRetry={fetchRequests}
         />
 

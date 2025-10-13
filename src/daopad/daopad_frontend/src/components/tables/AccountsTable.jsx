@@ -7,18 +7,26 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, RefreshCw } from 'lucide-react';
+import { Search, RefreshCw, ArrowUpRight } from 'lucide-react';
 import {
   fetchOrbitAccounts,
   selectOrbitAccountsLoading,
   selectOrbitAccountsError,
 } from '@/features/orbit/orbitSlice';
 import { selectFormattedAccounts } from '@/features/orbit/orbitSelectors';
+import TransferRequestDialog from '../orbit/TransferRequestDialog';
+import { useToast } from '@/hooks/use-toast';
 
-export default function AccountsTable({ stationId, identity, tokenId, tokenSymbol }) {
+export default function AccountsTable({ stationId, identity, tokenId, tokenSymbol, votingPower }) {
+  const { toast } = useToast();
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState('');
   const [pagination, setPagination] = useState({ limit: 20, offset: 0 });
+  const [transferDialog, setTransferDialog] = useState({
+    open: false,
+    account: null,
+    asset: null
+  });
 
   // Select data from Redux with formatted balances
   const accounts = useSelector(state =>
@@ -58,6 +66,39 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
       searchQuery,
       pagination
     }));
+  };
+
+  const handleTransfer = (account) => {
+    // Extract asset info from the account's balance
+    // Accounts have assets array, we'll use the first asset for now
+    const asset = account.assets && account.assets.length > 0 ? account.assets[0] : null;
+
+    // Validate we have required asset data before opening dialog
+    const assetToUse = asset || {
+      id: account.assetId || '',
+      symbol: tokenSymbol || 'TOKEN',
+      decimals: account.decimals || 8
+    };
+
+    if (!assetToUse.id) {
+      toast({
+        variant: 'destructive',
+        title: 'Missing Asset Information',
+        description: 'Cannot create transfer request without asset details. Please try refreshing the account data.'
+      });
+      return;
+    }
+
+    setTransferDialog({
+      open: true,
+      account: account,
+      asset: assetToUse
+    });
+  };
+
+  const handleTransferComplete = () => {
+    // Refresh accounts after successful transfer
+    handleRefresh();
   };
 
   const handleNextPage = () => {
@@ -126,12 +167,13 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
                     <TableHead>Account ID</TableHead>
                     <TableHead>Blockchain</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {accounts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
                         No accounts found
                       </TableCell>
                     </TableRow>
@@ -151,6 +193,17 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
                         </TableCell>
                         <TableCell className="text-right font-mono">
                           {account.balanceFormatted}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleTransfer(account)}
+                            disabled={!identity}
+                          >
+                            <ArrowUpRight className="w-4 h-4 mr-2" />
+                            Transfer
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
@@ -185,6 +238,20 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
               </div>
             )}
           </>
+        )}
+
+        {/* Transfer Request Dialog */}
+        {transferDialog.open && transferDialog.account && transferDialog.asset && (
+          <TransferRequestDialog
+            open={transferDialog.open}
+            onOpenChange={(open) => setTransferDialog(prev => ({ ...prev, open }))}
+            account={transferDialog.account}
+            asset={transferDialog.asset}
+            tokenId={tokenId}
+            identity={identity}
+            onSuccess={handleTransferComplete}
+            votingPower={votingPower}
+          />
         )}
       </CardContent>
     </Card>
