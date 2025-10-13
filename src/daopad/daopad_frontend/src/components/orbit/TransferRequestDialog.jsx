@@ -23,8 +23,12 @@ import AddressInput from '@/components/inputs/AddressInput';
 import { validateAddress, BlockchainType } from '@/utils/addressValidation';
 import { bigintToFloat } from '@/utils/format';
 
+// Constants
+const MIN_VOTING_POWER_FOR_PROPOSALS = 10000;
+
 // Validation schema with improved address validation
-const transferSchema = z.object({
+// Validation schema will be created with maxAmount context
+const createTransferSchema = (maxAmount) => z.object({
   title: z.string()
     .min(5, 'Title must be at least 5 characters')
     .max(100, 'Title cannot exceed 100 characters'),
@@ -39,7 +43,9 @@ const transferSchema = z.object({
     ),
   amount: z.string()
     .refine(val => !isNaN(parseFloat(val)) && parseFloat(val) > 0,
-      'Amount must be greater than 0'),
+      'Amount must be greater than 0')
+    .refine(val => parseFloat(val) <= parseFloat(maxAmount),
+      `Amount cannot exceed ${maxAmount}`),
   memo: z.string().max(200, 'Memo cannot exceed 200 characters').optional(),
 });
 
@@ -57,8 +63,13 @@ export default function TransferRequestDialog({
   const [error, setError] = useState('');
   const { toast } = useToast();
 
+  // Calculate max transferable amount
+  const maxAmount = account.balance
+    ? bigintToFloat(account.balance, asset.decimals).toFixed(asset.decimals)
+    : '0';
+
   const form = useForm({
-    resolver: zodResolver(transferSchema),
+    resolver: zodResolver(createTransferSchema(maxAmount)),
     defaultValues: {
       title: '',
       description: '',
@@ -69,26 +80,27 @@ export default function TransferRequestDialog({
   });
 
   const handleSubmit = async (data) => {
-    setIsSubmitting(true);
+    // Clear error state first before any validation
     setError('');
 
-    try {
-      const backend = new DAOPadBackendService(identity);
-
-      // Check voting power requirement
-      if (votingPower < 10000) {
+    // Check voting power requirement before setting submitting state
+    if (votingPower < MIN_VOTING_POWER_FOR_PROPOSALS) {
         toast({
           variant: 'destructive',
           title: 'Insufficient Voting Power',
-          description: `You need at least 10,000 VP to create transfer proposals. Current: ${votingPower.toLocaleString()} VP`
+          description: `You need at least ${MIN_VOTING_POWER_FOR_PROPOSALS.toLocaleString()} VP to create transfer proposals. Current: ${votingPower.toLocaleString()} VP`
         });
-        setIsSubmitting(false);
         return;
       }
 
-      // Convert amount to smallest units
+      setIsSubmitting(true);
+
+      try {
+      const backend = new DAOPadBackendService(identity);
+
+      // Convert amount to smallest units (use Math.floor to prevent floating point precision errors)
       const amountInSmallest = BigInt(
-        parseFloat(data.amount) * Math.pow(10, asset.decimals)
+        Math.floor(parseFloat(data.amount) * Math.pow(10, asset.decimals))
       );
 
       // Create transfer details for treasury proposal
@@ -128,11 +140,6 @@ export default function TransferRequestDialog({
       setIsSubmitting(false);
     }
   };
-
-  // Calculate max transferable amount
-  const maxAmount = account.balance
-    ? bigintToFloat(account.balance, asset.decimals).toFixed(asset.decimals)
-    : '0';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -176,11 +183,11 @@ export default function TransferRequestDialog({
             )}
           </div>
 
-          {votingPower < 10000 && (
+          {votingPower < MIN_VOTING_POWER_FOR_PROPOSALS && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                You need at least 10,000 VP to create transfer proposals.
+                You need at least {MIN_VOTING_POWER_FOR_PROPOSALS.toLocaleString()} VP to create transfer proposals.
                 Current: {votingPower.toLocaleString()} VP
               </AlertDescription>
             </Alert>
@@ -253,7 +260,7 @@ export default function TransferRequestDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || votingPower < 10000}>
+            <Button type="submit" disabled={isSubmitting || votingPower < MIN_VOTING_POWER_FOR_PROPOSALS}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -15,8 +15,10 @@ import {
 } from '@/features/orbit/orbitSlice';
 import { selectFormattedAccounts } from '@/features/orbit/orbitSelectors';
 import TransferRequestDialog from '../orbit/TransferRequestDialog';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AccountsTable({ stationId, identity, tokenId, tokenSymbol, votingPower }) {
+  const { toast } = useToast();
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState('');
   const [pagination, setPagination] = useState({ limit: 20, offset: 0 });
@@ -71,14 +73,26 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
     // Accounts have assets array, we'll use the first asset for now
     const asset = account.assets && account.assets.length > 0 ? account.assets[0] : null;
 
+    // Validate we have required asset data before opening dialog
+    const assetToUse = asset || {
+      id: account.assetId || '',
+      symbol: tokenSymbol || 'TOKEN',
+      decimals: account.decimals || 8
+    };
+
+    if (!assetToUse.id) {
+      toast({
+        variant: 'destructive',
+        title: 'Missing Asset Information',
+        description: 'Cannot create transfer request without asset details. Please try refreshing the account data.'
+      });
+      return;
+    }
+
     setTransferDialog({
       open: true,
       account: account,
-      asset: asset || {
-        id: account.assetId || '',
-        symbol: tokenSymbol || 'TOKEN',
-        decimals: account.decimals || 8
-      }
+      asset: assetToUse
     });
   };
 

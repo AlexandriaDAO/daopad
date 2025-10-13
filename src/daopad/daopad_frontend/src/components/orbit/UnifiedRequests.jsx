@@ -108,11 +108,17 @@ const UnifiedRequests = ({ tokenId, identity }) => {
           if (treasuryResult.success && treasuryResult.data) {
             setTreasuryProposal(treasuryResult.data);
 
+            // Extract status from variant object (backend returns { Active: null } not string)
+            const statusVariant = treasuryResult.data.status;
+            const statusKey = typeof statusVariant === 'object' && statusVariant !== null
+              ? Object.keys(statusVariant)[0]
+              : statusVariant;
+
             // Convert proposal to request-like format for display
             const proposalAsRequest = {
               id: treasuryResult.data.orbit_request_id,
               title: `Treasury Transfer Proposal`,
-              status: treasuryResult.data.status === 'Active' ? 'Created' : treasuryResult.data.status,
+              status: statusKey === 'Active' ? 'Created' : statusKey,
               operation: { Transfer: null },
               created_at: treasuryResult.data.created_at,
               expires_at: treasuryResult.data.expires_at,
