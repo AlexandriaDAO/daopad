@@ -4,6 +4,7 @@ import { useStationService } from '@/hooks/useStationService';
 import { useActiveStation } from '@/hooks/useActiveStation';
 import { PageLayout } from '@/components/orbit/PageLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ExecutiveCard, ExecutiveCardHeader } from '@/components/ui/executive-card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -145,7 +146,7 @@ export function DashboardPage() {
   const data = dashboardData;
 
   return (
-    <PageLayout title="Dashboard">
+    <PageLayout title="Dashboard" goldHeader={true}>
       {/* Recent Requests Widget */}
       <RecentRequests domain="All" />
 
@@ -183,10 +184,25 @@ export function DashboardPage() {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="treasury" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="treasury">Treasury</TabsTrigger>
-          <TabsTrigger value="governance">Governance</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
+        <TabsList className="bg-executive-darkGray/50 border border-executive-gold/40">
+          <TabsTrigger
+            value="treasury"
+            className="data-[state=active]:bg-executive-gold/20 data-[state=active]:text-executive-goldLight transition-all duration-200"
+          >
+            Treasury
+          </TabsTrigger>
+          <TabsTrigger
+            value="governance"
+            className="data-[state=active]:bg-executive-gold/20 data-[state=active]:text-executive-goldLight transition-all duration-200"
+          >
+            Governance
+          </TabsTrigger>
+          <TabsTrigger
+            value="activity"
+            className="data-[state=active]:bg-executive-gold/20 data-[state=active]:text-executive-goldLight transition-all duration-200"
+          >
+            Activity
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="treasury" className="space-y-4">
@@ -229,47 +245,47 @@ export function DashboardPage() {
       </Tabs>
 
       {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Quick Actions</CardTitle>
-        </CardHeader>
+      <ExecutiveCard variant="gold" hover={false}>
+        <ExecutiveCardHeader showDivider={true}>
+          <CardTitle className="text-base text-executive-ivory">Quick Actions</CardTitle>
+        </ExecutiveCardHeader>
         <CardContent>
           <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
             <Button
               variant="outline"
-              className="justify-start"
+              className="justify-start group border-executive-gold/40 hover:border-executive-gold/70 hover:bg-executive-gold/10 transition-all duration-300"
               onClick={() => navigate('/transfers/new')}
             >
-              <Wallet className="w-4 h-4 mr-2" />
+              <Wallet className="w-4 h-4 mr-2 transition-transform duration-300 group-hover:scale-110" />
               New Transfer
             </Button>
             <Button
               variant="outline"
-              className="justify-start"
+              className="justify-start group border-executive-gold/40 hover:border-executive-gold/70 hover:bg-executive-gold/10 transition-all duration-300"
               onClick={() => navigate('/users/new')}
             >
-              <Users className="w-4 h-4 mr-2" />
+              <Users className="w-4 h-4 mr-2 transition-transform duration-300 group-hover:scale-110" />
               Add User
             </Button>
             <Button
               variant="outline"
-              className="justify-start"
+              className="justify-start group border-executive-gold/40 hover:border-executive-gold/70 hover:bg-executive-gold/10 transition-all duration-300"
               onClick={() => navigate('/accounts/new')}
             >
-              <DollarSign className="w-4 h-4 mr-2" />
+              <DollarSign className="w-4 h-4 mr-2 transition-transform duration-300 group-hover:scale-110" />
               Add Account
             </Button>
             <Button
               variant="outline"
-              className="justify-start"
+              className="justify-start group border-executive-gold/40 hover:border-executive-gold/70 hover:bg-executive-gold/10 transition-all duration-300"
               onClick={() => navigate('/settings')}
             >
-              <Shield className="w-4 h-4 mr-2" />
+              <Shield className="w-4 h-4 mr-2 transition-transform duration-300 group-hover:scale-110" />
               Settings
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </ExecutiveCard>
     </PageLayout>
   );
 }
@@ -278,10 +294,11 @@ export function DashboardPage() {
 function MetricCard({ title, value, icon: Icon, trend, description, loading }) {
   if (loading) {
     return (
-      <Card>
+      <Card className="relative overflow-hidden animate-pulse">
+        <div className="absolute inset-0 bg-gradient-to-br from-executive-gold/5 to-transparent"></div>
         <CardContent className="p-6">
           <div className="flex items-center justify-center">
-            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            <Loader2 className="w-5 h-5 animate-spin text-executive-gold/50" />
           </div>
         </CardContent>
       </Card>
@@ -289,32 +306,42 @@ function MetricCard({ title, value, icon: Icon, trend, description, loading }) {
   }
 
   return (
-    <Card>
-      <CardContent className="p-6">
+    <Card className="relative overflow-hidden group transition-all duration-300 hover:border-executive-gold/50 hover:shadow-lg hover:shadow-executive-gold/10">
+      {/* Subtle gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-executive-gold/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+      {/* Top left corner accent */}
+      <div className="absolute top-0 left-0 w-6 h-6 border-l border-t border-executive-gold/40"></div>
+
+      <CardContent className="p-6 relative z-10">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold">{value}</p>
+            <p className="text-2xl font-bold text-executive-ivory">{value}</p>
             {description && (
               <p className="text-xs text-muted-foreground">{description}</p>
             )}
           </div>
+
+          {/* Icon with gradient background on hover */}
           <div className={cn(
-            "p-3 rounded-lg",
-            trend > 0 ? "bg-green-50" :
-            trend < 0 ? "bg-red-50" :
-            "bg-muted"
+            "p-3 rounded-lg transition-all duration-300",
+            typeof trend === 'number' && trend > 0 ? "bg-green-50 group-hover:bg-green-100" :
+            typeof trend === 'number' && trend < 0 ? "bg-red-50 group-hover:bg-red-100" :
+            "bg-executive-gold/10 group-hover:bg-executive-gold/20"
           )}>
             <Icon className={cn(
-              "w-5 h-5",
-              trend > 0 ? "text-green-600" :
-              trend < 0 ? "text-red-600" :
-              "text-muted-foreground"
+              "w-5 h-5 transition-transform duration-300 group-hover:scale-110",
+              typeof trend === 'number' && trend > 0 ? "text-green-600" :
+              typeof trend === 'number' && trend < 0 ? "text-red-600" :
+              "text-executive-gold"
             )} />
           </div>
         </div>
+
+        {/* Trend indicator with animation */}
         {trend !== undefined && trend !== 0 && (
-          <div className="flex items-center gap-1 mt-2">
+          <div className="flex items-center gap-1 mt-2 animate-fade-in">
             {trend > 0 ? (
               <TrendingUp className="w-4 h-4 text-green-600" />
             ) : (

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
+import { ExecutiveCard } from '@/components/ui/executive-card';
 
 const AddressBookPage = ({ identity }) => {
   // Initialize service with identity
@@ -115,8 +116,7 @@ const AddressBookPage = ({ identity }) => {
   // Copy to clipboard - Lines 89-94 in Vue component
   const handleCopy = (address) => {
     navigator.clipboard.writeText(address);
-    // Show a toast notification (implement toast later)
-    console.log(`Copied: ${address}`);
+    // TODO: Show toast notification when toast system is implemented
   };
 
   // Permission helpers - Lines 101-102, 108-111 in Vue component
@@ -178,13 +178,13 @@ const AddressBookPage = ({ identity }) => {
         <div className="flex items-center gap-2 flex-1">
           {canList && (
             <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-executive-gold/70" />
               <Input
                 type="text"
                 placeholder="Search addresses..."
                 value={searchTerm}
                 onChange={handleSearch}
-                className="pl-10"
+                className="pl-10 border-executive-gold/40 focus:border-executive-gold focus:ring-executive-gold/30 transition-all duration-200"
               />
             </div>
           )}
@@ -193,7 +193,10 @@ const AddressBookPage = ({ identity }) => {
         {canCreate && (
           <AddressBookDialog
             trigger={
-              <Button size="sm">
+              <Button
+                size="sm"
+                className="border-executive-gold/30 hover:border-executive-gold hover:bg-executive-gold/10 transition-all duration-300"
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 New Address
               </Button>
@@ -212,7 +215,7 @@ const AddressBookPage = ({ identity }) => {
       )}
 
       {/* Table */}
-      <Card>
+      <ExecutiveCard variant="default" hover={false}>
         <CardContent className="p-0">
           {loading && entries.length === 0 ? (
             <div className="py-12 text-center">
@@ -232,18 +235,17 @@ const AddressBookPage = ({ identity }) => {
               loading={loading}
               onCopy={handleCopy}
               onEdit={(entry) => {
-                // Will implement edit dialog later
-                console.log('Edit:', entry);
+                // TODO: Implement edit dialog
               }}
               onDelete={handleDelete}
               onView={(entry) => {
-                // Will implement view dialog later
-                console.log('View:', entry);
+                // TODO: Implement view dialog
               }}
+              className="[&_tr]:hover:bg-executive-gold/5 [&_tr]:transition-colors [&_tr]:duration-150"
             />
           )}
         </CardContent>
-      </Card>
+      </ExecutiveCard>
 
       {/* Pagination */}
       {pagination.totalPages > 1 && (
