@@ -270,21 +270,6 @@ pub async fn get_transfer_requests(token_id: Principal) -> Result<Vec<String>, S
     get_transfer_requests_from_orbit(station_id).await
 }
 
-// DEPRECATED: Direct transfer approval has been removed to enforce proposal-based governance.
-// This function is kept for backwards compatibility but returns an error.
-#[update]
-pub async fn approve_transfer_request(
-    _request_id: String,
-    _token_id: Principal,
-) -> Result<(), String> {
-    Err(
-        "DEPRECATED: Direct transfer approval has been removed for security reasons. \
-        All transfer approvals must now go through the proposal voting system. \
-        To approve a transfer, vote YES on the corresponding proposal. \
-        Required voting power: 10,000 VP minimum.".to_string()
-    )
-}
-
 #[update] // MUST be update, not query (Universal Issue: can't call queries from queries)
 pub async fn get_user_pending_requests(
     token_canister_id: Principal,
