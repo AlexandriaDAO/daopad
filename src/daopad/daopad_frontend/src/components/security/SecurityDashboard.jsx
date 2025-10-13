@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
-import { DAOPadBackendService } from '../../services/daopadBackend';
+import { AlertTriangle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { OrbitSecurityService } from '../../services/backend/orbit/security/OrbitSecurityService';
 import DAOTransitionChecklist from './DAOTransitionChecklist';
 
 const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
@@ -10,22 +10,56 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [viewMode, setViewMode] = useState('user-friendly'); // 'user-friendly' or 'technical'
-    const [actor, setActor] = useState(null);
+    const [progressData, setProgressData] = useState({
+        admin_control: null,
+        treasury_control: null,
+        governance_permissions: null,
+        proposal_policies: null,
+        external_canisters: null,
+        asset_management: null,
+        system_configuration: null,
+        operational_permissions: null,
+    });
+    const [completedCount, setCompletedCount] = useState(0);
 
     const fetchSecurityStatus = async () => {
         if (!stationId || !identity) return;
 
         setLoading(true);
         setError(null);
+        setCompletedCount(0);
+        setProgressData({
+            admin_control: null,
+            treasury_control: null,
+            governance_permissions: null,
+            proposal_policies: null,
+            external_canisters: null,
+            asset_management: null,
+            system_configuration: null,
+            operational_permissions: null,
+        });
 
         try {
-            const daopadService = new DAOPadBackendService(identity);
-            const result = await daopadService.performSecurityCheck(stationId);
+            const securityService = new OrbitSecurityService(identity);
+
+            // Progress callback to update UI as checks complete
+            const onProgress = (progress) => {
+                setProgressData(prev => ({
+                    ...prev,
+                    [progress.category]: progress,
+                }));
+                setCompletedCount(prev => prev + 1);
+            };
+
+            const result = await securityService.performComprehensiveSecurityCheck(
+                stationId,
+                onProgress
+            );
 
             if (result.success) {
                 setSecurityData(result.data);
             } else {
-                setError(result.message || 'Failed to verify security status');
+                setError(result.error || 'Failed to verify security status');
             }
         } catch (err) {
             console.error('Security check failed:', err);
@@ -38,9 +72,6 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
     useEffect(() => {
         if (stationId && identity) {
             fetchSecurityStatus();
-            // Initialize actor for backend calls
-            const daopadService = new DAOPadBackendService(identity);
-            setActor(daopadService.actor);
         }
     }, [stationId, identity]);
 
@@ -49,9 +80,36 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
         return (
             <Card className="border shadow-sm">
                 <CardContent className="py-8">
-                    <div className="flex items-center justify-center gap-2">
-                        <RefreshCw className="w-5 h-5 animate-spin text-blue-500" />
-                        <span className="text-gray-600">Analyzing your DAO transition status...</span>
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-center gap-2">
+                            <RefreshCw className="w-5 h-5 animate-spin text-blue-500" />
+                            <span className="text-gray-600">
+                                Analyzing DAO security... ({completedCount}/8 checks complete)
+                            </span>
+                        </div>
+
+                        {/* Show categories as they complete */}
+                        <div className="max-w-md mx-auto space-y-2">
+                            {Object.entries(progressData).map(([category, data]) => (
+                                <div key={category} className="flex items-center gap-2 text-sm">
+                                    {data ? (
+                                        <>
+                                            <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                            <span className="text-gray-700">
+                                                {category.replace(/_/g, ' ')} ✓
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="w-4 h-4 rounded-full border-2 border-gray-300 animate-pulse" />
+                                            <span className="text-gray-400">
+                                                {category.replace(/_/g, ' ')}
+                                            </span>
+                                        </>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </CardContent>
             </Card>
