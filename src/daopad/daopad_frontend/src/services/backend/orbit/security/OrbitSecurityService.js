@@ -365,7 +365,7 @@ export class OrbitSecurityService extends BackendServiceBase {
       : 'TRUE DAO - Full community governance';
 
     return {
-      station_id: stationId,
+      station_id: stationId.toText ? stationId.toText() : stationId,
       overall_status: overallStatus,
       decentralization_score: score,
       last_checked: Date.now(),
