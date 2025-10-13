@@ -155,58 +155,22 @@ const UnifiedRequests = ({ tokenId, identity }) => {
     }
   }, [tokenId, identity, selectedDomain, filters, showOnlyPending, toast]);
 
-  // Handle approval/rejection
+  // ❌ REMOVED: Direct approval/rejection (replaced by liquid democracy voting)
+  // TODO: Implement voting UI in follow-up PR
+  //  - Show vote Yes/No buttons instead of Approve/Reject
+  //  - Display vote progress bars (yes_votes vs total_voting_power)
+  //  - Show threshold percentage and current vote counts
+  //  - Fetch proposal data alongside requests
+  // For now, approval UI is disabled - users cannot approve requests directly
   const handleApprovalDecision = async (requestId, decision, reason) => {
-    if (!identity) return;
-
-    try {
-      const backend = new DAOPadBackendService(identity);
-      const actor = await backend.getActor();
-      const result = await actor.submit_request_approval(
-        Principal.fromText(tokenId),
-        requestId,
-        { [decision]: null },  // 'Approved' or 'Rejected'
-        reason ? [reason] : []
-      );
-
-      if (result.success) {
-        toast.success(`Request ${decision.toLowerCase()} successfully`);
-        // Refresh list
-        await fetchRequests();
-      } else {
-        throw new Error(result.error || 'Orbit Station error');
-      }
-    } catch (err) {
-      toast.error(err.message || `Failed to ${decision.toLowerCase()} request`);
-    }
+    toast.error('Direct approval is disabled. Liquid democracy voting will be implemented in the next update.');
+    return;
   };
 
-  // Handle batch approval
+  // ❌ REMOVED: Batch approval (replaced by individual voting)
   const handleBatchApprove = async () => {
-    if (selectedRequests.length === 0) return;
-
-    setBatchApproving(true);
-    try {
-      const backend = new DAOPadBackendService(identity);
-      const result = await backend.batchApproveRequests(
-        Principal.fromText(tokenId),
-        selectedRequests
-      );
-
-      if (result.success) {
-        const successCount = result.data.filter(r => r.includes('✓')).length;
-        const failCount = result.data.filter(r => r.includes('✗')).length;
-        toast.success(`Batch approval: ${successCount} succeeded, ${failCount} failed`);
-        setSelectedRequests([]);
-        await fetchRequests();
-      } else {
-        throw new Error(result.error);
-      }
-    } catch (err) {
-      toast.error(`Batch approval failed: ${err.message}`);
-    } finally {
-      setBatchApproving(false);
-    }
+    toast.error('Batch approval is disabled. Liquid democracy voting will be implemented in the next update.');
+    return;
   };
 
   const toggleRequestSelection = (requestId) => {

@@ -463,6 +463,20 @@ type OrbitLinkProposal = record {
   no_votes : nat64;
   expires_at : nat64;
 };
+type OrbitRequestProposal = record {
+  id : nat64;
+  status : ProposalStatus_1;
+  request_type : OrbitRequestType;
+  yes_votes : nat64;
+  created_at : nat64;
+  token_canister_id : principal;
+  orbit_request_id : text;
+  proposer : principal;
+  voter_count : nat32;
+  total_voting_power : nat64;
+  no_votes : nat64;
+  expires_at : nat64;
+};
 type OrbitRequestSummary = record {
   id : text;
   status : text;
@@ -474,6 +488,16 @@ type OrbitRequestSummary = record {
   summary : opt text;
   requester_name : opt text;
   approvals : vec OrbitApprovalSummary;
+};
+type OrbitRequestType = variant {
+  EditPermission;
+  ConfigureExternalCanister;
+  ChangeExternalCanister;
+  AddUser;
+  EditAccount;
+  RemoveUser;
+  Other : text;
+  AddRequestPolicy;
 };
 type PaginationInput = record { offset : opt nat64; limit : opt nat64 };
 type PaginationInput_1 = record { offset : opt nat64; limit : opt nat16 };
@@ -505,7 +529,7 @@ type ProposalError = variant {
 };
 type ProposalStatus = variant { Active; Approved; Rejected; Expired };
 type ProposalStatus_1 = variant { Active; Rejected; Executed; Expired };
-type ProposalType = variant { Transfer };
+type ProposalType = variant { Transfer; OrbitRequest : OrbitRequestType };
 type ProposalType_1 = variant {
   RemoveMember;
   ChangePermissions;
@@ -841,6 +865,11 @@ service : () -> {
   create_treasury_transfer_proposal : (principal, TransferDetails) -> (
       Result_6,
     );
+  // Auto-create proposal when a new Orbit request is detected
+  // Call this whenever list_orbit_requests finds a new request without a proposal
+  ensure_proposal_for_request : (principal, text, OrbitRequestType) -> (
+      Result_6,
+    );
   fetch_orbit_account_balances : (principal, vec text) -> (Result_7);
   fund_orbit_canister_request : (
       principal,
@@ -871,6 +900,10 @@ service : () -> {
   get_my_locked_tokens : () -> (Result_12);
   get_my_voting_power_for_token : (principal) -> (Result_13);
   get_orbit_canister : (principal, principal) -> (Result_14);
+  // Get proposal for a specific Orbit request
+  get_orbit_request_proposal : (principal, text) -> (
+      opt OrbitRequestProposal,
+    ) query;
   // EXPERIMENTAL: Ultra-simple request fetching - returns basic info only
   get_orbit_requests_simple : () -> (Result_15);
   get_orbit_station_for_token : (principal) -> (opt principal) query;
@@ -902,6 +935,10 @@ service : () -> {
       Result_23,
     );
   list_orbit_canisters : (principal, ListExternalCanistersInput) -> (Result_24);
+  // List all active proposals for a token
+  list_orbit_request_proposals : (principal) -> (
+      vec OrbitRequestProposal,
+    ) query;
   // List all requests from Orbit Station with domain filtering
   // 
   // This method acts as an admin proxy, allowing DAOPad to query
@@ -953,16 +990,12 @@ service : () -> {
       text,
       opt text,
     ) -> (Result);
-  // Submit approval decision for a request
-  submit_request_approval : (
-      principal,
-      text,
-      RequestApprovalStatus,
-      opt text,
-    ) -> (Result_28);
   unregister_kong_locker : () -> (Result_4);
   validate_account_name : (principal, text) -> (Result_22);
   vote_on_orbit_proposal : (nat64, bool) -> (Result_28);
+  // Vote on ANY Orbit request (not just treasury transfers)
+  // When threshold is reached, executes immediately by approving the Orbit request.
+  vote_on_orbit_request : (principal, text, bool) -> (Result_29);
   // Vote on a treasury proposal
   // 
   // When threshold is reached, executes immediately by approving the Orbit request.

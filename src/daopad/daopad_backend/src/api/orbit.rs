@@ -8,7 +8,7 @@ use crate::types::orbit::{
 use crate::types::StorablePrincipal;
 use crate::types::TokenInfo;
 use crate::{
-    approve_transfer_orbit_request,
+    // ❌ REMOVED: approve_transfer_orbit_request - replaced by liquid democracy voting
     get_transfer_requests_from_orbit,
 };
 use candid::{Nat, Principal};

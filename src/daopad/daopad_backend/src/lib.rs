@@ -10,7 +10,8 @@ use ic_cdk::init;
 pub use api::*;
 pub use proposals::orbit_link::{OrbitLinkProposal, ProposalStatus};
 pub use proposals::{
-    ProposalError, ProposalId, ProposalType, TransferDetails, TreasuryProposal, VoteChoice,
+    OrbitRequestProposal, OrbitRequestType, ProposalError, ProposalId, ProposalType,
+    TransferDetails, TreasuryProposal, VoteChoice,
 };
 pub use types::orbit::{
     AccountBalance, ListAccountsResult,
