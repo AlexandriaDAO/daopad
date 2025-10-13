@@ -235,3 +235,72 @@ button:active {
   white-space: nowrap;
   border-width: 0;
 }
+
+/* ========================================
+   EXECUTIVE VISUAL ENHANCEMENTS
+   ======================================== */
+
+/* Fade in with scale animation */
+@keyframes fade-in-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in-scale {
+  animation: fade-in-scale 0.4s ease-out;
+}
+
+/* Shimmer animation for loading states */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s linear infinite;
+  background-size: 200% 100%;
+}
+
+/* Executive Card Shine Effect (on hover) */
+.executive-card-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.executive-card-shine::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(212, 175, 55, 0.1),
+    transparent
+  );
+  transform: rotate(45deg);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.executive-card-shine:hover::after {
+  opacity: 1;
+  animation: shimmer 1.5s ease-in-out;
+}
+
+/* Fade in animation utility class (for Tailwind) */
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}

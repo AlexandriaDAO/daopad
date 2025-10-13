@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
+import { ExecutiveCard } from '@/components/ui/executive-card';
 
 const AddressBookPage = ({ identity }) => {
   // Initialize service with identity
@@ -162,13 +163,13 @@ const AddressBookPage = ({ identity }) => {
         <div className="flex items-center gap-2 flex-1">
           {canList && (
             <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-executive-gold/50" />
               <Input
                 type="text"
                 placeholder="Search addresses..."
                 value={searchTerm}
                 onChange={handleSearch}
-                className="pl-10"
+                className="pl-10 border-executive-gold/20 focus:border-executive-gold focus:ring-executive-gold/30 transition-all duration-200"
               />
             </div>
           )}
@@ -177,7 +178,10 @@ const AddressBookPage = ({ identity }) => {
         {canCreate && (
           <AddressBookDialog
             trigger={
-              <Button size="sm">
+              <Button
+                size="sm"
+                className="border-executive-gold/30 hover:border-executive-gold hover:bg-executive-gold/10 transition-all duration-300"
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 New Address
               </Button>
@@ -196,7 +200,7 @@ const AddressBookPage = ({ identity }) => {
       )}
 
       {/* Table */}
-      <Card>
+      <ExecutiveCard variant="default" hover={false}>
         <CardContent className="p-0">
           {loading && entries.length === 0 ? (
             <div className="py-12 text-center">
@@ -224,10 +228,11 @@ const AddressBookPage = ({ identity }) => {
                 // Will implement view dialog later
                 console.log('View:', entry);
               }}
+              className="[&_tr]:hover:bg-executive-gold/5 [&_tr]:transition-colors [&_tr]:duration-150"
             />
           )}
         </CardContent>
-      </Card>
+      </ExecutiveCard>
 
       {/* Pagination */}
       {pagination.totalPages > 1 && (
