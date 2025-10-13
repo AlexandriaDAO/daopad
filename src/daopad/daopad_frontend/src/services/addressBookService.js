@@ -1,4 +1,3 @@
-import { Principal } from '@dfinity/principal';
 import { v4 as uuidv4 } from 'uuid';
 import { DAOPadBackendService } from './daopadBackend';
 import { OrbitServiceBase } from './OrbitServiceBase';

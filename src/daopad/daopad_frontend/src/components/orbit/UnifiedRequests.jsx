@@ -5,8 +5,6 @@ import {
   CardContent
 } from '../ui/card';
 import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { useToast } from '../../hooks/use-toast';
 import { DAOPadBackendService } from '../../services/daopadBackend';
 import RequestDomainSelector from './RequestDomainSelector';

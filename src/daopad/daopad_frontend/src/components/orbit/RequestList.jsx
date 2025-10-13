@@ -17,7 +17,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter
 } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
@@ -32,7 +31,6 @@ import {
   Calendar,
   ThumbsUp,
   ThumbsDown,
-  ArrowRight,
   FileText
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';

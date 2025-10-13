@@ -7,7 +7,7 @@ import CanisterDetails from './CanisterDetails';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Button } from '../ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
-import { Loader2, Plus, Server } from 'lucide-react';
+import { Plus, Server } from 'lucide-react';
 
 export default function CanistersTab({ token, stationId }) {
   // Filter out backend canister from management UI

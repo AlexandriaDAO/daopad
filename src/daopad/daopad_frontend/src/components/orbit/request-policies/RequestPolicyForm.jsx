@@ -1,19 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Shield, Users, Hash, AlertCircle } from 'lucide-react';
+import { Loader2, Shield, Users, AlertCircle } from 'lucide-react';
 import { RuleBuilder } from './RuleBuilder';
-import { formatPrincipalShort } from '@/utils/format';
 
 const policySchema = z.object({
   specifier: z.enum(['AddUser', 'EditUser', 'RemoveUser', 'Transfer', 'AddAccount', 'EditAccount', 'AddAsset', 'EditAsset', 'CallExternalCanister', 'ManageSystemInfo']),

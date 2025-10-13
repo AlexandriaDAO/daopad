@@ -6,7 +6,6 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Switch } from '../ui/switch';
-import { Progress } from '../ui/progress';
 import {
   PieChart,
   Pie,
@@ -17,15 +16,13 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
-  Legend
+  Tooltip
 } from 'recharts';
 import {
   Zap,
   TrendingUp,
   AlertTriangle,
   DollarSign,
-  Activity,
   Settings,
   RefreshCw
 } from 'lucide-react';

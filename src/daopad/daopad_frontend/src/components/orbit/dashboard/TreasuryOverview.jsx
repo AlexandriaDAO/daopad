@@ -8,16 +8,13 @@ import { Progress } from '@/components/ui/progress';
 import {
   Wallet,
   ArrowUpRight,
-  ArrowDownRight,
   TrendingUp,
   TrendingDown,
-  DollarSign,
   Coins,
   ChevronRight,
-  Loader2,
-  AlertCircle
+  Loader2
 } from 'lucide-react';
-import { formatBalance, formatPrincipalShort } from '@/utils/format';
+import { formatBalance } from '@/utils/format';
 import { cn } from '@/lib/utils';
 
 export function TreasuryOverview({ assets, loading, onTransfer, onViewAccount }) {

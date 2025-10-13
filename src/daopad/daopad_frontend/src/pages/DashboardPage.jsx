@@ -5,12 +5,7 @@ import { useActiveStation } from '@/hooks/useActiveStation';
 import { PageLayout } from '@/components/orbit/PageLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Loader2,
   Wallet,
@@ -20,19 +15,12 @@ import {
   Shield,
   Activity,
   DollarSign,
-  ArrowRight,
-  ChevronRight,
-  Coins,
-  BarChart3,
-  PieChart,
-  AlertCircle
+  Coins
 } from 'lucide-react';
-import { DataTable } from '@/components/ui/data-table';
 import { RecentRequests } from '@/components/orbit/RecentRequests';
 import { GovernanceMetrics } from '@/components/orbit/dashboard/GovernanceMetrics';
 import { TreasuryOverview } from '@/components/orbit/dashboard/TreasuryOverview';
 import { ActivityFeed } from '@/components/orbit/dashboard/ActivityFeed';
-import { formatBalance, formatDateTime, formatPrincipalShort } from '@/utils/format';
 import { cn } from '@/lib/utils';
 
 export function DashboardPage() {

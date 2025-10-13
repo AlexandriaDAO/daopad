@@ -28,7 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useStationService } from '@/hooks/useStationService';
-import { Loader2, Info, Shield, Code, Tag, AlertCircle } from 'lucide-react';
+import { Loader2, Shield, Tag, AlertCircle } from 'lucide-react';
 
 // Validation schema for external canister
 const canisterFormSchema = z.object({

@@ -8,7 +8,6 @@ import { Progress } from '../ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import {
   Activity,
-  Cpu,
   Database,
   Users,
   Hash,

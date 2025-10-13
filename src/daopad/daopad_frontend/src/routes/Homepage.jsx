@@ -3,15 +3,11 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
-  ArrowRight, Users, Lock, Vote, Shield,
-  Banknote, FileText, CreditCard, Building2,
-  CheckCircle, XCircle, TrendingUp, DollarSign
+  ArrowRight,
+  CheckCircle, XCircle
 } from 'lucide-react';
 
 function Homepage() {

@@ -1,14 +1,9 @@
 import React from 'react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
+
+
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { REQUEST_DOMAIN_FILTERS, RequestDomains } from '../../utils/requestDomains';
+import { RequestDomains } from '../../utils/requestDomains';
 import {
   DropdownMenu,
   DropdownMenuContent,

@@ -7,7 +7,6 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Progress } from '../ui/progress';
 import {
   Camera,
-  Download,
   RotateCcw,
   Trash2,
   Clock,

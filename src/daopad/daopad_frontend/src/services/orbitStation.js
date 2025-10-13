@@ -1,6 +1,4 @@
 import { Actor, HttpAgent } from '@dfinity/agent';
-import { Principal } from '@dfinity/principal';
-import { IDL } from '@dfinity/candid';
 
 // Default Orbit Station ID (Alexandria) - can be overridden in constructor
 const DEFAULT_ORBIT_STATION_ID = "fec7w-zyaaa-aaaaa-qaffq-cai";

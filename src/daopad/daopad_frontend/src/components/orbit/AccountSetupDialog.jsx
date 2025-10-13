@@ -29,13 +29,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useStationService } from '@/hooks/useStationService';
-import { Loader2, Info, Shield, Settings, Users, Key } from 'lucide-react';
+import { Loader2, Info, Shield, Settings, Key } from 'lucide-react';
 
 // Account setup validation schema
 const accountSetupSchema = z.object({

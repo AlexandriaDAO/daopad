@@ -7,11 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Users, User, Hash, Shield, AlertCircle, Plus, X } from 'lucide-react';
 import { formatPrincipalShort } from '@/utils/format';
-import { cn } from '@/lib/utils';
 
 export function RuleBuilder({
   value = { type: 'Quorum', min_approved: 1, approvers: [] },

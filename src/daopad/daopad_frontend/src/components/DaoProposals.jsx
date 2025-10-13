@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector } from 'react-redux';
-import { Principal } from '@dfinity/principal';
 import { OrbitStationService } from '../services/orbitStation';
-import { LPLockingService } from '../services/lpLockingService';
 import { DAOPadBackendService } from '../services/daopadBackend';
 import ProposalCard from './ProposalCard';
 import ProposalDetailsModal from './ProposalDetailsModal';

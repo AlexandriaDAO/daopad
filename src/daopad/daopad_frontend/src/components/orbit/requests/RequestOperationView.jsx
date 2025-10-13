@@ -1,7 +1,6 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { formatPrincipalShort, formatBalance } from '@/utils/format';
 import { User, Wallet, ArrowRight, Shield, FileText, Settings, Database, Globe } from 'lucide-react';
 

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Link, Globe, Tag, Plus, X } from 'lucide-react';
 import { addressBookService } from '../../services/addressBookService';
-import BlockchainIcon from './BlockchainIcon';
 
 // Validation constants from models/address_book.rs Lines 120-124
 const ADDRESS_OWNER_MIN = 1;

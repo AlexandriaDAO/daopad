@@ -16,7 +16,7 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Separator } from '../ui/separator';
 import { Calendar } from '../ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { CalendarIcon, Filter, X } from 'lucide-react';
+import { CalendarIcon, Filter } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../../lib/utils';
 

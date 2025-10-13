@@ -1,7 +1,7 @@
 /**
  * OrbitServiceBase - Base class for all Orbit-related services
  * Provides common patterns for encoding optional fields, error handling, and response parsing
- * Based on patterns from addressBookService, orbitStationService, and balanceService
+ * Based on patterns from addressBookService and balanceService
  */
 export class OrbitServiceBase {
   constructor(actor, serviceName) {

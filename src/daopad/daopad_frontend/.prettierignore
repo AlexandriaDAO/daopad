@@ -1,0 +1,8 @@
+node_modules
+dist
+build
+*.did.js
+*.did.d.ts
+declarations/
+generated/
+src/declarations/

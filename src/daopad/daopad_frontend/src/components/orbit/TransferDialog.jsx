@@ -29,12 +29,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useStationService } from '@/hooks/useStationService';
-import { Loader2, Info, AlertCircle, ArrowRight, Wallet } from 'lucide-react';
+import { Loader2, Info, ArrowRight, Wallet } from 'lucide-react';
 import { formatBalance, formatAddress } from '@/utils/format';
 
 // Transfer validation schema

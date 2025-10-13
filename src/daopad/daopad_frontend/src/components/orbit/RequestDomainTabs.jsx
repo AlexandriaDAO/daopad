@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import { Badge } from '../ui/badge';
-import { REQUEST_DOMAIN_FILTERS, RequestDomains } from '../../utils/requestDomains';
+import { RequestDomains } from '../../utils/requestDomains';
 import {
   FileText,
   Users,

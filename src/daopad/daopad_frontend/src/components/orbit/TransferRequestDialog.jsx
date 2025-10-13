@@ -18,7 +18,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { DAOPadBackendService } from '@/services/daopadBackend';
-import { Principal } from '@dfinity/principal';
 import AddressInput from '@/components/inputs/AddressInput';
 import { validateAddress, BlockchainType } from '@/utils/addressValidation';
 import { bigintToFloat } from '@/utils/format';

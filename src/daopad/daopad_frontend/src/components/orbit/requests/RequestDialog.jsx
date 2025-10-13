@@ -21,13 +21,8 @@ import {
   Clock,
   User,
   Calendar,
-  Hash,
-  FileText,
-  Shield,
   ThumbsUp,
-  ThumbsDown,
-  Play,
-  Ban
+  ThumbsDown
 } from 'lucide-react';
 import { formatDateTime, formatPrincipalShort } from '@/utils/format';
 import { cn } from '@/lib/utils';

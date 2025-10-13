@@ -10,7 +10,6 @@ import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
 import { Calendar } from '../ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';

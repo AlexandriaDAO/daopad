@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Shield, Users, BarChart3, FileText, Settings } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import {
   VotingTierDisplay,
   VotingPowerSync,

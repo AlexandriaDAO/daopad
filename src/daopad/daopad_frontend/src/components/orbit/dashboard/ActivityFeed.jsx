@@ -9,11 +9,9 @@ import {
   Wallet,
   Shield,
   FileText,
-  ArrowRight,
   Clock,
   CheckCircle,
   XCircle,
-  AlertCircle,
   ChevronRight,
   Loader2
 } from 'lucide-react';

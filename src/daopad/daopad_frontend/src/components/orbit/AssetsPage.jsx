@@ -23,7 +23,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useStationService } from '@/hooks/useStationService';
 import { useActiveStation } from '@/hooks/useActiveStation';
 import AssetDialog from './AssetDialog';
-import { formatBalance } from '@/utils/format';
 import { usePagination } from '@/hooks/usePagination';
 import { useDebounce } from '@/hooks/useDebounce';
 

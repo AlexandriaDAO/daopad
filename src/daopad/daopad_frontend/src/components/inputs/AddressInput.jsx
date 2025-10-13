@@ -5,7 +5,6 @@ import { Alert, AlertDescription } from '../ui/alert';
 import {
   validateAddress,
   detectAddressFormat,
-  formatAddressForDisplay,
   BlockchainType,
   AddressFormat
 } from '../../utils/addressValidation';

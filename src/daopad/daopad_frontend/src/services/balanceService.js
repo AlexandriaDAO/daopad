@@ -1,5 +1,4 @@
 import { HttpAgent, Actor } from "@dfinity/agent";
-import { Principal } from "@dfinity/principal";
 
 // Canister IDs
 const ICP_LEDGER_CANISTER_ID = "ryjl3-tyaaa-aaaaa-aaaba-cai";

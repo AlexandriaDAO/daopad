@@ -4,10 +4,7 @@ import { KongLockerService } from '../services/kongLockerService';
 import TokenDashboard from './TokenDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Label } from '@/components/ui/label';
 
 const TokenTabs = ({ identity }) => {
   const [tokens, setTokens] = useState([]);
