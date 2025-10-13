@@ -8,6 +8,30 @@
 
 ---
 
+## 🎯 Task Type Recognition
+
+Before planning, identify what type of task this is:
+
+**NEW FEATURE** - Building something that doesn't exist
+- Goal: Create functionality
+- Approach: Additive (new files, new code)
+- Success: Feature works as specified
+
+**REFACTORING** - Improving existing code
+- Goal: Make existing code better
+- Approach: Subtractive + targeted additions
+- Success: Cleaner code, same functionality
+- Keywords: "refactor", "clean up", "improve", "simplify", "consolidate"
+
+**BUG FIX** - Fixing broken behavior
+- Goal: Restore correct functionality
+- Approach: Minimal changes to broken code
+- Success: Bug fixed, tests pass
+
+Most planning agents fail at refactoring because they treat it like new features. Don't do that.
+
+---
+
 ## 🔀 Two Paths to Success
 
 ### Path A: Plan Mode (RECOMMENDED - System Enforced)
@@ -93,6 +117,53 @@ git branch --show-current  # Should show feature/[feature-name]
 
 **After creating worktree, do ALL research and planning from within the worktree.**
 
+---
+
+## 🔄 REFACTORING TASKS: Different Rules Apply
+
+If this is a refactoring task, follow these principles:
+
+### Refactoring Mindset
+- **Fix the mess**, don't build alternatives
+- **Delete aggressively** - dead code, duplicates, over-engineering
+- **Simplify ruthlessly** - remove unnecessary abstractions
+- **Consolidate duplicates** - 3 implementations → 1 implementation
+- **Modify existing files** - don't create parallel infrastructure
+
+### Red Flags (You're Doing It Wrong)
+- ❌ Creating new infrastructure alongside old (e.g., new Logger utility but keeping console.log)
+- ❌ Building utilities that nothing uses (e.g., new services but no adoption)
+- ❌ Creating more files than you delete
+- ❌ Adding significantly more code than you remove
+- ❌ Phrases like "Phase 1: Build the foundation" for refactoring
+
+### Success Metrics for Refactoring
+- **Net LOC**: Negative or small positive (delete more than you add)
+- **File count**: Decrease or stay same (consolidation, not proliferation)
+- **Complexity**: Decrease (simpler patterns, fewer abstractions)
+- **Functionality**: Preserved (all existing tests pass)
+- **Adoption**: Changes must be used immediately, not "future infrastructure"
+
+### Refactoring Implementation Pattern
+```
+1. Identify specific problems in existing code
+2. Fix those problems in place
+3. Delete dead code
+4. Consolidate duplicates
+5. Test that functionality is preserved
+6. ONE PR, cleaner codebase
+```
+
+**Not:**
+```
+1. Build new infrastructure
+2. Plan to migrate later (Phase 2, 3, 4...)
+3. Leave old code in place
+4. Result: More code, no improvement
+```
+
+---
+
 ### Step 1: Research the Codebase (30-60 minutes)
 
 **Read everything relevant BEFORE planning:**
@@ -166,6 +237,30 @@ daopad_frontend/
 - Must handle upgrade safety (minimal stable storage)
 - Always deploy to mainnet (no local testing)
 ```
+
+### If Refactoring: Document What's Wrong
+
+Don't just describe current state - identify specific problems:
+
+**Dead Code to Delete:**
+- Unused files: [list with evidence from grep]
+- Unused functions: [list with "no references" proof]
+- Unused imports: [list from linter output]
+- Console.log/debugging: [count and locations]
+
+**Duplicates to Consolidate:**
+- Duplicate implementations: [3 files doing same thing]
+- Similar components: [5 components with 80% overlap]
+- Repeated patterns: [same logic in 10 places]
+
+**Over-Complexity to Simplify:**
+- Unnecessary abstractions: [3-layer wrapper for simple call]
+- Over-engineered patterns: [factory for 1 implementation]
+- Complex logic: [200-line functions doing 5 things]
+
+**Concrete Improvements (Not New Infrastructure):**
+- Fix: Replace 99 console.log with proper error handling (modify existing code)
+- NOT: Build new Logger utility (add infrastructure, hope for adoption)
 
 ### Step 3: Plan Implementation Details
 
@@ -263,6 +358,42 @@ mod new_feature;  // Add this line
 \`\`\`
 ```
 
+### For Refactoring: Improve Existing Code (Not New Infrastructure)
+
+**❌ WRONG: Additive Refactoring**
+```javascript
+// WRONG: Creating new infrastructure
+// File: src/lib/Logger.js (NEW)
+export class Logger { /* 200 lines */ }
+
+// WRONG: Old code still there
+// File: src/components/TokenDashboard.jsx
+console.log('Still using console'); // Not fixed!
+```
+
+**✅ RIGHT: Subtractive Refactoring**
+```javascript
+// RIGHT: Improve existing code in place
+// File: src/components/TokenDashboard.jsx
+
+// REMOVE:
+- console.log('debug info');  // Delete this
+
+// ADD (minimal):
++ try {
++   // existing logic
++ } catch (error) {
++   showErrorToast(error);  // Use existing toast, don't build new system
++ }
+```
+
+**Refactoring Implementation Rules:**
+1. **Modify existing files** - Don't create parallel implementations
+2. **Delete dead code first** - Remove before adding
+3. **Consolidate duplicates** - N files → 1 file
+4. **Add only essentials** - No speculative infrastructure
+5. **Test continuously** - Preserve functionality
+
 ### Step 4: Specify Testing Requirements
 
 ```markdown
@@ -320,25 +451,33 @@ dfx canister --network ic call lwsav-iiaaa-aaaap-qp2qq-cai <method> '(args)'
 ## Scope Estimate
 
 ### Files Modified
-- **New files:** 3 (new_feature.rs, NewFeature.jsx, tests)
-- **Modified files:** 4 (lib.rs, TokenDashboard.jsx, daopadBackend.js, App.jsx)
+- **Deleted files**: [list - refactoring should delete dead code]
+- **Modified files**: [list - improve existing code]
+- **Created files**: [list - minimal for refactoring, normal for features]
 
-### Lines of Code
-- **Backend:** ~150 lines (Rust implementation)
-- **Frontend:** ~100 lines (React component)
-- **Tests:** ~150 lines
-- **Net:** +400 lines
+### Lines of Code (Critical for Refactoring)
 
-### Complexity
-- **Low:** Pure functions, clear logic
-- **Medium:** Async calls, error handling, React state management
-- **High:** Cross-canister calls, Orbit Station integration
+**For REFACTORING tasks:**
+- **Lines REMOVED**: [target: significant deletion]
+- **Lines ADDED**: [target: minimal, only essentials]
+- **Net LOC**: [should be negative or small positive]
+- **Reason for additions**: [justify each addition]
+
+**For NEW FEATURE tasks:**
+- **Lines ADDED**: [implementation + tests]
+- **Net LOC**: [naturally positive, that's expected]
+
+### Complexity Change
+- **Before**: [describe complexity level]
+- **After**: [should be simpler for refactoring]
+- **Patterns removed**: [list over-engineered patterns deleted]
+- **Patterns added**: [list only if essential]
 
 ### Time Estimate
-- Implementation: 3-4 hours
-- Testing on mainnet: 1-2 hours
-- Review iteration: 30-60 minutes
-- **Total:** 5-7 hours
+- Implementation: X hours
+- Testing: Y hours
+- Review iteration: Z hours
+- **Total**: X+Y+Z hours (one PR, not phases)
 ```
 
 ### Step 6: Embed Mandatory Isolation Check and Orchestrator
@@ -408,6 +547,20 @@ Step 1 - VERIFY ISOLATION:
 Step 2 - Implement Feature:
   [Summary of implementation steps from plan]
 
+  🚨 FOR REFACTORING TASKS:
+  - Your job: Improve EXISTING code, not build NEW infrastructure
+  - Delete dead code first
+  - Fix problems in place (don't create parallel solutions)
+  - Consolidate duplicates ruthlessly
+  - Add ONLY what's essential to the improvement
+  - Success = cleaner codebase (negative or small positive LOC)
+
+  🚨 FOR NEW FEATURES:
+  - Your job: Build functionality that doesn't exist
+  - Create necessary new files
+  - Implement complete feature
+  - Success = feature works as specified
+
 Step 3 - Build and Deploy:
   # Backend (if modified):
   cargo build --target wasm32-unknown-unknown --release -p daopad_backend --locked
@@ -467,6 +620,33 @@ Choose based on feature complexity and review feedback.
 - File changes from other agents will corrupt your work
 - Git operations by other agents will change your files
 - The orchestrator prompt above ENFORCES this with exit checks
+
+### 🔄 REFACTORING vs. NEW FEATURES
+
+**If this is REFACTORING:**
+✅ DO:
+- Delete dead code aggressively
+- Fix existing code in place
+- Consolidate duplicates (N → 1)
+- Remove unnecessary complexity
+- Modify files, don't create parallel infrastructure
+- Net negative or small positive LOC
+
+❌ DON'T:
+- Build new infrastructure alongside old
+- Create utilities without immediate adoption
+- Add "Phase 1 foundations" for future migration
+- Leave old code untouched
+- Create more files than you delete
+
+**If this is NEW FEATURES:**
+✅ DO:
+- Create new files as needed
+- Build necessary infrastructure
+- Implement completely
+- Net positive LOC expected
+
+The difference: Refactoring improves what exists. Features create what doesn't.
 
 ### DAOPad-Specific Requirements
 
