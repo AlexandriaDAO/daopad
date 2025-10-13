@@ -238,8 +238,8 @@ pub async fn create_transfer_request(
         to: to_address,
         amount,
         memo,
-        title,
-        description,
+        title: "Transfer request".to_string(),
+        description: "Transfer requested via DAOPad".to_string(),
     };
 
     // Call the proposal creation (it handles VP checks, Orbit request, etc.)

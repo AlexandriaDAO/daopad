@@ -203,6 +203,17 @@ type ExternalCanister = record {
   state : ExternalCanisterState;
   monitoring : opt MonitoringConfig;
 };
+type ExternalCanisterAction = variant {
+  Call : ExternalCanisterSpecifier;
+  Fund : ExternalCanisterSpecifier;
+  List;
+  Read : ExternalCanisterSpecifier;
+  Configure : ExternalCanisterSpecifier;
+  Monitor : ExternalCanisterSpecifier;
+  Create;
+  Change : ExternalCanisterSpecifier;
+  Snapshot : ExternalCanisterSpecifier;
+};
 type ExternalCanisterCallPermission = record {
   execution_method : text;
   allow : Allow;
@@ -236,6 +247,11 @@ type ExternalCanisterSettingsInput = record {
   name : opt text;
   labels : opt vec text;
   description : opt text;
+};
+type ExternalCanisterSpecifier = variant {
+  Id : text;
+  Any;
+  Canister : principal;
 };
 type ExternalCanisterState = variant { Active; Archived };
 type ExternalCanisterValidationMethodInput = record {
@@ -420,6 +436,14 @@ type NativeCanisterSettingsInput = record {
   memory_allocation : opt nat;
   compute_allocation : opt nat;
 };
+type NotificationAction = variant {
+  List;
+  Read;
+  MarkRead;
+  Delete;
+  Create;
+  Update;
+};
 type OrbitApprovalSummary = record {
   status : text;
   status_detail : opt text;
@@ -453,6 +477,8 @@ type OrbitRequestSummary = record {
 };
 type PaginationInput = record { offset : opt nat64; limit : opt nat64 };
 type PaginationInput_1 = record { offset : opt nat64; limit : opt nat16 };
+type Permission = record { resource : Resource; allow : Allow };
+type PermissionAction = variant { Read; Update };
 type ProposalConfig = record {
   voting_period_seconds : nat64;
   execution_delay_seconds : nat64;
@@ -510,6 +536,7 @@ type Request = record {
   operation : opt text;
   approvals : vec RequestApproval;
 };
+type RequestAction = variant { List; Read : ResourceSpecifier };
 type RequestAdditionalInfo = record {
   id : text;
   evaluation_result : opt text;
@@ -570,6 +597,30 @@ type RequestStatusDTO = variant {
   Created;
   Completed : record { completed_at : text };
 };
+type Resource = variant {
+  Request : RequestAction;
+  Notification : NotificationAction;
+  System : SystemAction;
+  User : UserAction;
+  ExternalCanister : ExternalCanisterAction;
+  Account : ResourceAction;
+  AddressBook : ResourceAction;
+  Asset : ResourceAction;
+  NamedRule : ResourceAction;
+  UserGroup : ResourceAction;
+  Permission : PermissionAction;
+  RequestPolicy : ResourceAction;
+};
+type ResourceAction = variant {
+  List;
+  Read : ResourceSpecifier;
+  Remove : ResourceSpecifier;
+  Delete : ResourceSpecifier;
+  Create;
+  Transfer : ResourceSpecifier;
+  Update : ResourceSpecifier;
+};
+type ResourceSpecifier = variant { Id : text; Any };
 type RestoreExternalCanisterOperationInput = record {
   external_canister_id : text;
   snapshot_id : text;
@@ -584,17 +635,19 @@ type Result_14 = variant { Ok : GetExternalCanisterResult; Err : text };
 type Result_15 = variant { Ok : vec SimpleRequest; Err : text };
 type Result_16 = variant { Ok : SystemInfoResponse; Err : text };
 type Result_17 = variant { Ok : ProposalConfig; Err : text };
-type Result_18 = variant { Ok : vec text; Err : text };
-type Result_19 = variant { Ok : vec OrbitRequestSummary; Err : text };
+type Result_18 = variant { Ok : Permission; Err : text };
+type Result_19 = variant { Ok : vec text; Err : text };
 type Result_2 = variant { Ok : BackendStatusCheck; Err : text };
-type Result_20 = variant { Ok : VotingThresholds; Err : text };
-type Result_21 = variant { Ok : bool; Err : text };
-type Result_22 = variant { Ok : ListAccountsResult; Err : text };
-type Result_23 = variant { Ok : ListExternalCanistersResult; Err : text };
-type Result_24 = variant { Ok : ListOrbitRequestsResponse; Err : text };
-type Result_25 = variant { Ok : EnhancedSecurityDashboard; Err : text };
-type Result_26 = variant { Ok; Err : text };
-type Result_27 = variant { Ok; Err : ProposalError };
+type Result_20 = variant { Ok : vec OrbitRequestSummary; Err : text };
+type Result_21 = variant { Ok : VotingThresholds; Err : text };
+type Result_22 = variant { Ok : bool; Err : text };
+type Result_23 = variant { Ok : ListAccountsResult; Err : text };
+type Result_24 = variant { Ok : ListExternalCanistersResult; Err : text };
+type Result_25 = variant { Ok : ListOrbitRequestsResponse; Err : text };
+type Result_26 = variant { Ok : vec Permission; Err : text };
+type Result_27 = variant { Ok : EnhancedSecurityDashboard; Err : text };
+type Result_28 = variant { Ok; Err : text };
+type Result_29 = variant { Ok; Err : ProposalError };
 type Result_3 = variant { Ok : nat32; Err : text };
 type Result_4 = variant { Ok : text; Err : text };
 type Result_5 = variant { Ok : CreateAccountResponse; Err : text };
@@ -625,6 +678,13 @@ type SubmitRequestResponse = record {
 };
 type SubmitRequestResult = variant { Ok : SubmitRequestResponse; Err : Error };
 type SubnetSelection = variant { Subnet : record { subnet_id : principal } };
+type SystemAction = variant {
+  Upgrade;
+  Restore;
+  ManageSystemInfo;
+  SystemInfo;
+  Capabilities;
+};
 type SystemInfo = record {
   disaster_recovery : opt DisasterRecovery;
   upgrader_cycles : opt nat64;
@@ -668,6 +728,12 @@ type UpgradeExternalCanisterInput = record {
   arg : opt blob;
   wasm_module : blob;
   mode : CanisterInstallMode;
+};
+type UserAction = variant {
+  List;
+  Read : ResourceSpecifier;
+  Create;
+  Update : ResourceSpecifier;
 };
 type UserSpecifier = variant { Id : vec text; Any; Group : vec text };
 type VotingThresholds = record {
@@ -732,6 +798,20 @@ service : () -> {
       opt text,
     ) -> (Result);
   create_address_book_request : (CreateRequestInput) -> (CreateRequestResult);
+  // Create edit permission request
+  // 
+  // Creates a request in Orbit Station to modify a permission's access control.
+  // Note: This creates a REQUEST, not an immediate change. The request must be
+  // approved according to the station's request policies.
+  // 
+  // Returns the request ID if successful.
+  create_edit_permission_request : (
+      principal,
+      Resource,
+      opt AuthScope,
+      opt vec text,
+      opt vec text,
+    ) -> (Result_4);
   create_orbit_canister_request : (
       principal,
       CreateExternalCanisterOperationInput,
@@ -796,13 +876,17 @@ service : () -> {
   get_orbit_station_for_token : (principal) -> (opt principal) query;
   get_orbit_system_info : (principal) -> (Result_16);
   get_proposal_config : (principal, ProposalType) -> (Result_17) query;
-  get_transfer_requests : (principal) -> (Result_18);
+  // Get specific permission details
+  // 
+  // Fetches a single permission by resource type from Orbit Station.
+  get_station_permission : (principal, Resource) -> (Result_18);
+  get_transfer_requests : (principal) -> (Result_19);
   // Get active proposal for a token (if any)
   get_treasury_proposal : (principal) -> (opt TreasuryProposal) query;
-  get_user_pending_requests : (principal, principal) -> (Result_19);
-  get_voting_thresholds : (principal) -> (Result_20) query;
+  get_user_pending_requests : (principal, principal) -> (Result_20);
+  get_voting_thresholds : (principal) -> (Result_21) query;
   has_proposal_passed : (principal, ProposalType, nat64, nat64, nat64) -> (
-      Result_21,
+      Result_22,
     ) query;
   health_check : () -> (text) query;
   initialize_default_thresholds : (principal) -> (Result_4);
@@ -815,14 +899,19 @@ service : () -> {
     ) query;
   list_all_orbit_stations : () -> (vec record { principal; principal }) query;
   list_orbit_accounts : (principal, opt text, opt nat64, opt nat64) -> (
-      Result_22,
+      Result_23,
     );
-  list_orbit_canisters : (principal, ListExternalCanistersInput) -> (Result_23);
+  list_orbit_canisters : (principal, ListExternalCanistersInput) -> (Result_24);
   // List all requests from Orbit Station with domain filtering
   // 
   // This method acts as an admin proxy, allowing DAOPad to query
   // all requests regardless of user permissions.
-  list_orbit_requests : (principal, ListRequestsInput) -> (Result_24);
+  list_orbit_requests : (principal, ListRequestsInput) -> (Result_25);
+  // List all permissions for a station (admin proxy)
+  // 
+  // Since Orbit restricts permission queries to admin users only, this backend method
+  // acts as an admin proxy to fetch permissions on behalf of frontend users.
+  list_station_permissions : (principal, opt vec Resource) -> (Result_26);
   monitor_orbit_canister_request : (
       principal,
       MonitorExternalCanisterOperationInput,
@@ -842,7 +931,7 @@ service : () -> {
   // This is the public-facing endpoint that frontend calls.
   // It combines perform_all_security_checks + build_dashboard to return
   // the full EnhancedSecurityDashboard with decentralization score.
-  perform_security_check : (principal) -> (Result_25);
+  perform_security_check : (principal) -> (Result_27);
   propose_orbit_station_link : (principal, principal) -> (Result_13);
   prune_orbit_canister_snapshots_request : (
       principal,
@@ -870,13 +959,13 @@ service : () -> {
       text,
       RequestApprovalStatus,
       opt text,
-    ) -> (Result_26);
+    ) -> (Result_28);
   unregister_kong_locker : () -> (Result_4);
-  validate_account_name : (principal, text) -> (Result_21);
-  vote_on_orbit_proposal : (nat64, bool) -> (Result_26);
+  validate_account_name : (principal, text) -> (Result_22);
+  vote_on_orbit_proposal : (nat64, bool) -> (Result_28);
   // Vote on a treasury proposal
   // 
   // When threshold is reached, executes immediately by approving the Orbit request.
   // Follows the same pattern as orbit_link.rs vote_on_proposal.
-  vote_on_treasury_proposal : (nat64, bool) -> (Result_27);
+  vote_on_treasury_proposal : (nat64, bool) -> (Result_29);
 }
