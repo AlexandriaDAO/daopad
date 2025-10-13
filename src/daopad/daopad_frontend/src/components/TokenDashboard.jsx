@@ -287,9 +287,28 @@ const TokenDashboard = memo(function TokenDashboard({
     }).format(value);
   };
 
-  const totalUsdValue = lpPositions.reduce((sum, pos) => {
+  // VP to USD conversion helper
+  const VP_TO_USD_RATIO = 100;
+  const vpToUsd = (vp) => formatUsdValue((vp || 0) / VP_TO_USD_RATIO);
+
+  const totalUsdValue = (lpPositions || []).reduce((sum, pos) => {
     return sum + (pos.usd_balance || 0);
   }, 0);
+
+  // Memoize token USD calculations for performance
+  const tokenUsdValues = React.useMemo(() => {
+    if (!tokens || !lpPositions) return {};
+    const values = {};
+    tokens.forEach(t => {
+      const tokenPositions = lpPositions.filter(pos =>
+        pos.address_0 === t.canister_id || pos.address_1 === t.canister_id
+      );
+      values[t.canister_id] = tokenPositions.reduce((sum, pos) =>
+        sum + (pos.usd_balance || 0), 0
+      );
+    });
+    return values;
+  }, [tokens, lpPositions]);
 
   if (loading) {
     return (
@@ -341,29 +360,21 @@ const TokenDashboard = memo(function TokenDashboard({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {tokens.map((t, index) => {
-                    const tokenPositions = lpPositions.filter(pos =>
-                      pos.address_0 === t.canister_id || pos.address_1 === t.canister_id
-                    );
-                    const tokenUsdValue = tokenPositions.reduce((sum, pos) =>
-                      sum + (pos.usd_balance || 0), 0
-                    );
-                    return (
-                      <SelectItem key={t.canister_id} value={index.toString()}>
-                        <div className="flex items-center justify-between gap-2 w-full">
-                          <span>{t.symbol}</span>
-                          <div className="flex flex-col items-end">
-                            <span className="text-xs font-mono">
-                              {((tokenVotingPowers && tokenVotingPowers[t.canister_id]) || 0).toLocaleString()} VP
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {formatUsdValue(tokenUsdValue)}
-                            </span>
-                          </div>
+                  {tokens.map((t, index) => (
+                    <SelectItem key={t.canister_id} value={index.toString()}>
+                      <div className="flex items-center justify-between gap-2 w-full">
+                        <span>{t.symbol}</span>
+                        <div className="flex flex-col items-end">
+                          <span className="text-xs font-mono">
+                            {((tokenVotingPowers && tokenVotingPowers[t.canister_id]) || 0).toLocaleString()} VP
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatUsdValue(tokenUsdValues[t.canister_id] || 0)}
+                          </span>
                         </div>
-                      </SelectItem>
-                    );
-                  })}
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             )}
@@ -411,7 +422,7 @@ const TokenDashboard = memo(function TokenDashboard({
               <TooltipContent>
                 <p>Voting Power = USD Value × 100</p>
                 <p className="text-xs text-muted-foreground">
-                  ${(votingPower / 100).toLocaleString()} × 100 = {votingPower.toLocaleString()} VP
+                  ${((votingPower || 0) / VP_TO_USD_RATIO).toLocaleString()} × 100 = {votingPower.toLocaleString()} VP
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -548,7 +559,7 @@ const TokenDashboard = memo(function TokenDashboard({
               >
                 {voting ? 'Voting...' : (
                   <span>
-                    Vote Yes ({userVotingPower?.toLocaleString()} VP / {formatUsdValue((userVotingPower || 0) / 100)})
+                    Vote Yes ({userVotingPower?.toLocaleString()} VP / {vpToUsd(userVotingPower)})
                   </span>
                 )}
               </Button>
@@ -560,7 +571,7 @@ const TokenDashboard = memo(function TokenDashboard({
               >
                 {voting ? 'Voting...' : (
                   <span>
-                    Vote No ({userVotingPower?.toLocaleString()} VP / {formatUsdValue((userVotingPower || 0) / 100)})
+                    Vote No ({userVotingPower?.toLocaleString()} VP / {vpToUsd(userVotingPower)})
                   </span>
                 )}
               </Button>
@@ -592,7 +603,7 @@ const TokenDashboard = memo(function TokenDashboard({
                   <div className={userVotingPower >= 10000 ? 'text-green-600' : 'text-red-600'}>
                     Your voting power: <strong>{userVotingPower.toLocaleString()} VP</strong>
                     <span className="text-sm ml-2">
-                      ({formatUsdValue(userVotingPower / 100)})
+                      ({vpToUsd(userVotingPower)})
                     </span>
                   </div>
 
@@ -603,7 +614,7 @@ const TokenDashboard = memo(function TokenDashboard({
                         Need {(10000 - userVotingPower).toLocaleString()} more VP
                       </Badge>
                       <div className="text-xs text-muted-foreground">
-                        That's {formatUsdValue((10000 - userVotingPower) / 100)} more LP value needed
+                        That's {vpToUsd(10000 - userVotingPower)} more LP value needed
                       </div>
                     </div>
                   )}
