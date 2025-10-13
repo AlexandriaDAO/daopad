@@ -91,6 +91,9 @@ pub enum ProposalError {
     #[error("Authentication required")]
     AuthRequired,
 
+    #[error("An active proposal already exists for this token. Please wait for it to complete before creating a new one.")]
+    ActiveProposalExists,
+
     #[error("No Orbit Station linked to token {0}")]
     NoStationLinked(Principal),
 

@@ -467,6 +467,7 @@ type ProposalError = variant {
   NoStationLinked : principal;
   IcCallFailed : record { code : int32; message : text };
   OrbitError : ErrorInfo;
+  ActiveProposalExists;
   InsufficientVotingPowerToPropose : record {
     required : nat64;
     current : nat64;
@@ -642,8 +643,10 @@ type SystemInfoResponse = record {
 type TokenInfo = record { chain : text; canister_id : text; symbol : text };
 type TransferDetails = record {
   to : text;
+  title : text;
   from_account_id : text;
   memo : opt text;
+  description : text;
   amount : nat;
   from_asset_id : text;
 };

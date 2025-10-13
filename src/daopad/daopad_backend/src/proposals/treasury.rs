@@ -23,6 +23,8 @@ pub struct TransferDetails {
     pub to: String,              // Destination address
     pub amount: Nat,             // Amount in smallest units
     pub memo: Option<String>,
+    pub title: String,           // Transfer title for proposal
+    pub description: String,     // Transfer description for proposal
 }
 
 /// Validate transfer details before creating proposal
@@ -90,7 +92,20 @@ pub async fn create_treasury_transfer_proposal(
     // 1. Validate transfer details
     validate_transfer_details(&transfer_details)?;
 
-    // 2. Check minimum voting power requirement
+    // 2. Check for existing active proposal
+    let has_active_proposal = TREASURY_PROPOSALS.with(|proposals| {
+        proposals
+            .borrow()
+            .get(&StorablePrincipal(token_canister_id))
+            .map(|p| p.status == ProposalStatus::Active)
+            .unwrap_or(false)
+    });
+
+    if has_active_proposal {
+        return Err(ProposalError::ActiveProposalExists);
+    }
+
+    // 3. Check minimum voting power requirement
     let proposer_power = get_user_voting_power_for_token(caller, token_canister_id)
         .await
         .map_err(|_| ProposalError::NoVotingPower)?;
@@ -102,7 +117,7 @@ pub async fn create_treasury_transfer_proposal(
         });
     }
 
-    // 3. Get station ID
+    // 4. Get station ID
     let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
         stations
             .borrow()
@@ -111,13 +126,13 @@ pub async fn create_treasury_transfer_proposal(
             .ok_or(ProposalError::NoStationLinked(token_canister_id))
     })?;
 
-    // 4. Get total voting power (must be > 0 for proposal to be viable)
+    // 5. Get total voting power (must be > 0 for proposal to be viable)
     let total_voting_power = get_total_voting_power_for_token(token_canister_id).await?;
 
-    // 5. Create transfer request in Orbit (status: pending approval)
+    // 6. Create transfer request in Orbit (status: pending approval)
     let orbit_request_id = create_transfer_request_in_orbit(station_id, transfer_details).await?;
 
-    // 6. Create DAOPad proposal
+    // 7. Create DAOPad proposal
     let proposal_id = ProposalId::new();
     let now = time();
 
@@ -136,7 +151,7 @@ pub async fn create_treasury_transfer_proposal(
         status: ProposalStatus::Active,
     };
 
-    // 7. Store proposal
+    // 8. Store proposal
     TREASURY_PROPOSALS.with(|proposals| {
         proposals
             .borrow_mut()
@@ -260,6 +275,21 @@ pub async fn vote_on_treasury_proposal(
     } else if proposal.no_votes >= (proposal.total_voting_power - required_votes) {
         // Rejected - impossible to reach threshold even if all remaining votes are YES
         // When no_votes >= (total - required), max possible yes = total - no_votes <= required
+
+        // Clean up Orbit request by rejecting it
+        let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
+            stations
+                .borrow()
+                .get(&StorablePrincipal(token_id))
+                .map(|s| s.0)
+                .ok_or(ProposalError::NoStationLinked(token_id))
+        })?;
+
+        // Attempt to reject the Orbit request (log error but don't fail the vote)
+        if let Err(e) = reject_orbit_request(station_id, &proposal.orbit_request_id).await {
+            ic_cdk::println!("Warning: Failed to reject Orbit request: {:?}", e);
+        }
+
         proposal.status = ProposalStatus::Rejected;
 
         TREASURY_PROPOSALS.with(|proposals| {
@@ -268,7 +298,7 @@ pub async fn vote_on_treasury_proposal(
                 .remove(&StorablePrincipal(token_id));
         });
 
-        ic_cdk::println!("Proposal {:?} rejected", proposal_id);
+        ic_cdk::println!("Proposal {:?} rejected and Orbit request cleaned up", proposal_id);
     } else {
         // Still active - update vote counts
         TREASURY_PROPOSALS.with(|proposals| {
@@ -327,8 +357,8 @@ async fn create_transfer_request_in_orbit(
     // Create the request input using SubmitRequestInput
     let request_input = SubmitRequestInput {
         operation: RequestOperation::Transfer(transfer_op),
-        title: Some("DAOPad Treasury Transfer".to_string()),
-        summary: Some("Community-voted treasury transfer".to_string()),
+        title: Some(details.title.clone()),
+        summary: Some(details.description.clone()),
         execution_plan: None, // Let Orbit handle execution scheduling based on policies
     };
 
@@ -361,6 +391,36 @@ async fn approve_orbit_request(
         request_id: request_id.to_string(),
         decision: RequestApprovalDecision::Approve,
         reason: Some("DAOPad treasury proposal approved by community vote".to_string()),
+    };
+
+    let result: Result<(SubmitRequestApprovalResult,), _> =
+        ic_cdk::call(station_id, "submit_request_approval", (input,)).await;
+
+    match result {
+        Ok((SubmitRequestApprovalResult::Ok(_),)) => Ok(()),
+        Ok((SubmitRequestApprovalResult::Err(e),)) => Err(ProposalError::OrbitError {
+            code: e.code,
+            message: e.message,
+        }),
+        Err((code, msg)) => Err(ProposalError::IcCallFailed {
+            code: code as i32,
+            message: msg,
+        }),
+    }
+}
+
+async fn reject_orbit_request(
+    station_id: Principal,
+    request_id: &str,
+) -> Result<(), ProposalError> {
+    use crate::api::{
+        RequestApprovalDecision, SubmitRequestApprovalInput, SubmitRequestApprovalResult,
+    };
+
+    let input = SubmitRequestApprovalInput {
+        request_id: request_id.to_string(),
+        decision: RequestApprovalDecision::Reject,
+        reason: Some("DAOPad treasury proposal rejected by community vote".to_string()),
     };
 
     let result: Result<(SubmitRequestApprovalResult,), _> =
@@ -422,6 +482,8 @@ mod tests {
             to: "recipient-address".to_string(),
             amount: Nat::from(1000u64),
             memo: Some("test".to_string()),
+            title: "Test Transfer".to_string(),
+            description: "Test transfer description".to_string(),
         };
 
         assert!(validate_transfer_details(&details).is_ok());
@@ -435,6 +497,8 @@ mod tests {
             to: "recipient-address".to_string(),
             amount: Nat::from(1000u64),
             memo: None,
+            title: "Test Transfer".to_string(),
+            description: "Test transfer description".to_string(),
         };
 
         let result = validate_transfer_details(&details);
@@ -455,6 +519,8 @@ mod tests {
             to: "recipient-address".to_string(),
             amount: Nat::from(1000u64),
             memo: None,
+            title: "Test Transfer".to_string(),
+            description: "Test transfer description".to_string(),
         };
 
         let result = validate_transfer_details(&details);
@@ -475,6 +541,8 @@ mod tests {
             to: "recipient-address".to_string(),
             amount: Nat::from(0u64),
             memo: None,
+            title: "Test Transfer".to_string(),
+            description: "Test transfer description".to_string(),
         };
 
         let result = validate_transfer_details(&details);
@@ -495,6 +563,8 @@ mod tests {
             to: "".to_string(),
             amount: Nat::from(1000u64),
             memo: None,
+            title: "Test Transfer".to_string(),
+            description: "Test transfer description".to_string(),
         };
 
         let result = validate_transfer_details(&details);
