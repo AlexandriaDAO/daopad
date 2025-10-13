@@ -62,22 +62,38 @@ struct RiskWeights {
     critical_admin_control: f64,
     critical_treasury: f64,
     critical_governance: f64,
+    critical_controller_manipulation: f64,  // NEW
+    critical_external_calls: f64,  // NEW
+    critical_system_restore: f64,  // NEW
     high_proposal_bypass: f64,
+    high_addressbook_injection: f64,  // NEW
+    high_monitoring_drain: f64,  // NEW
     medium_external_canisters: f64,
     medium_system_config: f64,
+    medium_snapshot_ops: f64,  // NEW
+    medium_named_rules: f64,  // NEW
+    medium_remove_ops: f64,  // NEW
     low_operational: f64,
 }
 
 impl Default for RiskWeights {
     fn default() -> Self {
         RiskWeights {
-            critical_admin_control: 30.0,
-            critical_treasury: 25.0,
-            critical_governance: 20.0,
-            high_proposal_bypass: 15.0,
-            medium_external_canisters: 5.0,
-            medium_system_config: 3.0,
-            low_operational: 2.0,
+            critical_admin_control: 20.0,  // Reduced to make room
+            critical_treasury: 18.0,
+            critical_governance: 12.0,
+            critical_controller_manipulation: 15.0,  // NEW - highest risk
+            critical_external_calls: 10.0,  // NEW - direct bypass
+            critical_system_restore: 10.0,  // NEW - time travel
+            high_proposal_bypass: 5.0,
+            high_addressbook_injection: 3.0,  // NEW
+            high_monitoring_drain: 2.0,  // NEW
+            medium_external_canisters: 2.0,
+            medium_system_config: 1.0,
+            medium_snapshot_ops: 1.0,  // NEW
+            medium_named_rules: 1.0,  // NEW
+            medium_remove_ops: 1.0,  // NEW
+            low_operational: 0.5,
         }
     }
 }
@@ -168,6 +184,78 @@ pub async fn check_operational_permissions(station_id: Principal) -> Result<Vec<
     })?;
 
     Ok(check_operational_permissions_impl(&perms_data.permissions))
+}
+
+/// Check controller manipulation: NativeSettings controller changes
+#[ic_cdk::update]
+pub async fn check_controller_manipulation(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
+    let perms_data = fetch_permissions(station_id).await.map_err(|e| {
+        format!("Failed to fetch permissions: {}", e)
+    })?;
+
+    Ok(check_controller_manipulation_impl(&perms_data.permissions, &perms_data.user_groups))
+}
+
+/// Check external canister call permissions
+#[ic_cdk::update]
+pub async fn check_external_canister_calls(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
+    let perms_data = fetch_permissions(station_id).await.map_err(|e| {
+        format!("Failed to fetch permissions: {}", e)
+    })?;
+
+    Ok(check_external_canister_calls_impl(&perms_data.permissions, &perms_data.user_groups))
+}
+
+/// Check system restore permissions
+#[ic_cdk::update]
+pub async fn check_system_restore(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
+    let perms_data = fetch_permissions(station_id).await.map_err(|e| {
+        format!("Failed to fetch permissions: {}", e)
+    })?;
+
+    Ok(check_system_restore_impl(&perms_data.permissions, &perms_data.user_groups))
+}
+
+/// Check addressbook injection with allowlisted policies
+#[ic_cdk::update]
+pub async fn check_addressbook_injection(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
+    let perms_data = fetch_permissions(station_id).await?;
+    let policies_data = fetch_policies(station_id).await?;
+
+    Ok(check_addressbook_injection_impl(&perms_data.permissions, &policies_data, &perms_data.user_groups))
+}
+
+/// Check monitoring cycle drain
+#[ic_cdk::update]
+pub async fn check_monitoring_drain(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
+    let perms_data = fetch_permissions(station_id).await?;
+
+    Ok(check_monitoring_drain_impl(&perms_data.permissions, &perms_data.user_groups))
+}
+
+/// Check snapshot operations
+#[ic_cdk::update]
+pub async fn check_snapshot_operations(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
+    let perms_data = fetch_permissions(station_id).await?;
+
+    Ok(check_snapshot_operations_impl(&perms_data.permissions, &perms_data.user_groups))
+}
+
+/// Check named rule bypass
+#[ic_cdk::update]
+pub async fn check_named_rule_bypass(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
+    let perms_data = fetch_permissions(station_id).await?;
+    let policies_data = fetch_policies(station_id).await?;
+
+    Ok(check_named_rule_bypass_impl(&perms_data.permissions, &policies_data, &perms_data.user_groups))
+}
+
+/// Check remove operations
+#[ic_cdk::update]
+pub async fn check_remove_operations(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
+    let perms_data = fetch_permissions(station_id).await?;
+
+    Ok(check_remove_operations_impl(&perms_data.permissions, &perms_data.user_groups))
 }
 
 // ===== DATA FETCHING =====
@@ -751,19 +839,316 @@ fn check_operational_permissions_impl(permissions: &Vec<Permission>) -> Vec<Secu
     checks
 }
 
+// ===== CHECK CATEGORY 9: CONTROLLER MANIPULATION =====
+
+fn check_controller_manipulation_impl(
+    permissions: &Vec<Permission>,
+    user_groups: &Vec<crate::types::orbit::UserGroup>
+) -> Vec<SecurityCheck> {
+    let mut checks = Vec::new();
+
+    // Check ExternalCanister.Change permission
+    // This is CRITICAL because Change includes NativeSettings which can modify controllers
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Controller Manipulation",
+        "External Canister Change Access (includes controller modification)",
+        |resource| matches!(resource, Resource::ExternalCanister(ExternalCanisterAction::Change(_))),
+        Severity::Critical,
+        "Non-admin groups can change external canister settings INCLUDING CONTROLLERS - allows complete canister takeover",
+        "Restrict ExternalCanister.Change to Admin group only, or explicitly check NativeSettings operations",
+    ));
+
+    // Check ExternalCanister.Configure permission (if we distinguish it)
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Controller Manipulation",
+        "External Canister Configure Access",
+        |resource| matches!(resource, Resource::ExternalCanister(ExternalCanisterAction::Configure(_))),
+        Severity::Critical,
+        "Non-admin groups can configure external canister native settings including controllers",
+        "Restrict ExternalCanister.Configure to Admin group only",
+    ));
+
+    checks
+}
+
+// ===== CHECK CATEGORY 10: EXTERNAL CANISTER CALLS =====
+
+fn check_external_canister_calls_impl(
+    permissions: &Vec<Permission>,
+    user_groups: &Vec<crate::types::orbit::UserGroup>
+) -> Vec<SecurityCheck> {
+    let mut checks = Vec::new();
+
+    // Check CallExternalCanister permission - HIGH RISK
+    // Users can call ANY method with ANY arguments on controlled canisters
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "External Canister Execution",
+        "External Canister Call Access",
+        |resource| matches!(resource, Resource::ExternalCanister(ExternalCanisterAction::Call(_))),
+        Severity::Critical,
+        "Non-admin groups can execute arbitrary methods on external canisters - can bypass treasury governance",
+        "Restrict CallExternalCanister to Admin group, or use granular per-method permissions",
+    ));
+
+    checks
+}
+
+// ===== CHECK CATEGORY 11: SYSTEM RESTORE =====
+
+fn check_system_restore_impl(
+    permissions: &Vec<Permission>,
+    user_groups: &Vec<crate::types::orbit::UserGroup>
+) -> Vec<SecurityCheck> {
+    let mut checks = Vec::new();
+
+    // Check System.Restore permission - TIME TRAVEL ATTACK
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "System Restore",
+        "System Restore Access",
+        |resource| matches!(resource, Resource::System(SystemAction::Restore)),
+        Severity::Critical,
+        "Non-admin groups can restore Station to previous snapshot - allows reversing executed operations",
+        "Restrict System.Restore to Admin group only",
+    ));
+
+    checks
+}
+
+// ===== CHECK CATEGORY 12: ADDRESSBOOK WHITELIST INJECTION =====
+
+fn check_addressbook_injection_impl(
+    permissions: &Vec<Permission>,
+    policies: &Vec<crate::types::orbit::RequestPolicy>,
+    user_groups: &Vec<crate::types::orbit::UserGroup>
+) -> Vec<SecurityCheck> {
+    let mut checks = Vec::new();
+
+    // First, check if any policies use AllowListedByMetadata
+    let has_allowlisted_policies = policies.iter().any(|policy| {
+        policy_uses_allowlisted_metadata(&policy.rule)
+    });
+
+    if !has_allowlisted_policies {
+        // No AllowListed policies, so this attack vector doesn't apply
+        checks.push(SecurityCheck {
+            category: "AddressBook Injection".to_string(),
+            name: "Whitelist Policy Detection".to_string(),
+            status: CheckStatus::Pass,
+            message: "No AllowListed policies detected".to_string(),
+            severity: Some(Severity::None),
+            details: None,
+            recommendation: None,
+        });
+        return checks;
+    }
+
+    // If AllowListed policies exist, check AddressBook.Create permission
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "AddressBook Injection",
+        "AddressBook Creation with AllowListed Policies",
+        |resource| matches!(resource, Resource::AddressBook(ResourceAction::Create)),
+        Severity::High,
+        "Non-admin groups can create address book entries that match AllowListed metadata - bypasses transfer approval",
+        "Either: (1) Restrict AddressBook.Create to Admin, or (2) Remove AllowListedByMetadata policies",
+    ));
+
+    checks
+}
+
+fn policy_uses_allowlisted_metadata(rule: &RequestPolicyRule) -> bool {
+    match rule {
+        RequestPolicyRule::AllowListedByMetadata(_) => true,
+        RequestPolicyRule::AnyOf(rules) | RequestPolicyRule::AllOf(rules) => {
+            rules.iter().any(|r| policy_uses_allowlisted_metadata(r))
+        }
+        RequestPolicyRule::Not(inner) => policy_uses_allowlisted_metadata(inner),
+        _ => false,
+    }
+}
+
+// ===== CHECK CATEGORY 13: MONITORING CYCLE DRAIN =====
+
+fn check_monitoring_drain_impl(
+    permissions: &Vec<Permission>,
+    user_groups: &Vec<crate::types::orbit::UserGroup>
+) -> Vec<SecurityCheck> {
+    let mut checks = Vec::new();
+
+    // Check ExternalCanister.Monitor permission
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Monitoring Cycle Drain",
+        "External Canister Monitoring Access",
+        |resource| matches!(resource, Resource::ExternalCanister(ExternalCanisterAction::Monitor(_))),
+        Severity::High,
+        "Non-admin groups can set up automatic cycle funding - enables recurring unauthorized transfers",
+        "Restrict ExternalCanister.Monitor to Admin group only",
+    ));
+
+    checks
+}
+
+// ===== CHECK CATEGORY 14: SNAPSHOT OPERATIONS =====
+
+fn check_snapshot_operations_impl(
+    permissions: &Vec<Permission>,
+    user_groups: &Vec<crate::types::orbit::UserGroup>
+) -> Vec<SecurityCheck> {
+    let mut checks = Vec::new();
+
+    // Check Snapshot permission
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Snapshot Operations",
+        "External Canister Snapshot Access",
+        |resource| matches!(resource, Resource::ExternalCanister(ExternalCanisterAction::Snapshot(_))),
+        Severity::Medium,
+        "Non-admin groups can snapshot/restore/prune external canisters - enables state manipulation",
+        "Restrict snapshot operations to Admin group only",
+    ));
+
+    checks
+}
+
+// ===== CHECK CATEGORY 15: NAMED RULE BYPASS =====
+
+fn check_named_rule_bypass_impl(
+    permissions: &Vec<Permission>,
+    policies: &Vec<crate::types::orbit::RequestPolicy>,
+    user_groups: &Vec<crate::types::orbit::UserGroup>
+) -> Vec<SecurityCheck> {
+    let mut checks = Vec::new();
+
+    // Check if any policies reference NamedRules
+    let has_named_rules = policies.iter().any(|policy| {
+        policy_uses_named_rules(&policy.rule)
+    });
+
+    if !has_named_rules {
+        checks.push(SecurityCheck {
+            category: "Named Rule Bypass".to_string(),
+            name: "Named Rule Usage Detection".to_string(),
+            status: CheckStatus::Pass,
+            message: "No policies reference named rules".to_string(),
+            severity: Some(Severity::None),
+            details: None,
+            recommendation: None,
+        });
+        return checks;
+    }
+
+    // If named rules are used, check who can edit them
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Named Rule Bypass",
+        "Named Rule Modification with Active Policies",
+        |resource| matches!(resource, Resource::NamedRule(ResourceAction::Update(_))),
+        Severity::Medium,
+        "Non-admin groups can edit named rules used in policies - enables indirect governance bypass",
+        "Restrict NamedRule.Update to Admin group only",
+    ));
+
+    checks
+}
+
+fn policy_uses_named_rules(rule: &RequestPolicyRule) -> bool {
+    match rule {
+        RequestPolicyRule::NamedRule(_) => true,
+        RequestPolicyRule::AnyOf(rules) | RequestPolicyRule::AllOf(rules) => {
+            rules.iter().any(|r| policy_uses_named_rules(r))
+        }
+        RequestPolicyRule::Not(inner) => policy_uses_named_rules(inner),
+        _ => false,
+    }
+}
+
+// ===== CHECK CATEGORY 16: REMOVE OPERATIONS =====
+
+fn check_remove_operations_impl(
+    permissions: &Vec<Permission>,
+    user_groups: &Vec<crate::types::orbit::UserGroup>
+) -> Vec<SecurityCheck> {
+    let mut checks = Vec::new();
+
+    // Check Asset.Remove
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Remove Operations",
+        "Asset Removal Access",
+        |resource| matches!(resource, Resource::Asset(ResourceAction::Remove(_))),
+        Severity::Medium,
+        "Non-admin groups can remove assets - may break dependent accounts",
+        "Restrict Asset.Remove to Admin group only",
+    ));
+
+    // Check UserGroup.Remove
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Remove Operations",
+        "User Group Removal Access",
+        |resource| matches!(resource, Resource::UserGroup(ResourceAction::Remove(_))),
+        Severity::Medium,
+        "Non-admin groups can remove user groups - may orphan permissions",
+        "Restrict UserGroup.Remove to Admin group only",
+    ));
+
+    // Check RequestPolicy.Remove
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Remove Operations",
+        "Request Policy Removal Access",
+        |resource| matches!(resource, Resource::RequestPolicy(ResourceAction::Remove(_))),
+        Severity::High,
+        "Non-admin groups can remove request policies - may leave operations unprotected",
+        "Restrict RequestPolicy.Remove to Admin group only",
+    ));
+
+    // Check NamedRule.Remove
+    checks.push(check_permission_by_resource(
+        permissions,
+        user_groups,
+        "Remove Operations",
+        "Named Rule Removal Access",
+        |resource| matches!(resource, Resource::NamedRule(ResourceAction::Remove(_))),
+        Severity::Medium,
+        "Non-admin groups can remove named rules - may break dependent policies",
+        "Restrict NamedRule.Remove to Admin group only",
+    ));
+
+    checks
+}
+
 // ===== AGGREGATOR METHOD: ALL SECURITY CHECKS =====
 
 /// Perform all security checks in one call
 ///
-/// This is a convenience method that calls all 8 individual security check methods
+/// This is a convenience method that calls all 16 individual security check methods
 /// and combines their results into a single response. This is useful for:
 /// - Getting a complete security overview in one call
 /// - Frontend components that need all checks at once
 /// - Simplifying frontend code by providing a single endpoint
 #[ic_cdk::update]
 pub async fn perform_all_security_checks(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
-    // Call all 8 individual checks sequentially
+    // Call all 16 individual checks sequentially (8 existing + 8 new bypass detection)
     // Note: These are already async and make inter-canister calls
+
+    // Existing 8 checks
     let admin_result = check_admin_control(station_id).await;
     let treasury_result = check_treasury_control(station_id).await;
     let governance_result = check_governance_permissions(station_id).await;
@@ -772,6 +1157,16 @@ pub async fn perform_all_security_checks(station_id: Principal) -> Result<Vec<Se
     let assets_result = check_asset_management(station_id).await;
     let system_result = check_system_configuration(station_id).await;
     let operational_result = check_operational_permissions(station_id).await;
+
+    // NEW: 8 additional bypass detection checks
+    let controller_result = check_controller_manipulation(station_id).await;
+    let calls_result = check_external_canister_calls(station_id).await;
+    let restore_result = check_system_restore(station_id).await;
+    let addressbook_result = check_addressbook_injection(station_id).await;
+    let monitoring_result = check_monitoring_drain(station_id).await;
+    let snapshot_result = check_snapshot_operations(station_id).await;
+    let namedrule_result = check_named_rule_bypass(station_id).await;
+    let remove_result = check_remove_operations(station_id).await;
 
     // Combine all checks into a single vector
     let mut all_checks = Vec::new();
@@ -853,6 +1248,87 @@ pub async fn perform_all_security_checks(station_id: Principal) -> Result<Vec<Se
             "Operational Access",
             "Operational Access",
             Severity::Low,
+            e
+        )),
+    }
+
+    // Add new 8 categories with error handling
+    match controller_result {
+        Ok(checks) => all_checks.extend(checks),
+        Err(ref e) => all_checks.push(create_error_check(
+            "Controller Manipulation",
+            "Controller Manipulation",
+            Severity::Critical,
+            e
+        )),
+    }
+
+    match calls_result {
+        Ok(checks) => all_checks.extend(checks),
+        Err(ref e) => all_checks.push(create_error_check(
+            "External Canister Calls",
+            "External Canister Calls",
+            Severity::Critical,
+            e
+        )),
+    }
+
+    match restore_result {
+        Ok(checks) => all_checks.extend(checks),
+        Err(ref e) => all_checks.push(create_error_check(
+            "System Restore",
+            "System Restore",
+            Severity::Critical,
+            e
+        )),
+    }
+
+    match addressbook_result {
+        Ok(checks) => all_checks.extend(checks),
+        Err(ref e) => all_checks.push(create_error_check(
+            "AddressBook Injection",
+            "AddressBook Injection",
+            Severity::High,
+            e
+        )),
+    }
+
+    match monitoring_result {
+        Ok(checks) => all_checks.extend(checks),
+        Err(ref e) => all_checks.push(create_error_check(
+            "Monitoring Cycle Drain",
+            "Monitoring Cycle Drain",
+            Severity::High,
+            e
+        )),
+    }
+
+    match snapshot_result {
+        Ok(checks) => all_checks.extend(checks),
+        Err(ref e) => all_checks.push(create_error_check(
+            "Snapshot Operations",
+            "Snapshot Operations",
+            Severity::Medium,
+            e
+        )),
+    }
+
+    match namedrule_result {
+        Ok(checks) => all_checks.extend(checks),
+        Err(ref e) => all_checks.push(create_error_check(
+            "Named Rule Bypass",
+            "Named Rule Bypass",
+            Severity::Medium,
+            e
+        )),
+    }
+
+    match remove_result {
+        Ok(checks) => all_checks.extend(checks),
+        Err(ref e) => all_checks.push(create_error_check(
+            "Remove Operations",
+            "Remove Operations",
+            Severity::Medium,
             e
         )),
     }
@@ -1064,12 +1540,44 @@ fn calculate_risk_score(checks: &Vec<SecurityCheck>) -> (u8, String, Vec<Securit
     let mut recommended_actions = Vec::new();
 
     for check in checks {
-        let deduction = match (&check.status, &check.severity) {
-            (CheckStatus::Fail, Some(Severity::Critical)) => weights.critical_admin_control,
-            (CheckStatus::Fail, Some(Severity::High)) => weights.critical_governance,
-            (CheckStatus::Fail, Some(Severity::Medium)) => weights.medium_external_canisters,
-            (CheckStatus::Warn, Some(Severity::Low)) => weights.low_operational * 0.5,
-            (CheckStatus::Warn, _) => weights.medium_system_config * 0.3,
+        // Match check category + severity to apply correct weight
+        let deduction = match (check.category.as_str(), &check.status, &check.severity) {
+            // Critical checks
+            ("Admin Control", CheckStatus::Fail, Some(Severity::Critical)) => weights.critical_admin_control,
+            ("Treasury Control", CheckStatus::Fail, Some(Severity::Critical)) => weights.critical_treasury,
+            ("Governance Control", CheckStatus::Fail, Some(Severity::Critical)) => weights.critical_governance,
+            ("Controller Manipulation", CheckStatus::Fail, Some(Severity::Critical)) => weights.critical_controller_manipulation,
+            ("External Canister Execution", CheckStatus::Fail, Some(Severity::Critical)) => weights.critical_external_calls,
+            ("System Restore", CheckStatus::Fail, Some(Severity::Critical)) => weights.critical_system_restore,
+
+            // High checks - categorize by check name for specific weights
+            (_, CheckStatus::Fail, Some(Severity::High)) => {
+                if check.category.contains("AddressBook") {
+                    weights.high_addressbook_injection
+                } else if check.category.contains("Monitoring") {
+                    weights.high_monitoring_drain
+                } else {
+                    weights.high_proposal_bypass
+                }
+            }
+
+            // Medium checks - categorize by check name
+            (_, CheckStatus::Fail, Some(Severity::Medium)) => {
+                if check.category.contains("Snapshot") {
+                    weights.medium_snapshot_ops
+                } else if check.category.contains("Named Rule") {
+                    weights.medium_named_rules
+                } else if check.category.contains("Remove") {
+                    weights.medium_remove_ops
+                } else {
+                    weights.medium_external_canisters
+                }
+            }
+
+            // Warnings
+            (_, CheckStatus::Warn, Some(Severity::Low)) => weights.low_operational * 0.5,
+            (_, CheckStatus::Warn, _) => weights.medium_system_config * 0.3,
+
             _ => 0.0,
         };
 

@@ -238,6 +238,8 @@ pub async fn create_transfer_request(
         to: to_address,
         amount,
         memo,
+        title,
+        description,
     };
 
     // Call the proposal creation (it handles VP checks, Orbit request, etc.)

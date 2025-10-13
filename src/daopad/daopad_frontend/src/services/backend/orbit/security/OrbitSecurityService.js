@@ -211,6 +211,7 @@ export class OrbitSecurityService extends BackendServiceBase {
    */
   async performComprehensiveSecurityCheck(stationId, progressCallback = null) {
     const categories = [
+      // Existing 8 checks
       { name: 'admin_control', method: 'check_admin_control', priority: 1 },
       { name: 'treasury_control', method: 'check_treasury_control', priority: 1 },
       { name: 'governance_permissions', method: 'check_governance_permissions', priority: 1 },
@@ -219,6 +220,16 @@ export class OrbitSecurityService extends BackendServiceBase {
       { name: 'asset_management', method: 'check_asset_management', priority: 3 },
       { name: 'system_configuration', method: 'check_system_configuration', priority: 3 },
       { name: 'operational_permissions', method: 'check_operational_permissions', priority: 3 },
+
+      // NEW: 8 additional bypass detection checks
+      { name: 'controller_manipulation', method: 'check_controller_manipulation', priority: 1 },
+      { name: 'external_canister_calls', method: 'check_external_canister_calls', priority: 1 },
+      { name: 'system_restore', method: 'check_system_restore', priority: 1 },
+      { name: 'addressbook_injection', method: 'check_addressbook_injection', priority: 2 },
+      { name: 'monitoring_drain', method: 'check_monitoring_drain', priority: 2 },
+      { name: 'snapshot_operations', method: 'check_snapshot_operations', priority: 3 },
+      { name: 'named_rule_bypass', method: 'check_named_rule_bypass', priority: 3 },
+      { name: 'remove_operations', method: 'check_remove_operations', priority: 3 },
     ];
 
     try {
