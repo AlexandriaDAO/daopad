@@ -1,15 +1,31 @@
 import { Actor, HttpAgent } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
 import { idlFactory, canisterId } from '../../../declarations/daopad_backend';
+import { logger } from '../../logging/Logger';
+import { ErrorHandler, ServiceError } from '../../../utils/errorHandling';
+import { Validator } from '../../../utils/validation';
 
 const DEFAULT_BACKEND_ID = 'lwsav-iiaaa-aaaap-qp2qq-cai';
 const BACKEND_CANISTER_ID = canisterId ?? DEFAULT_BACKEND_ID;
 
+/**
+ * Enhanced Backend Service Base Class
+ *
+ * Provides:
+ * - Error handling with retry logic
+ * - Input validation
+ * - Request logging
+ * - Rate limiting
+ * - Timeout handling
+ */
 export class BackendServiceBase {
   constructor(identity = null) {
     this.identity = identity;
     this.actor = null;
     this.lastIdentity = null;
+    this.requestCounter = 0;
+    this.lastRequestTime = 0;
+    this.minRequestInterval = 100; // Minimum 100ms between requests
   }
 
   async getActor() {
@@ -89,5 +105,201 @@ export class BackendServiceBase {
     if (typeof principal.toText === 'function') return principal.toText();
     if (typeof principal.toString === 'function') return principal.toString();
     return String(principal);
+  }
+
+  /**
+   * Generate unique request ID for tracking
+   */
+  generateRequestId() {
+    this.requestCounter++;
+    return `${Date.now()}-${this.requestCounter}`;
+  }
+
+  /**
+   * Rate limiting - ensure minimum interval between requests
+   */
+  async rateLimit() {
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+
+    if (timeSinceLastRequest < this.minRequestInterval) {
+      const waitTime = this.minRequestInterval - timeSinceLastRequest;
+      logger.debug('Rate limiting - waiting', { waitTime });
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+
+    this.lastRequestTime = Date.now();
+  }
+
+  /**
+   * Execute actor method with comprehensive error handling
+   *
+   * @param {string} method - Method name to call
+   * @param {Array} args - Method arguments
+   * @param {object} options - Execution options
+   * @returns {Promise} Result of method execution
+   */
+  async executeMethod(method, args = [], options = {}) {
+    const {
+      timeout = 30000,
+      retries = 3,
+      validateArgs = true,
+      logRequest = true
+    } = options;
+
+    const requestId = this.generateRequestId();
+    const startTime = Date.now();
+
+    if (logRequest) {
+      logger.info(`Backend call started: ${method}`, {
+        requestId,
+        method,
+        argsCount: args.length
+      });
+    }
+
+    try {
+      // Rate limiting
+      await this.rateLimit();
+
+      // Execute with retry logic and timeout
+      const result = await ErrorHandler.handleWithRetry(
+        async () => {
+          const actor = await this.getActor();
+
+          if (!actor[method]) {
+            throw new Error(`Method '${method}' not found on backend actor`);
+          }
+
+          // Wrap in timeout
+          const callPromise = actor[method](...args);
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`Request timed out after ${timeout}ms`)), timeout)
+          );
+
+          return Promise.race([callPromise, timeoutPromise]);
+        },
+        retries,
+        1000,
+        (attempt, maxRetries) => {
+          logger.warn(`Retrying backend call: ${method}`, {
+            requestId,
+            attempt,
+            maxRetries
+          });
+        }
+      );
+
+      const duration = Date.now() - startTime;
+
+      if (logRequest) {
+        logger.info(`Backend call succeeded: ${method}`, {
+          requestId,
+          duration,
+          method
+        });
+      }
+
+      return result;
+
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      const classified = ErrorHandler.classify(error);
+
+      logger.error(`Backend call failed: ${method}`, {
+        requestId,
+        method,
+        duration,
+        error: error.message,
+        errorType: classified.type,
+        stack: error.stack
+      });
+
+      throw new ServiceError(
+        classified.userMessage,
+        error,
+        classified
+      );
+    }
+  }
+
+  /**
+   * Execute method with result wrapping (for Result<T, E> types)
+   */
+  async executeWithResultWrapper(method, args = [], options = {}) {
+    const result = await this.executeMethod(method, args, options);
+    return this.wrapResult(result);
+  }
+
+  /**
+   * Execute method with option wrapping (for Option<T> types)
+   */
+  async executeWithOptionWrapper(method, args = [], options = {}) {
+    const result = await this.executeMethod(method, args, options);
+    return this.wrapOption(result);
+  }
+
+  /**
+   * Validate Principal argument
+   */
+  validatePrincipalArg(value, fieldName = 'Principal') {
+    try {
+      Validator.validatePrincipal(value);
+      return this.toPrincipal(value);
+    } catch (error) {
+      logger.warn(`Invalid principal argument: ${fieldName}`, {
+        value,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Validate Amount argument
+   */
+  validateAmountArg(value, options = {}) {
+    const {
+      fieldName = 'Amount',
+      min = 0,
+      max = Number.MAX_SAFE_INTEGER,
+      decimals = 8
+    } = options;
+
+    try {
+      Validator.validateAmount(value, {
+        min,
+        max,
+        decimals,
+        fieldName
+      });
+      return value;
+    } catch (error) {
+      logger.warn(`Invalid amount argument: ${fieldName}`, {
+        value,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Sanitize params for logging (remove sensitive data)
+   */
+  sanitizeParams(params) {
+    if (!params || typeof params !== 'object') {
+      return params;
+    }
+
+    const sanitized = { ...params };
+    const sensitiveKeys = ['password', 'seed', 'privateKey', 'mnemonic'];
+
+    for (const key of sensitiveKeys) {
+      if (sanitized[key]) {
+        sanitized[key] = '[REDACTED]';
+      }
+    }
+
+    return sanitized;
   }
 }
