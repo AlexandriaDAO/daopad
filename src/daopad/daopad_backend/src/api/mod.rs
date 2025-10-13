@@ -22,7 +22,6 @@ pub use orbit_requests::*;
 pub use orbit_security::*;
 pub use orbit_transfers::{
     approve_orbit_request as approve_transfer_orbit_request,
-    create_transfer_request_in_orbit,
     get_transfer_requests_from_orbit,
     CreateRequestResult,
     ErrorInfo,

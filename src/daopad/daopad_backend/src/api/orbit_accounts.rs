@@ -65,63 +65,28 @@ pub enum ListAssetsResult {
     Err(Error),
 }
 
-// Create treasury account
+// Create treasury account through proposal system
 #[update]
 async fn create_treasury_account(
     token_id: Principal,
     account_config: CreateAccountConfig
 ) -> Result<CreateAccountResponse, String> {
-    // Get station for token
-    let station_id = TOKEN_ORBIT_STATIONS.with(|s| {
-        s.borrow()
-            .get(&StorablePrincipal(token_id))
-            .map(|s| s.0)
-            .ok_or("No Orbit Station found for token".to_string())
-    })?;
+    // Note: Direct account creation has been removed to enforce proposal-based governance.
+    // This function should now create a proposal for account creation instead.
+    // For now, returning an error to prevent direct creation.
 
-    // Build AddAccountOperationInput with correct types
-    let add_account = AddAccountOperationInput {
-        name: account_config.name.clone(),
-        assets: account_config.asset_ids,
-        metadata: account_config.metadata,
-        read_permission: account_config.read_permission,
-        configs_permission: account_config.configs_permission,
-        transfer_permission: account_config.transfer_permission,
-        configs_request_policy: account_config.configs_request_policy,
-        transfer_request_policy: account_config.transfer_request_policy,
-    };
+    Err(format!(
+        "Direct account creation is disabled. Account creation must go through the proposal system. \
+        Please create a governance proposal for adding account '{}'. \
+        Required voting power: 10,000 VP minimum.",
+        account_config.name
+    ))
 
-    // Create request with AddAccount operation
-    let request_input = CreateRequestInput {
-        operation: RequestOperationInput::AddAccount(add_account),
-        title: Some(format!("Create Account: {}", account_config.name)),
-        summary: Some(format!("Creating treasury account '{}'", account_config.name)),
-        execution_plan: None,
-        expiration_dt: None,
-    };
-
-    // Call Orbit Station
-    let result: Result<(CreateRequestResult,), _> =
-        call(station_id, "create_request", (request_input,)).await;
-
-    // Handle double-wrapped Result pattern
-    match result {
-        Ok((CreateRequestResult::Ok(response),)) => {
-            Ok(CreateAccountResponse {
-                request_id: response.request.id,
-                status: format!("{:?}", response.request.status),
-                auto_approved: matches!(response.request.status,
-                    RequestStatusDTO::Approved | RequestStatusDTO::Completed { .. }),
-                error: None,
-            })
-        }
-        Ok((CreateRequestResult::Err(e),)) => {
-            Err(format!("Orbit rejected request: {}", e))
-        }
-        Err((code, msg)) => {
-            Err(format!("Cross-canister call failed: {:?} - {}", code, msg))
-        }
-    }
+    // TODO: Implement account creation proposal type:
+    // 1. Create AccountCreationProposal type
+    // 2. Check user has 10,000+ VP
+    // 3. Create proposal with account details
+    // 4. Return proposal ID instead of request ID
 }
 
 // Get available assets from Orbit Station

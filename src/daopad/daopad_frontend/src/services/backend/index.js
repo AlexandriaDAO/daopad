@@ -23,9 +23,6 @@ export { OrbitSecurityService, getOrbitSecurityService } from './orbit/security/
 export { OrbitCanisterService, getOrbitCanisterService } from './orbit/canisters/OrbitCanisterService';
 export { OrbitGovernanceService, getOrbitGovernanceService } from './orbit/governance/OrbitGovernanceService';
 
-// Unified service for backward compatibility
-export { UnifiedBackendService } from './UnifiedBackendService';
-
 // Re-export base and utilities for custom extensions
 export { BackendServiceBase } from './base/BackendServiceBase';
 export { parseOrbitResult, formatOrbitError } from './utils/errorParsers';

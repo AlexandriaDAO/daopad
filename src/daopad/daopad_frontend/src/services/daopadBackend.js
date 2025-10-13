@@ -699,6 +699,74 @@ export class DAOPadBackendService {
         }
     }
 
+    // Treasury Proposal Methods
+
+    async createTreasuryTransferProposal(tokenId, transferDetails) {
+        try {
+            const actor = await this.getActor();
+
+            // Convert to candid format
+            const details = {
+                from_account_id: transferDetails.from_account_id,
+                from_asset_id: transferDetails.from_asset_id,
+                to: transferDetails.to,
+                amount: transferDetails.amount,
+                memo: transferDetails.memo ? [transferDetails.memo] : [],
+                title: transferDetails.title,
+                description: transferDetails.description
+            };
+
+            const result = await actor.create_treasury_transfer_proposal(
+                tokenId,
+                details
+            );
+
+            if ('Ok' in result) {
+                return { success: true, data: result.Ok };
+            } else {
+                return { success: false, error: result.Err };
+            }
+        } catch (error) {
+            console.error('Error creating treasury transfer proposal:', error);
+            return {
+                success: false,
+                error: error.message || 'Failed to create transfer proposal'
+            };
+        }
+    }
+
+    async getTreasuryProposal(tokenId) {
+        try {
+            const actor = await this.getActor();
+            const result = await actor.get_treasury_proposal(tokenId);
+
+            if (result && result.length > 0) {
+                return { success: true, data: result[0] };
+            } else {
+                return { success: true, data: null };
+            }
+        } catch (error) {
+            console.error('Error getting treasury proposal:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    async voteOnTreasuryProposal(proposalId, vote) {
+        try {
+            const actor = await this.getActor();
+            const result = await actor.vote_on_treasury_proposal(proposalId, vote);
+
+            if ('Ok' in result) {
+                return { success: true };
+            } else {
+                return { success: false, error: result.Err };
+            }
+        } catch (error) {
+            console.error('Error voting on treasury proposal:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
     // Direct Orbit Station calls using their exact IDL factory
     async getOrbitStationId(tokenCanisterId) {
         try {

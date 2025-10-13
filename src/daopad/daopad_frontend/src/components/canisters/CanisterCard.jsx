@@ -15,6 +15,14 @@ const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure
     let isCancelled = false; // Race condition protection
 
     const fetchStatus = async () => {
+      // Check if we have permission to view canister status
+      // Only proceed if we explicitly have 'change' permission or permissions are unknown
+      // If permissions exist and change is explicitly false, skip the call
+      if (canister.permissions && canister.permissions.change === false) {
+        setStatus({ unavailable: true, reason: 'Not a controller' });
+        return;
+      }
+
       setLoading(true);
       try {
         // Use Principal for IC management canister calls
@@ -26,13 +34,17 @@ const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure
           if (result.success) {
             setStatus(result.data);
           } else {
-            // Log specific error for debugging
-            console.log(`IC status unavailable for ${canister.canister_id}:`, result.error);
+            // Expected failure for non-controlled canisters - don't log as error
+            setStatus({ unavailable: true, reason: 'Authorization required' });
           }
         }
       } catch (error) {
         if (!isCancelled) {
-          console.error(`Failed to fetch IC status for ${canister.canister_id}:`, error);
+          // Only log unexpected errors (not authorization errors)
+          if (!error.message?.includes('controllers') && !error.message?.includes('Only the')) {
+            console.error(`Unexpected error fetching IC status:`, error);
+          }
+          setStatus({ unavailable: true, reason: 'Cannot fetch' });
         }
       } finally {
         if (!isCancelled) {
@@ -102,13 +114,15 @@ const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure
             <span className="text-sm text-gray-600 dark:text-gray-400">Cycles</span>
             {loading ? (
               <span className="text-sm animate-pulse">Loading...</span>
+            ) : status?.unavailable ? (
+              <Badge variant="secondary">{status.reason}</Badge>
             ) : (
               <span className={`text-sm font-semibold ${getCyclesColor(status?.cycles)}`}>
                 {formatCycles(status?.cycles)}
               </span>
             )}
           </div>
-          {status && (
+          {status && !status.unavailable && (
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div
                 className={`h-2 rounded-full transition-all duration-500 ${
@@ -123,7 +137,7 @@ const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure
         </div>
 
         {/* Memory & Status */}
-        {status && (
+        {status && !status.unavailable && (
           <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
             <div className="flex items-center gap-1">
               <Activity className="h-3 w-3" />

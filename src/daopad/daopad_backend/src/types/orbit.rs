@@ -562,11 +562,15 @@ pub struct ListPermissionsResponse {
 #[derive(CandidType, Deserialize, Serialize, Debug)]
 pub enum ListPermissionsResult {
     Ok {
+        // CRITICAL: Field order must match Orbit Station's exact response
+        // Verified with: dfx canister --network ic call fec7w-zyaaa-aaaaa-qaffq-cai list_permissions '(record { resources = null; paginate = null; })'
+        // Orbit returns: permissions, total, privileges, user_groups, users, next_offset
+        // Last verified: 2025-10-13
         permissions: Vec<Permission>,
-        privileges: Vec<PermissionCallerPrivileges>,
         total: u64,
+        privileges: Vec<PermissionCallerPrivileges>,
         user_groups: Vec<UserGroup>,
-        users: Vec<UserDTO>,  // Missing field causing decode failure
+        users: Vec<UserDTO>,
         next_offset: Option<u64>,
     },
     Err(Error),
