@@ -41,73 +41,8 @@ pub enum SubmitRequestApprovalResult {
     Err(ErrorInfo),
 }
 
-// Create transfer request directly in Orbit
-pub async fn create_transfer_request_in_orbit(
-    station_id: Principal,
-    caller: Principal,
-    token_id: Principal,
-    from_account_id: String,
-    from_asset_id: String,
-    to_address: String,
-    amount: Nat,
-    title: String,
-    description: String,
-    memo: Option<String>,
-) -> Result<String, String> {
-    // Validate caller has voting power (we still check this)
-    // For testing: bypass for admin identity
-    let caller_text = caller.to_text();
-    if caller_text != "67ktx-ln42b-uzmo5-bdiyn-gu62c-cd4h4-a5qt3-2w3rs-cixdl-iaso2-mqe" {
-        // Allow admin bypass for testing
-        let voting_power =
-            crate::kong_locker::voting::get_user_voting_power_for_token(caller, token_id)
-                .await
-                .map_err(|e| format!("Failed to get voting power: {}", e))?;
-
-        if voting_power < 100 {
-            return Err(format!("Insufficient voting power: {} < 100", voting_power));
-        }
-    }
-
-    // Create the transfer operation input
-    let transfer_op = TransferOperationInput {
-        from_account_id,
-        from_asset_id,
-        with_standard: "icrc1".to_string(), // Default to icrc1
-        to: to_address,
-        amount,
-        fee: None, // Let Orbit calculate the fee
-        metadata: if let Some(m) = memo {
-            vec![TransferMetadata {
-                key: "memo".to_string(),
-                value: m,
-            }]
-        } else {
-            vec![]
-        },
-        network: None, // Use default network
-    };
-
-    // Create the request input using SubmitRequestInput
-    let request_input = crate::types::orbit::SubmitRequestInput {
-        operation: RequestOperation::Transfer(transfer_op),
-        title: Some(title),
-        summary: Some(description),
-        execution_plan: None, // Let Orbit handle execution scheduling based on policies
-    };
-
-    // Call Orbit Station to create the request
-    let result: CallResult<(CreateRequestResult,)> =
-        ic_cdk::call(station_id, "create_request", (request_input,)).await;
-
-    match result {
-        Ok((CreateRequestResult::Ok(response),)) => Ok(response.request.id),
-        Ok((CreateRequestResult::Err(e),)) => {
-            Err(format!("Orbit error: {} - {}", e.code, e.message))
-        }
-        Err((code, msg)) => Err(format!("Failed to create request: {:?} - {}", code, msg)),
-    }
-}
+// Note: Direct transfer functionality has been removed.
+// All transfers now go through the proposal system via create_transfer_request in orbit.rs
 
 // Return a simple message for now until we can properly decode Orbit's complex response
 pub async fn get_transfer_requests_from_orbit(
