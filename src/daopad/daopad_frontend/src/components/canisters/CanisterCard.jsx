@@ -16,8 +16,9 @@ const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure
 
     const fetchStatus = async () => {
       // Check if we have permission to view canister status
-      // If canister.permissions exists and doesn't include 'change', we're not a controller
-      if (canister.permissions && !canister.permissions.change) {
+      // Only proceed if we explicitly have 'change' permission or permissions are unknown
+      // If permissions exist and change is explicitly false, skip the call
+      if (canister.permissions && canister.permissions.change === false) {
         setStatus({ unavailable: true, reason: 'Not a controller' });
         return;
       }

@@ -79,6 +79,12 @@ export class OrbitServiceBase {
         this.setCache(key, finalResult);
       }
 
+      // Invalidate cache on mutation operations (create_, update_, delete_)
+      if (methodName.startsWith('create_') || methodName.startsWith('update_') || methodName.startsWith('delete_')) {
+        console.log(`[${this.serviceName}] Invalidating cache after ${methodName}`);
+        this.clearCache();
+      }
+
       return finalResult;
     } catch (error) {
       console.error(`[${this.serviceName}] ${methodName} failed:`, error);
