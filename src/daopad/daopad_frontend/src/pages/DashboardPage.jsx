@@ -184,7 +184,7 @@ export function DashboardPage() {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="treasury" className="space-y-4">
-        <TabsList className="bg-executive-darkGray/50 border border-executive-gold/20">
+        <TabsList className="bg-executive-darkGray/50 border border-executive-gold/40">
           <TabsTrigger
             value="treasury"
             className="data-[state=active]:bg-executive-gold/20 data-[state=active]:text-executive-goldLight transition-all duration-200"
@@ -253,7 +253,7 @@ export function DashboardPage() {
           <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
             <Button
               variant="outline"
-              className="justify-start group border-executive-gold/20 hover:border-executive-gold/50 hover:bg-executive-gold/10 transition-all duration-300"
+              className="justify-start group border-executive-gold/40 hover:border-executive-gold/70 hover:bg-executive-gold/10 transition-all duration-300"
               onClick={() => navigate('/transfers/new')}
             >
               <Wallet className="w-4 h-4 mr-2 transition-transform duration-300 group-hover:scale-110" />
@@ -261,7 +261,7 @@ export function DashboardPage() {
             </Button>
             <Button
               variant="outline"
-              className="justify-start group border-executive-gold/20 hover:border-executive-gold/50 hover:bg-executive-gold/10 transition-all duration-300"
+              className="justify-start group border-executive-gold/40 hover:border-executive-gold/70 hover:bg-executive-gold/10 transition-all duration-300"
               onClick={() => navigate('/users/new')}
             >
               <Users className="w-4 h-4 mr-2 transition-transform duration-300 group-hover:scale-110" />
@@ -269,7 +269,7 @@ export function DashboardPage() {
             </Button>
             <Button
               variant="outline"
-              className="justify-start group border-executive-gold/20 hover:border-executive-gold/50 hover:bg-executive-gold/10 transition-all duration-300"
+              className="justify-start group border-executive-gold/40 hover:border-executive-gold/70 hover:bg-executive-gold/10 transition-all duration-300"
               onClick={() => navigate('/accounts/new')}
             >
               <DollarSign className="w-4 h-4 mr-2 transition-transform duration-300 group-hover:scale-110" />
@@ -277,7 +277,7 @@ export function DashboardPage() {
             </Button>
             <Button
               variant="outline"
-              className="justify-start group border-executive-gold/20 hover:border-executive-gold/50 hover:bg-executive-gold/10 transition-all duration-300"
+              className="justify-start group border-executive-gold/40 hover:border-executive-gold/70 hover:bg-executive-gold/10 transition-all duration-300"
               onClick={() => navigate('/settings')}
             >
               <Shield className="w-4 h-4 mr-2 transition-transform duration-300 group-hover:scale-110" />
@@ -311,7 +311,7 @@ function MetricCard({ title, value, icon: Icon, trend, description, loading }) {
       <div className="absolute inset-0 bg-gradient-to-br from-executive-gold/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
       {/* Top left corner accent */}
-      <div className="absolute top-0 left-0 w-6 h-6 border-l border-t border-executive-gold/20"></div>
+      <div className="absolute top-0 left-0 w-6 h-6 border-l border-t border-executive-gold/40"></div>
 
       <CardContent className="p-6 relative z-10">
         <div className="flex items-center justify-between">
@@ -326,14 +326,14 @@ function MetricCard({ title, value, icon: Icon, trend, description, loading }) {
           {/* Icon with gradient background on hover */}
           <div className={cn(
             "p-3 rounded-lg transition-all duration-300",
-            trend > 0 ? "bg-green-50 group-hover:bg-green-100" :
-            trend < 0 ? "bg-red-50 group-hover:bg-red-100" :
+            typeof trend === 'number' && trend > 0 ? "bg-green-50 group-hover:bg-green-100" :
+            typeof trend === 'number' && trend < 0 ? "bg-red-50 group-hover:bg-red-100" :
             "bg-executive-gold/10 group-hover:bg-executive-gold/20"
           )}>
             <Icon className={cn(
               "w-5 h-5 transition-transform duration-300 group-hover:scale-110",
-              trend > 0 ? "text-green-600" :
-              trend < 0 ? "text-red-600" :
+              typeof trend === 'number' && trend > 0 ? "text-green-600" :
+              typeof trend === 'number' && trend < 0 ? "text-red-600" :
               "text-executive-gold"
             )} />
           </div>

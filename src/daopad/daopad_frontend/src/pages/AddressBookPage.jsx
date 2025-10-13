@@ -162,13 +162,13 @@ const AddressBookPage = ({ identity }) => {
         <div className="flex items-center gap-2 flex-1">
           {canList && (
             <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-executive-gold/50" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-executive-gold/70" />
               <Input
                 type="text"
                 placeholder="Search addresses..."
                 value={searchTerm}
                 onChange={handleSearch}
-                className="pl-10 border-executive-gold/20 focus:border-executive-gold focus:ring-executive-gold/30 transition-all duration-200"
+                className="pl-10 border-executive-gold/40 focus:border-executive-gold focus:ring-executive-gold/30 transition-all duration-200"
               />
             </div>
           )}
