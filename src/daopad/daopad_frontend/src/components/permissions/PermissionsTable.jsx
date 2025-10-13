@@ -29,16 +29,22 @@ export default function PermissionsTable({ stationId, actor }) {
 
     try {
       // Call backend to get permissions (backend acts as admin proxy)
-      const result = await actor.list_station_permissions(stationId, []);
+      // Pass null instead of [] for Option<Vec<Resource>>
+      const result = await actor.list_station_permissions(stationId, null);
 
-      if (result && result.length > 0) {
-        const permsArray = Array.isArray(result[0]) ? result[0] : result;
-        setPermissions(permsArray);
+      // Backend returns Result<Vec<Permission>, String>
+      // Handle both direct array and nested response formats
+      if (Array.isArray(result)) {
+        setPermissions(result);
+      } else if (result && Array.isArray(result[0])) {
+        setPermissions(result[0]);
       } else {
         setPermissions([]);
       }
     } catch (err) {
       console.error('Failed to load permissions:', err);
+      // Log full error for debugging type mismatches
+      console.error('Full error details:', JSON.stringify(err));
       setError(err.message || 'Failed to load permissions');
       setPermissions([]);
     } finally {

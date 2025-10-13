@@ -4,6 +4,7 @@ import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Label } from '../ui/label';
+import { Info } from 'lucide-react';
 
 const PERMISSION_OPTIONS = [
   // Treasury
@@ -96,6 +97,15 @@ export default function PermissionRequestHelper({ stationId, actor }) {
         <CardTitle>Request Permission Change</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Note:</strong> This currently creates Orbit requests directly.
+            In the future, this will create DAOPad proposals that require
+            community voting before execution.
+          </AlertDescription>
+        </Alert>
+
         <div className="space-y-2">
           <Label htmlFor="permission">Permission</Label>
           <Select value={selectedPermission} onValueChange={setSelectedPermission}>
@@ -151,9 +161,13 @@ export default function PermissionRequestHelper({ stationId, actor }) {
           {submitting ? 'Creating Request...' : 'Create Permission Request'}
         </Button>
 
-        <p className="text-xs text-muted-foreground">
-          This will create a request that must be approved according to the station's governance rules
-        </p>
+        <div className="pt-4 border-t">
+          <p className="text-xs text-muted-foreground">
+            <strong>Current:</strong> Request created directly in Orbit (backend auto-approves)
+            <br />
+            <strong>Future:</strong> Request creates DAOPad proposal requiring 50% VP threshold
+          </p>
+        </div>
       </CardContent>
     </Card>
   );
