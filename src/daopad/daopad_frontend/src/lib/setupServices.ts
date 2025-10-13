@@ -10,9 +10,9 @@ import { ICanisterService } from '../services/interfaces/ICanisterService';
  * @param identityProvider - Function that returns current identity
  */
 export function setupServices(identityProvider: () => Identity | null): void {
-  // Clear any existing registrations (useful for hot reload in development)
+  // Check if already registered (avoid duplicate registration)
   if (serviceRegistry.getRegisteredServices().length > 0) {
-    console.warn('Services already registered. This may indicate a hot reload or duplicate setup call.');
+    console.warn('Services already registered. Use resetServices() to re-initialize.');
     return;
   }
 
@@ -27,6 +27,30 @@ export function setupServices(identityProvider: () => Identity | null): void {
   // - OrbitStationService (Phase 3)
   // - DAOPadBackendService (Phase 3)
   // - KongLockerService (Phase 3)
+}
+
+/**
+ * Reset and re-initialize all services
+ * Useful when identity changes (e.g., login/logout)
+ *
+ * @param identityProvider - Function that returns new identity
+ */
+export async function resetServices(identityProvider: () => Identity | null): Promise<void> {
+  try {
+    // Dispose all existing services
+    await serviceRegistry.clear();
+
+    // Re-register services
+    setupServices(identityProvider);
+
+    // Initialize all services
+    await initializeServices();
+
+    console.log('✅ Services reset successfully');
+  } catch (error) {
+    console.error('❌ Failed to reset services:', error);
+    throw error;
+  }
 }
 
 /**

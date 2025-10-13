@@ -86,78 +86,33 @@ export class CanisterService extends BaseService implements ICanisterService {
     }
   }
 
-  async call<T>(
-    method: string,
-    args: unknown[],
-    canisterId: string
-  ): Promise<Result<T, CanisterError>> {
-    try {
-      this.ensureInitialized();
-
-      if (!this.agent) {
-        return Result.err(new CanisterError('HTTP Agent not initialized'));
-      }
-
-      // Note: This is a simplified implementation
-      // In practice, you'd need to create an actor and call the method
-      // For now, this shows the pattern
-      const principal = Principal.fromText(canisterId);
-
-      // Make the call through the agent
-      const result = await this.agent.call(principal, {
-        methodName: method,
-        arg: this.encodeArgs(args),
-      });
-
-      return Result.ok(result as T);
-    } catch (error) {
-      return Result.err(
-        CanisterError.fromRejection(error, { method, canisterId })
-      );
-    }
-  }
-
-  async query<T>(
-    method: string,
-    args: unknown[],
-    canisterId: string
-  ): Promise<Result<T, CanisterError>> {
-    try {
-      this.ensureInitialized();
-
-      if (!this.agent) {
-        return Result.err(new CanisterError('HTTP Agent not initialized'));
-      }
-
-      // Note: This is a simplified implementation
-      // In practice, you'd need to create an actor and call the method
-      const principal = Principal.fromText(canisterId);
-
-      // Make the query through the agent
-      const result = await this.agent.query(principal, {
-        methodName: method,
-        arg: this.encodeArgs(args),
-      });
-
-      return Result.ok(result as T);
-    } catch (error) {
-      return Result.err(
-        CanisterError.fromRejection(error, { method, canisterId })
-      );
-    }
-  }
-
   clearActorCache(): void {
     this.actorCache.clear();
   }
 
   /**
-   * Encode arguments for canister calls
-   * In practice, this would use IDL encoding
+   * Update identity and clear actor cache
+   * Should be called when user logs in with different identity
    */
-  private encodeArgs(args: unknown[]): ArrayBuffer {
-    // Simplified implementation
-    // Real implementation would use IDL.encode
-    return new ArrayBuffer(0);
+  async updateIdentity(identity: Identity): Promise<void> {
+    this.setIdentity(identity);
+    this.clearActorCache();
+
+    // Recreate agent with new identity
+    const isLocal = import.meta.env.VITE_DFX_NETWORK === 'local';
+    const host = isLocal ? 'http://localhost:4943' : 'https://icp0.io';
+
+    this.agent = new HttpAgent({
+      identity,
+      host,
+    });
+
+    if (isLocal) {
+      try {
+        await this.agent.fetchRootKey();
+      } catch (error) {
+        console.warn('Failed to fetch root key:', error);
+      }
+    }
   }
 }

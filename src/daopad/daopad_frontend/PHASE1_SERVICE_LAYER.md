@@ -1,11 +1,43 @@
 # Phase 1: Service Layer Foundation
 
-**Status:** ✅ Complete
+**Status:** ✅ Complete (Updated after PR review)
 **Date:** 2025-10-13
+**PR:** #27
 
 ## Overview
 
 This phase establishes a clean service layer architecture with proper dependency injection, error handling, and lifecycle management. It provides the foundation for all future service implementations and ensures consistent patterns across the application.
+
+## Updates (Post-Review)
+
+Based on comprehensive PR review feedback, the following improvements were made:
+
+### ✅ Fixed Issues
+1. **Removed broken call()/query() methods** from CanisterService
+   - These methods had placeholder implementations that wouldn't work
+   - The proper pattern is to use `createActor()` and call methods on the actor
+   - Simplified interface to only expose working functionality
+
+2. **Added resetServices() function**
+   - Allows proper re-initialization when identity changes
+   - Handles disposal and re-registration of all services
+   - Addresses the identity update use case
+
+3. **Added updateIdentity() method** to CanisterService
+   - Allows updating identity without full service reset
+   - Clears actor cache and recreates HTTP agent
+   - Useful for login/logout scenarios
+
+4. **Added integration tests**
+   - Tests real actor creation with IC Agent
+   - Verifies actor caching works correctly
+   - Tests lifecycle and identity management
+
+### 📝 Documentation Updates
+- Clarified CanisterService API - only `createActor()` is production-ready
+- Added usage examples with proper actor patterns
+- Documented identity management approach
+- Updated all code examples to reflect actual API
 
 ## Architecture
 
@@ -233,51 +265,70 @@ await initializeServices();
 ```typescript
 import { serviceRegistry } from '@/lib';
 import { ICanisterService } from '@/services/interfaces';
+import { idlFactory } from '@/declarations/my_canister';
 
 async function callCanister() {
   const canisterService = serviceRegistry.get<ICanisterService>('CanisterService');
 
-  const result = await canisterService.call(
-    'my_method',
-    [arg1, arg2],
-    'canister-id'
+  // Create actor for the canister
+  const actor = await canisterService.createActor<MyCanisterActor>(
+    'rrkah-fqaaa-aaaaa-aaaaq-cai',
+    idlFactory
   );
 
-  if (Result.isOk(result)) {
-    console.log('Success:', result.data);
-  } else {
-    console.error('Error:', result.error.getUserMessage());
+  // Call methods directly on the actor
+  try {
+    const result = await actor.my_method(arg1, arg2);
+    console.log('Success:', result);
+  } catch (error) {
+    console.error('Error:', error);
   }
 }
 ```
 
-### 3. Handling Errors
+### 3. Identity Management
 
 ```typescript
-import { Result, CanisterError } from '@/lib';
+import { resetServices } from '@/lib';
+import { ICanisterService } from '@/services/interfaces';
 
-const result = await canisterService.call(...);
+// When user logs in/out
+async function handleLogin(newIdentity) {
+  // Option 1: Reset all services
+  await resetServices(() => newIdentity);
 
-// Pattern 1: Explicit checking
-if (Result.isOk(result)) {
-  const data = result.data;
-} else {
-  showError(result.error.getUserMessage());
+  // Option 2: Update just CanisterService
+  const canisterService = serviceRegistry.get<ICanisterService>('CanisterService');
+  await canisterService.updateIdentity(newIdentity);
 }
 
-// Pattern 2: Map and transform
-const transformed = Result.map(result, data => ({
-  ...data,
-  formatted: formatData(data)
-}));
+// When user logs out
+async function handleLogout() {
+  await resetServices(() => null);
+}
+```
 
-// Pattern 3: Unwrap or default
-const data = Result.unwrapOr(result, defaultValue);
+### 4. Error Handling with Try/Catch
 
-// Pattern 4: Chain operations
-const final = Result.andThen(result, data =>
-  processData(data)
-);
+```typescript
+async function callCanister() {
+  try {
+    const actor = await canisterService.createActor(...);
+    const result = await actor.my_method();
+    console.log('Success:', result);
+  } catch (error) {
+    if (error instanceof CanisterError) {
+      // Show user-friendly message
+      showError(error.getUserMessage());
+
+      // Log technical details
+      console.error(error.toJSON());
+    } else {
+      // Unknown error
+      showError('An unexpected error occurred');
+    }
+  }
+}
 ```
 
 ## Benefits

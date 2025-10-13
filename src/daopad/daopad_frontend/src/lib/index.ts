@@ -5,7 +5,7 @@
 
 // Service registry and setup
 export { ServiceRegistry, serviceRegistry } from './ServiceRegistry';
-export { setupServices, initializeServices, disposeServices } from './setupServices';
+export { setupServices, initializeServices, disposeServices, resetServices } from './setupServices';
 
 // Types
 export { Result } from './types/Result';
