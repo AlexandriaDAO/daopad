@@ -169,6 +169,69 @@ Backend already has working methods (daopad_backend/src/api/orbit_permissions.rs
 - ✅ `get_station_permission(station_id, resource)` - Lines 42-56
 - ✅ `create_edit_permission_request(...)` - Lines 66-108
 
+### CRITICAL: Orbit Reference Verification (DO BEFORE IMPLEMENTING)
+
+**Rule:** NEVER GUESS TYPES - Always verify with Orbit reference and dfx testing.
+
+#### Before touching any Orbit-related code:
+
+1. **Check Orbit Reference** (`../../orbit-reference/`)
+   ```bash
+   # Find exact permission types
+   grep -r "list_permissions\|Permission\|AuthScope" ../../orbit-reference/core/station/api/spec.did
+   grep -r "ListPermissionsInput" ../../orbit-reference/core/station/impl/src/models/
+
+   # Study existing implementations
+   cat ../../orbit-reference/core/station/api/spec.did | grep -A 20 "list_permissions"
+   ```
+
+2. **Test with DFX** (Use test station: `fec7w-zyaaa-aaaaa-qaffq-cai`)
+   ```bash
+   export TEST_STATION="fec7w-zyaaa-aaaaa-qaffq-cai"
+
+   # Get exact candid interface
+   dfx canister --network ic call $TEST_STATION __get_candid
+
+   # Test list_permissions with various inputs
+   dfx canister --network ic call $TEST_STATION list_permissions '(record {
+     resources = null;
+     paginate = null;
+   })'
+
+   # Verify: Does it return permissions? What's the exact response structure?
+   # If dfx call works, your code will work with EXACT same types
+   ```
+
+3. **Verify Backend Methods Match**
+   ```bash
+   # Backend wrapper should use EXACT types that work in dfx
+   # Compare daopad_backend/src/api/orbit_permissions.rs with dfx test results
+
+   # Test backend method
+   dfx canister --network ic call lwsav-iiaaa-aaaap-qp2qq-cai list_station_permissions \
+     '(principal "fec7w-zyaaa-aaaaa-qaffq-cai", null)'
+
+   # Should return same structure as direct Orbit call
+   ```
+
+4. **Document Any Discrepancies**
+   - If backend method fails but direct Orbit call works → fix backend types
+   - If both fail → check Orbit reference for correct signature
+   - If both work → proceed with confidence
+
+#### Key Orbit Types to Verify:
+
+- `ListPermissionsInput` - Check: is `resources` field `Option<Vec<Resource>>` or `Vec<Resource>`?
+- `Permission` - Check: exact structure returned
+- `Resource` - Check: all variant types (Account, User, System, etc.)
+- `AuthScope` - Check: Public/Authenticated/Restricted variants
+
+**Why This Matters:**
+- CLAUDE.md warns about "the FOUR universal Orbit integration issues"
+- Candid field hashing, optional type encoding can cause silent failures
+- Frontend "is not a function" errors often mean type mismatches
+- Testing with dfx gives ground truth for exact types
+
 ## Implementation Plan
 
 ### Phase 1: Remove VotingPowerSync Feature
@@ -272,9 +335,25 @@ export default function VotingTierDisplay({ tokenId, identity }) {
 
 ### Phase 3: Fix PermissionsTable
 
+#### FIRST: Verify Backend Method Signature
+```bash
+# Step 1: Check Orbit reference for list_permissions signature
+cat ../../orbit-reference/core/station/api/spec.did | grep -A 10 "list_permissions"
+
+# Step 2: Test backend method with dfx to confirm signature
+dfx canister --network ic call lwsav-iiaaa-aaaap-qp2qq-cai list_station_permissions \
+  '(principal "fec7w-zyaaa-aaaaa-qaffq-cai", null)'
+
+# Step 3: If that works, proceed. If not, check backend code:
+# daopad_backend/src/api/orbit_permissions.rs:16-36
+
+# Expected signature: list_station_permissions(station_id: Principal, resources: Option<Vec<Resource>>)
+# Expected return: Result<Vec<Permission>, String>
+```
+
 #### File: `daopad_frontend/src/components/permissions/PermissionsTable.jsx`
 ```javascript
-// PSEUDOCODE: Fix API call signature
+// PSEUDOCODE: Fix API call signature AFTER verifying with dfx
 
 // Line 32: Change from array to null for Option type
 async function loadPermissions() {
@@ -289,6 +368,7 @@ async function loadPermissions() {
 
   try {
     // FIX: Pass null instead of [] for Option<Vec<Resource>>
+    // This was verified with dfx testing above
     const result = await actor.list_station_permissions(stationId, null);
 
     // Backend returns Result<Vec<Permission>, String>
@@ -302,6 +382,8 @@ async function loadPermissions() {
     }
   } catch (err) {
     console.error('Failed to load permissions:', err);
+    // Log full error for debugging type mismatches
+    console.error('Full error details:', JSON.stringify(err));
     setError(err.message || 'Failed to load permissions');
     setPermissions([]);
   } finally {
@@ -505,6 +587,34 @@ export default function VotingAnalytics({ tokenId }) {
 
 ## Testing Strategy
 
+### Pre-Implementation Testing (MANDATORY)
+
+**Before writing any code, verify Orbit integration:**
+
+```bash
+export TEST_STATION="fec7w-zyaaa-aaaaa-qaffq-cai"
+export DAOPAD_BACKEND="lwsav-iiaaa-aaaap-qp2qq-cai"
+
+# 1. Test direct Orbit call
+dfx canister --network ic call $TEST_STATION list_permissions '(record {
+  resources = null;
+  paginate = null;
+})'
+# Expected: Returns list of permissions
+
+# 2. Test backend proxy method
+dfx canister --network ic call $DAOPAD_BACKEND list_station_permissions \
+  "(principal \"$TEST_STATION\", null)"
+# Expected: Same structure as direct call
+
+# 3. If either fails, STOP and investigate
+# - Check ../../orbit-reference/ for correct types
+# - Verify backend types match Orbit spec
+# - Test with different parameter combinations
+```
+
+**Only proceed with frontend changes after backend calls work in dfx.**
+
 ### Manual Testing Checklist
 
 1. **Overview Tab**
@@ -517,6 +627,7 @@ export default function VotingAnalytics({ tokenId }) {
    - [ ] Can filter by Treasury, Canisters, Users, System
    - [ ] Shows meaningful permission names and scopes
    - [ ] No "is not a function" errors
+   - [ ] Browser console shows successful API response (not decode errors)
 
 3. **User Groups Tab**
    - [ ] Shows Admin and Operator system groups
