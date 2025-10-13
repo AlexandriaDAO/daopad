@@ -1,3 +1,8 @@
+// ⚠️ IMPORTANT: Direct canister operations have been disabled to enforce proposal-based governance.
+// All canister management operations (create, change, configure, fund, etc.) must now go through
+// the proposal voting system to prevent admin bypass of community governance.
+// Required voting power: 25,000 VP minimum for canister operations (higher due to risk).
+
 use candid::{Nat, Principal};
 use ic_cdk::{api::call::CallResult, call};
 
@@ -74,310 +79,145 @@ async fn get_orbit_canister(
 
 #[ic_cdk::update]
 async fn create_orbit_canister_request(
-    token_canister_id: Principal,
-    config: CreateExternalCanisterOperationInput,
-    title: String,
-    summary: Option<String>,
+    _token_canister_id: Principal,
+    _config: CreateExternalCanisterOperationInput,
+    _title: String,
+    _summary: Option<String>,
 ) -> Result<SubmitRequestResult, String> {
-    let station_id = get_orbit_station_for_token(token_canister_id)
-        .ok_or_else(|| "No Orbit Station linked to this token".to_string())?;
-
-    let operation = RequestOperation::CreateExternalCanister(config);
-
-    let request = SubmitRequestInput {
-        operation,
-        title: Some(title),
-        summary,
-        execution_plan: None,
-    };
-
-    let result: CallResult<(SubmitRequestResult,)> = call(
-        station_id,
-        "submit_request",
-        (request,),
+    Err(
+        "Direct canister creation is disabled. Canister operations must go through the proposal system. \
+        Please create a governance proposal for canister creation. \
+        Required voting power: 25,000 VP minimum.".to_string()
     )
-    .await;
-
-    match result {
-        Ok((res,)) => Ok(res),
-        Err((code, msg)) => Err(format!("Failed to create request: {:?} - {}", code, msg)),
-    }
 }
 
 // ===== CHANGE CANISTER (Upgrade, Settings, etc.) =====
 
 #[ic_cdk::update]
 async fn change_orbit_canister_request(
-    token_canister_id: Principal,
-    config: ChangeExternalCanisterOperationInput,
-    title: String,
-    summary: Option<String>,
+    _token_canister_id: Principal,
+    _config: ChangeExternalCanisterOperationInput,
+    _title: String,
+    _summary: Option<String>,
 ) -> Result<SubmitRequestResult, String> {
-    let station_id = get_orbit_station_for_token(token_canister_id)
-        .ok_or_else(|| "No Orbit Station linked to this token".to_string())?;
-
-    let operation = RequestOperation::ChangeExternalCanister(config);
-
-    let request = SubmitRequestInput {
-        operation,
-        title: Some(title),
-        summary,
-        execution_plan: None,
-    };
-
-    let result: CallResult<(SubmitRequestResult,)> = call(
-        station_id,
-        "submit_request",
-        (request,),
+    Err(
+        "Direct canister changes are disabled. Canister operations must go through the proposal system. \
+        Please create a governance proposal for canister changes. \
+        Required voting power: 25,000 VP minimum.".to_string()
     )
-    .await;
-
-    match result {
-        Ok((res,)) => Ok(res),
-        Err((code, msg)) => Err(format!("Failed to change canister: {:?} - {}", code, msg)),
-    }
 }
 
 // ===== CONFIGURE CANISTER (Permissions, Policies) =====
 
 #[ic_cdk::update]
 async fn configure_orbit_canister_request(
-    token_canister_id: Principal,
-    config: ConfigureExternalCanisterOperationInput,
-    title: String,
-    summary: Option<String>,
+    _token_canister_id: Principal,
+    _config: ConfigureExternalCanisterOperationInput,
+    _title: String,
+    _summary: Option<String>,
 ) -> Result<SubmitRequestResult, String> {
-    let station_id = get_orbit_station_for_token(token_canister_id)
-        .ok_or_else(|| "No Orbit Station linked to this token".to_string())?;
-
-    let operation = RequestOperation::ConfigureExternalCanister(config);
-
-    let request = SubmitRequestInput {
-        operation,
-        title: Some(title),
-        summary,
-        execution_plan: None,
-    };
-
-    let result: CallResult<(SubmitRequestResult,)> = call(
-        station_id,
-        "submit_request",
-        (request,),
+    Err(
+        "Direct canister configuration is disabled. Canister operations must go through the proposal system. \
+        Please create a governance proposal for canister configuration. \
+        Required voting power: 25,000 VP minimum.".to_string()
     )
-    .await;
-
-    match result {
-        Ok((res,)) => Ok(res),
-        Err((code, msg)) => Err(format!("Failed to configure canister: {:?} - {}", code, msg)),
-    }
 }
 
 // ===== CALL CANISTER METHOD =====
 
 #[ic_cdk::update]
 async fn call_orbit_canister_method_request(
-    token_canister_id: Principal,
-    external_canister_id: String,
-    method_call: ExternalCanisterCallerMethodCallInput,
-    title: String,
-    summary: Option<String>,
+    _token_canister_id: Principal,
+    _external_canister_id: String,
+    _method_call: ExternalCanisterCallerMethodCallInput,
+    _title: String,
+    _summary: Option<String>,
 ) -> Result<SubmitRequestResult, String> {
-    let station_id = get_orbit_station_for_token(token_canister_id)
-        .ok_or_else(|| "No Orbit Station linked to this token".to_string())?;
-
-    let operation = RequestOperation::CallExternalCanister(
-        ExternalCanisterIdInput { external_canister_id },
-        method_call,
-    );
-
-    let request = SubmitRequestInput {
-        operation,
-        title: Some(title),
-        summary,
-        execution_plan: None,
-    };
-
-    let result: CallResult<(SubmitRequestResult,)> = call(
-        station_id,
-        "submit_request",
-        (request,),
+    Err(
+        "Direct canister method calls are disabled. Canister operations must go through the proposal system. \
+        Please create a governance proposal for canister method calls. \
+        Required voting power: 25,000 VP minimum.".to_string()
     )
-    .await;
-
-    match result {
-        Ok((res,)) => Ok(res),
-        Err((code, msg)) => Err(format!("Failed to call method: {:?} - {}", code, msg)),
-    }
 }
 
 // ===== FUND CANISTER (Add Cycles) =====
 
 #[ic_cdk::update]
 async fn fund_orbit_canister_request(
-    token_canister_id: Principal,
-    config: FundExternalCanisterOperationInput,
-    title: String,
-    summary: Option<String>,
+    _token_canister_id: Principal,
+    _config: FundExternalCanisterOperationInput,
+    _title: String,
+    _summary: Option<String>,
 ) -> Result<SubmitRequestResult, String> {
-    let station_id = get_orbit_station_for_token(token_canister_id)
-        .ok_or_else(|| "No Orbit Station linked to this token".to_string())?;
-
-    let operation = RequestOperation::FundExternalCanister(config);
-
-    let request = SubmitRequestInput {
-        operation,
-        title: Some(title),
-        summary,
-        execution_plan: None,
-    };
-
-    let result: CallResult<(SubmitRequestResult,)> = call(
-        station_id,
-        "submit_request",
-        (request,),
+    Err(
+        "Direct canister funding is disabled. Canister operations must go through the proposal system. \
+        Please create a governance proposal for canister funding. \
+        Required voting power: 25,000 VP minimum.".to_string()
     )
-    .await;
-
-    match result {
-        Ok((res,)) => Ok(res),
-        Err((code, msg)) => Err(format!("Failed to fund canister: {:?} - {}", code, msg)),
-    }
 }
 
 // ===== MONITOR CANISTER (Auto-funding) =====
 
 #[ic_cdk::update]
 async fn monitor_orbit_canister_request(
-    token_canister_id: Principal,
-    config: MonitorExternalCanisterOperationInput,
-    title: String,
-    summary: Option<String>,
+    _token_canister_id: Principal,
+    _config: MonitorExternalCanisterOperationInput,
+    _title: String,
+    _summary: Option<String>,
 ) -> Result<SubmitRequestResult, String> {
-    let station_id = get_orbit_station_for_token(token_canister_id)
-        .ok_or_else(|| "No Orbit Station linked to this token".to_string())?;
-
-    let operation = RequestOperation::MonitorExternalCanister(config);
-
-    let request = SubmitRequestInput {
-        operation,
-        title: Some(title),
-        summary,
-        execution_plan: None,
-    };
-
-    let result: CallResult<(SubmitRequestResult,)> = call(
-        station_id,
-        "submit_request",
-        (request,),
+    Err(
+        "Direct canister monitoring setup is disabled. Canister operations must go through the proposal system. \
+        Please create a governance proposal for monitoring setup. \
+        Required voting power: 25,000 VP minimum.".to_string()
     )
-    .await;
-
-    match result {
-        Ok((res,)) => Ok(res),
-        Err((code, msg)) => Err(format!("Failed to configure monitoring: {:?} - {}", code, msg)),
-    }
 }
 
 // ===== SNAPSHOT CANISTER =====
 
 #[ic_cdk::update]
 async fn snapshot_orbit_canister_request(
-    token_canister_id: Principal,
-    config: SnapshotExternalCanisterOperationInput,
-    title: String,
-    summary: Option<String>,
+    _token_canister_id: Principal,
+    _config: SnapshotExternalCanisterOperationInput,
+    _title: String,
+    _summary: Option<String>,
 ) -> Result<SubmitRequestResult, String> {
-    let station_id = get_orbit_station_for_token(token_canister_id)
-        .ok_or_else(|| "No Orbit Station linked to this token".to_string())?;
-
-    let operation = RequestOperation::SnapshotExternalCanister(config);
-
-    let request = SubmitRequestInput {
-        operation,
-        title: Some(title),
-        summary,
-        execution_plan: None,
-    };
-
-    let result: CallResult<(SubmitRequestResult,)> = call(
-        station_id,
-        "submit_request",
-        (request,),
+    Err(
+        "Direct canister snapshots are disabled. Canister operations must go through the proposal system. \
+        Please create a governance proposal for taking snapshots. \
+        Required voting power: 25,000 VP minimum.".to_string()
     )
-    .await;
-
-    match result {
-        Ok((res,)) => Ok(res),
-        Err((code, msg)) => Err(format!("Failed to take snapshot: {:?} - {}", code, msg)),
-    }
 }
 
 // ===== RESTORE FROM SNAPSHOT =====
 
 #[ic_cdk::update]
 async fn restore_orbit_canister_request(
-    token_canister_id: Principal,
-    config: RestoreExternalCanisterOperationInput,
-    title: String,
-    summary: Option<String>,
+    _token_canister_id: Principal,
+    _config: RestoreExternalCanisterOperationInput,
+    _title: String,
+    _summary: Option<String>,
 ) -> Result<SubmitRequestResult, String> {
-    let station_id = get_orbit_station_for_token(token_canister_id)
-        .ok_or_else(|| "No Orbit Station linked to this token".to_string())?;
-
-    let operation = RequestOperation::RestoreExternalCanister(config);
-
-    let request = SubmitRequestInput {
-        operation,
-        title: Some(title),
-        summary,
-        execution_plan: None,
-    };
-
-    let result: CallResult<(SubmitRequestResult,)> = call(
-        station_id,
-        "submit_request",
-        (request,),
+    Err(
+        "Direct canister restore is disabled. Canister operations must go through the proposal system. \
+        Please create a governance proposal for restoring from snapshots. \
+        Required voting power: 25,000 VP minimum.".to_string()
     )
-    .await;
-
-    match result {
-        Ok((res,)) => Ok(res),
-        Err((code, msg)) => Err(format!("Failed to restore snapshot: {:?} - {}", code, msg)),
-    }
 }
 
 // ===== PRUNE SNAPSHOTS =====
 
 #[ic_cdk::update]
 async fn prune_orbit_canister_snapshots_request(
-    token_canister_id: Principal,
-    config: PruneExternalCanisterOperationInput,
-    title: String,
-    summary: Option<String>,
+    _token_canister_id: Principal,
+    _config: PruneExternalCanisterOperationInput,
+    _title: String,
+    _summary: Option<String>,
 ) -> Result<SubmitRequestResult, String> {
-    let station_id = get_orbit_station_for_token(token_canister_id)
-        .ok_or_else(|| "No Orbit Station linked to this token".to_string())?;
-
-    let operation = RequestOperation::PruneExternalCanister(config);
-
-    let request = SubmitRequestInput {
-        operation,
-        title: Some(title),
-        summary,
-        execution_plan: None,
-    };
-
-    let result: CallResult<(SubmitRequestResult,)> = call(
-        station_id,
-        "submit_request",
-        (request,),
+    Err(
+        "Direct snapshot pruning is disabled. Canister operations must go through the proposal system. \
+        Please create a governance proposal for pruning snapshots. \
+        Required voting power: 25,000 VP minimum.".to_string()
     )
-    .await;
-
-    match result {
-        Ok((res,)) => Ok(res),
-        Err((code, msg)) => Err(format!("Failed to prune snapshots: {:?} - {}", code, msg)),
-    }
 }
 
 // ===== GET CANISTER STATUS (from IC management canister) =====

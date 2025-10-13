@@ -261,23 +261,8 @@ pub async fn get_transfer_requests(token_id: Principal) -> Result<Vec<String>, S
     get_transfer_requests_from_orbit(station_id).await
 }
 
-#[update]
-pub async fn approve_transfer_request(
-    request_id: String,
-    token_id: Principal,
-) -> Result<(), String> {
-    let caller = ic_cdk::caller();
-    let station_id = TOKEN_ORBIT_STATIONS
-        .with(|stations| {
-            stations
-                .borrow()
-                .get(&StorablePrincipal(token_id))
-                .map(|s| s.0)
-        })
-        .ok_or("No treasury for this token")?;
-
-    approve_transfer_orbit_request(station_id, request_id, caller).await
-}
+// Note: Direct transfer approval has been removed to enforce proposal-based governance.
+// All transfer approvals must now go through the proposal voting system.
 
 #[update] // MUST be update, not query (Universal Issue: can't call queries from queries)
 pub async fn get_user_pending_requests(
