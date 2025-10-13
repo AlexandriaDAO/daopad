@@ -6,6 +6,7 @@ import { OrbitStationService } from '../services/orbitStation';
 import AccountsTable from './tables/AccountsTable';
 import UnifiedRequests from './orbit/UnifiedRequests';
 import AddressBookPage from '../pages/AddressBookPage';
+import PermissionsPage from '../pages/PermissionsPage';
 import DAOSettings from './DAOSettings';
 import CanistersTab from './canisters/CanistersTab';
 import SecurityDashboard from './security/SecurityDashboard';
@@ -451,11 +452,12 @@ const TokenDashboard = memo(function TokenDashboard({
 
           {/* Tabs for different views */}
           <Tabs defaultValue="accounts" className="w-full" onValueChange={(value) => setActiveTab(value)}>
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="accounts">Treasury</TabsTrigger>
               <TabsTrigger value="activity">Activity</TabsTrigger>
               <TabsTrigger value="canisters">Canisters</TabsTrigger>
               <TabsTrigger value="security">Security</TabsTrigger>
+              <TabsTrigger value="permissions">Permissions</TabsTrigger>
               <TabsTrigger value="settings">Settings</TabsTrigger>
             </TabsList>
 
@@ -499,6 +501,16 @@ const TokenDashboard = memo(function TokenDashboard({
                   tokenSymbol={token.symbol}
                   identity={identity}
                   tokenId={token.canister_id}
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="permissions" className="mt-4">
+              {activeTab === 'permissions' && (
+                <PermissionsPage
+                  tokenId={token.canister_id}
+                  stationId={orbitStation?.station_id}
+                  identity={identity}
                 />
               )}
             </TabsContent>

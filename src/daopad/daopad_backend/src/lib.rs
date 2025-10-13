@@ -25,6 +25,8 @@ pub use types::orbit::{
     SubmitRequestInput, SubmitRequestResult,
     // Snapshot query types
     CanisterSnapshot, CanisterSnapshotsInput, CanisterSnapshotsResponse, CanisterSnapshotsResult,
+    // Permission types
+    Permission, AuthScope,
 };
 pub use types::{TokenInfo, VotingThresholds};
 
