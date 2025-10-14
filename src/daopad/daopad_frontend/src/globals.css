@@ -304,3 +304,58 @@ button:active {
 .animate-fade-in {
   animation: fade-in 0.5s ease-out;
 }
+
+/* ========================================
+   TAB NAVIGATION ANIMATIONS
+   ======================================== */
+
+/* Tab slide-in animation */
+@keyframes tab-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-tab-fade-in {
+  animation: tab-fade-in 0.3s ease-out;
+}
+
+/* Tab glow pulse for active state */
+@keyframes tab-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+  }
+}
+
+.animate-tab-glow {
+  animation: tab-glow 2s ease-in-out infinite;
+}
+
+/* Smooth underline animation for tabs */
+.tab-underline {
+  position: relative;
+}
+
+.tab-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #d4af37, transparent);
+  transition: all 0.3s ease-out;
+  transform: translateX(-50%);
+}
+
+.tab-underline[data-state="active"]::after {
+  width: 80%;
+}
