@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
 import { Shield, Info } from 'lucide-react';
@@ -8,12 +8,30 @@ import { DAOPadBackendService } from '../services/daopadBackend';
 const PermissionsPage = ({ tokenId, stationId, identity }) => {
   const isAuthenticated = !!identity;
   const [actor, setActor] = useState(null);
+  const [loadingActor, setLoadingActor] = useState(true);
 
-  React.useEffect(() => {
-    if (identity) {
-      const daopadService = new DAOPadBackendService(identity);
-      setActor(daopadService.actor);
+  useEffect(() => {
+    async function setupActor() {
+      if (identity) {
+        setLoadingActor(true);
+        try {
+          const daopadService = new DAOPadBackendService(identity);
+          const backendActor = await daopadService.getActor();
+          console.log('[PermissionsPage] Actor created successfully');
+          setActor(backendActor);
+        } catch (error) {
+          console.error('[PermissionsPage] Failed to create actor:', error);
+          setActor(null);
+        } finally {
+          setLoadingActor(false);
+        }
+      } else {
+        setActor(null);
+        setLoadingActor(false);
+      }
     }
+
+    setupActor();
   }, [identity]);
 
   if (!isAuthenticated) {
@@ -32,6 +50,22 @@ const PermissionsPage = ({ tokenId, stationId, identity }) => {
           <p className="text-gray-600">
             Please connect your wallet to access permission management features.
           </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (loadingActor) {
+    return (
+      <Card className="max-w-2xl mx-auto mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Permissions
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-gray-600">Setting up connection...</p>
         </CardContent>
       </Card>
     );
