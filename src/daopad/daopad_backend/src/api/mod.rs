@@ -8,6 +8,7 @@ mod orbit_permissions;
 pub mod orbit_requests;
 mod orbit_security;
 mod orbit_transfers;
+mod orbit_users;
 mod proposals;
 mod utils;
 
@@ -28,6 +29,11 @@ pub use orbit_transfers::{
     RequestApprovalDecision,
     SubmitRequestApprovalInput,
     SubmitRequestApprovalResult,
+};
+pub use orbit_users::{
+    create_remove_admin_request,
+    create_remove_multiple_admins_request,
+    list_orbit_users,
 };
 pub use proposals::*;
 pub use utils::*;
