@@ -106,15 +106,25 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
     const asset = assets[0];
     console.log('Selected asset:', safeStringify(asset));
 
-    // Validate asset has required fields
-    if (!asset.id || !asset.symbol) {
-      console.error('❌ Asset missing required fields (id or symbol)');
+    // Normalize asset structure: Orbit returns asset_id, we need id
+    const normalizedAsset = {
+      id: asset.id || asset.asset_id,
+      symbol: asset.symbol || tokenSymbol || 'TOKEN',
+      decimals: asset.decimals || 8,
+      balance: asset.balance
+    };
+
+    // Validate asset has required ID
+    if (!normalizedAsset.id) {
+      console.error('❌ Asset missing ID:', asset);
       toast.error('Invalid Asset Data', {
-        description: `Asset is missing required information. ID: ${asset.id || 'missing'}, Symbol: ${asset.symbol || 'missing'}`
+        description: 'Asset is missing required ID. Please refresh the account data.'
       });
       console.groupEnd();
       return;
     }
+
+    console.log('✅ Normalized asset:', safeStringify(normalizedAsset));
 
     console.log('✅ Validation passed, opening transfer dialog');
     console.groupEnd();
@@ -122,7 +132,7 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
     setTransferDialog({
       open: true,
       account,
-      asset
+      asset: normalizedAsset
     });
   };
 

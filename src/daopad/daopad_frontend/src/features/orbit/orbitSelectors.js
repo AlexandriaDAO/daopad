@@ -53,6 +53,15 @@ export const selectFormattedAccounts = createSelector(
     return accounts.map(account => {
       const balanceData = balances?.[account.id];
 
+      // Debug logging - remove after fixing
+      console.log('[orbitSelector] Processing account:', {
+        accountId: account.id,
+        accountName: account.name,
+        hasBalanceData: !!balanceData,
+        balanceDataKeys: balanceData ? Object.keys(balanceData) : [],
+        accountAssets: account.assets
+      });
+
       if (!balanceData) {
         return {
           ...account,
@@ -75,24 +84,36 @@ export const selectFormattedAccounts = createSelector(
       );
 
       // Build assets array from balance data
-      // Orbit accounts have assets associated with them
-      const assets = account.assets || [];
+      // Strategy: Try to use existing assets, otherwise construct from balance data
+      const existingAssets = account.assets || [];
 
-      // If we have balance data but no assets array, construct one
-      // This ensures the transfer dialog has the asset info it needs
-      const assetsWithBalance = assets.length > 0
-        ? assets.map(asset => ({
-            ...asset,
-            // Add balance if this asset matches
-            balance: asset.id === balanceData.asset_id ? balanceData.balance : asset.balance,
-            decimals: asset.id === balanceData.asset_id ? (balanceData.decimals || 8) : asset.decimals
-          }))
-        : balanceData.asset_id ? [{
-            id: balanceData.asset_id,
-            symbol: balanceData.symbol || tokenSymbol || 'TOKEN',
-            decimals: balanceData.decimals || 8,
-            balance: balanceData.balance
-          }] : [];
+      let assetsWithBalance;
+
+      if (existingAssets.length > 0) {
+        // Use existing assets from account
+        assetsWithBalance = existingAssets.map(asset => ({
+          ...asset,
+          balance: balanceData.balance,
+          decimals: asset.decimals || balanceData.decimals || 8
+        }));
+      } else {
+        // Construct asset from balance data
+        // Use asset_id if available, otherwise use metadata_id or generate from account
+        const assetId = balanceData.asset_id ||
+                       balanceData.metadata_id ||
+                       account.metadata?.asset_id ||
+                       `asset-${account.id}`; // Fallback ID
+
+        assetsWithBalance = [{
+          id: assetId,
+          symbol: balanceData.symbol || tokenSymbol || 'TOKEN',
+          decimals: balanceData.decimals || 8,
+          balance: balanceData.balance,
+          blockchain: balanceData.blockchain || account.blockchain || 'InternetComputer'
+        }];
+      }
+
+      console.log('[orbitSelector] Constructed assets:', assetsWithBalance);
 
       return {
         ...account,
