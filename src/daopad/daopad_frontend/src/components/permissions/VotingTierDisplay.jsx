@@ -1,17 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Progress } from '../ui/progress';
-import { Loader2 } from 'lucide-react';
-
-// Voting power tier thresholds
-const TIERS = [
-  { name: 'None', min: 0, max: 0, color: 'secondary', description: 'No voting power' },
-  { name: 'Observer', min: 1, max: 99, color: 'secondary', description: 'Can view proposals' },
-  { name: 'Participant', min: 100, max: 999, color: 'default', description: 'Can vote and create proposals' },
-  { name: 'Contributor', min: 1000, max: 9999, color: 'default', description: 'Active governance participant' },
-  { name: 'Governor', min: 10000, max: Infinity, color: 'default', description: 'Major stakeholder' },
-];
+import { Alert, AlertDescription } from '../ui/alert';
+import { Info, Loader2 } from 'lucide-react';
 
 export default function VotingTierDisplay({ tokenId, identity, kongLockerActor }) {
   const [votingPower, setVotingPower] = useState(0);
@@ -30,8 +20,6 @@ export default function VotingTierDisplay({ tokenId, identity, kongLockerActor }
 
     try {
       // Query Kong Locker for user's voting power
-      // Note: This would require the Kong Locker actor to be passed down
-      // For now, we'll use a placeholder
       const userPrincipal = identity.getPrincipal();
 
       // Placeholder - in real implementation, query Kong Locker
@@ -45,22 +33,6 @@ export default function VotingTierDisplay({ tokenId, identity, kongLockerActor }
     } finally {
       setLoading(false);
     }
-  }
-
-  function calculateTier(vp) {
-    return TIERS.find(tier => vp >= tier.min && vp <= tier.max) || TIERS[0];
-  }
-
-  function getNextTier(currentTier) {
-    const currentIndex = TIERS.findIndex(t => t.name === currentTier.name);
-    return currentIndex < TIERS.length - 1 ? TIERS[currentIndex + 1] : null;
-  }
-
-  function calculateProgress(vp, currentTier, nextTier) {
-    if (!nextTier) return 100;
-    const range = nextTier.min - currentTier.min;
-    const progress = vp - currentTier.min;
-    return Math.min(100, (progress / range) * 100);
   }
 
   if (loading) {
@@ -83,38 +55,48 @@ export default function VotingTierDisplay({ tokenId, identity, kongLockerActor }
     );
   }
 
-  const currentTier = calculateTier(votingPower);
-  const nextTier = getNextTier(currentTier);
-  const progress = calculateProgress(votingPower, currentTier, nextTier);
-  const vpNeeded = nextTier ? nextTier.min - votingPower : 0;
-
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Your Voting Power</CardTitle>
+        <CardTitle>Liquid Democracy Voting</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="text-3xl font-bold">
           {votingPower.toLocaleString()} VP
         </div>
 
-        <div className="flex items-center gap-2">
-          <Badge variant={currentTier.color}>{currentTier.name}</Badge>
-          <span className="text-sm text-muted-foreground">{currentTier.description}</span>
-        </div>
-
-        {nextTier && (
-          <>
-            <Progress value={progress} className="h-2" />
-            <p className="text-sm text-muted-foreground">
-              {vpNeeded.toLocaleString()} VP until {nextTier.name}
-            </p>
-          </>
-        )}
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Direct Voting Power:</strong> Your vote weight equals your locked LP value.
+            <br /><br />
+            This is a liquid democracy system:
+            <ul className="list-disc ml-6 mt-2 space-y-1">
+              <li>1 VP = 1 vote weight (no role thresholds)</li>
+              <li>Lock LP tokens in Kong Locker to gain voting power</li>
+              <li>Voting Power = USD value of locked LP × 100</li>
+              <li>All votes steer the backend admin (no human roles)</li>
+            </ul>
+          </AlertDescription>
+        </Alert>
 
         <div className="pt-4 border-t">
-          <p className="text-sm text-muted-foreground">
-            Lock more LP tokens in Kong Locker to increase your voting power
+          <h4 className="font-semibold text-sm mb-2">How It Works</h4>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <div>• You lock LP tokens permanently in Kong Locker</div>
+            <div>• Your VP = locked liquidity value × 100</div>
+            <div>• Vote on proposals with your exact VP weight</div>
+            <div>• When threshold met (e.g. 50% total VP), backend executes</div>
+            <div>• Backend is the ONLY admin in Orbit Station</div>
+          </div>
+        </div>
+
+        <div className="pt-4 border-t">
+          <p className="text-xs text-muted-foreground">
+            Check your voting power:
+            <code className="block mt-2 p-2 bg-gray-100 rounded text-xs overflow-x-auto">
+              dfx canister --network ic call eazgb-giaaa-aaaap-qqc2q-cai get_all_voting_powers
+            </code>
           </p>
         </div>
       </CardContent>
