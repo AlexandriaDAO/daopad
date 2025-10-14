@@ -80,10 +80,17 @@ export default function TransferRequestDialog({
   });
 
   const handleSubmit = async (data) => {
+    // Helper function to safely stringify objects with BigInt
+    const safeStringify = (obj) => {
+      return JSON.stringify(obj, (key, value) =>
+        typeof value === 'bigint' ? value.toString() + 'n' : value
+      , 2);
+    };
+
     console.group('🚀 Transfer Proposal Submission');
-    console.log('Form data:', JSON.stringify(data, null, 2));
-    console.log('Account:', JSON.stringify(account, null, 2));
-    console.log('Asset:', JSON.stringify(asset, null, 2));
+    console.log('Form data:', safeStringify(data));
+    console.log('Account:', safeStringify(account));
+    console.log('Asset:', safeStringify(asset));
     console.log('Token ID:', tokenId);
     console.log('User voting power:', votingPower);
 
@@ -123,10 +130,10 @@ export default function TransferRequestDialog({
         description: data.description
       };
 
-      console.log('📦 Transfer details:', JSON.stringify({
+      console.log('📦 Transfer details:', safeStringify({
         ...transferDetails,
-        amount: amountInSmallest.toString() // BigInt can't stringify
-      }, null, 2));
+        amount: amountInSmallest.toString() + 'n' // Indicate it's a BigInt
+      }));
 
       // Validate UUIDs before sending
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -145,7 +152,7 @@ export default function TransferRequestDialog({
         transferDetails
       );
 
-      console.log('📥 Backend response:', JSON.stringify(result, null, 2));
+      console.log('📥 Backend response:', safeStringify(result));
 
       if (result.success) {
         console.log('✅ Proposal created successfully');

@@ -69,8 +69,15 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
   };
 
   const handleTransfer = (account) => {
+    // Helper function to safely stringify objects with BigInt
+    const safeStringify = (obj) => {
+      return JSON.stringify(obj, (key, value) =>
+        typeof value === 'bigint' ? value.toString() + 'n' : value
+      , 2);
+    };
+
     console.group('🔍 Transfer Button Clicked');
-    console.log('Account data:', JSON.stringify(account, null, 2));
+    console.log('Account data:', safeStringify(account));
 
     // Validate account structure
     if (!account.id) {
@@ -97,7 +104,7 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
 
     // Use first asset (could be enhanced to show asset picker)
     const asset = assets[0];
-    console.log('Selected asset:', JSON.stringify(asset, null, 2));
+    console.log('Selected asset:', safeStringify(asset));
 
     // Validate asset has required fields
     if (!asset.id || !asset.symbol) {
