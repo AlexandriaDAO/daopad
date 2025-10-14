@@ -198,6 +198,8 @@ async fn execute_orbit_action() -> Result<()> {
 | Need Kong Locker data | Read `../../kong-locker-reference/CLAUDE.md` for API info |
 | Wrong deploy script | Use `./deploy.sh` from THIS directory |
 | **"is not a function" error** | **CRITICAL: See Declaration Sync Bug section below** |
+| "Invalid principal argument" | Frontend must convert strings to Principal using `Principal.fromText()` before passing to backend |
+| Actor is null/undefined | DAOPadBackendService requires `await service.getActor()`, not `service.actor` |
 
 ## 🚨 CRITICAL: Declaration Sync Bug
 

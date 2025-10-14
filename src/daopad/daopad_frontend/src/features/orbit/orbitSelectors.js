@@ -53,6 +53,16 @@ export const selectFormattedAccounts = createSelector(
     return accounts.map(account => {
       const balanceData = balances?.[account.id];
 
+      // Conditional debug logging
+      const DEBUG_SELECTORS = import.meta.env.DEV && localStorage.getItem('DEBUG_SELECTORS');
+
+      if (DEBUG_SELECTORS) {
+        console.log('[orbitSelector] Processing account:', {
+          accountId: account.id,
+          hasBalanceData: !!balanceData
+        });
+      }
+
       if (!balanceData) {
         return {
           ...account,
@@ -74,12 +84,53 @@ export const selectFormattedAccounts = createSelector(
         { symbol: tokenSymbol || '' }
       );
 
+      // Build assets array from balance data
+      // Strategy: Try to use existing assets, otherwise construct from balance data
+      const existingAssets = account.assets || [];
+
+      let assetsWithBalance;
+
+      if (existingAssets.length > 0) {
+        // Use existing assets from account
+        assetsWithBalance = existingAssets.map(asset => ({
+          ...asset,
+          balance: balanceData.balance,
+          decimals: asset.decimals || balanceData.decimals || 8
+        }));
+      } else {
+        // Construct asset from balance data
+        // Strategy: Only use REAL asset IDs, never generate fake ones
+        const assetId = balanceData.asset_id ||
+                       balanceData.metadata_id ||
+                       account.metadata?.asset_id;
+
+        if (!assetId) {
+          // Log error but don't crash selector
+          console.error('[orbitSelector] No valid asset ID for account:', account.id);
+          // Return empty assets array - will trigger proper UI error
+          assetsWithBalance = [];
+        } else {
+          assetsWithBalance = [{
+            id: assetId, // ONLY real UUIDs
+            symbol: balanceData.symbol || tokenSymbol || 'TOKEN',
+            decimals: balanceData.decimals || 8,
+            balance: balanceData.balance,
+            blockchain: balanceData.blockchain || account.blockchain || 'InternetComputer'
+          }];
+        }
+      }
+
+      if (DEBUG_SELECTORS) {
+        console.log('[orbitSelector] Assets:', assetsWithBalance.length);
+      }
+
       return {
         ...account,
         balance: balanceData.balance, // Keep raw BigInt
         decimals: balanceData.decimals || 8,
         balanceFloat,
         balanceFormatted,
+        assets: assetsWithBalance, // Ensure assets array is populated
       };
     });
   }
