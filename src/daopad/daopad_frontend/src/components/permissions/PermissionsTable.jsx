@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { Alert, AlertDescription } from '../ui/alert';
 import { Loader2 } from 'lucide-react';
 
 export default function PermissionsTable({ stationId, actor }) {
@@ -12,14 +12,29 @@ export default function PermissionsTable({ stationId, actor }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (stationId && actor) {
-      loadPermissions();
-    }
-  }, [stationId, actor]); // Only reload when stationId or actor changes, filtering is client-side
+    // FIX: Always call loadPermissions, let it handle missing actor/stationId
+    loadPermissions();
+  }, [stationId, actor]);
 
   async function loadPermissions() {
-    if (!actor || !stationId) {
-      setError('Missing actor or station ID');
+    // ADD: Comprehensive console logging
+    console.log('[PermissionsTable] Starting load...', {
+      hasActor: !!actor,
+      hasStationId: !!stationId,
+      stationId: stationId?.toString()
+    });
+
+    // FIX: Check and set error state instead of silent failure
+    if (!actor) {
+      console.error('[PermissionsTable] No actor - cannot load');
+      setError('Wallet not connected or backend unavailable');
+      setLoading(false);
+      return;
+    }
+
+    if (!stationId) {
+      console.error('[PermissionsTable] No stationId provided');
+      setError('No station ID - select a token first');
       setLoading(false);
       return;
     }
@@ -28,39 +43,46 @@ export default function PermissionsTable({ stationId, actor }) {
     setError(null);
 
     try {
-      // Call backend to get permissions (backend acts as admin proxy)
-      // Pass [] for empty resources (gets all permissions)
+      console.log('[PermissionsTable] Calling list_station_permissions...');
+
       const result = await actor.list_station_permissions(stationId, []);
 
-      // Backend returns Result<Vec<Permission>, String>
-      // Handle Rust Result type: { Ok: [...] } or { Err: "error" }
+      console.log('[PermissionsTable] Raw result:', result);
+      console.log('[PermissionsTable] Result type:', typeof result, Array.isArray(result));
+
       if (result.Ok !== undefined) {
+        console.log('[PermissionsTable] Success! Loaded', result.Ok.length, 'permissions');
         setPermissions(result.Ok);
       } else if (result.Err !== undefined) {
+        console.error('[PermissionsTable] Backend error:', result.Err);
         setError(result.Err);
         setPermissions([]);
       } else if (Array.isArray(result)) {
         // Fallback for direct array response
+        console.log('[PermissionsTable] Direct array result with', result.length, 'permissions');
         setPermissions(result);
       } else if (result && Array.isArray(result[0])) {
         // Fallback for nested array response
+        console.log('[PermissionsTable] Nested array result with', result[0].length, 'permissions');
         setPermissions(result[0]);
       } else {
+        console.error('[PermissionsTable] Unexpected result format:', result);
+        setError('Unexpected response format from backend');
         setPermissions([]);
       }
     } catch (err) {
-      console.error('Failed to load permissions:', err);
-      // Log full error for debugging type mismatches
-      console.error('Full error details:', JSON.stringify(err));
-      setError(err.message || 'Failed to load permissions');
+      console.error('[PermissionsTable] Exception caught:', err);
+      console.error('[PermissionsTable] Error message:', err.message);
+      console.error('[PermissionsTable] Error stack:', err.stack);
+      setError(`Failed to load: ${err.message}`);
       setPermissions([]);
     } finally {
       setLoading(false);
+      console.log('[PermissionsTable] Load complete');
     }
   }
 
   function filterPermissionsByCategory(category) {
-    // Filter permissions based on resource type
     return permissions.filter(perm => {
       const resource = perm.resource;
       if (!resource) return false;
@@ -81,7 +103,9 @@ export default function PermissionsTable({ stationId, actor }) {
   }
 
   const filteredPermissions = filterPermissionsByCategory(category);
+  const countByCategory = (cat) => filterPermissionsByCategory(cat).length;
 
+  // Show loading spinner
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -91,86 +115,80 @@ export default function PermissionsTable({ stationId, actor }) {
     );
   }
 
+  // Show error with retry button
   if (error) {
     return (
       <Card>
         <CardContent className="p-6">
-          <div className="text-destructive">Error: {error}</div>
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
           <Button onClick={loadPermissions} className="mt-4">Retry</Button>
         </CardContent>
       </Card>
     );
   }
 
+  // CHANGE: Replace internal tabs with filter buttons
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Permission Management</CardTitle>
+        <CardTitle>Treasury Permissions ({permissions.length})</CardTitle>
+        <CardDescription>
+          Access controls for this Orbit Station treasury
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs value={category} onValueChange={setCategory}>
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="treasury">Treasury</TabsTrigger>
-            <TabsTrigger value="canisters">Canisters</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="system">System</TabsTrigger>
-          </TabsList>
+        {/* Filter buttons instead of tabs */}
+        <div className="flex gap-2 mb-4 flex-wrap">
+          <Button
+            variant={category === 'treasury' ? 'default' : 'outline'}
+            onClick={() => setCategory('treasury')}
+            size="sm"
+          >
+            Treasury ({countByCategory('treasury')})
+          </Button>
+          <Button
+            variant={category === 'canisters' ? 'default' : 'outline'}
+            onClick={() => setCategory('canisters')}
+            size="sm"
+          >
+            Canisters ({countByCategory('canisters')})
+          </Button>
+          <Button
+            variant={category === 'users' ? 'default' : 'outline'}
+            onClick={() => setCategory('users')}
+            size="sm"
+          >
+            Users ({countByCategory('users')})
+          </Button>
+          <Button
+            variant={category === 'system' ? 'default' : 'outline'}
+            onClick={() => setCategory('system')}
+            size="sm"
+          >
+            System ({countByCategory('system')})
+          </Button>
+        </div>
 
-          <TabsContent value="treasury" className="space-y-4">
-            <PermissionCategorySection
-              title="Treasury Permissions"
-              permissions={filteredPermissions}
-              category="treasury"
-            />
-          </TabsContent>
-
-          <TabsContent value="canisters" className="space-y-4">
-            <PermissionCategorySection
-              title="Canister Permissions"
-              permissions={filteredPermissions}
-              category="canisters"
-            />
-          </TabsContent>
-
-          <TabsContent value="users" className="space-y-4">
-            <PermissionCategorySection
-              title="User Permissions"
-              permissions={filteredPermissions}
-              category="users"
-            />
-          </TabsContent>
-
-          <TabsContent value="system" className="space-y-4">
-            <PermissionCategorySection
-              title="System Permissions"
-              permissions={filteredPermissions}
-              category="system"
-            />
-          </TabsContent>
-        </Tabs>
+        {/* Permissions list */}
+        {filteredPermissions.length === 0 ? (
+          <div className="text-center text-muted-foreground p-8">
+            No {category} permissions found
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filteredPermissions.map((perm, index) => (
+              <PermissionRow key={index} permission={perm} />
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-function PermissionCategorySection({ title, permissions, category }) {
-  if (permissions.length === 0) {
-    return (
-      <div className="text-center text-muted-foreground p-8">
-        No {category} permissions found
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      {permissions.map((perm, index) => (
-        <PermissionRow key={index} permission={perm} />
-      ))}
-    </div>
-  );
-}
-
+// Keep PermissionRow component as-is
 function PermissionRow({ permission }) {
   const resourceName = getResourceName(permission.resource);
   const authScope = getAuthScope(permission.allow);
@@ -196,51 +214,33 @@ function PermissionRow({ permission }) {
   );
 }
 
+// Keep helper functions as-is
 function getResourceName(resource) {
   if (!resource) return 'Unknown';
-
-  // Extract resource type from the first key
   const keys = Object.keys(resource);
   if (keys.length === 0) return 'Unknown';
-
   const resourceType = keys[0];
   const action = resource[resourceType];
-
-  // Format: "ResourceType: Action"
   return `${resourceType}: ${formatAction(action)}`;
 }
 
 function formatAction(action) {
   if (!action) return 'Unknown';
-
-  if (typeof action === 'string') {
-    return action;
-  }
-
+  if (typeof action === 'string') return action;
   if (typeof action === 'object') {
     const keys = Object.keys(action);
-    if (keys.length > 0) {
-      return keys[0];
-    }
+    if (keys.length > 0) return keys[0];
   }
-
   return 'Unknown';
 }
 
 function getAuthScope(allow) {
   if (!allow || !allow.auth_scope) return 'Restricted';
-
   const scope = allow.auth_scope;
-  if (typeof scope === 'string') {
-    return scope;
-  }
-
+  if (typeof scope === 'string') return scope;
   if (typeof scope === 'object') {
     const keys = Object.keys(scope);
-    if (keys.length > 0) {
-      return keys[0];
-    }
+    if (keys.length > 0) return keys[0];
   }
-
   return 'Restricted';
 }
