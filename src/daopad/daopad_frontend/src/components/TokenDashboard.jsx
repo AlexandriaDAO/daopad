@@ -453,42 +453,12 @@ const TokenDashboard = memo(function TokenDashboard({
           {/* Tabs for different views */}
           <Tabs defaultValue="accounts" className="w-full" onValueChange={(value) => setActiveTab(value)}>
             <TabsList variant="executive" className="grid w-full grid-cols-6 mb-6">
-              <TabsTrigger variant="executive" value="accounts">
-                <span className="flex items-center gap-2">
-                  <span className="text-executive-gold">💰</span>
-                  Treasury
-                </span>
-              </TabsTrigger>
-              <TabsTrigger variant="executive" value="activity">
-                <span className="flex items-center gap-2">
-                  <span className="text-executive-gold">📊</span>
-                  Activity
-                </span>
-              </TabsTrigger>
-              <TabsTrigger variant="executive" value="canisters">
-                <span className="flex items-center gap-2">
-                  <span className="text-executive-gold">🏢</span>
-                  Canisters
-                </span>
-              </TabsTrigger>
-              <TabsTrigger variant="executive" value="security">
-                <span className="flex items-center gap-2">
-                  <span className="text-executive-gold">🛡️</span>
-                  Security
-                </span>
-              </TabsTrigger>
-              <TabsTrigger variant="executive" value="permissions">
-                <span className="flex items-center gap-2">
-                  <span className="text-executive-gold">🔐</span>
-                  Permissions
-                </span>
-              </TabsTrigger>
-              <TabsTrigger variant="executive" value="settings">
-                <span className="flex items-center gap-2">
-                  <span className="text-executive-gold">⚙️</span>
-                  Settings
-                </span>
-              </TabsTrigger>
+              <TabsTrigger variant="executive" value="accounts">Treasury</TabsTrigger>
+              <TabsTrigger variant="executive" value="activity">Activity</TabsTrigger>
+              <TabsTrigger variant="executive" value="canisters">Canisters</TabsTrigger>
+              <TabsTrigger variant="executive" value="security">Security</TabsTrigger>
+              <TabsTrigger variant="executive" value="permissions">Permissions</TabsTrigger>
+              <TabsTrigger variant="executive" value="settings">Settings</TabsTrigger>
             </TabsList>
 
             <TabsContent value="accounts" className="mt-4 space-y-6">
