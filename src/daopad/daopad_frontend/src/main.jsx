@@ -10,10 +10,19 @@ import './globals.css';
 // Import testing utilities (exposes window.testTransferFlow)
 import './utils/mainnetTesting';
 
-// Expose Redux store for testing on mainnet
-if (import.meta.env.VITE_DFX_NETWORK === 'ic') {
-  window.__REDUX_STORE__ = store;
-  console.log('🧪 Testing utilities available: window.testTransferFlow()');
+// Only expose in development or with explicit debug flag
+if (import.meta.env.DEV || localStorage.getItem('DEBUG_MODE') === 'true') {
+  // Make store read-only to prevent manipulation
+  window.__DEBUG__ = {
+    getState: () => store.getState(),
+    testTransferFlow: () => import('./utils/mainnetTesting').then(m => m.testTransferFlow()),
+    enableDebug: () => localStorage.setItem('DEBUG_MODE', 'true'),
+    disableDebug: () => localStorage.removeItem('DEBUG_MODE')
+  };
+  console.log('🧪 Debug mode available. Use window.__DEBUG__.enableDebug() to activate.');
+} else {
+  // Production: No exposure at all
+  console.log('Production mode. Debug tools disabled for security.');
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(

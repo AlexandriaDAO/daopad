@@ -16,6 +16,7 @@ import {
 import { selectFormattedAccounts } from '@/features/orbit/orbitSelectors';
 import TransferRequestDialog from '../orbit/TransferRequestDialog';
 import { useToast } from '@/hooks/use-toast';
+import { safeStringify, debugLog } from '@/utils/logging';
 
 export default function AccountsTable({ stationId, identity, tokenId, tokenSymbol, votingPower }) {
   const { toast } = useToast();
@@ -69,15 +70,9 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
   };
 
   const handleTransfer = (account) => {
-    // Helper function to safely stringify objects with BigInt
-    const safeStringify = (obj) => {
-      return JSON.stringify(obj, (key, value) =>
-        typeof value === 'bigint' ? value.toString() + 'n' : value
-      , 2);
-    };
-
-    console.group('🔍 Transfer Button Clicked');
-    console.log('Account data:', safeStringify(account));
+    debugLog('🔍 Transfer Button Clicked', () => {
+      console.log('Account data:', safeStringify(account));
+    });
 
     // Validate account structure
     if (!account.id) {
@@ -85,26 +80,30 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
       toast.error('Invalid Account', {
         description: 'Account data is malformed. Please refresh the page.'
       });
-      console.groupEnd();
       return;
     }
 
     // Get assets from account
     const assets = account.assets || [];
-    console.log(`Found ${assets.length} assets on account`);
+
+    debugLog('Asset Validation', () => {
+      console.log(`Found ${assets.length} assets on account`);
+    });
 
     if (assets.length === 0) {
       console.error('❌ No assets found on account');
       toast.error('No Assets Available', {
         description: 'This account has no assets to transfer. Please add assets first.'
       });
-      console.groupEnd();
       return;
     }
 
     // Use first asset (could be enhanced to show asset picker)
     const asset = assets[0];
-    console.log('Selected asset:', safeStringify(asset));
+
+    debugLog('Asset Selection', () => {
+      console.log('Selected asset:', safeStringify(asset));
+    });
 
     // Normalize asset structure: Orbit returns asset_id, we need id
     const normalizedAsset = {
@@ -120,14 +119,13 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
       toast.error('Invalid Asset Data', {
         description: 'Asset is missing required ID. Please refresh the account data.'
       });
-      console.groupEnd();
       return;
     }
 
-    console.log('✅ Normalized asset:', safeStringify(normalizedAsset));
-
-    console.log('✅ Validation passed, opening transfer dialog');
-    console.groupEnd();
+    debugLog('Transfer Dialog Opening', () => {
+      console.log('✅ Normalized asset:', safeStringify(normalizedAsset));
+      console.log('✅ Validation passed, opening transfer dialog');
+    });
 
     setTransferDialog({
       open: true,

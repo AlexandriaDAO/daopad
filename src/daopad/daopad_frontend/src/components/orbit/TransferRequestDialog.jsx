@@ -22,6 +22,8 @@ import { Principal } from '@dfinity/principal';
 import AddressInput from '@/components/inputs/AddressInput';
 import { validateAddress, BlockchainType } from '@/utils/addressValidation';
 import { bigintToFloat } from '@/utils/format';
+import { safeStringify, debugLog } from '@/utils/logging';
+import { validateUUIDs } from '@/utils/validation';
 
 // Constants
 const MIN_VOTING_POWER_FOR_PROPOSALS = 10000;
@@ -80,19 +82,13 @@ export default function TransferRequestDialog({
   });
 
   const handleSubmit = async (data) => {
-    // Helper function to safely stringify objects with BigInt
-    const safeStringify = (obj) => {
-      return JSON.stringify(obj, (key, value) =>
-        typeof value === 'bigint' ? value.toString() + 'n' : value
-      , 2);
-    };
-
-    console.group('🚀 Transfer Proposal Submission');
-    console.log('Form data:', safeStringify(data));
-    console.log('Account:', safeStringify(account));
-    console.log('Asset:', safeStringify(asset));
-    console.log('Token ID:', tokenId);
-    console.log('User voting power:', votingPower);
+    debugLog('🚀 Transfer Proposal Submission', () => {
+      console.log('Form data:', safeStringify(data));
+      console.log('Account:', safeStringify(account));
+      console.log('Asset:', safeStringify(asset));
+      console.log('Token ID:', tokenId);
+      console.log('User voting power:', votingPower);
+    });
 
     setError('');
 
@@ -102,7 +98,6 @@ export default function TransferRequestDialog({
       toast.error('Insufficient Voting Power', {
         description: `You need at least ${MIN_VOTING_POWER_FOR_PROPOSALS.toLocaleString()} VP to create transfer proposals. Current: ${votingPower.toLocaleString()} VP`
       });
-      console.groupEnd();
       return;
     }
 
@@ -112,12 +107,25 @@ export default function TransferRequestDialog({
       console.log('📡 Creating backend service...');
       const backend = new DAOPadBackendService(identity);
 
-      // Convert amount
+      // Convert amount using string-based decimal arithmetic to avoid floating point errors
       console.log('💰 Converting amount:', data.amount, 'with decimals:', asset.decimals);
-      const amountInSmallest = BigInt(
-        Math.floor(parseFloat(data.amount) * Math.pow(10, asset.decimals))
-      );
-      console.log('Amount in smallest units:', amountInSmallest.toString());
+
+      const convertToBigInt = (amountStr, decimals) => {
+        // Ensure decimals is valid
+        const dec = decimals ?? 8;
+
+        // Split on decimal point
+        const [integer = '0', decimal = ''] = amountStr.split('.');
+
+        // Pad or truncate decimal part
+        const paddedDecimal = decimal.padEnd(dec, '0').slice(0, dec);
+
+        // Combine and convert to BigInt
+        return BigInt(integer + paddedDecimal);
+      };
+
+      const amountInSmallest = convertToBigInt(data.amount, asset.decimals);
+      console.log('💰 Converting:', data.amount, '→', amountInSmallest.toString());
 
       // Build transfer details
       const transferDetails = {
@@ -136,14 +144,15 @@ export default function TransferRequestDialog({
       }));
 
       // Validate UUIDs before sending
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(transferDetails.from_account_id)) {
-        throw new Error(`Invalid account ID format: ${transferDetails.from_account_id}`);
+      try {
+        validateUUIDs({
+          'account ID': transferDetails.from_account_id,
+          'asset ID': transferDetails.from_asset_id
+        });
+        console.log('✅ UUID validation passed');
+      } catch (error) {
+        throw new Error(error.message);
       }
-      if (!uuidRegex.test(transferDetails.from_asset_id)) {
-        throw new Error(`Invalid asset ID format: ${transferDetails.from_asset_id}`);
-      }
-      console.log('✅ UUID validation passed');
 
       // Make backend call
       console.log('🌐 Calling backend.createTreasuryTransferProposal...');
@@ -181,7 +190,6 @@ export default function TransferRequestDialog({
       });
     } finally {
       setIsSubmitting(false);
-      console.groupEnd();
     }
   };
 

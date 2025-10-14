@@ -53,14 +53,15 @@ export const selectFormattedAccounts = createSelector(
     return accounts.map(account => {
       const balanceData = balances?.[account.id];
 
-      // Debug logging - remove after fixing
-      console.log('[orbitSelector] Processing account:', {
-        accountId: account.id,
-        accountName: account.name,
-        hasBalanceData: !!balanceData,
-        balanceDataKeys: balanceData ? Object.keys(balanceData) : [],
-        accountAssets: account.assets
-      });
+      // Conditional debug logging
+      const DEBUG_SELECTORS = import.meta.env.DEV && localStorage.getItem('DEBUG_SELECTORS');
+
+      if (DEBUG_SELECTORS) {
+        console.log('[orbitSelector] Processing account:', {
+          accountId: account.id,
+          hasBalanceData: !!balanceData
+        });
+      }
 
       if (!balanceData) {
         return {
@@ -98,22 +99,30 @@ export const selectFormattedAccounts = createSelector(
         }));
       } else {
         // Construct asset from balance data
-        // Use asset_id if available, otherwise use metadata_id or generate from account
+        // Strategy: Only use REAL asset IDs, never generate fake ones
         const assetId = balanceData.asset_id ||
                        balanceData.metadata_id ||
-                       account.metadata?.asset_id ||
-                       `asset-${account.id}`; // Fallback ID
+                       account.metadata?.asset_id;
 
-        assetsWithBalance = [{
-          id: assetId,
-          symbol: balanceData.symbol || tokenSymbol || 'TOKEN',
-          decimals: balanceData.decimals || 8,
-          balance: balanceData.balance,
-          blockchain: balanceData.blockchain || account.blockchain || 'InternetComputer'
-        }];
+        if (!assetId) {
+          // Log error but don't crash selector
+          console.error('[orbitSelector] No valid asset ID for account:', account.id);
+          // Return empty assets array - will trigger proper UI error
+          assetsWithBalance = [];
+        } else {
+          assetsWithBalance = [{
+            id: assetId, // ONLY real UUIDs
+            symbol: balanceData.symbol || tokenSymbol || 'TOKEN',
+            decimals: balanceData.decimals || 8,
+            balance: balanceData.balance,
+            blockchain: balanceData.blockchain || account.blockchain || 'InternetComputer'
+          }];
+        }
       }
 
-      console.log('[orbitSelector] Constructed assets:', assetsWithBalance);
+      if (DEBUG_SELECTORS) {
+        console.log('[orbitSelector] Assets:', assetsWithBalance.length);
+      }
 
       return {
         ...account,
