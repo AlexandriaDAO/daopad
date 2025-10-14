@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { Alert, AlertDescription } from '../ui/alert';
 import { Loader2 } from 'lucide-react';
 
 export default function PermissionsTable({ stationId, actor }) {
@@ -18,8 +18,22 @@ export default function PermissionsTable({ stationId, actor }) {
   }, [stationId, actor]); // Only reload when stationId or actor changes, filtering is client-side
 
   async function loadPermissions() {
-    if (!actor || !stationId) {
-      setError('Missing actor or station ID');
+    console.log('[PermissionsTable] Starting load...', {
+      hasActor: !!actor,
+      hasStationId: !!stationId,
+      stationId: stationId?.toString()
+    });
+
+    if (!actor) {
+      console.error('[PermissionsTable] No actor - cannot load');
+      setError('Wallet not connected or backend unavailable');
+      setLoading(false);
+      return;
+    }
+
+    if (!stationId) {
+      console.error('[PermissionsTable] No stationId provided');
+      setError('No station ID - select a token first');
       setLoading(false);
       return;
     }
@@ -28,34 +42,47 @@ export default function PermissionsTable({ stationId, actor }) {
     setError(null);
 
     try {
+      console.log('[PermissionsTable] Calling list_station_permissions...');
+
       // Call backend to get permissions (backend acts as admin proxy)
       // Pass [] for empty resources (gets all permissions)
       const result = await actor.list_station_permissions(stationId, []);
 
+      console.log('[PermissionsTable] Raw result:', result);
+      console.log('[PermissionsTable] Result type:', typeof result, Array.isArray(result));
+
       // Backend returns Result<Vec<Permission>, String>
       // Handle Rust Result type: { Ok: [...] } or { Err: "error" }
       if (result.Ok !== undefined) {
+        console.log('[PermissionsTable] Success! Loaded', result.Ok.length, 'permissions');
         setPermissions(result.Ok);
       } else if (result.Err !== undefined) {
+        console.error('[PermissionsTable] Backend error:', result.Err);
         setError(result.Err);
         setPermissions([]);
       } else if (Array.isArray(result)) {
         // Fallback for direct array response
+        console.log('[PermissionsTable] Direct array response, loaded', result.length, 'permissions');
         setPermissions(result);
       } else if (result && Array.isArray(result[0])) {
         // Fallback for nested array response
+        console.log('[PermissionsTable] Nested array response, loaded', result[0].length, 'permissions');
         setPermissions(result[0]);
       } else {
+        console.error('[PermissionsTable] Unexpected result format:', result);
+        setError('Unexpected response format from backend');
         setPermissions([]);
       }
     } catch (err) {
-      console.error('Failed to load permissions:', err);
-      // Log full error for debugging type mismatches
-      console.error('Full error details:', JSON.stringify(err));
-      setError(err.message || 'Failed to load permissions');
+      console.error('[PermissionsTable] Exception caught:', err);
+      console.error('[PermissionsTable] Error name:', err.name);
+      console.error('[PermissionsTable] Error message:', err.message);
+      console.error('[PermissionsTable] Error stack:', err.stack);
+      setError(`Failed to load: ${err.message}`);
       setPermissions([]);
     } finally {
       setLoading(false);
+      console.log('[PermissionsTable] Load complete');
     }
   }
 
@@ -82,6 +109,36 @@ export default function PermissionsTable({ stationId, actor }) {
 
   const filteredPermissions = filterPermissionsByCategory(category);
 
+  // Early return for no actor
+  if (!actor) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <Alert>
+            <AlertDescription>
+              Connect your wallet to view permissions.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Early return for no stationId
+  if (!stationId) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <Alert>
+            <AlertDescription>
+              Select a token to view its permissions.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -102,72 +159,64 @@ export default function PermissionsTable({ stationId, actor }) {
     );
   }
 
+  // Count permissions by category
+  const countByCategory = (cat) => filterPermissionsByCategory(cat).length;
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Permission Management</CardTitle>
+        <CardTitle>Treasury Permissions ({permissions.length})</CardTitle>
+        <CardDescription>
+          Access controls for this Orbit Station treasury
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs value={category} onValueChange={setCategory}>
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="treasury">Treasury</TabsTrigger>
-            <TabsTrigger value="canisters">Canisters</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="system">System</TabsTrigger>
-          </TabsList>
+        {/* Simple filter buttons instead of tabs */}
+        <div className="flex gap-2 mb-4 flex-wrap">
+          <Button
+            variant={category === 'treasury' ? 'default' : 'outline'}
+            onClick={() => setCategory('treasury')}
+            size="sm"
+          >
+            Treasury ({countByCategory('treasury')})
+          </Button>
+          <Button
+            variant={category === 'canisters' ? 'default' : 'outline'}
+            onClick={() => setCategory('canisters')}
+            size="sm"
+          >
+            Canisters ({countByCategory('canisters')})
+          </Button>
+          <Button
+            variant={category === 'users' ? 'default' : 'outline'}
+            onClick={() => setCategory('users')}
+            size="sm"
+          >
+            Users ({countByCategory('users')})
+          </Button>
+          <Button
+            variant={category === 'system' ? 'default' : 'outline'}
+            onClick={() => setCategory('system')}
+            size="sm"
+          >
+            System ({countByCategory('system')})
+          </Button>
+        </div>
 
-          <TabsContent value="treasury" className="space-y-4">
-            <PermissionCategorySection
-              title="Treasury Permissions"
-              permissions={filteredPermissions}
-              category="treasury"
-            />
-          </TabsContent>
-
-          <TabsContent value="canisters" className="space-y-4">
-            <PermissionCategorySection
-              title="Canister Permissions"
-              permissions={filteredPermissions}
-              category="canisters"
-            />
-          </TabsContent>
-
-          <TabsContent value="users" className="space-y-4">
-            <PermissionCategorySection
-              title="User Permissions"
-              permissions={filteredPermissions}
-              category="users"
-            />
-          </TabsContent>
-
-          <TabsContent value="system" className="space-y-4">
-            <PermissionCategorySection
-              title="System Permissions"
-              permissions={filteredPermissions}
-              category="system"
-            />
-          </TabsContent>
-        </Tabs>
+        {/* Permissions list */}
+        {filteredPermissions.length === 0 ? (
+          <div className="text-center text-muted-foreground p-8">
+            No {category} permissions found
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filteredPermissions.map((perm, index) => (
+              <PermissionRow key={index} permission={perm} />
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
-  );
-}
-
-function PermissionCategorySection({ title, permissions, category }) {
-  if (permissions.length === 0) {
-    return (
-      <div className="text-center text-muted-foreground p-8">
-        No {category} permissions found
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      {permissions.map((perm, index) => (
-        <PermissionRow key={index} permission={perm} />
-      ))}
-    </div>
   );
 }
 
