@@ -305,7 +305,7 @@ pub struct AccountCallerPrivileges {
 }
 
 // List accounts input/output
-#[derive(CandidType, Deserialize, Clone, Debug)]
+#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
 pub struct PaginationInput {
     pub limit: Option<u64>,
     pub offset: Option<u64>,
@@ -321,24 +321,26 @@ pub struct NamedRule {
 }
 
 #[derive(CandidType, Deserialize)]
-pub struct ListNamedRulesResult {
-    pub Ok: Option<ListNamedRulesOk>,
-    pub Err: Option<Error>,
+pub enum ListNamedRulesResult {
+    Ok {
+        named_rules: Vec<NamedRule>,
+        next_offset: Option<u64>,
+        total: u64,
+        privileges: Vec<NamedRuleCallerPrivileges>,
+    },
+    Err(Error),
 }
 
-#[derive(CandidType, Deserialize)]
-pub struct ListNamedRulesOk {
-    pub named_rules: Vec<NamedRule>,
-    pub next_offset: Option<u64>,
-    pub total: u64,
-    pub privileges: Vec<NamedRuleCallerPrivileges>,
-}
-
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug, Clone)]
 pub struct NamedRuleCallerPrivileges {
     pub id: String,  // UUID
     pub can_edit: bool,
     pub can_delete: bool,
+}
+
+#[derive(CandidType, Serialize)]
+pub struct ListNamedRulesInput {
+    pub paginate: Option<PaginationInput>,
 }
 
 #[derive(CandidType, Deserialize)]
@@ -1132,7 +1134,7 @@ pub struct ListUserGroupsInput {
 }
 
 // Request policies
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Serialize)]
 pub struct ListRequestPoliciesInput {
     pub limit: Option<u64>,
     pub offset: Option<u64>,

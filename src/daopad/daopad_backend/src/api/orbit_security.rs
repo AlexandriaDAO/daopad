@@ -11,7 +11,7 @@ use crate::types::orbit::{
     SystemInfoResult,
     PaginationInput,
     RequestPoliciesDetails, RequestPolicyInfo, RequestSpecifier,
-    ListNamedRulesResult, ListNamedRulesOk, NamedRule,
+    ListNamedRulesResult, ListNamedRulesInput, NamedRule,
 };
 
 const ADMIN_GROUP_ID: &str = "00000000-0000-4000-8000-000000000000";
@@ -1402,22 +1402,22 @@ pub async fn get_request_policies_details(station_id: Principal) -> Result<Reque
 
 // Helper to fetch named rules
 async fn fetch_named_rules(station_id: Principal) -> Result<Vec<NamedRule>, String> {
-    let input = PaginationInput { limit: None, offset: None };
+    let input = ListNamedRulesInput { paginate: None };
 
     let result: Result<(ListNamedRulesResult,), _> = ic_cdk::call(station_id, "list_named_rules", (input,))
         .await
         .map_err(|e| format!("Failed to list named rules: {:?}", e));
 
     match result {
-        Ok((response,)) => {
-            if let Some(ok_result) = response.Ok {
-                Ok(ok_result.named_rules)
-            } else if let Some(err) = response.Err {
-                Err(format!("Orbit returned error: {}", err))
-            } else {
-                Err("Unexpected response format from list_named_rules".to_string())
+        Ok((response,)) => match response {
+            ListNamedRulesResult::Ok {
+                named_rules,
+                ..
+            } => Ok(named_rules),
+            ListNamedRulesResult::Err(err) => {
+                Err(format!("Orbit returned error: {:?}", err))
             }
-        }
+        },
         Err(e) => Err(e),
     }
 }
