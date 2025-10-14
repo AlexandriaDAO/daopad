@@ -6,6 +6,7 @@ import { AlertTriangle, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { OrbitSecurityService } from '../../services/backend/orbit/security/OrbitSecurityService';
 import DAOTransitionChecklist from './DAOTransitionChecklist';
 import RequestPoliciesView from './RequestPoliciesView';
+import AdminRemovalActions from './AdminRemovalActions';
 
 const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
     const [securityData, setSecurityData] = useState(null);
@@ -162,6 +163,14 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
                 />
             )}
 
+            {/* Admin removal actions */}
+            <AdminRemovalActions
+                tokenId={tokenId}
+                stationId={stationId}
+                identity={identity}
+            />
+
+            {/* Existing checklist */}
             <DAOTransitionChecklist
                 securityData={securityData}
                 stationId={stationId}
