@@ -22,6 +22,8 @@ import { Principal } from '@dfinity/principal';
 import AddressInput from '@/components/inputs/AddressInput';
 import { validateAddress, BlockchainType } from '@/utils/addressValidation';
 import { bigintToFloat } from '@/utils/format';
+import { safeStringify, debugLog } from '@/utils/logging';
+import { validateUUIDs } from '@/utils/validation';
 
 // Constants
 const MIN_VOTING_POWER_FOR_PROPOSALS = 10000;
@@ -80,28 +82,52 @@ export default function TransferRequestDialog({
   });
 
   const handleSubmit = async (data) => {
-    // Clear error state first before any validation
+    debugLog('🚀 Transfer Proposal Submission', () => {
+      console.log('Form data:', safeStringify(data));
+      console.log('Account:', safeStringify(account));
+      console.log('Asset:', safeStringify(asset));
+      console.log('Token ID:', tokenId);
+      console.log('User voting power:', votingPower);
+    });
+
     setError('');
 
-    // Check voting power requirement before setting submitting state
+    // Voting power check
     if (votingPower < MIN_VOTING_POWER_FOR_PROPOSALS) {
-        toast.error('Insufficient Voting Power', {
-          description: `You need at least ${MIN_VOTING_POWER_FOR_PROPOSALS.toLocaleString()} VP to create transfer proposals. Current: ${votingPower.toLocaleString()} VP`
-        });
-        return;
-      }
+      console.error(`❌ Insufficient VP: ${votingPower} < ${MIN_VOTING_POWER_FOR_PROPOSALS}`);
+      toast.error('Insufficient Voting Power', {
+        description: `You need at least ${MIN_VOTING_POWER_FOR_PROPOSALS.toLocaleString()} VP to create transfer proposals. Current: ${votingPower.toLocaleString()} VP`
+      });
+      return;
+    }
 
-      setIsSubmitting(true);
+    setIsSubmitting(true);
 
-      try {
+    try {
+      console.log('📡 Creating backend service...');
       const backend = new DAOPadBackendService(identity);
 
-      // Convert amount to smallest units (use Math.floor to prevent floating point precision errors)
-      const amountInSmallest = BigInt(
-        Math.floor(parseFloat(data.amount) * Math.pow(10, asset.decimals))
-      );
+      // Convert amount using string-based decimal arithmetic to avoid floating point errors
+      console.log('💰 Converting amount:', data.amount, 'with decimals:', asset.decimals);
 
-      // Create transfer details for treasury proposal
+      const convertToBigInt = (amountStr, decimals) => {
+        // Ensure decimals is valid
+        const dec = decimals ?? 8;
+
+        // Split on decimal point
+        const [integer = '0', decimal = ''] = amountStr.split('.');
+
+        // Pad or truncate decimal part
+        const paddedDecimal = decimal.padEnd(dec, '0').slice(0, dec);
+
+        // Combine and convert to BigInt
+        return BigInt(integer + paddedDecimal);
+      };
+
+      const amountInSmallest = convertToBigInt(data.amount, asset.decimals);
+      console.log('💰 Converting:', data.amount, '→', amountInSmallest.toString());
+
+      // Build transfer details
       const transferDetails = {
         from_account_id: account.id,
         from_asset_id: asset.id,
@@ -112,27 +138,56 @@ export default function TransferRequestDialog({
         description: data.description
       };
 
-      // Call the treasury proposal endpoint
+      console.log('📦 Transfer details:', safeStringify({
+        ...transferDetails,
+        amount: amountInSmallest.toString() + 'n' // Indicate it's a BigInt
+      }));
+
+      // Validate UUIDs before sending
+      try {
+        validateUUIDs({
+          'account ID': transferDetails.from_account_id,
+          'asset ID': transferDetails.from_asset_id
+        });
+        console.log('✅ UUID validation passed');
+      } catch (error) {
+        throw new Error(error.message);
+      }
+
+      // Make backend call
+      console.log('🌐 Calling backend.createTreasuryTransferProposal...');
       const result = await backend.createTreasuryTransferProposal(
         Principal.fromText(tokenId),
         transferDetails
       );
 
+      console.log('📥 Backend response:', safeStringify(result));
+
       if (result.success) {
+        console.log('✅ Proposal created successfully');
         toast.success('Transfer Proposal Created', {
           description: 'Community can now vote on this transfer request'
         });
         onOpenChange(false);
         if (onSuccess) onSuccess();
-
-        // Reset form
         form.reset();
       } else {
         throw new Error(result.error || 'Failed to create proposal');
       }
     } catch (err) {
-      console.error('Error creating transfer proposal:', err);
-      setError(err.message || 'An unexpected error occurred');
+      console.error('❌ Error creating transfer proposal:', err);
+      console.error('Error stack:', err.stack);
+
+      // Extract meaningful error message
+      let errorMessage = 'An unexpected error occurred';
+      if (err.message) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
+      toast.error('Transfer Proposal Failed', {
+        description: errorMessage
+      });
     } finally {
       setIsSubmitting(false);
     }
