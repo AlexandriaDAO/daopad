@@ -201,6 +201,109 @@ async fn execute_orbit_action() -> Result<()> {
 | "Invalid principal argument" | Frontend must convert strings to Principal using `Principal.fromText()` before passing to backend |
 | Actor is null/undefined | DAOPadBackendService requires `await service.getActor()`, not `service.actor` |
 
+## 🔒 Universal Governance Requirement
+
+**CRITICAL**: Every backend function that modifies Orbit Station state MUST create a DAOPad proposal for community voting.
+
+### The Mandatory Pattern
+
+All Orbit operations follow this two-step pattern:
+1. Create Orbit request (stored in Orbit Station)
+2. Auto-create DAOPad proposal (enables community voting)
+
+```rust
+// Example: Admin removal in orbit_users.rs
+match result.0 {
+    CreateRequestResult::Ok(response) => {
+        let request_id = response.request.id;
+
+        // CRITICAL: Auto-create proposal for governance
+        use crate::proposals::{ensure_proposal_for_request, OrbitRequestType};
+
+        match ensure_proposal_for_request(
+            token_canister_id,
+            request_id.clone(),
+            OrbitRequestType::EditUser,  // Maps to 50% threshold
+        ).await {
+            Ok(proposal_id) => Ok(request_id),
+            Err(e) => Err(format!("GOVERNANCE VIOLATION: {...}"))
+        }
+    }
+}
+```
+
+### Governance Rules
+
+1. **Backend is sole admin** - No other users in Orbit Station admin group
+2. **All operations create proposals** - Via `ensure_proposal_for_request()`
+3. **Risk-based voting thresholds**:
+   - System operations (SystemUpgrade, SystemRestore): **90%**
+   - Treasury operations (Transfer, AddAccount, EditAccount): **75%**
+   - Governance changes (EditPermission, AddRequestPolicy): **70%**
+   - Canister operations (CreateExternalCanister, CallExternalCanister): **60%**
+   - User management (AddUser, EditUser, RemoveUser): **50%**
+   - Asset management (AddAsset, EditAsset): **40%**
+   - Address book (AddAddressBookEntry): **30%**
+4. **No bypassing** - Direct Orbit calls without proposals violate governance
+5. **Complete coverage** - All 33 Orbit operation types mapped in `OrbitRequestType` enum
+
+### Implementation Files
+
+- **Type definitions**: `daopad_backend/src/proposals/types.rs`
+  - `OrbitRequestType` enum with all 33 operations
+  - `voting_threshold()` method for risk-based thresholds
+  - `voting_duration_hours()` method for deliberation periods
+
+- **Proposal creation**: `daopad_backend/src/proposals/orbit_requests.rs`
+  - `ensure_proposal_for_request()` - Auto-create proposals
+  - `infer_request_type()` - Map operation strings to types
+  - `vote_on_orbit_request()` - Community voting logic
+
+- **Example usage**: `daopad_backend/src/api/orbit_users.rs`
+  - Admin removal properly creates proposals
+  - Pattern for other operations to follow
+
+### Why This Architecture
+
+- **True decentralization**: Voting power from locked LP tokens (Kong Locker)
+- **No role bloat**: One admin (backend) instead of complex permission matrix
+- **Liquid democracy**: Voting power changes with token value
+- **Complete coverage**: Every Orbit operation requires community approval
+- **Type safety**: Enum ensures all operations have defined thresholds
+
+### Adding New Operations
+
+When adding a new Orbit operation handler:
+
+1. Add operation to `OrbitRequestType` enum if not present
+2. Update `infer_request_type()` mapping
+3. Create Orbit request in your handler
+4. Call `ensure_proposal_for_request()` with appropriate type
+5. Return error if proposal creation fails (governance violation)
+
+Example:
+```rust
+#[update]
+pub async fn create_treasury_transfer(
+    token_id: Principal,
+    amount: u64,
+    recipient: String
+) -> Result<String, String> {
+    // 1. Create Orbit request
+    let request_id = create_orbit_transfer_request(...).await?;
+
+    // 2. Auto-create proposal (MANDATORY)
+    ensure_proposal_for_request(
+        token_id,
+        request_id.clone(),
+        OrbitRequestType::Transfer  // 75% threshold
+    ).await
+    .map_err(|e| format!("Governance required: {:?}", e))?;
+
+    Ok(request_id)
+}
+```
+
 ## 🚨 CRITICAL: Declaration Sync Bug
 
 **Error**: `TypeError: actor.method_name is not a function` (works in dfx but not frontend)
