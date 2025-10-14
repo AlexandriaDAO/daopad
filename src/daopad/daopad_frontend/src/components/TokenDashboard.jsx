@@ -442,24 +442,31 @@ const TokenDashboard = memo(function TokenDashboard({
       {/* Main Content */}
       {orbitStation ? (
         <>
-          {/* Action Toolbar */}
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={loadTokenStatus}>
-              Refresh
-            </Button>
-          </div>
-
-
           {/* Tabs for different views */}
           <Tabs defaultValue="accounts" className="w-full" onValueChange={(value) => setActiveTab(value)}>
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="accounts">Treasury</TabsTrigger>
-              <TabsTrigger value="activity">Activity</TabsTrigger>
-              <TabsTrigger value="canisters">Canisters</TabsTrigger>
-              <TabsTrigger value="security">Security</TabsTrigger>
-              <TabsTrigger value="permissions">Permissions</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
-            </TabsList>
+            <div className="flex items-center gap-3 mb-6">
+              <TabsList variant="executive" className="flex-1 grid grid-cols-6">
+                <TabsTrigger variant="executive" value="accounts">Treasury</TabsTrigger>
+                <TabsTrigger variant="executive" value="activity">Activity</TabsTrigger>
+                <TabsTrigger variant="executive" value="canisters">Canisters</TabsTrigger>
+                <TabsTrigger variant="executive" value="security">Security</TabsTrigger>
+                <TabsTrigger variant="executive" value="permissions">Permissions</TabsTrigger>
+                <TabsTrigger variant="executive" value="settings">Settings</TabsTrigger>
+              </TabsList>
+
+              {/* Refresh Button */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={loadTokenStatus}
+                className="ml-3 border-executive-gold/40 hover:bg-executive-gold/10 hover:border-executive-gold/60"
+                title="Refresh data"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                </svg>
+              </Button>
+            </div>
 
             <TabsContent value="accounts" className="mt-4 space-y-6">
               {activeTab === 'accounts' && (
