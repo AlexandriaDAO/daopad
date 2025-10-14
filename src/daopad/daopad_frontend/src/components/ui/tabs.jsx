@@ -9,17 +9,15 @@ const TabsList = React.forwardRef(({ className, variant = "default", ...props },
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex h-12 items-center justify-center rounded-lg p-1.5",
+      "inline-flex h-10 items-center justify-center rounded-md p-1 text-muted-foreground",
 
       // Default variant - standard shadcn styling
-      variant === "default" && "bg-muted text-muted-foreground",
+      variant === "default" && "bg-muted",
 
-      // Executive variant - golden professional styling
+      // Executive variant - subtle golden border
       variant === "executive" && [
-        "bg-executive-darkGray/80",
-        "border-2 border-executive-gold/40",
-        "backdrop-blur-sm",
-        "shadow-lg shadow-executive-gold/10"
+        "bg-muted",
+        "border border-executive-gold/30"
       ],
 
       className
@@ -32,40 +30,23 @@ const TabsTrigger = React.forwardRef(({ className, variant = "default", ...props
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "whitespace-nowrap rounded-md text-sm font-medium",
-      "ring-offset-background transition-all duration-300",
+      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium",
+      "ring-offset-background transition-all",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
       "disabled:pointer-events-none disabled:opacity-50",
 
       // Default variant
       variant === "default" && [
-        "inline-flex items-center justify-center px-4 py-2.5",
         "data-[state=active]:bg-background",
         "data-[state=active]:text-foreground",
         "data-[state=active]:shadow-sm"
       ],
 
-      // Executive variant - golden active state with glow
+      // Executive variant - standard shadcn with golden active
       variant === "executive" && [
-        // Flex container for perfect centering
-        "flex items-center justify-center px-3 py-2.5",
-
-        // Inactive state
-        "text-executive-lightGray/80",
-        "hover:text-executive-goldLight",
-        "hover:bg-executive-gold/10",
-
-        // Active state with golden glow
-        "data-[state=active]:bg-gradient-to-br data-[state=active]:from-executive-gold/20 data-[state=active]:to-executive-gold/10",
+        "data-[state=active]:bg-background",
         "data-[state=active]:text-executive-goldLight",
-        "data-[state=active]:border data-[state=active]:border-executive-gold/50",
-        "data-[state=active]:shadow-lg data-[state=active]:shadow-executive-gold/30",
-
-        // Smooth transitions
-        "transition-all duration-300 ease-in-out",
-
-        // Subtle scale on hover
-        "hover:scale-[1.02] active:scale-[0.98]"
+        "data-[state=active]:shadow-sm"
       ],
 
       className

@@ -444,8 +444,8 @@ const TokenDashboard = memo(function TokenDashboard({
         <>
           {/* Tabs for different views */}
           <Tabs defaultValue="accounts" className="w-full" onValueChange={(value) => setActiveTab(value)}>
-            <div className="flex items-center justify-between mb-6">
-              <TabsList variant="executive" className="grid grid-cols-6" style={{ width: 'calc(100% - 60px)' }}>
+            <div className="flex items-center gap-3 mb-6">
+              <TabsList variant="executive" className="flex-1 grid grid-cols-6">
                 <TabsTrigger variant="executive" value="accounts">Treasury</TabsTrigger>
                 <TabsTrigger variant="executive" value="activity">Activity</TabsTrigger>
                 <TabsTrigger variant="executive" value="canisters">Canisters</TabsTrigger>
