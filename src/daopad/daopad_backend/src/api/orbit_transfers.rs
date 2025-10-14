@@ -57,27 +57,7 @@ pub async fn get_transfer_requests_from_orbit(
     ])
 }
 
-// Approve an Orbit request (vote yes)
-pub async fn approve_orbit_request(
-    station_id: Principal,
-    request_id: String,
-    _caller: Principal,
-) -> Result<(), String> {
-    // Orbit handles voting internally based on caller's permissions
-    let input = SubmitRequestApprovalInput {
-        request_id: request_id.clone(),
-        decision: RequestApprovalDecision::Approve,
-        reason: None,
-    };
-
-    let result: CallResult<(SubmitRequestApprovalResult,)> =
-        ic_cdk::call(station_id, "submit_request_approval", (input,)).await;
-
-    match result {
-        Ok((SubmitRequestApprovalResult::Ok(_),)) => Ok(()),
-        Ok((SubmitRequestApprovalResult::Err(e),)) => {
-            Err(format!("Cannot approve: {} - {}", e.code, e.message))
-        }
-        Err((code, msg)) => Err(format!("Failed to approve: {:?} - {}", code, msg)),
-    }
-}
+// ❌ REMOVED: approve_orbit_request - replaced by liquid democracy voting
+// All Orbit request approvals now go through vote_on_orbit_request in proposals/orbit_requests.rs
+// The internal approval functions (approve_orbit_request_internal) remain in proposals/orbit_requests.rs
+// for use after voting threshold is reached.

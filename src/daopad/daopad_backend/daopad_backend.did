@@ -463,6 +463,20 @@ type OrbitLinkProposal = record {
   no_votes : nat64;
   expires_at : nat64;
 };
+type OrbitRequestProposal = record {
+  id : nat64;
+  status : ProposalStatus_1;
+  request_type : OrbitRequestType;
+  yes_votes : nat64;
+  created_at : nat64;
+  token_canister_id : principal;
+  orbit_request_id : text;
+  proposer : principal;
+  voter_count : nat32;
+  total_voting_power : nat64;
+  no_votes : nat64;
+  expires_at : nat64;
+};
 type OrbitRequestSummary = record {
   id : text;
   status : text;
@@ -474,6 +488,16 @@ type OrbitRequestSummary = record {
   summary : opt text;
   requester_name : opt text;
   approvals : vec OrbitApprovalSummary;
+};
+type OrbitRequestType = variant {
+  EditPermission;
+  ConfigureExternalCanister;
+  ChangeExternalCanister;
+  AddUser;
+  EditAccount;
+  RemoveUser;
+  Other : text;
+  AddRequestPolicy;
 };
 type PaginationInput = record { offset : opt nat64; limit : opt nat64 };
 type PaginationInput_1 = record { offset : opt nat64; limit : opt nat16 };
@@ -505,7 +529,7 @@ type ProposalError = variant {
 };
 type ProposalStatus = variant { Active; Approved; Rejected; Expired };
 type ProposalStatus_1 = variant { Active; Rejected; Executed; Expired };
-type ProposalType = variant { Transfer };
+type ProposalType = variant { Transfer; OrbitRequest : OrbitRequestType };
 type ProposalType_1 = variant {
   RemoveMember;
   ChangePermissions;
@@ -627,34 +651,35 @@ type RestoreExternalCanisterOperationInput = record {
 };
 type Result = variant { Ok : SubmitRequestResult; Err : text };
 type Result_1 = variant { Ok : vec SecurityCheck; Err : text };
-type Result_10 = variant { Ok : GovernanceStats; Err : text };
-type Result_11 = variant { Ok : vec principal; Err : text };
-type Result_12 = variant { Ok : vec TokenInfo; Err : text };
-type Result_13 = variant { Ok : nat64; Err : text };
-type Result_14 = variant { Ok : GetExternalCanisterResult; Err : text };
-type Result_15 = variant { Ok : vec SimpleRequest; Err : text };
-type Result_16 = variant { Ok : SystemInfoResponse; Err : text };
-type Result_17 = variant { Ok : ProposalConfig; Err : text };
-type Result_18 = variant { Ok : Permission; Err : text };
-type Result_19 = variant { Ok : vec text; Err : text };
+type Result_10 = variant { Ok : CanisterStatusResponse; Err : text };
+type Result_11 = variant { Ok : GovernanceStats; Err : text };
+type Result_12 = variant { Ok : vec principal; Err : text };
+type Result_13 = variant { Ok : vec TokenInfo; Err : text };
+type Result_14 = variant { Ok : nat64; Err : text };
+type Result_15 = variant { Ok : GetExternalCanisterResult; Err : text };
+type Result_16 = variant { Ok : vec SimpleRequest; Err : text };
+type Result_17 = variant { Ok : SystemInfoResponse; Err : text };
+type Result_18 = variant { Ok : ProposalConfig; Err : text };
+type Result_19 = variant { Ok : Permission; Err : text };
 type Result_2 = variant { Ok : BackendStatusCheck; Err : text };
-type Result_20 = variant { Ok : vec OrbitRequestSummary; Err : text };
-type Result_21 = variant { Ok : VotingThresholds; Err : text };
-type Result_22 = variant { Ok : bool; Err : text };
-type Result_23 = variant { Ok : ListAccountsResult; Err : text };
-type Result_24 = variant { Ok : ListExternalCanistersResult; Err : text };
-type Result_25 = variant { Ok : ListOrbitRequestsResponse; Err : text };
-type Result_26 = variant { Ok : vec Permission; Err : text };
-type Result_27 = variant { Ok : EnhancedSecurityDashboard; Err : text };
-type Result_28 = variant { Ok; Err : text };
-type Result_29 = variant { Ok; Err : ProposalError };
+type Result_20 = variant { Ok : vec text; Err : text };
+type Result_21 = variant { Ok : vec OrbitRequestSummary; Err : text };
+type Result_22 = variant { Ok : VotingThresholds; Err : text };
+type Result_23 = variant { Ok : bool; Err : text };
+type Result_24 = variant { Ok : ListAccountsResult; Err : text };
+type Result_25 = variant { Ok : ListExternalCanistersResult; Err : text };
+type Result_26 = variant { Ok : ListOrbitRequestsResponse; Err : text };
+type Result_27 = variant { Ok : vec Permission; Err : text };
+type Result_28 = variant { Ok : EnhancedSecurityDashboard; Err : text };
+type Result_29 = variant { Ok; Err : text };
 type Result_3 = variant { Ok : nat32; Err : text };
+type Result_30 = variant { Ok; Err : ProposalError };
 type Result_4 = variant { Ok : text; Err : text };
 type Result_5 = variant { Ok : CreateAccountResponse; Err : text };
 type Result_6 = variant { Ok : nat64; Err : ProposalError };
-type Result_7 = variant { Ok : vec opt AccountBalance; Err : text };
-type Result_8 = variant { Ok : CanisterSnapshotsResult; Err : text };
-type Result_9 = variant { Ok : CanisterStatusResponse; Err : text };
+type Result_7 = variant { Ok : nat64; Err : text };
+type Result_8 = variant { Ok : vec opt AccountBalance; Err : text };
+type Result_9 = variant { Ok : CanisterSnapshotsResult; Err : text };
 type SecurityCheck = record {
   status : CheckStatus;
   name : text;
@@ -841,7 +866,25 @@ service : () -> {
   create_treasury_transfer_proposal : (principal, TransferDetails) -> (
       Result_6,
     );
-  fetch_orbit_account_balances : (principal, vec text) -> (Result_7);
+  // Auto-create proposal when a new Orbit request is detected
+  // Call this whenever list_orbit_requests finds a new request without a proposal
+  // 
+  // INTEGRATION NOTE: This should be called by:
+  // 1. Frontend after fetching requests (call ensure_proposals_for_requests)
+  // 2. Backend hooks when requests are created (future enhancement)
+  // 3. Periodic cleanup job (future enhancement)
+  // 
+  // RACE CONDITION FIX: Performs atomic check-and-insert to prevent
+  // concurrent calls from creating duplicate proposals
+  ensure_proposal_for_request : (principal, text, OrbitRequestType) -> (
+      Result_6,
+    );
+  // Auto-create proposals for multiple requests (bulk operation)
+  // Used by list_orbit_requests to ensure all requests have proposals
+  ensure_proposals_for_requests : (principal, vec record { text; text }) -> (
+      vec Result_7,
+    );
+  fetch_orbit_account_balances : (principal, vec text) -> (Result_8);
   fund_orbit_canister_request : (
       principal,
       FundExternalCanisterOperationInput,
@@ -861,32 +904,36 @@ service : () -> {
   // 
   // Security: Validates principals and that the token is registered before
   // making inter-canister calls.
-  get_canister_snapshots : (principal, principal) -> (Result_8);
-  get_canister_status : (principal) -> (Result_9);
+  get_canister_snapshots : (principal, principal) -> (Result_9);
+  get_canister_status : (principal) -> (Result_10);
   get_default_voting_thresholds : () -> (VotingThresholds) query;
-  get_governance_stats : (principal) -> (Result_10) query;
-  get_high_vp_members : (principal, nat64) -> (Result_11);
+  get_governance_stats : (principal) -> (Result_11) query;
+  get_high_vp_members : (principal, nat64) -> (Result_12);
   get_kong_locker_factory_principal : () -> (principal) query;
   get_my_kong_locker_canister : () -> (opt principal) query;
-  get_my_locked_tokens : () -> (Result_12);
-  get_my_voting_power_for_token : (principal) -> (Result_13);
-  get_orbit_canister : (principal, principal) -> (Result_14);
+  get_my_locked_tokens : () -> (Result_13);
+  get_my_voting_power_for_token : (principal) -> (Result_14);
+  get_orbit_canister : (principal, principal) -> (Result_15);
+  // Get proposal for a specific Orbit request
+  get_orbit_request_proposal : (principal, text) -> (
+      opt OrbitRequestProposal,
+    ) query;
   // EXPERIMENTAL: Ultra-simple request fetching - returns basic info only
-  get_orbit_requests_simple : () -> (Result_15);
+  get_orbit_requests_simple : () -> (Result_16);
   get_orbit_station_for_token : (principal) -> (opt principal) query;
-  get_orbit_system_info : (principal) -> (Result_16);
-  get_proposal_config : (principal, ProposalType) -> (Result_17) query;
+  get_orbit_system_info : (principal) -> (Result_17);
+  get_proposal_config : (principal, ProposalType) -> (Result_18) query;
   // Get specific permission details
   // 
   // Fetches a single permission by resource type from Orbit Station.
-  get_station_permission : (principal, Resource) -> (Result_18);
-  get_transfer_requests : (principal) -> (Result_19);
+  get_station_permission : (principal, Resource) -> (Result_19);
+  get_transfer_requests : (principal) -> (Result_20);
   // Get active proposal for a token (if any)
   get_treasury_proposal : (principal) -> (opt TreasuryProposal) query;
-  get_user_pending_requests : (principal, principal) -> (Result_20);
-  get_voting_thresholds : (principal) -> (Result_21) query;
+  get_user_pending_requests : (principal, principal) -> (Result_21);
+  get_voting_thresholds : (principal) -> (Result_22) query;
   has_proposal_passed : (principal, ProposalType, nat64, nat64, nat64) -> (
-      Result_22,
+      Result_23,
     ) query;
   health_check : () -> (text) query;
   initialize_default_thresholds : (principal) -> (Result_4);
@@ -899,19 +946,23 @@ service : () -> {
     ) query;
   list_all_orbit_stations : () -> (vec record { principal; principal }) query;
   list_orbit_accounts : (principal, opt text, opt nat64, opt nat64) -> (
-      Result_23,
+      Result_24,
     );
-  list_orbit_canisters : (principal, ListExternalCanistersInput) -> (Result_24);
+  list_orbit_canisters : (principal, ListExternalCanistersInput) -> (Result_25);
+  // List all active proposals for a token
+  list_orbit_request_proposals : (principal) -> (
+      vec OrbitRequestProposal,
+    ) query;
   // List all requests from Orbit Station with domain filtering
   // 
   // This method acts as an admin proxy, allowing DAOPad to query
   // all requests regardless of user permissions.
-  list_orbit_requests : (principal, ListRequestsInput) -> (Result_25);
+  list_orbit_requests : (principal, ListRequestsInput) -> (Result_26);
   // List all permissions for a station (admin proxy)
   // 
   // Since Orbit restricts permission queries to admin users only, this backend method
   // acts as an admin proxy to fetch permissions on behalf of frontend users.
-  list_station_permissions : (principal, opt vec Resource) -> (Result_26);
+  list_station_permissions : (principal, opt vec Resource) -> (Result_27);
   monitor_orbit_canister_request : (
       principal,
       MonitorExternalCanisterOperationInput,
@@ -931,8 +982,8 @@ service : () -> {
   // This is the public-facing endpoint that frontend calls.
   // It combines perform_all_security_checks + build_dashboard to return
   // the full EnhancedSecurityDashboard with decentralization score.
-  perform_security_check : (principal) -> (Result_27);
-  propose_orbit_station_link : (principal, principal) -> (Result_13);
+  perform_security_check : (principal) -> (Result_28);
+  propose_orbit_station_link : (principal, principal) -> (Result_14);
   prune_orbit_canister_snapshots_request : (
       principal,
       PruneExternalCanisterOperationInput,
@@ -953,19 +1004,15 @@ service : () -> {
       text,
       opt text,
     ) -> (Result);
-  // Submit approval decision for a request
-  submit_request_approval : (
-      principal,
-      text,
-      RequestApprovalStatus,
-      opt text,
-    ) -> (Result_28);
   unregister_kong_locker : () -> (Result_4);
-  validate_account_name : (principal, text) -> (Result_22);
-  vote_on_orbit_proposal : (nat64, bool) -> (Result_28);
+  validate_account_name : (principal, text) -> (Result_23);
+  vote_on_orbit_proposal : (nat64, bool) -> (Result_29);
+  // Vote on ANY Orbit request (not just treasury transfers)
+  // When threshold is reached, executes immediately by approving the Orbit request.
+  vote_on_orbit_request : (principal, text, bool) -> (Result_30);
   // Vote on a treasury proposal
   // 
   // When threshold is reached, executes immediately by approving the Orbit request.
   // Follows the same pattern as orbit_link.rs vote_on_proposal.
-  vote_on_treasury_proposal : (nat64, bool) -> (Result_29);
+  vote_on_treasury_proposal : (nat64, bool) -> (Result_30);
 }
