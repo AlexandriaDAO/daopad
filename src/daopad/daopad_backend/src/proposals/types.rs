@@ -47,10 +47,41 @@ pub struct TreasuryProposal {
     pub status: ProposalStatus,
 }
 
+/// Generic Orbit request proposal (for ALL non-treasury Orbit operations)
+/// Used for governance over: AddUser, EditAccount, ChangeCanister, etc.
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct OrbitRequestProposal {
+    pub id: ProposalId,
+    pub token_canister_id: Principal,
+    pub orbit_request_id: String,
+    pub request_type: OrbitRequestType,
+    pub proposer: Principal,
+    pub created_at: u64,
+    pub expires_at: u64,
+    pub yes_votes: u64,
+    pub no_votes: u64,
+    pub total_voting_power: u64,
+    pub voter_count: u32,
+    pub status: ProposalStatus,
+}
+
 #[derive(CandidType, Deserialize, Clone, Debug, PartialEq)]
 pub enum ProposalType {
     Transfer,
-    // Future: AddMember, RemoveMember, etc.
+    OrbitRequest(OrbitRequestType),
+}
+
+/// Categorize different Orbit request types for governance
+#[derive(CandidType, Deserialize, Clone, Debug, PartialEq)]
+pub enum OrbitRequestType {
+    EditAccount,
+    AddUser,
+    RemoveUser,
+    ChangeExternalCanister,
+    ConfigureExternalCanister,
+    EditPermission,
+    AddRequestPolicy,
+    Other(String),
 }
 
 #[derive(CandidType, Deserialize, Clone, Debug, PartialEq)]

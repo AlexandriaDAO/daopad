@@ -1,70 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
-import { Info, Loader2 } from 'lucide-react';
+import { Info } from 'lucide-react';
 
-export default function VotingTierDisplay({ tokenId, identity, kongLockerActor }) {
-  const [votingPower, setVotingPower] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (tokenId && identity && kongLockerActor) {
-      loadVotingPower();
-    }
-  }, [tokenId, identity, kongLockerActor]);
-
-  async function loadVotingPower() {
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Query Kong Locker for user's voting power
-      const userPrincipal = identity.getPrincipal();
-
-      // Placeholder - in real implementation, query Kong Locker
-      // const result = await kongLockerActor.get_user_voting_power(tokenId, userPrincipal);
-
-      // For now, set to 0
-      setVotingPower(0);
-    } catch (err) {
-      console.error('Failed to load voting power:', err);
-      setError(err.message || 'Failed to load voting power');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="p-6 flex items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="text-destructive text-sm">Error: {error}</div>
-        </CardContent>
-      </Card>
-    );
-  }
-
+export default function VotingTierDisplay() {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Liquid Democracy Voting</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="text-3xl font-bold">
-          {votingPower.toLocaleString()} VP
-        </div>
-
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>

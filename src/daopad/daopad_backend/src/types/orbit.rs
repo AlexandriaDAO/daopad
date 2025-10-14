@@ -1065,7 +1065,10 @@ pub struct ListUsersInput {
     pub paginate: Option<PaginationInput>,
 }
 
-// Full UserDTO with all fields (used by get_user and other endpoints)
+/// Full UserDTO with all user fields
+///
+/// Used by get_user and other endpoints that need complete user data including
+/// group memberships, identities, and modification timestamps.
 #[derive(CandidType, Deserialize, Serialize, Debug)]
 pub struct UserDTO {
     pub id: String,
@@ -1076,8 +1079,14 @@ pub struct UserDTO {
     pub last_modification_timestamp: String,
 }
 
-// Minimal UserDTO used by list_permissions response
-// CRITICAL: Field order must match: id, status, name (verified 2025-10-14)
+/// Minimal UserDTO used by list_permissions response
+///
+/// **Important**: This differs from full `UserDTO` - Orbit's `list_permissions` endpoint
+/// returns only basic user info (id, status, name) without groups/identities/timestamps.
+///
+/// **CRITICAL**: Field order must match Orbit's exact response: id, status, name
+///
+/// Last verified: 2025-10-14
 #[derive(CandidType, Deserialize, Serialize, Debug)]
 pub struct UserDTOMinimal {
     pub id: String,

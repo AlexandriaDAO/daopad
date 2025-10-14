@@ -697,36 +697,8 @@ pub async fn list_orbit_requests(
     parse_list_requests_response(raw_bytes)
 }
 
-/// Submit approval decision for a request
-#[update]
-pub async fn submit_request_approval(
-    token_canister_id: Principal,
-    request_id: String,
-    decision: RequestApprovalStatus,
-    reason: Option<String>,
-) -> Result<(), String> {
-    let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations
-            .borrow()
-            .get(&StorablePrincipal(token_canister_id))
-            .map(|s| s.0)
-            .ok_or_else(|| "No Orbit Station linked to this token".to_string())
-    })?;
-
-    let input = SubmitRequestApprovalInput {
-        request_id,
-        decision,
-        reason,
-    };
-
-    let args = encode_args((input,)).map_err(|e| format!("Failed to encode Orbit request: {e}"))?;
-
-    let raw_bytes = call_raw(station_id, "submit_request_approval", args, 0)
-        .await
-        .map_err(|(code, msg)| format!("IC call failed: ({:?}, {})", code, msg))?;
-
-    parse_submit_response(raw_bytes)
-}
+// ❌ REMOVED: submit_request_approval - replaced by liquid democracy voting
+// All Orbit requests now go through vote_on_orbit_request in proposals/orbit_requests.rs
 
 // Simple types for experimental endpoint
 #[derive(CandidType, Deserialize, Clone, Debug)]

@@ -15,7 +15,7 @@ export default function PermissionsTable({ stationId, actor }) {
     if (stationId && actor) {
       loadPermissions();
     }
-  }, [stationId, actor, category]);
+  }, [stationId, actor]); // Only reload when stationId or actor changes, filtering is client-side
 
   async function loadPermissions() {
     if (!actor || !stationId) {
@@ -29,16 +29,29 @@ export default function PermissionsTable({ stationId, actor }) {
 
     try {
       // Call backend to get permissions (backend acts as admin proxy)
-      const result = await actor.list_station_permissions(stationId, []);
+      // Pass null instead of [] for Option<Vec<Resource>>
+      const result = await actor.list_station_permissions(stationId, null);
 
-      if (result && result.length > 0) {
-        const permsArray = Array.isArray(result[0]) ? result[0] : result;
-        setPermissions(permsArray);
+      // Backend returns Result<Vec<Permission>, String>
+      // Handle Rust Result type: { Ok: [...] } or { Err: "error" }
+      if (result.Ok !== undefined) {
+        setPermissions(result.Ok);
+      } else if (result.Err !== undefined) {
+        setError(result.Err);
+        setPermissions([]);
+      } else if (Array.isArray(result)) {
+        // Fallback for direct array response
+        setPermissions(result);
+      } else if (result && Array.isArray(result[0])) {
+        // Fallback for nested array response
+        setPermissions(result[0]);
       } else {
         setPermissions([]);
       }
     } catch (err) {
       console.error('Failed to load permissions:', err);
+      // Log full error for debugging type mismatches
+      console.error('Full error details:', JSON.stringify(err));
       setError(err.message || 'Failed to load permissions');
       setPermissions([]);
     } finally {

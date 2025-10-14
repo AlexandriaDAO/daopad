@@ -56,4 +56,18 @@ thread_local! {
     // Key: (ProposalId, Voter Principal)
     // Allows efficient double-vote prevention without storing full voter sets in proposals
     pub static PROPOSAL_VOTES: RefCell<BTreeMap<(ProposalId, StorablePrincipal), VoteChoice>> = RefCell::new(BTreeMap::new());
+
+    // Generic Orbit request proposal storage (volatile - expires in 7 days)
+    // IMPORTANT: Using regular BTreeMap (not stable memory) since proposals are temporary
+    //
+    // DESIGN: Multiple active proposals per token (key = (token_id, orbit_request_id))
+    // This allows voting on different request types concurrently (e.g., AddUser + EditPermission)
+    // Unlike treasury proposals which are limited to one per token, different operations can
+    // proceed simultaneously through the governance process.
+    pub static ORBIT_REQUEST_PROPOSALS: RefCell<BTreeMap<(StorablePrincipal, String), crate::proposals::types::OrbitRequestProposal>> = RefCell::new(BTreeMap::new());
+
+    // Vote tracking for Orbit request proposals
+    // Key: (ProposalId, Voter Principal)
+    // Separate from PROPOSAL_VOTES to keep concerns separated and enable independent evolution
+    pub static ORBIT_REQUEST_VOTES: RefCell<BTreeMap<(ProposalId, StorablePrincipal), VoteChoice>> = RefCell::new(BTreeMap::new());
 }

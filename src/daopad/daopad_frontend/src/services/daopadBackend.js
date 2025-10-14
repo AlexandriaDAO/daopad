@@ -359,68 +359,52 @@ export class DAOPadBackendService {
     }
   }
 
-  async approveOrbitRequest(tokenCanisterId, requestId) {
+  // ❌ REMOVED: approveOrbitRequest, rejectOrbitRequest, batchApproveRequests
+  // Replaced by liquid democracy voting system
+
+  async voteOnOrbitRequest(tokenCanisterId, requestId, vote) {
     try {
       const actor = await this.getActor();
-      const result = await actor.submit_request_approval(
+      const result = await actor.vote_on_orbit_request(
         tokenCanisterId,
         requestId,
-        { Approved: null },
-        [],
+        vote, // boolean: true = Yes, false = No
       );
       if ('Ok' in result) {
         return { success: true };
+      } else {
+        return { success: false, error: result.Err };
       }
-      return { success: false, error: orbitErrorMessage(result.Err) };
     } catch (error) {
-      console.error('Failed to approve orbit request:', error);
+      console.error('Failed to vote on orbit request:', error);
       return { success: false, error: error.message };
     }
   }
 
-  async rejectOrbitRequest(tokenCanisterId, requestId) {
+  async getOrbitRequestProposal(tokenCanisterId, requestId) {
     try {
       const actor = await this.getActor();
-      const result = await actor.submit_request_approval(
+      const result = await actor.get_orbit_request_proposal(
         tokenCanisterId,
         requestId,
-        { Rejected: null },
-        [],
       );
-      if ('Ok' in result) {
-        return { success: true };
-      }
-      return { success: false, error: orbitErrorMessage(result.Err) };
+
+      // Returns Option<OrbitRequestProposal>
+      return { success: true, data: result[0] || null };
     } catch (error) {
-      console.error('Failed to reject orbit request:', error);
+      console.error('Failed to get orbit request proposal:', error);
       return { success: false, error: error.message };
     }
   }
 
-  async batchApproveRequests(tokenCanisterId, requestIds) {
+  async listOrbitRequestProposals(tokenCanisterId) {
     try {
       const actor = await this.getActor();
-      const outcomes = [];
-      for (const requestId of requestIds) {
-        try {
-          const response = await actor.submit_request_approval(
-            tokenCanisterId,
-            requestId,
-            { Approved: null },
-            [],
-          );
-          if ('Ok' in response) {
-            outcomes.push(`✓ ${requestId}: approved`);
-          } else {
-            outcomes.push(`✗ ${requestId}: ${orbitErrorMessage(response.Err)}`);
-          }
-        } catch (err) {
-          outcomes.push(`✗ ${requestId}: ${err.message || 'approval failed'}`);
-        }
-      }
-      return { success: true, data: outcomes };
+      const result = await actor.list_orbit_request_proposals(tokenCanisterId);
+
+      return { success: true, data: result };
     } catch (error) {
-      console.error('Failed to batch approve requests:', error);
+      console.error('Failed to list orbit request proposals:', error);
       return { success: false, error: error.message };
     }
   }
