@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -14,13 +14,7 @@ const RequestPoliciesView = ({ stationId }) => {
     const [viewMode, setViewMode] = useState('grouped'); // 'grouped' or 'list'
     const [expandedCategories, setExpandedCategories] = useState(new Set());
 
-    useEffect(() => {
-        if (stationId) {
-            fetchPolicies();
-        }
-    }, [stationId]);
-
-    const fetchPolicies = async () => {
+    const fetchPolicies = useCallback(async () => {
         if (!identity) {
             console.log('No identity available');
             setLoading(false);
@@ -53,7 +47,13 @@ const RequestPoliciesView = ({ stationId }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [identity, stationId]);
+
+    useEffect(() => {
+        if (stationId && identity) {
+            fetchPolicies();
+        }
+    }, [stationId, identity, fetchPolicies]);
 
     const groupPoliciesByCategory = (policies) => {
         const categories = {
