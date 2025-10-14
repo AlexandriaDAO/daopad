@@ -5,7 +5,6 @@ import { Shield, Users, BarChart3, FileText, Settings } from 'lucide-react';
 import {
   VotingTierDisplay,
   PermissionRequestHelper,
-  VotingAnalytics,
   PermissionsTable,
   UserGroupsList
 } from '../components/permissions';
@@ -58,11 +57,10 @@ const PermissionsPage = ({ tokenId, stationId, identity }) => {
 
       {/* Main Tabs */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="permissions">Permissions</TabsTrigger>
           <TabsTrigger value="groups">User Groups</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="tools">Tools</TabsTrigger>
         </TabsList>
 
@@ -112,11 +110,6 @@ const PermissionsPage = ({ tokenId, stationId, identity }) => {
         {/* User Groups Tab */}
         <TabsContent value="groups" className="space-y-4">
           <UserGroupsList stationId={stationId} actor={actor} />
-        </TabsContent>
-
-        {/* Analytics Tab */}
-        <TabsContent value="analytics" className="space-y-4">
-          <VotingAnalytics tokenId={tokenId} actor={actor} />
         </TabsContent>
 
         {/* Tools Tab */}
