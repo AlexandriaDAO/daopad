@@ -106,12 +106,12 @@ const PermissionsPage = ({ tokenId, stationId, identity }) => {
 
         {/* Permissions Tab */}
         <TabsContent value="permissions" className="space-y-4">
-          <PermissionsTable tokenId={tokenId} actor={actor} />
+          <PermissionsTable stationId={stationId} actor={actor} />
         </TabsContent>
 
         {/* User Groups Tab */}
         <TabsContent value="groups" className="space-y-4">
-          <UserGroupsList tokenId={tokenId} actor={actor} />
+          <UserGroupsList stationId={stationId} actor={actor} />
         </TabsContent>
 
         {/* Analytics Tab */}
