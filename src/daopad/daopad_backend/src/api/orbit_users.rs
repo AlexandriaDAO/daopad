@@ -97,12 +97,37 @@ pub async fn create_remove_admin_request(
         .await
         .map_err(|e| format!("Failed to create request: {:?}", e))?;
 
-    // 5. Return request ID or error
+    // 5. Handle result and auto-create proposal for governance
     match result.0 {
         CreateRequestResult::Ok(response) => {
-            // NOTE: ensure_proposal_for_request will be called by frontend
-            // to auto-create the DAOPad proposal for voting
-            Ok(response.request.id)
+            let request_id = response.request.id;
+
+            // CRITICAL: Auto-create DAOPad proposal for community voting
+            // This ensures ALL admin removal requests go through governance
+            use crate::proposals::{ensure_proposal_for_request, OrbitRequestType};
+
+            match ensure_proposal_for_request(
+                token_canister_id,
+                request_id.clone(),
+                OrbitRequestType::EditUser,
+            ).await {
+                Ok(proposal_id) => {
+                    ic_cdk::println!(
+                        "Admin removal governance: Orbit request {} → DAOPad proposal {:?}",
+                        request_id, proposal_id
+                    );
+                    Ok(request_id)
+                },
+                Err(e) => {
+                    // Proposal creation failed but Orbit request exists
+                    // This violates governance requirements
+                    Err(format!(
+                        "GOVERNANCE VIOLATION: Orbit request {} created but proposal failed: {:?}. \
+                         Request exists in Orbit Station but cannot be voted on.",
+                        request_id, e
+                    ))
+                }
+            }
         },
         CreateRequestResult::Err(e) => Err(format!("Orbit error: {}", e.code)),
     }

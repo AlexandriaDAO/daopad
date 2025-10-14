@@ -58,7 +58,7 @@ export default function AdminRemovalActions({ tokenId, stationId, identity }) {
 
             if (result.success) {
                 toast.success('Proposal Created', {
-                    description: `Admin removal request created for ${user.name}. Request ID: ${result.requestId}. Community voting has begun.`
+                    description: `Admin removal proposal created for ${user.name}. Vote in the Governance tab. Request ID: ${result.requestId}`
                 });
 
                 // Refresh user list

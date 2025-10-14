@@ -288,15 +288,63 @@ pub async fn ensure_proposal_for_request(
 // ============================================================================
 
 /// Infer request type from Orbit operation type string
+/// Maps all 33 Orbit operation types to typed enum variants
 pub fn infer_request_type(operation_type: &str) -> OrbitRequestType {
     match operation_type {
+        // Treasury
+        "Transfer" => OrbitRequestType::Transfer,
+        "AddAccount" => OrbitRequestType::AddAccount,
         "EditAccount" => OrbitRequestType::EditAccount,
+
+        // Users
         "AddUser" => OrbitRequestType::AddUser,
+        "EditUser" => OrbitRequestType::EditUser,
         "RemoveUser" => OrbitRequestType::RemoveUser,
-        "ChangeExternalCanister" => OrbitRequestType::ChangeExternalCanister,
+
+        // Groups
+        "AddUserGroup" => OrbitRequestType::AddUserGroup,
+        "EditUserGroup" => OrbitRequestType::EditUserGroup,
+        "RemoveUserGroup" => OrbitRequestType::RemoveUserGroup,
+
+        // Canisters
+        "CreateExternalCanister" => OrbitRequestType::CreateExternalCanister,
         "ConfigureExternalCanister" => OrbitRequestType::ConfigureExternalCanister,
+        "ChangeExternalCanister" => OrbitRequestType::ChangeExternalCanister,
+        "CallExternalCanister" => OrbitRequestType::CallExternalCanister,
+        "FundExternalCanister" => OrbitRequestType::FundExternalCanister,
+        "MonitorExternalCanister" => OrbitRequestType::MonitorExternalCanister,
+        "SnapshotExternalCanister" => OrbitRequestType::SnapshotExternalCanister,
+        "RestoreExternalCanister" => OrbitRequestType::RestoreExternalCanister,
+        "PruneExternalCanister" => OrbitRequestType::PruneExternalCanister,
+
+        // System
+        "SystemUpgrade" => OrbitRequestType::SystemUpgrade,
+        "SystemRestore" => OrbitRequestType::SystemRestore,
+        "SetDisasterRecovery" => OrbitRequestType::SetDisasterRecovery,
+        "ManageSystemInfo" => OrbitRequestType::ManageSystemInfo,
+
+        // Governance
         "EditPermission" => OrbitRequestType::EditPermission,
         "AddRequestPolicy" => OrbitRequestType::AddRequestPolicy,
+        "EditRequestPolicy" => OrbitRequestType::EditRequestPolicy,
+        "RemoveRequestPolicy" => OrbitRequestType::RemoveRequestPolicy,
+
+        // Assets
+        "AddAsset" => OrbitRequestType::AddAsset,
+        "EditAsset" => OrbitRequestType::EditAsset,
+        "RemoveAsset" => OrbitRequestType::RemoveAsset,
+
+        // Rules
+        "AddNamedRule" => OrbitRequestType::AddNamedRule,
+        "EditNamedRule" => OrbitRequestType::EditNamedRule,
+        "RemoveNamedRule" => OrbitRequestType::RemoveNamedRule,
+
+        // Address Book
+        "AddAddressBookEntry" => OrbitRequestType::AddAddressBookEntry,
+        "EditAddressBookEntry" => OrbitRequestType::EditAddressBookEntry,
+        "RemoveAddressBookEntry" => OrbitRequestType::RemoveAddressBookEntry,
+
+        // Unknown
         _ => OrbitRequestType::Other(operation_type.to_string()),
     }
 }
