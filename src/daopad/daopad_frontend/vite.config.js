@@ -14,6 +14,10 @@ export default defineConfig({
     // Add rollup options for better code splitting
     rollupOptions: {
       output: {
+        // Add timestamp to chunk names for better cache busting
+        entryFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
+        chunkFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
+        assetFileNames: `assets/[name]-[hash]-${Date.now()}[extname]`,
         manualChunks: {
           // Split vendor code
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
