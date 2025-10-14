@@ -119,9 +119,8 @@ export default function AccountSetupDialog({ open, onOpenChange, onAccountCreate
       const result = await station.createAccount(accountRequest);
 
       if (result.success) {
-        toast({
-          title: 'Account Created',
-          description: `Account "${data.name}" has been created successfully.`,
+        toast.success('Account Created', {
+          description: `Account "${data.name}" has been created successfully.`
         });
         form.reset();
         onOpenChange(false);
@@ -133,10 +132,8 @@ export default function AccountSetupDialog({ open, onOpenChange, onAccountCreate
       }
     } catch (error) {
       console.error('Error creating account:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Account Creation Failed',
-        description: error.message || 'Failed to create account',
+      toast.error('Account Creation Failed', {
+        description: error.message || 'Failed to create account'
       });
     } finally {
       setIsSubmitting(false);

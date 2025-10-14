@@ -139,10 +139,8 @@ export default function AssetDialog({ open, onOpenChange, asset, mode, onSaved }
       onSaved?.();
     } catch (error) {
       console.error('Failed to save asset:', error);
-      toast({
-        variant: 'destructive',
-        title: isCreateMode ? 'Failed to Create Asset' : 'Failed to Update Asset',
-        description: error.message || 'An unexpected error occurred',
+      toast.error(isCreateMode ? 'Failed to Create Asset' : 'Failed to Update Asset', {
+        description: error.message || 'An unexpected error occurred'
       });
     } finally {
       setIsSubmitting(false);

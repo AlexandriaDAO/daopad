@@ -109,10 +109,8 @@ export default function ExternalCanisterDialog({ open, onOpenChange, canister, m
   const handleVerifyCanister = async () => {
     const canisterId = form.getValues('canister_id');
     if (!canisterId) {
-      toast({
-        variant: 'destructive',
-        title: 'Invalid Canister ID',
-        description: 'Please enter a valid canister ID',
+      toast.error('Invalid Canister ID', {
+        description: 'Please enter a valid canister ID'
       });
       return;
     }
@@ -185,10 +183,8 @@ export default function ExternalCanisterDialog({ open, onOpenChange, canister, m
       onSaved?.();
     } catch (error) {
       console.error('Failed to save external canister:', error);
-      toast({
-        variant: 'destructive',
-        title: isCreateMode ? 'Registration Failed' : 'Update Failed',
-        description: error.message || 'An unexpected error occurred',
+      toast.error(isCreateMode ? 'Registration Failed' : 'Update Failed', {
+        description: error.message || 'An unexpected error occurred'
       });
     } finally {
       setIsSubmitting(false);

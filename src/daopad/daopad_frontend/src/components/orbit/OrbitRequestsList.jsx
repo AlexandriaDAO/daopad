@@ -84,26 +84,21 @@ export default function OrbitRequestsList({ tokenId, identity }) {
       const result = await backend.approveTransferRequest(requestId, tokenId);
 
       if (result.success) {
-        toast({
-          title: "Approval Submitted",
-          description: "Your approval has been recorded.",
+        toast.success("Approval Submitted", {
+          description: "Your approval has been recorded."
         });
 
         // Refresh requests
         fetchRequests();
       } else {
-        toast({
-          title: "Approval Failed",
-          description: result.error || "Could not submit approval",
-          variant: "destructive",
+        toast.error("Approval Failed", {
+          description: result.error || "Could not submit approval"
         });
       }
     } catch (err) {
       console.error('Error approving request:', err);
-      toast({
-        title: "Error",
-        description: "Failed to approve request",
-        variant: "destructive",
+      toast.error("Error", {
+        description: "Failed to approve request"
       });
     } finally {
       setApprovingId(null);
@@ -118,26 +113,21 @@ export default function OrbitRequestsList({ tokenId, identity }) {
       const result = await backend.rejectTransferRequest(requestId, tokenId);
 
       if (result.success) {
-        toast({
-          title: "Rejection Submitted",
-          description: "Your rejection has been recorded.",
+        toast.success("Rejection Submitted", {
+          description: "Your rejection has been recorded."
         });
 
         // Refresh requests
         fetchRequests();
       } else {
-        toast({
-          title: "Rejection Failed",
-          description: result.error || "Could not submit rejection",
-          variant: "destructive",
+        toast.error("Rejection Failed", {
+          description: result.error || "Could not submit rejection"
         });
       }
     } catch (err) {
       console.error('Error rejecting request:', err);
-      toast({
-        title: "Error",
-        description: "Failed to reject request",
-        variant: "destructive",
+      toast.error("Error", {
+        description: "Failed to reject request"
       });
     } finally {
       setRejectingId(null);

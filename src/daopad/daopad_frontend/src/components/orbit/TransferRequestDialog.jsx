@@ -85,9 +85,7 @@ export default function TransferRequestDialog({
 
     // Check voting power requirement before setting submitting state
     if (votingPower < MIN_VOTING_POWER_FOR_PROPOSALS) {
-        toast({
-          variant: 'destructive',
-          title: 'Insufficient Voting Power',
+        toast.error('Insufficient Voting Power', {
           description: `You need at least ${MIN_VOTING_POWER_FOR_PROPOSALS.toLocaleString()} VP to create transfer proposals. Current: ${votingPower.toLocaleString()} VP`
         });
         return;
@@ -121,8 +119,7 @@ export default function TransferRequestDialog({
       );
 
       if (result.success) {
-        toast({
-          title: 'Transfer Proposal Created',
+        toast.success('Transfer Proposal Created', {
           description: 'Community can now vote on this transfer request'
         });
         onOpenChange(false);

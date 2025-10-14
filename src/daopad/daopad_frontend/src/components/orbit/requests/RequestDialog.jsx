@@ -96,8 +96,7 @@ export function RequestDialog({ open, requestId, onClose, onApproved }) {
         comment: approvalComment || null
       });
 
-      toast({
-        title: 'Request approved',
+      toast.success('Request approved', {
         description: 'Your approval has been recorded'
       });
 
@@ -109,10 +108,8 @@ export function RequestDialog({ open, requestId, onClose, onApproved }) {
       }
     } catch (error) {
       console.error('Approval error:', error);
-      toast({
-        title: 'Approval failed',
-        description: error.message || 'Failed to approve request',
-        variant: 'destructive'
+      toast.error('Approval failed', {
+        description: error.message || 'Failed to approve request'
       });
     } finally {
       setIsApproving(false);
@@ -129,8 +126,7 @@ export function RequestDialog({ open, requestId, onClose, onApproved }) {
         reason: rejectionReason || 'Request rejected'
       });
 
-      toast({
-        title: 'Request rejected',
+      toast.success('Request rejected', {
         description: 'The request has been rejected'
       });
 
@@ -140,10 +136,8 @@ export function RequestDialog({ open, requestId, onClose, onApproved }) {
       onClose();
     } catch (error) {
       console.error('Rejection error:', error);
-      toast({
-        title: 'Rejection failed',
-        description: error.message || 'Failed to reject request',
-        variant: 'destructive'
+      toast.error('Rejection failed', {
+        description: error.message || 'Failed to reject request'
       });
     } finally {
       setIsRejecting(false);

@@ -120,18 +120,15 @@ export default function TransferDialog({ open, onOpenChange, account, asset, onT
 
       const response = await station.createTransfer(transferRequest);
 
-      toast({
-        title: 'Transfer Request Created',
-        description: `Request #${response.request_id} has been submitted for approval.`,
+      toast.success('Transfer Request Created', {
+        description: `Request #${response.request_id} has been submitted for approval.`
       });
 
       onTransferComplete?.();
     } catch (error) {
       console.error('Failed to create transfer:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Transfer Failed',
-        description: error.message || 'An unexpected error occurred',
+      toast.error('Transfer Failed', {
+        description: error.message || 'An unexpected error occurred'
       });
     } finally {
       setIsSubmitting(false);
