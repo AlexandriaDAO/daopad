@@ -109,7 +109,17 @@ export default function PermissionsTable({ stationId, actor }) {
 
   const filteredPermissions = filterPermissionsByCategory(category);
 
-  // Early return for no actor
+  // Show loading state first (while actor/stationId are initializing)
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-6 w-6 animate-spin" />
+        <span className="ml-2">Loading permissions...</span>
+      </div>
+    );
+  }
+
+  // After loading is done, check if we have required data
   if (!actor) {
     return (
       <Card>
@@ -124,7 +134,6 @@ export default function PermissionsTable({ stationId, actor }) {
     );
   }
 
-  // Early return for no stationId
   if (!stationId) {
     return (
       <Card>
@@ -136,15 +145,6 @@ export default function PermissionsTable({ stationId, actor }) {
           </Alert>
         </CardContent>
       </Card>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin" />
-        <span className="ml-2">Loading permissions...</span>
-      </div>
     );
   }
 
