@@ -4,6 +4,7 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Loader2 } from 'lucide-react';
+import { Principal } from '@dfinity/principal';
 
 export default function PermissionsTable({ stationId, actor }) {
   const [permissions, setPermissions] = useState([]);
@@ -45,7 +46,12 @@ export default function PermissionsTable({ stationId, actor }) {
     try {
       console.log('[PermissionsTable] Calling list_station_permissions...');
 
-      const result = await actor.list_station_permissions(stationId, []);
+      // Convert string to Principal if needed
+      const stationPrincipal = typeof stationId === 'string'
+        ? Principal.fromText(stationId)
+        : stationId;
+
+      const result = await actor.list_station_permissions(stationPrincipal, []);
 
       console.log('[PermissionsTable] Raw result:', result);
       console.log('[PermissionsTable] Result type:', typeof result, Array.isArray(result));
