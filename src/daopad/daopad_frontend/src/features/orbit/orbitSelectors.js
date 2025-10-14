@@ -74,12 +74,33 @@ export const selectFormattedAccounts = createSelector(
         { symbol: tokenSymbol || '' }
       );
 
+      // Build assets array from balance data
+      // Orbit accounts have assets associated with them
+      const assets = account.assets || [];
+
+      // If we have balance data but no assets array, construct one
+      // This ensures the transfer dialog has the asset info it needs
+      const assetsWithBalance = assets.length > 0
+        ? assets.map(asset => ({
+            ...asset,
+            // Add balance if this asset matches
+            balance: asset.id === balanceData.asset_id ? balanceData.balance : asset.balance,
+            decimals: asset.id === balanceData.asset_id ? (balanceData.decimals || 8) : asset.decimals
+          }))
+        : balanceData.asset_id ? [{
+            id: balanceData.asset_id,
+            symbol: balanceData.symbol || tokenSymbol || 'TOKEN',
+            decimals: balanceData.decimals || 8,
+            balance: balanceData.balance
+          }] : [];
+
       return {
         ...account,
         balance: balanceData.balance, // Keep raw BigInt
         decimals: balanceData.decimals || 8,
         balanceFloat,
         balanceFormatted,
+        assets: assetsWithBalance, // Ensure assets array is populated
       };
     });
   }

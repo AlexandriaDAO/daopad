@@ -69,28 +69,53 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
   };
 
   const handleTransfer = (account) => {
-    // Extract asset info from the account's balance
-    // Accounts have assets array, we'll use the first asset for now
-    const asset = account.assets && account.assets.length > 0 ? account.assets[0] : null;
+    console.group('🔍 Transfer Button Clicked');
+    console.log('Account data:', JSON.stringify(account, null, 2));
 
-    // Validate we have required asset data before opening dialog
-    const assetToUse = asset || {
-      id: account.assetId || '',
-      symbol: tokenSymbol || 'TOKEN',
-      decimals: account.decimals || 8
-    };
-
-    if (!assetToUse.id) {
-      toast.error('Missing Asset Information', {
-        description: 'Cannot create transfer request without asset details. Please try refreshing the account data.'
+    // Validate account structure
+    if (!account.id) {
+      console.error('❌ Account missing ID');
+      toast.error('Invalid Account', {
+        description: 'Account data is malformed. Please refresh the page.'
       });
+      console.groupEnd();
       return;
     }
 
+    // Get assets from account
+    const assets = account.assets || [];
+    console.log(`Found ${assets.length} assets on account`);
+
+    if (assets.length === 0) {
+      console.error('❌ No assets found on account');
+      toast.error('No Assets Available', {
+        description: 'This account has no assets to transfer. Please add assets first.'
+      });
+      console.groupEnd();
+      return;
+    }
+
+    // Use first asset (could be enhanced to show asset picker)
+    const asset = assets[0];
+    console.log('Selected asset:', JSON.stringify(asset, null, 2));
+
+    // Validate asset has required fields
+    if (!asset.id || !asset.symbol) {
+      console.error('❌ Asset missing required fields (id or symbol)');
+      toast.error('Invalid Asset Data', {
+        description: `Asset is missing required information. ID: ${asset.id || 'missing'}, Symbol: ${asset.symbol || 'missing'}`
+      });
+      console.groupEnd();
+      return;
+    }
+
+    console.log('✅ Validation passed, opening transfer dialog');
+    console.groupEnd();
+
     setTransferDialog({
       open: true,
-      account: account,
-      asset: assetToUse
+      account,
+      asset
     });
   };
 

@@ -80,28 +80,39 @@ export default function TransferRequestDialog({
   });
 
   const handleSubmit = async (data) => {
-    // Clear error state first before any validation
+    console.group('🚀 Transfer Proposal Submission');
+    console.log('Form data:', JSON.stringify(data, null, 2));
+    console.log('Account:', JSON.stringify(account, null, 2));
+    console.log('Asset:', JSON.stringify(asset, null, 2));
+    console.log('Token ID:', tokenId);
+    console.log('User voting power:', votingPower);
+
     setError('');
 
-    // Check voting power requirement before setting submitting state
+    // Voting power check
     if (votingPower < MIN_VOTING_POWER_FOR_PROPOSALS) {
-        toast.error('Insufficient Voting Power', {
-          description: `You need at least ${MIN_VOTING_POWER_FOR_PROPOSALS.toLocaleString()} VP to create transfer proposals. Current: ${votingPower.toLocaleString()} VP`
-        });
-        return;
-      }
+      console.error(`❌ Insufficient VP: ${votingPower} < ${MIN_VOTING_POWER_FOR_PROPOSALS}`);
+      toast.error('Insufficient Voting Power', {
+        description: `You need at least ${MIN_VOTING_POWER_FOR_PROPOSALS.toLocaleString()} VP to create transfer proposals. Current: ${votingPower.toLocaleString()} VP`
+      });
+      console.groupEnd();
+      return;
+    }
 
-      setIsSubmitting(true);
+    setIsSubmitting(true);
 
-      try {
+    try {
+      console.log('📡 Creating backend service...');
       const backend = new DAOPadBackendService(identity);
 
-      // Convert amount to smallest units (use Math.floor to prevent floating point precision errors)
+      // Convert amount
+      console.log('💰 Converting amount:', data.amount, 'with decimals:', asset.decimals);
       const amountInSmallest = BigInt(
         Math.floor(parseFloat(data.amount) * Math.pow(10, asset.decimals))
       );
+      console.log('Amount in smallest units:', amountInSmallest.toString());
 
-      // Create transfer details for treasury proposal
+      // Build transfer details
       const transferDetails = {
         from_account_id: account.id,
         from_asset_id: asset.id,
@@ -112,29 +123,58 @@ export default function TransferRequestDialog({
         description: data.description
       };
 
-      // Call the treasury proposal endpoint
+      console.log('📦 Transfer details:', JSON.stringify({
+        ...transferDetails,
+        amount: amountInSmallest.toString() // BigInt can't stringify
+      }, null, 2));
+
+      // Validate UUIDs before sending
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(transferDetails.from_account_id)) {
+        throw new Error(`Invalid account ID format: ${transferDetails.from_account_id}`);
+      }
+      if (!uuidRegex.test(transferDetails.from_asset_id)) {
+        throw new Error(`Invalid asset ID format: ${transferDetails.from_asset_id}`);
+      }
+      console.log('✅ UUID validation passed');
+
+      // Make backend call
+      console.log('🌐 Calling backend.createTreasuryTransferProposal...');
       const result = await backend.createTreasuryTransferProposal(
         Principal.fromText(tokenId),
         transferDetails
       );
 
+      console.log('📥 Backend response:', JSON.stringify(result, null, 2));
+
       if (result.success) {
+        console.log('✅ Proposal created successfully');
         toast.success('Transfer Proposal Created', {
           description: 'Community can now vote on this transfer request'
         });
         onOpenChange(false);
         if (onSuccess) onSuccess();
-
-        // Reset form
         form.reset();
       } else {
         throw new Error(result.error || 'Failed to create proposal');
       }
     } catch (err) {
-      console.error('Error creating transfer proposal:', err);
-      setError(err.message || 'An unexpected error occurred');
+      console.error('❌ Error creating transfer proposal:', err);
+      console.error('Error stack:', err.stack);
+
+      // Extract meaningful error message
+      let errorMessage = 'An unexpected error occurred';
+      if (err.message) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
+      toast.error('Transfer Proposal Failed', {
+        description: errorMessage
+      });
     } finally {
       setIsSubmitting(false);
+      console.groupEnd();
     }
   };
 

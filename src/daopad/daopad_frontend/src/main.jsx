@@ -7,6 +7,15 @@ import IIProvider from './providers/AuthProvider/IIProvider';
 import ErrorBoundary from './components/errors/ErrorBoundary';
 import './globals.css';
 
+// Import testing utilities (exposes window.testTransferFlow)
+import './utils/mainnetTesting';
+
+// Expose Redux store for testing on mainnet
+if (import.meta.env.VITE_DFX_NETWORK === 'ic') {
+  window.__REDUX_STORE__ = store;
+  console.log('🧪 Testing utilities available: window.testTransferFlow()');
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary level="app">
