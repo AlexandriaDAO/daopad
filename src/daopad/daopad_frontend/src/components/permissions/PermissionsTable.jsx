@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -6,45 +6,51 @@ import { Alert, AlertDescription } from '../ui/alert';
 import { Loader2 } from 'lucide-react';
 import { Principal } from '@dfinity/principal';
 
+// Debug flag - set to false in production
+const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERMISSIONS;
+
 export default function PermissionsTable({ stationId, actor }) {
   const [permissions, setPermissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('treasury');
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    // FIX: Always call loadPermissions, let it handle missing actor/stationId
-    loadPermissions();
-  }, [stationId, actor]);
+  const loadPermissions = useCallback(async (cancelled = { current: false }) => {
+    // Add debug logging
+    if (DEBUG) {
+      console.log('[PermissionsTable] Starting load...', {
+        hasActor: !!actor,
+        hasStationId: !!stationId,
+        stationId: stationId?.toString()
+      });
+    }
 
-  async function loadPermissions() {
-    // ADD: Comprehensive console logging
-    console.log('[PermissionsTable] Starting load...', {
-      hasActor: !!actor,
-      hasStationId: !!stationId,
-      stationId: stationId?.toString()
-    });
-
-    // FIX: Check and set error state instead of silent failure
+    // Check and set error state instead of silent failure
     if (!actor) {
-      console.error('[PermissionsTable] No actor - cannot load');
-      setError('Wallet not connected or backend unavailable');
-      setLoading(false);
+      if (DEBUG) console.error('[PermissionsTable] No actor - cannot load');
+      if (!cancelled.current) {
+        setError('Wallet not connected or backend unavailable');
+        setLoading(false);
+      }
       return;
     }
 
     if (!stationId) {
-      console.error('[PermissionsTable] No stationId provided');
-      setError('No station ID - select a token first');
-      setLoading(false);
+      if (DEBUG) console.error('[PermissionsTable] No stationId provided');
+      if (!cancelled.current) {
+        setError('No station ID - select a token first');
+        setLoading(false);
+      }
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    if (!cancelled.current) {
+      setLoading(true);
+      setError(null);
+    }
 
     try {
-      console.log('[PermissionsTable] Calling list_station_permissions...');
+      if (DEBUG) console.log('[PermissionsTable] Calling list_station_permissions...');
 
       // Convert string to Principal if needed
       const stationPrincipal = typeof stationId === 'string'
@@ -53,47 +59,67 @@ export default function PermissionsTable({ stationId, actor }) {
 
       const result = await actor.list_station_permissions(stationPrincipal, []);
 
-      console.log('[PermissionsTable] Raw result:', result);
-      console.log('[PermissionsTable] Result type:', typeof result, Array.isArray(result));
+      if (cancelled.current) return;
+
+      if (DEBUG) {
+        console.log('[PermissionsTable] Raw result:', result);
+        console.log('[PermissionsTable] Result type:', typeof result, Array.isArray(result));
+      }
 
       if (result.Ok !== undefined) {
-        console.log('[PermissionsTable] Success! Loaded', result.Ok.length, 'permissions');
+        if (DEBUG) console.log('[PermissionsTable] Success! Loaded', result.Ok.length, 'permissions');
         setPermissions(result.Ok);
       } else if (result.Err !== undefined) {
-        console.error('[PermissionsTable] Backend error:', result.Err);
+        if (DEBUG) console.error('[PermissionsTable] Backend error:', result.Err);
         setError(result.Err);
         setPermissions([]);
       } else if (Array.isArray(result)) {
         // Fallback for direct array response
-        console.log('[PermissionsTable] Direct array result with', result.length, 'permissions');
+        if (DEBUG) console.log('[PermissionsTable] Direct array result with', result.length, 'permissions');
         setPermissions(result);
       } else if (result && Array.isArray(result[0])) {
         // Fallback for nested array response
-        console.log('[PermissionsTable] Nested array result with', result[0].length, 'permissions');
+        if (DEBUG) console.log('[PermissionsTable] Nested array result with', result[0].length, 'permissions');
         setPermissions(result[0]);
       } else {
-        console.error('[PermissionsTable] Unexpected result format:', result);
+        if (DEBUG) console.error('[PermissionsTable] Unexpected result format:', result);
         setError('Unexpected response format from backend');
         setPermissions([]);
       }
     } catch (err) {
-      console.error('[PermissionsTable] Exception caught:', err);
-      console.error('[PermissionsTable] Error message:', err.message);
-      console.error('[PermissionsTable] Error stack:', err.stack);
+      if (cancelled.current) return;
+
+      if (DEBUG) {
+        console.error('[PermissionsTable] Exception caught:', err);
+        console.error('[PermissionsTable] Error message:', err.message);
+        console.error('[PermissionsTable] Error stack:', err.stack);
+      }
       setError(`Failed to load: ${err.message}`);
       setPermissions([]);
     } finally {
-      setLoading(false);
-      console.log('[PermissionsTable] Load complete');
+      if (!cancelled.current) {
+        setLoading(false);
+        if (DEBUG) console.log('[PermissionsTable] Load complete');
+      }
     }
-  }
+  }, [actor, stationId]);
 
-  function filterPermissionsByCategory(category) {
-    return permissions.filter(perm => {
+  useEffect(() => {
+    const cancelled = { current: false };
+
+    loadPermissions(cancelled);
+
+    return () => {
+      cancelled.current = true;
+    };
+  }, [loadPermissions]);
+
+  const filterPermissionsByCategory = useCallback((categoryToFilter, perms) => {
+    return perms.filter(perm => {
       const resource = perm.resource;
       if (!resource) return false;
 
-      switch (category) {
+      switch (categoryToFilter) {
         case 'treasury':
           return resource.Account || resource.Asset;
         case 'canisters':
@@ -106,10 +132,27 @@ export default function PermissionsTable({ stationId, actor }) {
           return false;
       }
     });
-  }
+  }, []);
 
-  const filteredPermissions = filterPermissionsByCategory(category);
-  const countByCategory = (cat) => filterPermissionsByCategory(cat).length;
+  // Memoize filtered permissions
+  const filteredPermissions = useMemo(
+    () => filterPermissionsByCategory(category, permissions),
+    [category, permissions, filterPermissionsByCategory]
+  );
+
+  // Memoize category counts to avoid recalculation
+  const categoryCounts = useMemo(() => ({
+    treasury: filterPermissionsByCategory('treasury', permissions).length,
+    canisters: filterPermissionsByCategory('canisters', permissions).length,
+    users: filterPermissionsByCategory('users', permissions).length,
+    system: filterPermissionsByCategory('system', permissions).length,
+  }), [permissions, filterPermissionsByCategory]);
+
+  // Retry handler
+  const handleRetry = useCallback(() => {
+    const cancelled = { current: false };
+    loadPermissions(cancelled);
+  }, [loadPermissions]);
 
   // Show loading spinner
   if (loading) {
@@ -129,13 +172,13 @@ export default function PermissionsTable({ stationId, actor }) {
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
-          <Button onClick={loadPermissions} className="mt-4">Retry</Button>
+          <Button onClick={handleRetry} className="mt-4">Retry</Button>
         </CardContent>
       </Card>
     );
   }
 
-  // CHANGE: Replace internal tabs with filter buttons
+  // Main permissions view
   return (
     <Card>
       <CardHeader>
@@ -152,28 +195,28 @@ export default function PermissionsTable({ stationId, actor }) {
             onClick={() => setCategory('treasury')}
             size="sm"
           >
-            Treasury ({countByCategory('treasury')})
+            Treasury ({categoryCounts.treasury})
           </Button>
           <Button
             variant={category === 'canisters' ? 'default' : 'outline'}
             onClick={() => setCategory('canisters')}
             size="sm"
           >
-            Canisters ({countByCategory('canisters')})
+            Canisters ({categoryCounts.canisters})
           </Button>
           <Button
             variant={category === 'users' ? 'default' : 'outline'}
             onClick={() => setCategory('users')}
             size="sm"
           >
-            Users ({countByCategory('users')})
+            Users ({categoryCounts.users})
           </Button>
           <Button
             variant={category === 'system' ? 'default' : 'outline'}
             onClick={() => setCategory('system')}
             size="sm"
           >
-            System ({countByCategory('system')})
+            System ({categoryCounts.system})
           </Button>
         </div>
 
@@ -184,9 +227,14 @@ export default function PermissionsTable({ stationId, actor }) {
           </div>
         ) : (
           <div className="space-y-2">
-            {filteredPermissions.map((perm, index) => (
-              <PermissionRow key={index} permission={perm} />
-            ))}
+            {filteredPermissions.map((perm) => {
+              // Create a stable key from permission data
+              const resourceType = perm.resource ? Object.keys(perm.resource)[0] : 'unknown';
+              const authScope = perm.allow?.auth_scope ? Object.keys(perm.allow.auth_scope)[0] : 'unknown';
+              const key = `${resourceType}-${authScope}-${JSON.stringify(perm.allow?.users || [])}-${JSON.stringify(perm.allow?.user_groups || [])}`;
+
+              return <PermissionRow key={key} permission={perm} />;
+            })}
           </div>
         )}
       </CardContent>
@@ -198,7 +246,7 @@ export default function PermissionsTable({ stationId, actor }) {
 function PermissionRow({ permission }) {
   const resourceName = getResourceName(permission.resource);
   const authScope = getAuthScope(permission.allow);
-  const groups = permission.allow.user_groups || [];
+  const groups = permission?.allow?.user_groups || [];
 
   return (
     <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors">
