@@ -16,6 +16,7 @@ import {
 import { selectFormattedAccounts } from '@/features/orbit/orbitSelectors';
 import TransferRequestDialog from '../orbit/TransferRequestDialog';
 import { useToast } from '@/hooks/use-toast';
+import { safeStringify, debugLog } from '@/utils/logging';
 
 export default function AccountsTable({ stationId, identity, tokenId, tokenSymbol, votingPower }) {
   const { toast } = useToast();
@@ -69,28 +70,67 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
   };
 
   const handleTransfer = (account) => {
-    // Extract asset info from the account's balance
-    // Accounts have assets array, we'll use the first asset for now
-    const asset = account.assets && account.assets.length > 0 ? account.assets[0] : null;
+    debugLog('🔍 Transfer Button Clicked', () => {
+      console.log('Account data:', safeStringify(account));
+    });
 
-    // Validate we have required asset data before opening dialog
-    const assetToUse = asset || {
-      id: account.assetId || '',
-      symbol: tokenSymbol || 'TOKEN',
-      decimals: account.decimals || 8
-    };
-
-    if (!assetToUse.id) {
-      toast.error('Missing Asset Information', {
-        description: 'Cannot create transfer request without asset details. Please try refreshing the account data.'
+    // Validate account structure
+    if (!account.id) {
+      console.error('❌ Account missing ID');
+      toast.error('Invalid Account', {
+        description: 'Account data is malformed. Please refresh the page.'
       });
       return;
     }
 
+    // Get assets from account
+    const assets = account.assets || [];
+
+    debugLog('Asset Validation', () => {
+      console.log(`Found ${assets.length} assets on account`);
+    });
+
+    if (assets.length === 0) {
+      console.error('❌ No assets found on account');
+      toast.error('No Assets Available', {
+        description: 'This account has no assets to transfer. Please add assets first.'
+      });
+      return;
+    }
+
+    // Use first asset (could be enhanced to show asset picker)
+    const asset = assets[0];
+
+    debugLog('Asset Selection', () => {
+      console.log('Selected asset:', safeStringify(asset));
+    });
+
+    // Normalize asset structure: Orbit returns asset_id, we need id
+    const normalizedAsset = {
+      id: asset.id || asset.asset_id,
+      symbol: asset.symbol || tokenSymbol || 'TOKEN',
+      decimals: asset.decimals || 8,
+      balance: asset.balance
+    };
+
+    // Validate asset has required ID
+    if (!normalizedAsset.id) {
+      console.error('❌ Asset missing ID:', asset);
+      toast.error('Invalid Asset Data', {
+        description: 'Asset is missing required ID. Please refresh the account data.'
+      });
+      return;
+    }
+
+    debugLog('Transfer Dialog Opening', () => {
+      console.log('✅ Normalized asset:', safeStringify(normalizedAsset));
+      console.log('✅ Validation passed, opening transfer dialog');
+    });
+
     setTransferDialog({
       open: true,
-      account: account,
-      asset: assetToUse
+      account,
+      asset: normalizedAsset
     });
   };
 

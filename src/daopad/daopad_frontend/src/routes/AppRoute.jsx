@@ -236,17 +236,6 @@ function AppRoute() {
         </div>
       </header>
 
-      {/* Experimental Warning Banner */}
-      <div className="bg-yellow-50 border-b border-yellow-200">
-        <div className="container mx-auto px-4 py-3">
-          <Alert className="border-yellow-400 bg-transparent p-0 rounded-none">
-            <AlertDescription className="text-sm text-yellow-800">
-              <span className="font-semibold">⚠️ Experimental Product:</span> This platform is currently in testing. Feel free to explore and play around (everything's free!), but expect changes as we improve the system. No real funds are at risk during this experimental phase.
-            </AlertDescription>
-          </Alert>
-        </div>
-      </div>
-
     <main className="container mx-auto px-4 py-8">
       {isAuthenticated ? (
         shouldShowKongLockerSetup ? (
