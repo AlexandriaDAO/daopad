@@ -81,9 +81,7 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
     };
 
     if (!assetToUse.id) {
-      toast({
-        variant: 'destructive',
-        title: 'Missing Asset Information',
+      toast.error('Missing Asset Information', {
         description: 'Cannot create transfer request without asset details. Please try refreshing the account data.'
       });
       return;

@@ -114,16 +114,13 @@ export default function AssetsPage() {
   const handleDeleteAsset = async (asset) => {
     try {
       await station.removeAsset({ asset_id: asset.id });
-      toast({
-        title: 'Asset Removed',
-        description: `${asset.symbol} has been removed successfully.`,
+      toast.success('Asset Removed', {
+        description: `${asset.symbol} has been removed successfully.`
       });
       fetchAssets(); // Refresh data
     } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: 'Failed to Remove Asset',
-        description: err.message || 'An error occurred while removing the asset.',
+      toast.error('Failed to Remove Asset', {
+        description: err.message || 'An error occurred while removing the asset.'
       });
     }
   };
@@ -131,11 +128,10 @@ export default function AssetsPage() {
   const handleAssetSaved = () => {
     fetchAssets(); // Refresh data
     setIsAssetDialogOpen(false);
-    toast({
-      title: dialogMode === 'create' ? 'Asset Created' : 'Asset Updated',
+    toast.success(dialogMode === 'create' ? 'Asset Created' : 'Asset Updated', {
       description: dialogMode === 'create'
         ? 'New asset has been created successfully.'
-        : 'Asset has been updated successfully.',
+        : 'Asset has been updated successfully.'
     });
   };
 

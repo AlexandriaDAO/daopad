@@ -182,16 +182,13 @@ export function RequestsPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast({
-        title: 'Export successful',
+      toast.success('Export successful', {
         description: `Exported ${allRequests.length} requests to CSV`
       });
     } catch (error) {
       console.error('Export error:', error);
-      toast({
-        title: 'Export failed',
-        description: error.message || 'Failed to export requests',
-        variant: 'destructive'
+      toast.error('Export failed', {
+        description: error.message || 'Failed to export requests'
       });
     }
   }, [stationService, buildApiFilters, toast]);

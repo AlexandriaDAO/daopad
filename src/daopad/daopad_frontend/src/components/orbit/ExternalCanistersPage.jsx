@@ -114,11 +114,10 @@ export default function ExternalCanistersPage() {
   const handleCanisterSaved = () => {
     fetchCanisters(); // Refresh data
     setIsCanisterDialogOpen(false);
-    toast({
-      title: dialogMode === 'create' ? 'Canister Registered' : 'Canister Updated',
+    toast.success(dialogMode === 'create' ? 'Canister Registered' : 'Canister Updated', {
       description: dialogMode === 'create'
         ? 'External canister has been registered successfully.'
-        : 'Canister configuration has been updated.',
+        : 'Canister configuration has been updated.'
     });
   };
 
