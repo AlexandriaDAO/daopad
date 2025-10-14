@@ -608,12 +608,12 @@ pub enum ListPermissionsResult {
         // CRITICAL: Field order must match Orbit Station's exact response
         // Verified with: dfx canister --network ic call fec7w-zyaaa-aaaaa-qaffq-cai list_permissions '(record { resources = null; paginate = null; })'
         // Orbit returns: permissions, total, privileges, user_groups, users, next_offset
-        // Last verified: 2025-10-13
+        // Last verified: 2025-10-14
         permissions: Vec<Permission>,
         total: u64,
         privileges: Vec<PermissionCallerPrivileges>,
         user_groups: Vec<UserGroup>,
-        users: Vec<UserDTO>,
+        users: Vec<UserDTOMinimal>,
         next_offset: Option<u64>,
     },
     Err(Error),
@@ -1065,15 +1065,33 @@ pub struct ListUsersInput {
     pub paginate: Option<PaginationInput>,
 }
 
-// Updated UserDTO to match actual Orbit response
+/// Full UserDTO with all user fields
+///
+/// Used by get_user and other endpoints that need complete user data including
+/// group memberships, identities, and modification timestamps.
 #[derive(CandidType, Deserialize, Serialize, Debug)]
 pub struct UserDTO {
     pub id: String,
     pub name: String,
     pub status: UserStatus,
     pub groups: Vec<UserGroup>,
-    pub identities: Vec<Principal>, // Not wrapped in tuples
+    pub identities: Vec<Principal>,
     pub last_modification_timestamp: String,
+}
+
+/// Minimal UserDTO used by list_permissions response
+///
+/// **Important**: This differs from full `UserDTO` - Orbit's `list_permissions` endpoint
+/// returns only basic user info (id, status, name) without groups/identities/timestamps.
+///
+/// **CRITICAL**: Field order must match Orbit's exact response: id, status, name
+///
+/// Last verified: 2025-10-14
+#[derive(CandidType, Deserialize, Serialize, Debug)]
+pub struct UserDTOMinimal {
+    pub id: String,
+    pub status: UserStatus,
+    pub name: String,
 }
 
 // List user groups with search

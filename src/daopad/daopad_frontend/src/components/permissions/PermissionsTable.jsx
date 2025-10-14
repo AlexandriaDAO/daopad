@@ -29,8 +29,8 @@ export default function PermissionsTable({ stationId, actor }) {
 
     try {
       // Call backend to get permissions (backend acts as admin proxy)
-      // Pass null instead of [] for Option<Vec<Resource>>
-      const result = await actor.list_station_permissions(stationId, null);
+      // Pass [] for empty resources (gets all permissions)
+      const result = await actor.list_station_permissions(stationId, []);
 
       // Backend returns Result<Vec<Permission>, String>
       // Handle Rust Result type: { Ok: [...] } or { Err: "error" }
