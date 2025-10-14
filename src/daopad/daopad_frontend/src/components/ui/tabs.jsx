@@ -9,15 +9,16 @@ const TabsList = React.forwardRef(({ className, variant = "default", ...props },
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex h-10 items-center justify-center rounded-md p-1 text-muted-foreground",
+      "inline-flex h-10 items-center justify-center rounded-md text-muted-foreground",
 
       // Default variant - standard shadcn styling
-      variant === "default" && "bg-muted",
+      variant === "default" && "bg-muted p-1",
 
-      // Executive variant - subtle golden border
+      // Executive variant - subtle golden border with minimal padding
       variant === "executive" && [
         "bg-muted",
-        "border border-executive-gold/30"
+        "border border-executive-gold/30",
+        "p-0.5"
       ],
 
       className
