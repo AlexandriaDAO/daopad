@@ -30,6 +30,8 @@ pub use types::orbit::{
     CanisterSnapshot, CanisterSnapshotsInput, CanisterSnapshotsResponse, CanisterSnapshotsResult,
     // Permission types
     Permission, AuthScope,
+    // Request policies types
+    RequestPoliciesDetails, RequestPolicyInfo,
 };
 pub use types::{TokenInfo, VotingThresholds};
 

@@ -305,10 +305,42 @@ pub struct AccountCallerPrivileges {
 }
 
 // List accounts input/output
-#[derive(CandidType, Deserialize, Clone, Debug)]
+#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
 pub struct PaginationInput {
     pub limit: Option<u64>,
     pub offset: Option<u64>,
+}
+
+// Named Rule types for fetching human-readable rule names
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub struct NamedRule {
+    pub id: String,  // UUID
+    pub name: String,
+    pub rule: RequestPolicyRule,
+    pub description: Option<String>,
+}
+
+#[derive(CandidType, Deserialize)]
+pub enum ListNamedRulesResult {
+    Ok {
+        named_rules: Vec<NamedRule>,
+        next_offset: Option<u64>,
+        total: u64,
+        privileges: Vec<NamedRuleCallerPrivileges>,
+    },
+    Err(Error),
+}
+
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub struct NamedRuleCallerPrivileges {
+    pub id: String,  // UUID
+    pub can_edit: bool,
+    pub can_delete: bool,
+}
+
+#[derive(CandidType, Serialize)]
+pub struct ListNamedRulesInput {
+    pub paginate: Option<PaginationInput>,
 }
 
 #[derive(CandidType, Deserialize)]
@@ -1102,7 +1134,7 @@ pub struct ListUserGroupsInput {
 }
 
 // Request policies
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Serialize)]
 pub struct ListRequestPoliciesInput {
     pub limit: Option<u64>,
     pub offset: Option<u64>,
@@ -1174,4 +1206,21 @@ pub enum ListRequestPoliciesResult {
         next_offset: Option<u64>,
     },
     Err(Error),
+}
+
+// New types for Request Policies Details endpoint
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub struct RequestPolicyInfo {
+    pub operation: String,        // Human-readable operation name
+    pub approval_rule: String,     // Human-readable approval requirement
+    pub specifier: RequestSpecifier,  // Raw specifier for filtering
+    pub rule: RequestPolicyRule,      // Raw rule for analysis
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub struct RequestPoliciesDetails {
+    pub policies: Vec<RequestPolicyInfo>,
+    pub total_count: usize,
+    pub auto_approved_count: usize,
+    pub bypass_count: usize,
 }

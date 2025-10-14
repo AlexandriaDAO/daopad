@@ -10,6 +10,8 @@ use crate::types::orbit::{
     PermissionAction,
     SystemInfoResult,
     PaginationInput,
+    RequestPoliciesDetails, RequestPolicyInfo, RequestSpecifier,
+    ListNamedRulesResult, ListNamedRulesInput, NamedRule,
 };
 
 const ADMIN_GROUP_ID: &str = "00000000-0000-4000-8000-000000000000";
@@ -1350,6 +1352,216 @@ pub async fn perform_security_check(station_id: Principal) -> Result<EnhancedSec
 
     // Build dashboard with scoring and analysis
     build_dashboard(station_id, checks)
+}
+
+// ===== REQUEST POLICIES DETAILS ENDPOINT =====
+
+/// Get detailed request policies information with resolved rule names
+///
+/// Returns all request policies with human-readable operation names and approval rules
+#[ic_cdk::update]
+pub async fn get_request_policies_details(station_id: Principal) -> Result<RequestPoliciesDetails, String> {
+    // Fetch policies from Orbit
+    let policies = fetch_policies(station_id).await?;
+
+    // Fetch named rules to resolve names
+    let named_rules = fetch_named_rules(station_id).await?;
+
+    // Build response with resolved rule names
+    let mut policies_with_names = Vec::new();
+    let mut auto_approved_count = 0;
+    let mut bypass_count = 0;
+
+    for policy in &policies {
+        let rule_description = format_policy_rule(&policy.rule, &named_rules);
+
+        // Count auto-approved and bypass policies
+        let analysis = analyze_policy_rule(&policy.rule);
+        if analysis.is_auto_approved {
+            auto_approved_count += 1;
+        }
+        if analysis.has_bypass {
+            bypass_count += 1;
+        }
+
+        policies_with_names.push(RequestPolicyInfo {
+            operation: format_specifier(&policy.specifier),
+            approval_rule: rule_description,
+            specifier: policy.specifier.clone(),
+            rule: policy.rule.clone(),
+        });
+    }
+
+    Ok(RequestPoliciesDetails {
+        policies: policies_with_names,
+        total_count: policies.len(),
+        auto_approved_count,
+        bypass_count,
+    })
+}
+
+// Helper to fetch named rules
+async fn fetch_named_rules(station_id: Principal) -> Result<Vec<NamedRule>, String> {
+    let input = ListNamedRulesInput { paginate: None };
+
+    let result: Result<(ListNamedRulesResult,), _> = ic_cdk::call(station_id, "list_named_rules", (input,))
+        .await
+        .map_err(|e| format!("Failed to list named rules: {:?}", e));
+
+    match result {
+        Ok((response,)) => match response {
+            ListNamedRulesResult::Ok {
+                named_rules,
+                ..
+            } => Ok(named_rules),
+            ListNamedRulesResult::Err(err) => {
+                Err(format!("Orbit returned error: {:?}", err))
+            }
+        },
+        Err(e) => Err(e),
+    }
+}
+
+// Helper to format specifier for display
+fn format_specifier(spec: &RequestSpecifier) -> String {
+    match spec {
+        RequestSpecifier::Transfer(resource_spec) => {
+            format!("Transfer - {:?}", resource_spec)
+        },
+        RequestSpecifier::EditAccount(resource_spec) => {
+            format!("Edit Account - {:?}", resource_spec)
+        },
+        RequestSpecifier::AddUser => "Add User".to_string(),
+        RequestSpecifier::EditUser(resource_spec) => {
+            format!("Edit User - {:?}", resource_spec)
+        },
+        RequestSpecifier::RemoveUser => "Remove User".to_string(),
+        RequestSpecifier::AddAccount => "Add Account".to_string(),
+        RequestSpecifier::RemoveAccount => {
+            "Remove Account".to_string()
+        },
+        RequestSpecifier::AddAsset => "Add Asset".to_string(),
+        RequestSpecifier::EditAsset(resource_spec) => {
+            format!("Edit Asset - {:?}", resource_spec)
+        },
+        RequestSpecifier::RemoveAsset(resource_spec) => {
+            format!("Remove Asset - {:?}", resource_spec)
+        },
+        RequestSpecifier::ChangeExternalCanister(canister_id) => {
+            format!("Change External Canister - {:?}", canister_id)
+        },
+        RequestSpecifier::CreateExternalCanister => "Create External Canister".to_string(),
+        RequestSpecifier::CallExternalCanister(canister_id) => {
+            format!("Call External Canister - {:?}", canister_id)
+        },
+        RequestSpecifier::EditPermission(resource_spec) => {
+            format!("Edit Permission - {:?}", resource_spec)
+        },
+        RequestSpecifier::EditRequestPolicy(resource_spec) => {
+            format!("Edit Request Policy - {:?}", resource_spec)
+        },
+        RequestSpecifier::RemoveRequestPolicy(resource_spec) => {
+            format!("Remove Request Policy - {:?}", resource_spec)
+        },
+        RequestSpecifier::ManageSystemInfo => "Manage System Info".to_string(),
+        RequestSpecifier::AddUserGroup => "Add User Group".to_string(),
+        RequestSpecifier::RemoveUserGroup(resource_spec) => {
+            format!("Remove User Group - {:?}", resource_spec)
+        },
+        RequestSpecifier::AddNamedRule => "Add Named Rule".to_string(),
+        RequestSpecifier::EditNamedRule(resource_spec) => {
+            format!("Edit Named Rule - {:?}", resource_spec)
+        },
+        RequestSpecifier::RemoveNamedRule(resource_spec) => {
+            format!("Remove Named Rule - {:?}", resource_spec)
+        },
+        RequestSpecifier::EditAddressBookEntry(resource_spec) => {
+            format!("Edit Address Book Entry - {:?}", resource_spec)
+        },
+        RequestSpecifier::RemoveAddressBookEntry(resource_spec) => {
+            format!("Remove Address Book Entry - {:?}", resource_spec)
+        },
+        RequestSpecifier::FundExternalCanister(resource_spec) => {
+            format!("Fund External Canister - {:?}", resource_spec)
+        },
+        RequestSpecifier::SystemUpgrade => "System Upgrade".to_string(),
+        RequestSpecifier::AddRequestPolicy => "Add Request Policy".to_string(),
+        RequestSpecifier::EditUserGroup(resource_spec) => {
+            format!("Edit User Group - {:?}", resource_spec)
+        },
+        RequestSpecifier::AddAddressBookEntry => "Add Address Book Entry".to_string(),
+        RequestSpecifier::ChangeCanister => "Change Canister".to_string(),
+        RequestSpecifier::SetDisasterRecovery => "Set Disaster Recovery".to_string(),
+    }
+}
+
+// Helper to format policy rule with resolved named rules
+fn format_policy_rule(rule: &RequestPolicyRule, named_rules: &Vec<NamedRule>) -> String {
+    match rule {
+        RequestPolicyRule::AutoApproved => "No approval required (Auto-approved)".to_string(),
+        RequestPolicyRule::NamedRule(id) => {
+            // Find matching named rule
+            named_rules.iter()
+                .find(|r| &r.id == id)
+                .map(|r| r.name.clone())
+                .unwrap_or_else(|| format!("Named Rule ({})", id))
+        },
+        RequestPolicyRule::Quorum(quorum) => {
+            format!("{} approval(s) from {}",
+                quorum.min_approved,
+                format_user_specifier(&quorum.approvers))
+        },
+        RequestPolicyRule::QuorumPercentage(quorum) => {
+            format!("{}% approval from {}",
+                quorum.min_approved,
+                format_user_specifier(&quorum.approvers))
+        },
+        RequestPolicyRule::AllowListed => "Allowed for whitelisted addresses".to_string(),
+        RequestPolicyRule::AllowListedByMetadata(_metadata) => {
+            "Allowed by metadata whitelist".to_string()
+        },
+        RequestPolicyRule::AnyOf(rules) => {
+            let sub_rules: Vec<String> = rules.iter()
+                .map(|r| format_policy_rule(r, named_rules))
+                .collect();
+            format!("Any of: [{}]", sub_rules.join(", "))
+        },
+        RequestPolicyRule::AllOf(rules) => {
+            let sub_rules: Vec<String> = rules.iter()
+                .map(|r| format_policy_rule(r, named_rules))
+                .collect();
+            format!("All of: [{}]", sub_rules.join(", "))
+        },
+        RequestPolicyRule::Not(inner_rule) => {
+            format!("Not ({})", format_policy_rule(inner_rule, named_rules))
+        },
+    }
+}
+
+// Helper to format user specifier
+fn format_user_specifier(spec: &crate::types::orbit::UserSpecifier) -> String {
+    match spec {
+        crate::types::orbit::UserSpecifier::Any => "any user".to_string(),
+        crate::types::orbit::UserSpecifier::Id(user_ids) => {
+            if user_ids.len() == 1 {
+                "specific user".to_string()
+            } else {
+                format!("{} specific users", user_ids.len())
+            }
+        },
+        crate::types::orbit::UserSpecifier::Group(group_ids) => {
+            let group_names: Vec<String> = group_ids.iter().map(|id| {
+                if id == ADMIN_GROUP_ID {
+                    "Admin".to_string()
+                } else if id == OPERATOR_GROUP_ID {
+                    "Operator".to_string()
+                } else {
+                    format!("Group {}", &id[..8])
+                }
+            }).collect();
+            group_names.join(", ")
+        },
+    }
 }
 
 // ===== HELPER FUNCTIONS =====
