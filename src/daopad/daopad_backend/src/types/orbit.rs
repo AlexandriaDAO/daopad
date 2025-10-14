@@ -311,6 +311,36 @@ pub struct PaginationInput {
     pub offset: Option<u64>,
 }
 
+// Named Rule types for fetching human-readable rule names
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub struct NamedRule {
+    pub id: String,  // UUID
+    pub name: String,
+    pub rule: RequestPolicyRule,
+    pub description: Option<String>,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct ListNamedRulesResult {
+    pub Ok: Option<ListNamedRulesOk>,
+    pub Err: Option<Error>,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct ListNamedRulesOk {
+    pub named_rules: Vec<NamedRule>,
+    pub next_offset: Option<u64>,
+    pub total: u64,
+    pub privileges: Vec<NamedRuleCallerPrivileges>,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct NamedRuleCallerPrivileges {
+    pub id: String,  // UUID
+    pub can_edit: bool,
+    pub can_delete: bool,
+}
+
 #[derive(CandidType, Deserialize)]
 pub struct ListAccountsInput {
     pub search_term: Option<String>,
@@ -1174,4 +1204,21 @@ pub enum ListRequestPoliciesResult {
         next_offset: Option<u64>,
     },
     Err(Error),
+}
+
+// New types for Request Policies Details endpoint
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub struct RequestPolicyInfo {
+    pub operation: String,        // Human-readable operation name
+    pub approval_rule: String,     // Human-readable approval requirement
+    pub specifier: RequestSpecifier,  // Raw specifier for filtering
+    pub rule: RequestPolicyRule,      // Raw rule for analysis
+}
+
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub struct RequestPoliciesDetails {
+    pub policies: Vec<RequestPolicyInfo>,
+    pub total_count: usize,
+    pub auto_approved_count: usize,
+    pub bypass_count: usize,
 }

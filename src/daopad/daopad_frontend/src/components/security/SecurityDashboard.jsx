@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
+import { Button } from '../ui/button';
 import { AlertTriangle, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { OrbitSecurityService } from '../../services/backend/orbit/security/OrbitSecurityService';
 import DAOTransitionChecklist from './DAOTransitionChecklist';
+import RequestPoliciesView from './RequestPoliciesView';
 
 const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
     const [securityData, setSecurityData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [viewMode, setViewMode] = useState('user-friendly'); // 'user-friendly' or 'technical'
+    const [showPolicies, setShowPolicies] = useState(false);
     const [progressData, setProgressData] = useState({
         // Existing 8 checks
         admin_control: null,
@@ -141,6 +144,24 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
     // Security dashboard showing DAO transition checklist
     return (
         <div className="w-full space-y-4">
+            {/* Toggle button for request policies */}
+            <div className="flex justify-end">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPolicies(!showPolicies)}
+                >
+                    {showPolicies ? 'Hide' : 'Show'} Request Policies
+                </Button>
+            </div>
+
+            {/* Show request policies if toggled */}
+            {showPolicies && (
+                <RequestPoliciesView
+                    stationId={stationId}
+                />
+            )}
+
             <DAOTransitionChecklist
                 securityData={securityData}
                 stationId={stationId}

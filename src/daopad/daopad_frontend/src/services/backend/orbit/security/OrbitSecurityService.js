@@ -386,6 +386,40 @@ export class OrbitSecurityService extends BackendServiceBase {
       recommended_actions: [...new Set(recommendedActions)], // Deduplicate
     };
   }
+
+  /**
+   * Get detailed request policies information
+   * @param {string|Principal} stationId - Orbit Station ID
+   * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
+   */
+  async getRequestPoliciesDetails(stationId) {
+    try {
+      const actor = await this.getActor();
+      const stationPrincipal = this.toPrincipal(stationId);
+      const result = await actor.get_request_policies_details(stationPrincipal);
+
+      if ('Ok' in result) {
+        return {
+          success: true,
+          data: {
+            policies: result.Ok.policies.map(p => ({
+              operation: p.operation,
+              approval_rule: p.approval_rule,
+              specifier: p.specifier,
+              rule: p.rule
+            })),
+            total_count: result.Ok.total_count,
+            auto_approved_count: result.Ok.auto_approved_count,
+            bypass_count: result.Ok.bypass_count
+          }
+        };
+      }
+      return { success: false, error: result.Err };
+    } catch (error) {
+      console.error('Failed to get request policies details:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 export const getOrbitSecurityService = (identity) => {
