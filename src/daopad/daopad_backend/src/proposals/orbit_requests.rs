@@ -106,13 +106,14 @@ pub async fn vote_on_orbit_request(
     // Users depositing LP after proposal creation should be counted in threshold
     let current_total_vp = get_total_voting_power_for_token(token_id).await?;
 
-    // SECURITY: Reordered to prevent integer overflow (total_vp * 50 could overflow)
-    // Instead: total_vp / 100 * 50 (division first reduces magnitude)
-    let required_votes = current_total_vp / 100 * DEFAULT_THRESHOLD_PERCENT as u64;
+    // CONSISTENCY: Match treasury.rs calculation exactly (multiplication before division)
+    // This preserves precision: 12,345 * 50 / 100 = 6,172 (correct)
+    // vs division first: 12,345 / 100 * 50 = 6,150 (loses 22 votes = 0.18% error)
+    let required_votes = (current_total_vp * DEFAULT_THRESHOLD_PERCENT as u64) / 100;
 
-    // POLICY: >= allows execution at exact threshold (50% YES = execute)
-    // This matches treasury.rs pattern where majority-wins, ties execute
-    if proposal.yes_votes >= required_votes {
+    // POLICY: Strict majority (>) matches treasury.rs - requires MORE than 50%
+    // 50/50 tie does NOT execute, remains active for more votes
+    if proposal.yes_votes > required_votes {
         // Execute immediately - approve the Orbit request
         let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
             stations
@@ -134,14 +135,15 @@ pub async fn vote_on_orbit_request(
         });
 
         ic_cdk::println!(
-            "Orbit request {:?} executed! {} yes votes >= {} required",
+            "Orbit request {:?} executed! {} yes votes > {} required",
             proposal.id,
             proposal.yes_votes,
             required_votes
         );
-    } else if proposal.no_votes > (current_total_vp - required_votes) {
-        // POLICY: Rejected only when mathematically impossible to reach threshold
-        // > (not >=) ensures ties remain active, consistent with execution logic
+    } else if proposal.no_votes >= (current_total_vp - required_votes) {
+        // POLICY: Rejected when mathematically impossible to reach threshold
+        // Matches treasury.rs:275 - uses >= for consistency
+        // When no_votes >= (total - required), max possible yes = total - no_votes <= required
         let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
             stations
                 .borrow()
@@ -232,56 +234,53 @@ pub async fn ensure_proposals_for_requests(
 /// 1. Frontend after fetching requests (call ensure_proposals_for_requests)
 /// 2. Backend hooks when requests are created (future enhancement)
 /// 3. Periodic cleanup job (future enhancement)
+///
+/// RACE CONDITION FIX: Performs atomic check-and-insert to prevent
+/// concurrent calls from creating duplicate proposals
 #[update]
 pub async fn ensure_proposal_for_request(
     token_id: Principal,
     orbit_request_id: String,
     request_type: OrbitRequestType,
 ) -> Result<ProposalId, ProposalError> {
-    // Use caller as proposer (will be frontend or user who triggers this)
     let caller = ic_cdk::caller();
-
-    // Check if proposal already exists
-    let existing = ORBIT_REQUEST_PROPOSALS.with(|proposals| {
-        proposals
-            .borrow()
-            .get(&(StorablePrincipal(token_id), orbit_request_id.clone()))
-            .cloned()
-    });
-
-    if let Some(proposal) = existing {
-        return Ok(proposal.id);
-    }
-
-    // Create new proposal
-    let proposal_id = ProposalId::new();
     let now = time();
 
-    // Get total voting power
+    // Get total voting power BEFORE taking the borrow
+    // This avoids holding the borrow during async call
     let total_voting_power = get_total_voting_power_for_token(token_id).await?;
 
-    let proposal = OrbitRequestProposal {
-        id: proposal_id,
-        token_canister_id: token_id,
-        orbit_request_id: orbit_request_id.clone(),
-        request_type,
-        proposer: caller,
-        created_at: now,
-        expires_at: now + DEFAULT_VOTING_PERIOD_NANOS,
-        yes_votes: 0,
-        no_votes: 0,
-        total_voting_power,
-        voter_count: 0,
-        status: ProposalStatus::Active,
-    };
-
+    // ATOMIC: Check-and-insert within single borrow scope
+    // Prevents race condition where two calls both see "doesn't exist"
     ORBIT_REQUEST_PROPOSALS.with(|proposals| {
-        proposals
-            .borrow_mut()
-            .insert((StorablePrincipal(token_id), orbit_request_id), proposal);
-    });
+        let mut map = proposals.borrow_mut();
+        let key = (StorablePrincipal(token_id), orbit_request_id.clone());
 
-    Ok(proposal_id)
+        // If exists, return existing ID
+        if let Some(existing) = map.get(&key) {
+            return Ok(existing.id);
+        }
+
+        // Otherwise create new proposal atomically
+        let proposal_id = ProposalId::new();
+        let proposal = OrbitRequestProposal {
+            id: proposal_id,
+            token_canister_id: token_id,
+            orbit_request_id: orbit_request_id.clone(),
+            request_type,
+            proposer: caller,
+            created_at: now,
+            expires_at: now + DEFAULT_VOTING_PERIOD_NANOS,
+            yes_votes: 0,
+            no_votes: 0,
+            total_voting_power,
+            voter_count: 0,
+            status: ProposalStatus::Active,
+        };
+
+        map.insert(key, proposal);
+        Ok(proposal_id)
+    })
 }
 
 // ============================================================================

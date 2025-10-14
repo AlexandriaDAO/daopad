@@ -873,6 +873,9 @@ service : () -> {
   // 1. Frontend after fetching requests (call ensure_proposals_for_requests)
   // 2. Backend hooks when requests are created (future enhancement)
   // 3. Periodic cleanup job (future enhancement)
+  // 
+  // RACE CONDITION FIX: Performs atomic check-and-insert to prevent
+  // concurrent calls from creating duplicate proposals
   ensure_proposal_for_request : (principal, text, OrbitRequestType) -> (
       Result_6,
     );
