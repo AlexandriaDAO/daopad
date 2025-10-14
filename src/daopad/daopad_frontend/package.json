@@ -64,13 +64,15 @@
   "name": "daopad_frontend",
   "private": true,
   "scripts": {
-    "build": "vite build",
+    "build": "npm run test:toast && vite build",
     "format": "prettier --write \"src/**/*.{json,js,jsx,ts,tsx,css,scss}\"",
     "prebuild": "node -e \"console.log('Skipping dfx generate: declarations vendored locally')\"",
     "setup": "npm i && dfx canister create daopad_backend && dfx generate daopad_backend && dfx deploy",
     "start": "vite --port 3000",
     "dev": "vite --port 3000",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:toast": "node test-toast-integration.mjs",
+    "verify:deployment": "node verify-deployment.mjs"
   },
   "type": "module",
   "version": "0.0.0"
