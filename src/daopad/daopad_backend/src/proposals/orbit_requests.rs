@@ -102,9 +102,17 @@ pub async fn vote_on_orbit_request(
     });
 
     // 7. Check threshold and execute atomically
-    let required_votes = (proposal.total_voting_power * DEFAULT_THRESHOLD_PERCENT as u64) / 100;
+    // SECURITY: Recalculate total VP on each vote to prevent stale VP vulnerability
+    // Users depositing LP after proposal creation should be counted in threshold
+    let current_total_vp = get_total_voting_power_for_token(token_id).await?;
 
-    if proposal.yes_votes > required_votes {
+    // SECURITY: Reordered to prevent integer overflow (total_vp * 50 could overflow)
+    // Instead: total_vp / 100 * 50 (division first reduces magnitude)
+    let required_votes = current_total_vp / 100 * DEFAULT_THRESHOLD_PERCENT as u64;
+
+    // POLICY: >= allows execution at exact threshold (50% YES = execute)
+    // This matches treasury.rs pattern where majority-wins, ties execute
+    if proposal.yes_votes >= required_votes {
         // Execute immediately - approve the Orbit request
         let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
             stations
@@ -126,13 +134,14 @@ pub async fn vote_on_orbit_request(
         });
 
         ic_cdk::println!(
-            "Orbit request {:?} executed! {} yes votes > {} required",
+            "Orbit request {:?} executed! {} yes votes >= {} required",
             proposal.id,
             proposal.yes_votes,
             required_votes
         );
-    } else if proposal.no_votes >= (proposal.total_voting_power - required_votes) {
-        // Rejected - impossible to reach threshold
+    } else if proposal.no_votes > (current_total_vp - required_votes) {
+        // POLICY: Rejected only when mathematically impossible to reach threshold
+        // > (not >=) ensures ties remain active, consistent with execution logic
         let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
             stations
                 .borrow()
@@ -157,7 +166,8 @@ pub async fn vote_on_orbit_request(
 
         ic_cdk::println!("Orbit request {:?} rejected and cleaned up", proposal.id);
     } else {
-        // Still active - update vote counts
+        // Still active - update vote counts and refresh total VP
+        proposal.total_voting_power = current_total_vp;
         ORBIT_REQUEST_PROPOSALS.with(|proposals| {
             proposals
                 .borrow_mut()
@@ -195,14 +205,40 @@ pub fn list_orbit_request_proposals(token_id: Principal) -> Vec<OrbitRequestProp
     })
 }
 
+/// Auto-create proposals for multiple requests (bulk operation)
+/// Used by list_orbit_requests to ensure all requests have proposals
+#[update]
+pub async fn ensure_proposals_for_requests(
+    token_id: Principal,
+    requests: Vec<(String, String)>, // (request_id, operation_type)
+) -> Vec<Result<ProposalId, String>> {
+    let mut results = Vec::new();
+
+    for (request_id, operation_type) in requests {
+        let request_type = infer_request_type(&operation_type);
+        match ensure_proposal_for_request(token_id, request_id, request_type).await {
+            Ok(proposal_id) => results.push(Ok(proposal_id)),
+            Err(e) => results.push(Err(format!("{:?}", e))),
+        }
+    }
+
+    results
+}
+
 /// Auto-create proposal when a new Orbit request is detected
 /// Call this whenever list_orbit_requests finds a new request without a proposal
+///
+/// INTEGRATION NOTE: This should be called by:
+/// 1. Frontend after fetching requests (call ensure_proposals_for_requests)
+/// 2. Backend hooks when requests are created (future enhancement)
+/// 3. Periodic cleanup job (future enhancement)
 #[update]
 pub async fn ensure_proposal_for_request(
     token_id: Principal,
     orbit_request_id: String,
     request_type: OrbitRequestType,
 ) -> Result<ProposalId, ProposalError> {
+    // Use caller as proposer (will be frontend or user who triggers this)
     let caller = ic_cdk::caller();
 
     // Check if proposal already exists
@@ -251,6 +287,20 @@ pub async fn ensure_proposal_for_request(
 // ============================================================================
 // Internal helper functions
 // ============================================================================
+
+/// Infer request type from Orbit operation type string
+pub fn infer_request_type(operation_type: &str) -> OrbitRequestType {
+    match operation_type {
+        "EditAccount" => OrbitRequestType::EditAccount,
+        "AddUser" => OrbitRequestType::AddUser,
+        "RemoveUser" => OrbitRequestType::RemoveUser,
+        "ChangeExternalCanister" => OrbitRequestType::ChangeExternalCanister,
+        "ConfigureExternalCanister" => OrbitRequestType::ConfigureExternalCanister,
+        "EditPermission" => OrbitRequestType::EditPermission,
+        "AddRequestPolicy" => OrbitRequestType::AddRequestPolicy,
+        _ => OrbitRequestType::Other(operation_type.to_string()),
+    }
+}
 
 async fn approve_orbit_request_internal(
     station_id: Principal,
