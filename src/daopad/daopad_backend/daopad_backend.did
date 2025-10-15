@@ -572,6 +572,11 @@ type PruneExternalCanisterOperationInput = record {
   external_canister_id : text;
 };
 type Quorum = record { min_approved : nat16; approvers : UserSpecifier };
+type RelatedPermission = record {
+  groups : vec text;
+  resource_type : text;
+  resource_id : opt text;
+};
 type RemoveAddressBookEntryOperationInput = record {
   address_book_entry_id : text;
 };
@@ -758,6 +763,7 @@ type Result_8 = variant { Ok : vec opt AccountBalance; Err : text };
 type Result_9 = variant { Ok : CanisterSnapshotsResult; Err : text };
 type SecurityCheck = record {
   status : CheckStatus;
+  related_permissions : opt vec RelatedPermission;
   name : text;
   message : text;
   details : opt text;

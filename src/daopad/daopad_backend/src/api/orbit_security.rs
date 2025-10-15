@@ -37,6 +37,13 @@ pub enum Severity {
 }
 
 #[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
+pub struct RelatedPermission {
+    pub resource_type: String,
+    pub groups: Vec<String>,
+    pub resource_id: Option<String>,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
 pub struct SecurityCheck {
     pub category: String,
     pub name: String,
@@ -45,6 +52,7 @@ pub struct SecurityCheck {
     pub severity: Option<Severity>,
     pub details: Option<String>,
     pub recommendation: Option<String>,
+    pub related_permissions: Option<Vec<RelatedPermission>>,
 }
 
 #[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
@@ -357,6 +365,7 @@ fn check_admin_control_layer(users: &Vec<UserDTO>, backend_principal: Principal)
             severity: Some(Severity::Critical),
             details: None,
             recommendation: Some("Add DAOPad backend as admin user".to_string()),
+            related_permissions: None,
         });
         return checks;
     }
@@ -374,6 +383,7 @@ fn check_admin_control_layer(users: &Vec<UserDTO>, backend_principal: Principal)
             severity: Some(Severity::Critical),
             details: Some(format!("Backend principal: {}", backend_principal)),
             recommendation: Some("Add DAOPad backend principal to Admin group in Orbit Station".to_string()),
+            related_permissions: None,
         });
     } else {
         checks.push(SecurityCheck {
@@ -384,6 +394,7 @@ fn check_admin_control_layer(users: &Vec<UserDTO>, backend_principal: Principal)
             severity: Some(Severity::None),
             details: None,
             recommendation: None,
+            related_permissions: None,
         });
     }
 
@@ -398,6 +409,7 @@ fn check_admin_control_layer(users: &Vec<UserDTO>, backend_principal: Principal)
             severity: Some(Severity::Critical),
             details: Some(format!("Admin users: {}", admin_names.join(", "))),
             recommendation: Some("Remove non-backend admin users to ensure only community governance".to_string()),
+            related_permissions: None,
         });
     } else {
         checks.push(SecurityCheck {
@@ -408,6 +420,7 @@ fn check_admin_control_layer(users: &Vec<UserDTO>, backend_principal: Principal)
             severity: Some(Severity::None),
             details: None,
             recommendation: None,
+            related_permissions: None,
         });
     }
 
@@ -425,6 +438,7 @@ fn check_admin_control_layer(users: &Vec<UserDTO>, backend_principal: Principal)
             severity: Some(Severity::Low),
             details: Some(format!("Operator users: {}", operator_users.iter().map(|u| u.name.as_str()).collect::<Vec<_>>().join(", "))),
             recommendation: Some("Consider if all operator users need elevated privileges".to_string()),
+            related_permissions: None,
         });
     } else {
         checks.push(SecurityCheck {
@@ -435,6 +449,7 @@ fn check_admin_control_layer(users: &Vec<UserDTO>, backend_principal: Principal)
             severity: Some(Severity::None),
             details: None,
             recommendation: None,
+            related_permissions: None,
         });
     }
 
@@ -616,6 +631,7 @@ fn check_proposal_policies_impl(policies: &Vec<crate::types::orbit::RequestPolic
             severity: Some(Severity::Critical),
             details: Some(bypass_details.join("; ")),
             recommendation: Some("Update policies to require Admin group approval only".to_string()),
+            related_permissions: None,
         });
     } else {
         checks.push(SecurityCheck {
@@ -626,6 +642,7 @@ fn check_proposal_policies_impl(policies: &Vec<crate::types::orbit::RequestPolic
             severity: Some(Severity::None),
             details: None,
             recommendation: None,
+            related_permissions: None,
         });
     }
 
@@ -639,6 +656,7 @@ fn check_proposal_policies_impl(policies: &Vec<crate::types::orbit::RequestPolic
             severity: Some(Severity::Low),
             details: Some(format!("Auto-approved policies skip all voting - OK for testing, but should be changed for production")),
             recommendation: Some("Before going live, change auto-approved policies to require Admin approval".to_string()),
+            related_permissions: None,
         });
     } else {
         checks.push(SecurityCheck {
@@ -649,6 +667,7 @@ fn check_proposal_policies_impl(policies: &Vec<crate::types::orbit::RequestPolic
             severity: Some(Severity::None),
             details: None,
             recommendation: None,
+            related_permissions: None,
         });
     }
 
@@ -797,6 +816,7 @@ fn check_system_configuration_impl(
                     dr.committee.quorum
                 )),
                 recommendation: Some("Set disaster recovery committee to Admin group with quorum 1".to_string()),
+                related_permissions: None,
             });
         } else {
             checks.push(SecurityCheck {
@@ -807,6 +827,7 @@ fn check_system_configuration_impl(
                 severity: Some(Severity::None),
                 details: None,
                 recommendation: None,
+                related_permissions: None,
             });
         }
     }
@@ -836,6 +857,7 @@ fn check_operational_permissions_impl(permissions: &Vec<Permission>) -> Vec<Secu
         severity: Some(Severity::None),
         details: None,
         recommendation: None,
+        related_permissions: None,
     });
 
     checks
@@ -948,6 +970,7 @@ fn check_addressbook_injection_impl(
             severity: Some(Severity::None),
             details: None,
             recommendation: None,
+            related_permissions: None,
         });
         return checks;
     }
@@ -1047,6 +1070,7 @@ fn check_named_rule_bypass_impl(
             severity: Some(Severity::None),
             details: None,
             recommendation: None,
+            related_permissions: None,
         });
         return checks;
     }
@@ -1584,6 +1608,7 @@ where
         .collect();
 
     let mut non_admin_groups: Vec<String> = Vec::new();
+    let mut related_permissions: Vec<RelatedPermission> = Vec::new();
 
     for perm in &matching_perms {
         for group_id in &perm.allow.user_groups {
@@ -1593,8 +1618,16 @@ where
                     .map(|g| g.name.clone())
                     .unwrap_or_else(|| group_id.clone());
                 if !non_admin_groups.contains(&group_name) {
-                    non_admin_groups.push(group_name);
+                    non_admin_groups.push(group_name.clone());
                 }
+
+                // Track specific permission details for cross-referencing
+                let resource_type = format_resource_for_reference(&perm.resource);
+                related_permissions.push(RelatedPermission {
+                    resource_type,
+                    groups: vec![group_name],
+                    resource_id: None,
+                });
             }
         }
     }
@@ -1608,6 +1641,7 @@ where
             severity: Some(severity),
             details: Some(format!("Groups with access: {}", non_admin_groups.join(", "))),
             recommendation: Some(recommendation.to_string()),
+            related_permissions: Some(related_permissions),
         }
     } else {
         SecurityCheck {
@@ -1618,7 +1652,76 @@ where
             severity: Some(Severity::None),
             details: Some(format!("{} permission(s) found, all restricted to Admin", matching_perms.len())),
             recommendation: None,
+            related_permissions: None,
         }
+    }
+}
+
+// Helper function to format resource for display in cross-references
+fn format_resource_for_reference(resource: &Resource) -> String {
+    match resource {
+        Resource::Account(action) => format!("Account.{}", format_resource_action(action)),
+        Resource::Asset(action) => format!("Asset.{}", format_resource_action(action)),
+        Resource::User(action) => format!("User.{}", format_user_action(action)),
+        Resource::System(action) => format!("System.{}", format_system_action(action)),
+        Resource::ExternalCanister(action) => format!("ExternalCanister.{}", format_external_canister_action(action)),
+        Resource::Permission(action) => format!("Permission.{}", format_permission_action(action)),
+        Resource::RequestPolicy(action) => format!("RequestPolicy.{}", format_resource_action(action)),
+        Resource::UserGroup(action) => format!("UserGroup.{}", format_resource_action(action)),
+        Resource::AddressBook(action) => format!("AddressBook.{}", format_resource_action(action)),
+        Resource::NamedRule(action) => format!("NamedRule.{}", format_resource_action(action)),
+        _ => "Unknown".to_string(),
+    }
+}
+
+fn format_resource_action(action: &ResourceAction) -> String {
+    match action {
+        ResourceAction::Create => "Create".to_string(),
+        ResourceAction::Read(_) => "Read".to_string(),
+        ResourceAction::Update(_) => "Update".to_string(),
+        ResourceAction::Delete(_) => "Delete".to_string(),
+        ResourceAction::Transfer(_) => "Transfer".to_string(),
+        ResourceAction::Remove(_) => "Remove".to_string(),
+        _ => "Unknown".to_string(),
+    }
+}
+
+fn format_user_action(action: &UserAction) -> String {
+    match action {
+        UserAction::Create => "Create".to_string(),
+        UserAction::Update(_) => "Update".to_string(),
+        UserAction::Read(_) => "Read".to_string(),
+        UserAction::List => "List".to_string(),
+    }
+}
+
+fn format_system_action(action: &SystemAction) -> String {
+    match action {
+        SystemAction::Upgrade => "Upgrade".to_string(),
+        SystemAction::ManageSystemInfo => "ManageSystemInfo".to_string(),
+        SystemAction::Restore => "Restore".to_string(),
+        _ => "Unknown".to_string(),
+    }
+}
+
+fn format_external_canister_action(action: &ExternalCanisterAction) -> String {
+    match action {
+        ExternalCanisterAction::Create => "Create".to_string(),
+        ExternalCanisterAction::Read(_) => "Read".to_string(),
+        ExternalCanisterAction::Change(_) => "Change".to_string(),
+        ExternalCanisterAction::Fund(_) => "Fund".to_string(),
+        ExternalCanisterAction::Call(_) => "Call".to_string(),
+        ExternalCanisterAction::Monitor(_) => "Monitor".to_string(),
+        ExternalCanisterAction::Snapshot(_) => "Snapshot".to_string(),
+        _ => "Unknown".to_string(),
+    }
+}
+
+fn format_permission_action(action: &PermissionAction) -> String {
+    match action {
+        PermissionAction::Read => "Read".to_string(),
+        PermissionAction::Update => "Update".to_string(),
+        _ => "Unknown".to_string(),
     }
 }
 
@@ -1740,6 +1843,7 @@ fn create_error_check(name: &str, category: &str, severity: Severity, error: &st
         severity: Some(severity),
         details: None,
         recommendation: Some("Check Orbit Station connectivity and permissions".to_string()),
+        related_permissions: None,
     }
 }
 
