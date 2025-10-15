@@ -29,6 +29,11 @@ pub use orbit_transfers::{
     RequestApprovalDecision,
     SubmitRequestApprovalInput,
     SubmitRequestApprovalResult,
+    // New asset query methods and types
+    get_account_with_assets,
+    list_station_assets,
+    AccountWithAssets,
+    AssetWithBalance,
 };
 pub use orbit_users::{
     create_remove_admin_request,

@@ -45,7 +45,7 @@ pub struct Asset {
     pub decimals: u32,
     pub metadata: Vec<AssetMetadata>,
     pub blockchain: String,
-    pub standard: String,
+    pub standards: Vec<String>,  // Changed from single 'standard' to 'standards' (Vec) to match Orbit
 }
 
 #[derive(CandidType, Deserialize)]

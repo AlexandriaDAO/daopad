@@ -98,24 +98,62 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
       return;
     }
 
-    // Use first asset (could be enhanced to show asset picker)
-    const asset = assets[0];
+    // ENHANCED: Smart asset selection logic
+    let selectedAsset = null;
+    let selectionReason = '';
+
+    // Strategy 1: If only one asset, use it
+    if (assets.length === 1) {
+      selectedAsset = assets[0];
+      selectionReason = 'Only asset available';
+    }
+    // Strategy 2: Find asset with highest balance
+    else {
+      const assetWithHighestBalance = assets.reduce((max, curr) => {
+        const maxBalance = max.balance?.balance || max.balance || 0n;
+        const currBalance = curr.balance?.balance || curr.balance || 0n;
+        return currBalance > maxBalance ? curr : max;
+      }, assets[0]);
+
+      const highestBalance = assetWithHighestBalance.balance?.balance || 0n;
+
+      if (highestBalance > 0n) {
+        selectedAsset = assetWithHighestBalance;
+        selectionReason = 'Highest balance';
+      } else {
+        // All have zero balance, prefer known tokens
+        const preferredAssets = ['ICP', 'ALEX', 'DAO'];
+        selectedAsset = assets.find(a =>
+          preferredAssets.includes(a.symbol)
+        ) || assets[0];
+        selectionReason = selectedAsset.symbol ?
+          'Preferred token' : 'First available (all zero balance)';
+      }
+    }
 
     debugLog('Asset Selection', () => {
-      console.log('Selected asset:', safeStringify(asset));
+      console.log('Selected asset:', safeStringify(selectedAsset));
+      console.log('Reason:', selectionReason);
+      console.log('Other assets available:', assets.length - 1);
     });
 
-    // Normalize asset structure: Orbit returns asset_id, we need id
+    // Normalize asset structure with full metadata
     const normalizedAsset = {
-      id: asset.id || asset.asset_id,
-      symbol: asset.symbol || tokenSymbol || 'TOKEN',
-      decimals: asset.decimals || 8,
-      balance: asset.balance
+      id: selectedAsset.id || selectedAsset.asset_id,
+      symbol: selectedAsset.symbol || tokenSymbol || 'TOKEN',
+      decimals: selectedAsset.decimals || 8,
+      balance: selectedAsset.balance,
+      name: selectedAsset.name,
+      blockchain: selectedAsset.blockchain || 'icp',
+      standards: selectedAsset.standards || ['icrc1'],
+      // Store selection context for UI
+      _selectionReason: selectionReason,
+      _otherAssetsCount: assets.length - 1
     };
 
     // Validate asset has required ID
     if (!normalizedAsset.id) {
-      console.error('❌ Asset missing ID:', asset);
+      console.error('❌ Asset missing ID:', selectedAsset);
       toast.error('Invalid Asset Data', {
         description: 'Asset is missing required ID. Please refresh the account data.'
       });
@@ -130,7 +168,8 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
     setTransferDialog({
       open: true,
       account,
-      asset: normalizedAsset
+      asset: normalizedAsset,
+      availableAssets: assets  // Pass all assets for potential picker UI
     });
   };
 
