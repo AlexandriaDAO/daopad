@@ -144,30 +144,34 @@ export default function PermissionsTable({ stationId, actor }) {
     system: filterPermissionsByCategory('system', permissions).length,
   }), [permissions, filterPermissionsByCategory]);
 
-  // Calculate risk counts
+  // Calculate risk once and attach to permissions (prevents double calculation)
+  const permissionsWithRisk = useMemo(() => {
+    return permissions.map(perm => ({
+      ...perm,
+      _risk: calculatePermissionRisk(perm)
+    }));
+  }, [permissions]);
+
+  // Calculate risk counts from pre-calculated risks
   const riskCounts = useMemo(() => {
     const counts = { critical: 0, high: 0, medium: 0, low: 0, none: 0 };
-    permissions.forEach(perm => {
-      const risk = calculatePermissionRisk(perm);
-      counts[risk.level]++;
+    permissionsWithRisk.forEach(perm => {
+      counts[perm._risk.level]++;
     });
     return counts;
-  }, [permissions]);
+  }, [permissionsWithRisk]);
 
   // Memoize filtered permissions with both category and risk filtering
   const filteredPermissions = useMemo(() => {
-    let filtered = filterPermissionsByCategory(category, permissions);
+    let filtered = filterPermissionsByCategory(category, permissionsWithRisk);
 
-    // Apply risk filter
+    // Apply risk filter using pre-calculated risk
     if (riskFilter !== 'all') {
-      filtered = filtered.filter(perm => {
-        const risk = calculatePermissionRisk(perm);
-        return risk.level === riskFilter;
-      });
+      filtered = filtered.filter(perm => perm._risk.level === riskFilter);
     }
 
     return filtered;
-  }, [category, riskFilter, permissions, filterPermissionsByCategory]);
+  }, [category, riskFilter, permissionsWithRisk, filterPermissionsByCategory]);
 
   // Retry handler
   const handleRetry = useCallback(() => {
@@ -306,8 +310,8 @@ function PermissionRow({ permission }) {
   const authScope = getAuthScope(permission.allow);
   const groups = permission?.allow?.user_groups || [];
 
-  // Calculate risk
-  const risk = calculatePermissionRisk(permission);
+  // Use pre-calculated risk (prevents double calculation)
+  const risk = permission._risk || { level: 'none', groups: [] };
 
   // Risk badge styling
   const getRiskBadgeClass = (level) => {
