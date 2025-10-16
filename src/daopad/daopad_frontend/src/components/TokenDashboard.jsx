@@ -494,6 +494,7 @@ const TokenDashboard = memo(function TokenDashboard({
                 <TabsTrigger variant="executive" value="security">Security</TabsTrigger>
                 <TabsTrigger variant="executive" value="permissions">Permissions</TabsTrigger>
                 <TabsTrigger variant="executive" value="settings">Settings</TabsTrigger>
+                <TabsTrigger variant="executive" value="agreement">Agreement</TabsTrigger>
               </TabsList>
 
               {/* Refresh Button */}
