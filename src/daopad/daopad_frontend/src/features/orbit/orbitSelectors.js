@@ -51,7 +51,8 @@ export const selectFormattedAccounts = createSelector(
     }
 
     return accounts.map(account => {
-      const balanceData = balances?.[account.id];
+      // NEW: Use enriched assets from get_account_assets (already has symbols!)
+      const existingAssets = account.assets || [];
 
       // Conditional debug logging
       const DEBUG_SELECTORS = import.meta.env.DEV && localStorage.getItem('DEBUG_SELECTORS');
@@ -59,78 +60,47 @@ export const selectFormattedAccounts = createSelector(
       if (DEBUG_SELECTORS) {
         console.log('[orbitSelector] Processing account:', {
           accountId: account.id,
-          hasBalanceData: !!balanceData
+          assetsCount: existingAssets.length
         });
       }
 
-      if (!balanceData) {
+      // If no assets, return minimal info
+      if (existingAssets.length === 0) {
         return {
           ...account,
           balanceFloat: 0,
           balanceFormatted: 'N/A',
+          assets: []
         };
       }
 
+      // Use first asset for primary balance display
+      const primaryAsset = existingAssets[0];
+      const balance = primaryAsset.balance?.balance || BigInt(0);
+      const decimals = primaryAsset.decimals || 8;
+      const symbol = primaryAsset.symbol || tokenSymbol || 'TOKEN';
+
       // Convert to float for sorting
-      const balanceFloat = bigintToFloat(
-        balanceData.balance,
-        balanceData.decimals || 8
-      );
+      const balanceFloat = bigintToFloat(balance, decimals);
 
-      // Format for display
-      const balanceFormatted = formatBalance(
-        balanceData.balance,
-        balanceData.decimals || 8,
-        { symbol: tokenSymbol || '' }
-      );
-
-      // Build assets array from balance data
-      // Strategy: Try to use existing assets, otherwise construct from balance data
-      const existingAssets = account.assets || [];
-
-      let assetsWithBalance;
-
-      if (existingAssets.length > 0) {
-        // Use existing assets from account
-        assetsWithBalance = existingAssets.map(asset => ({
-          ...asset,
-          balance: balanceData.balance,
-          decimals: asset.decimals || balanceData.decimals || 8
-        }));
-      } else {
-        // Construct asset from balance data
-        // Strategy: Only use REAL asset IDs, never generate fake ones
-        const assetId = balanceData.asset_id ||
-                       balanceData.metadata_id ||
-                       account.metadata?.asset_id;
-
-        if (!assetId) {
-          // Log error but don't crash selector
-          console.error('[orbitSelector] No valid asset ID for account:', account.id);
-          // Return empty assets array - will trigger proper UI error
-          assetsWithBalance = [];
-        } else {
-          assetsWithBalance = [{
-            id: assetId, // ONLY real UUIDs
-            symbol: balanceData.symbol || tokenSymbol || 'TOKEN',
-            decimals: balanceData.decimals || 8,
-            balance: balanceData.balance,
-            blockchain: balanceData.blockchain || account.blockchain || 'InternetComputer'
-          }];
-        }
-      }
+      // Format for display with CORRECT symbol
+      const balanceFormatted = formatBalance(balance, decimals, { symbol });
 
       if (DEBUG_SELECTORS) {
-        console.log('[orbitSelector] Assets:', assetsWithBalance.length);
+        console.log('[orbitSelector] Primary asset:', {
+          symbol,
+          balance: balance.toString(),
+          formatted: balanceFormatted
+        });
       }
 
       return {
         ...account,
-        balance: balanceData.balance, // Keep raw BigInt
-        decimals: balanceData.decimals || 8,
+        balance,
+        decimals,
         balanceFloat,
         balanceFormatted,
-        assets: assetsWithBalance, // Ensure assets array is populated
+        assets: existingAssets,
       };
     });
   }

@@ -60,10 +60,11 @@ export const fetchOrbitRequests = createAsyncThunk(
 // Fetch Orbit accounts with balances
 export const fetchOrbitAccounts = createAsyncThunk(
   'orbit/fetchAccounts',
-  async ({ stationId, identity, searchQuery, pagination }, { rejectWithValue }) => {
+  async ({ stationId, identity, searchQuery, pagination, tokenId }, { rejectWithValue }) => {
     try {
       const service = new DAOPadBackendService(identity);
       const stationPrincipal = Principal.fromText(stationId);
+      const tokenPrincipal = tokenId ? Principal.fromText(tokenId) : null;
 
       const response = await service.listOrbitAccounts(
         stationPrincipal,
@@ -73,26 +74,47 @@ export const fetchOrbitAccounts = createAsyncThunk(
       );
 
       if (response.success) {
-        // Fetch balances for accounts
-        const accountIds = response.data.accounts?.map(a => a.id) || [];
-        if (accountIds.length > 0) {
-          const balancesResult = await service.fetchOrbitAccountBalances(
-            stationPrincipal,
-            accountIds
+        const accounts = response.data.accounts || [];
+
+        // NEW: Fetch asset details with correct symbols for each account
+        if (accounts.length > 0 && tokenPrincipal) {
+          const enrichedAccounts = await Promise.all(
+            accounts.map(async (account) => {
+              try {
+                const assetsResult = await service.getAccountAssets(
+                  tokenPrincipal,
+                  account.id
+                );
+
+                if (assetsResult.success && assetsResult.data) {
+                  // Map assets to the format expected by selectors
+                  const assetsWithSymbols = assetsResult.data.assets.map(asset => ({
+                    id: asset.asset_id,
+                    asset_id: asset.asset_id,
+                    symbol: asset.symbol,  // ✅ CORRECT SYMBOL FROM ORBIT!
+                    decimals: asset.decimals,
+                    balance: {
+                      balance: BigInt(asset.balance),
+                      decimals: asset.decimals,
+                      asset_id: asset.asset_id,
+                    }
+                  }));
+
+                  return {
+                    ...account,
+                    assets: assetsWithSymbols,
+                  };
+                }
+              } catch (error) {
+                console.warn(`Failed to get assets for account ${account.id}:`, error);
+              }
+
+              // Fallback to original account if enrichment fails
+              return account;
+            })
           );
 
-          if (balancesResult.success) {
-            const balancesMap = {};
-            balancesResult.data.forEach((balance) => {
-              if (balance && balance.length > 0) {
-                const balanceData = balance[0];
-                if (balanceData && balanceData.account_id) {
-                  balancesMap[balanceData.account_id] = balanceData;
-                }
-              }
-            });
-            response.data.balances = balancesMap;
-          }
+          response.data.accounts = enrichedAccounts;
         }
 
         return { stationId, data: response.data };

@@ -459,6 +459,22 @@ export class DAOPadBackendService {
     }
   }
 
+  async getAccountAssets(tokenId, accountId) {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.get_account_assets(tokenId, accountId);
+
+      if ('Ok' in result) {
+        return { success: true, data: result.Ok };
+      } else {
+        return { success: false, error: result.Err };
+      }
+    } catch (error) {
+      console.error('Failed to get account assets:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   async getAdminCount(tokenCanisterId) {
     try {
       const actor = await this.getActor();

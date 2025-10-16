@@ -114,6 +114,9 @@ Orbit Station Executes (AutoApproved policy)
 
 **Result**: Liquid democracy based on locked liquidity, not infinite static user roles. Voting power changes with LP token value - real skin in the game.
 
+### LLC Operating Agreement Tab
+The 7th tab in Token Dashboard generates a Wyoming DAO LLC-compliant Operating Agreement from on-chain data. The smart contracts ARE the agreement - they execute the rules deterministically, and the document just describes the current state. This allows DAOs to become legal LLCs while maintaining that code is law.
+
 ### Orbit Station Query Strategy
 
 #### The Challenge:
