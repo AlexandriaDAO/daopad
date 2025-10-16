@@ -1038,6 +1038,11 @@ service : () -> {
   // 
   // Fetches a single permission by resource type from Orbit Station.
   get_station_permission : (principal, Resource) -> (Result_21);
+  // Get total voting power for a token across all Kong Locker users
+  // 
+  // This sums up the voting power of all registered users for a specific token.
+  // Used by frontend to show user's VP as a percentage of total.
+  get_total_voting_power_for_token : (principal) -> (Result_15);
   get_transfer_requests : (principal) -> (Result_22);
   // Get active proposal for a token (if any)
   get_treasury_proposal : (principal) -> (opt TreasuryProposal) query;
