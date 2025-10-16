@@ -103,18 +103,19 @@ const DaoProposals = ({ identity, dao }) => {
     setSelectedProposal(null);
   };
 
-  const handleApprove = async (proposalId) => {
+  const handleVote = async (proposalId, vote) => {
     // Set loading state immediately for instant feedback
-    setVotingLoading(prev => ({ ...prev, [proposalId]: 'approving' }));
-    
+    setVotingLoading(prev => ({ ...prev, [proposalId]: vote ? 'approving' : 'rejecting' }));
+
     try {
       const daopadService = new DAOPadBackendService(identity);
-      const result = await daopadService.approveRequest(dao.token_canister, proposalId, "DAO approved via DAOPad");
-      
+      // Use voting method instead of direct approval
+      const result = await daopadService.voteOnOrbitRequest(dao.token_canister, proposalId, vote);
+
       if (result.success) {
         // Set success state briefly
-        setVotingLoading(prev => ({ ...prev, [proposalId]: 'approved' }));
-        
+        setVotingLoading(prev => ({ ...prev, [proposalId]: vote ? 'approved' : 'rejected' }));
+
         // Refresh proposals in background
         setTimeout(async () => {
           await fetchProposals();
@@ -122,24 +123,12 @@ const DaoProposals = ({ identity, dao }) => {
             handleCloseDetails();
           }
         }, 500);
-        
+
       } else {
-        // Only show error if it's a real failure (not the APPROVAL_NOT_ALLOWED case)
-        if (!result.error.includes("permission error, but operation completed")) {
-          alert(`❌ Failed to approve: ${result.error}`);
-        } else {
-          // Still treat as success for UI purposes
-          setVotingLoading(prev => ({ ...prev, [proposalId]: 'approved' }));
-          setTimeout(async () => {
-            await fetchProposals();
-            if (showDetails) {
-              handleCloseDetails();
-            }
-          }, 500);
-        }
+        alert(`❌ Failed to vote: ${result.error}`);
       }
     } catch (err) {
-      console.error('Error approving proposal:', err);
+      console.error('Error voting on proposal:', err);
       alert(`❌ Error: ${err.message}`);
     } finally {
       // Clear loading state after a short delay to show success feedback
@@ -153,54 +142,12 @@ const DaoProposals = ({ identity, dao }) => {
     }
   };
 
+  const handleApprove = async (proposalId) => {
+    await handleVote(proposalId, true);
+  };
+
   const handleReject = async (proposalId, reason) => {
-    // Set loading state immediately for instant feedback
-    setVotingLoading(prev => ({ ...prev, [proposalId]: 'rejecting' }));
-    
-    try {
-      const daopadService = new DAOPadBackendService(identity);
-      const result = await daopadService.rejectRequest(dao.token_canister, proposalId, reason || "DAO rejected via DAOPad");
-      
-      if (result.success) {
-        // Set success state briefly
-        setVotingLoading(prev => ({ ...prev, [proposalId]: 'rejected' }));
-        
-        // Refresh proposals in background
-        setTimeout(async () => {
-          await fetchProposals();
-          if (showDetails) {
-            handleCloseDetails();
-          }
-        }, 500);
-        
-      } else {
-        // Only show error if it's a real failure (not the APPROVAL_NOT_ALLOWED case)
-        if (!result.error.includes("permission error, but operation completed")) {
-          alert(`❌ Failed to reject: ${result.error}`);
-        } else {
-          // Still treat as success for UI purposes
-          setVotingLoading(prev => ({ ...prev, [proposalId]: 'rejected' }));
-          setTimeout(async () => {
-            await fetchProposals();
-            if (showDetails) {
-              handleCloseDetails();
-            }
-          }, 500);
-        }
-      }
-    } catch (err) {
-      console.error('Error rejecting proposal:', err);
-      alert(`❌ Error: ${err.message}`);
-    } finally {
-      // Clear loading state after a short delay to show success feedback
-      setTimeout(() => {
-        setVotingLoading(prev => {
-          const newState = { ...prev };
-          delete newState[proposalId];
-          return newState;
-        });
-      }, 1500);
-    }
+    await handleVote(proposalId, false);
   };
 
   const getTokenName = () => {

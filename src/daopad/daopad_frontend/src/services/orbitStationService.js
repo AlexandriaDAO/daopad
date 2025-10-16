@@ -88,15 +88,4 @@ export class OrbitStationService {
     }
     return result.Ok;
   }
-
-  /**
-   * Submit request approval
-   */
-  async submitRequestApproval(input) {
-    const result = await this.actor.submit_request_approval(input);
-    if (result.Err) {
-      throw result.Err;
-    }
-    return result.Ok;
-  }
 }
