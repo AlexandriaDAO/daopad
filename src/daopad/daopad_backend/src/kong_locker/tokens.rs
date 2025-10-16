@@ -26,20 +26,22 @@ pub async fn get_user_locked_tokens(
 
     let mut tokens = HashSet::new();
     for balance in user_balances.iter() {
-        let UserBalancesReply::LP(lp_reply) = balance;
-        if !lp_reply.address_0.is_empty() {
-            tokens.insert(TokenInfo {
-                canister_id: lp_reply.address_0.clone(),
-                symbol: lp_reply.symbol_0.clone(),
-                chain: lp_reply.chain_0.clone(),
-            });
-        }
-        if !lp_reply.address_1.is_empty() {
-            tokens.insert(TokenInfo {
-                canister_id: lp_reply.address_1.clone(),
-                symbol: lp_reply.symbol_1.clone(),
-                chain: lp_reply.chain_1.clone(),
-            });
+        // Safe pattern match - only process LP variants, skip others
+        if let UserBalancesReply::LP(lp_reply) = balance {
+            if !lp_reply.address_0.is_empty() {
+                tokens.insert(TokenInfo {
+                    canister_id: lp_reply.address_0.clone(),
+                    symbol: lp_reply.symbol_0.clone(),
+                    chain: lp_reply.chain_0.clone(),
+                });
+            }
+            if !lp_reply.address_1.is_empty() {
+                tokens.insert(TokenInfo {
+                    canister_id: lp_reply.address_1.clone(),
+                    symbol: lp_reply.symbol_1.clone(),
+                    chain: lp_reply.chain_1.clone(),
+                });
+            }
         }
     }
 
@@ -70,9 +72,13 @@ pub async fn validate_token_in_lp_positions(
         .map_err(|e| format!("KongSwap returned error: {}", e))?;
 
     let token_exists = user_balances.iter().any(|balance| {
-        let UserBalancesReply::LP(lp_reply) = balance;
-        lp_reply.address_0 == token_canister_id.to_string()
-            || lp_reply.address_1 == token_canister_id.to_string()
+        // Safe pattern match - only check LP variants
+        if let UserBalancesReply::LP(lp_reply) = balance {
+            lp_reply.address_0 == token_canister_id.to_string()
+                || lp_reply.address_1 == token_canister_id.to_string()
+        } else {
+            false
+        }
     });
 
     Ok(token_exists)

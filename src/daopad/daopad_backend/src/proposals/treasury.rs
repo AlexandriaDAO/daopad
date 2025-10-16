@@ -15,6 +15,17 @@ const MINIMUM_VP_FOR_PROPOSAL: u64 = 10_000; // Same as orbit link proposals
 const DEFAULT_VOTING_PERIOD_NANOS: u64 = 604_800_000_000_000; // 7 days
 const DEFAULT_THRESHOLD_PERCENT: u32 = 50; // Simple majority
 
+/// Helper function to format Orbit Error with details
+fn format_orbit_error_details(error: &crate::api::orbit_requests::Error) -> Option<String> {
+    error.details.as_ref().map(|details| {
+        details
+            .iter()
+            .map(|d| format!("{}: {}", d.0, d.1))
+            .collect::<Vec<_>>()
+            .join(", ")
+    })
+}
+
 /// Details for a transfer request
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct TransferDetails {
@@ -369,8 +380,41 @@ async fn create_transfer_request_in_orbit(
     match result {
         Ok((CreateRequestResult::Ok(response),)) => Ok(response.request.id),
         Ok((CreateRequestResult::Err(e),)) => Err(ProposalError::OrbitError {
-            code: e.code,
-            message: e.message.unwrap_or_else(|| "No message provided".to_string()),
+            code: e.code.clone(),
+            message: e.message.clone().unwrap_or_else(|| "No message provided".to_string()),
+            details: format_orbit_error_details(&e),
+        }),
+        Err((code, msg)) => Err(ProposalError::IcCallFailed {
+            code: code as i32,
+            message: msg,
+        }),
+    }
+}
+
+/// Consolidated helper for submitting Orbit request approval decisions
+async fn submit_orbit_request_decision(
+    station_id: Principal,
+    request_id: &str,
+    decision: crate::api::RequestApprovalStatus,
+    reason: String,
+) -> Result<(), ProposalError> {
+    use crate::api::{SubmitRequestApprovalInput, SubmitRequestApprovalResult};
+
+    let input = SubmitRequestApprovalInput {
+        request_id: request_id.to_string(),
+        decision,
+        reason: Some(reason),
+    };
+
+    let result: Result<(SubmitRequestApprovalResult,), _> =
+        ic_cdk::call(station_id, "submit_request_approval", (input,)).await;
+
+    match result {
+        Ok((SubmitRequestApprovalResult::Ok(_),)) => Ok(()),
+        Ok((SubmitRequestApprovalResult::Err(e),)) => Err(ProposalError::OrbitError {
+            code: e.code.clone(),
+            message: e.message.clone().unwrap_or_else(|| "No message provided".to_string()),
+            details: format_orbit_error_details(&e),
         }),
         Err((code, msg)) => Err(ProposalError::IcCallFailed {
             code: code as i32,
@@ -383,60 +427,26 @@ async fn approve_orbit_request(
     station_id: Principal,
     request_id: &str,
 ) -> Result<(), ProposalError> {
-    use crate::api::{
-        RequestApprovalDecision, SubmitRequestApprovalInput, SubmitRequestApprovalResult,
-    };
-
-    let input = SubmitRequestApprovalInput {
-        request_id: request_id.to_string(),
-        decision: RequestApprovalDecision::Approve,
-        reason: Some("DAOPad treasury proposal approved by community vote".to_string()),
-    };
-
-    let result: Result<(SubmitRequestApprovalResult,), _> =
-        ic_cdk::call(station_id, "submit_request_approval", (input,)).await;
-
-    match result {
-        Ok((SubmitRequestApprovalResult::Ok(_),)) => Ok(()),
-        Ok((SubmitRequestApprovalResult::Err(e),)) => Err(ProposalError::OrbitError {
-            code: e.code,
-            message: e.message.unwrap_or_else(|| "No message provided".to_string()),
-        }),
-        Err((code, msg)) => Err(ProposalError::IcCallFailed {
-            code: code as i32,
-            message: msg,
-        }),
-    }
+    submit_orbit_request_decision(
+        station_id,
+        request_id,
+        crate::api::RequestApprovalStatus::Approved,
+        "DAOPad treasury proposal approved by community vote".to_string(),
+    )
+    .await
 }
 
 async fn reject_orbit_request(
     station_id: Principal,
     request_id: &str,
 ) -> Result<(), ProposalError> {
-    use crate::api::{
-        RequestApprovalDecision, SubmitRequestApprovalInput, SubmitRequestApprovalResult,
-    };
-
-    let input = SubmitRequestApprovalInput {
-        request_id: request_id.to_string(),
-        decision: RequestApprovalDecision::Reject,
-        reason: Some("DAOPad treasury proposal rejected by community vote".to_string()),
-    };
-
-    let result: Result<(SubmitRequestApprovalResult,), _> =
-        ic_cdk::call(station_id, "submit_request_approval", (input,)).await;
-
-    match result {
-        Ok((SubmitRequestApprovalResult::Ok(_),)) => Ok(()),
-        Ok((SubmitRequestApprovalResult::Err(e),)) => Err(ProposalError::OrbitError {
-            code: e.code,
-            message: e.message.unwrap_or_else(|| "No message provided".to_string()),
-        }),
-        Err((code, msg)) => Err(ProposalError::IcCallFailed {
-            code: code as i32,
-            message: msg,
-        }),
-    }
+    submit_orbit_request_decision(
+        station_id,
+        request_id,
+        crate::api::RequestApprovalStatus::Rejected,
+        "DAOPad treasury proposal rejected by community vote".to_string(),
+    )
+    .await
 }
 
 async fn get_total_voting_power_for_token(token: Principal) -> Result<u64, ProposalError> {

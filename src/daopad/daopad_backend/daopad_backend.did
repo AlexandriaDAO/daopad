@@ -549,7 +549,7 @@ type ProposalError = variant {
   NotFound : nat64;
   NoStationLinked : principal;
   IcCallFailed : record { code : int32; message : text };
-  OrbitError : record { code : text; message : text };
+  OrbitError : record { code : text; message : text; details : opt text };
   ActiveProposalExists;
   InsufficientVotingPowerToPropose : record {
     required : nat64;

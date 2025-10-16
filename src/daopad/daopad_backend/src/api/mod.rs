@@ -25,10 +25,6 @@ pub use orbit_transfers::{
     // ❌ REMOVED: approve_orbit_request - replaced by liquid democracy voting
     get_transfer_requests_from_orbit,
     CreateRequestResult,
-    ErrorInfo,
-    RequestApprovalDecision,
-    SubmitRequestApprovalInput,
-    SubmitRequestApprovalResult,
     // New asset query methods and types
     get_account_with_assets,
     list_station_assets,
