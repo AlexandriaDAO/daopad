@@ -2,13 +2,15 @@ use crate::api::orbit_requests::{GetRequestResponse, Error};
 use crate::types::orbit::{
     TransferOperationInput, TransferMetadata, NetworkInput,
     RequestExecutionSchedule, RequestOperation,
+    CreateRequestResponse,
 };
 use candid::{CandidType, Deserialize, Nat, Principal};
 use ic_cdk::api::call::CallResult;
 
+// CreateRequestResult with CORRECT response type (CreateRequestResponse, not GetRequestResponse)
 #[derive(CandidType, Deserialize)]
 pub enum CreateRequestResult {
-    Ok(GetRequestResponse),
+    Ok(CreateRequestResponse),
     Err(Error),
 }
 

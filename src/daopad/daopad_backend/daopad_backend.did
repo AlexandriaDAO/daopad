@@ -174,7 +174,6 @@ type CreateRequestInput = record {
   summary : opt text;
   operation : RequestOperationInput;
 };
-type CreateRequestResult = variant { Ok : GetRequestResponse; Err : Error };
 type CycleObtainStrategy = variant {
   Disabled;
   MintFromNativeToken : record { account_id : text; account_name : opt text };
@@ -191,7 +190,6 @@ type DisasterRecoveryCommittee = record {
   user_group_id : text;
   quorum : nat16;
 };
-type DisplayUser = record { id : text; name : text };
 type EditAddressBookEntryOperationInput = record {
   labels : opt vec text;
   change_metadata : opt ChangeMetadata;
@@ -308,11 +306,6 @@ type GetExternalCanisterResult = variant {
     canister : ExternalCanister;
   };
   Err : Error;
-};
-type GetRequestResponse = record {
-  privileges : RequestCallerPrivilegesDTO;
-  request : Request;
-  additional_info : RequestAdditionalInfo;
 };
 type GovernanceStats = record {
   active_proposals : nat64;
@@ -604,35 +597,8 @@ type RelatedPermission = record {
 type RemoveAddressBookEntryOperationInput = record {
   address_book_entry_id : text;
 };
-type Request = record {
-  id : text;
-  status : RequestStatusDTO;
-  title : text;
-  execution_plan : RequestExecutionPlan;
-  expiration_dt : text;
-  deduplication_key : opt text;
-  tags : vec text;
-  created_at : text;
-  requested_by : text;
-  summary : opt text;
-  operation : opt text;
-  approvals : vec RequestApproval;
-};
 type RequestAction = variant { List; Read : ResourceSpecifier };
-type RequestAdditionalInfo = record {
-  id : text;
-  evaluation_result : opt text;
-  requester_name : text;
-  approvers : vec DisplayUser;
-};
 type RequestAdditionalInfoDTO = record { id : text; requester_name : text };
-type RequestApproval = record {
-  status : RequestApprovalStatus;
-  approver_id : text;
-  status_reason : opt text;
-  decided_at : text;
-};
-type RequestApprovalStatus = variant { Approved; Rejected };
 type RequestCallerPrivilegesDTO = record { id : text; can_approve : bool };
 type RequestDTO = record { id : text; status : RequestStatusDTO; title : text };
 type RequestExecutionPlan = variant {
@@ -942,7 +908,7 @@ service : () -> {
       text,
       opt text,
     ) -> (Result_1);
-  create_address_book_request : (CreateRequestInput) -> (CreateRequestResult);
+  create_address_book_request : (CreateRequestInput) -> (SubmitRequestResult);
   // Create edit permission request
   // 
   // Creates a request in Orbit Station to modify a permission's access control.
@@ -1064,6 +1030,11 @@ service : () -> {
   // 
   // Fetches a single permission by resource type from Orbit Station.
   get_station_permission : (principal, Resource) -> (Result_22);
+  // Get total voting power for a token across all Kong Locker users
+  // 
+  // This sums up the voting power of all registered users for a specific token.
+  // Used by frontend to show user's VP as a percentage of total.
+  get_total_voting_power_for_token : (principal) -> (Result_16);
   get_transfer_requests : (principal) -> (Result_23);
   // Get active proposal for a token (if any)
   get_treasury_proposal : (principal) -> (opt TreasuryProposal) query;
