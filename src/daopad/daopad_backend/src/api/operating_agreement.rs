@@ -271,7 +271,14 @@ async fn list_user_groups(station_id: Principal) -> Result<Vec<UserGroup>, Strin
 
 /// Helper: List request policies from Orbit Station
 async fn list_request_policies(station_id: Principal) -> Result<Vec<RequestPolicy>, String> {
-    let result: (ListRequestPoliciesResult,) = ic_cdk::call(station_id, "list_request_policies", ())
+    use crate::types::orbit::ListRequestPoliciesInput;
+
+    let input = ListRequestPoliciesInput {
+        limit: None,
+        offset: None,
+    };
+
+    let result: (ListRequestPoliciesResult,) = ic_cdk::call(station_id, "list_request_policies", (input,))
         .await
         .map_err(|e| format!("Failed to list policies: {:?}", e))?;
 
