@@ -13,7 +13,6 @@ import RequestDomainSelector from './RequestDomainSelector';
 import RequestList from './RequestList';
 import RequestFiltersCompact from './RequestFiltersCompact';
 import { REQUEST_DOMAIN_FILTERS, RequestDomains } from '../../utils/requestDomains';
-import { Zap, Clock } from 'lucide-react';
 
 const UnifiedRequests = ({ tokenId, identity }) => {
   // State management
@@ -38,8 +37,6 @@ const UnifiedRequests = ({ tokenId, identity }) => {
     page: 0,
     hasMore: false
   });
-  const [selectedRequests, setSelectedRequests] = useState([]);
-  const [batchApproving, setBatchApproving] = useState(false);
   const [showOnlyPending, setShowOnlyPending] = useState(false);
 
   const { toast } = useToast();
@@ -157,38 +154,6 @@ const UnifiedRequests = ({ tokenId, identity }) => {
 
   // ❌ REMOVED: Direct approval/rejection (replaced by liquid democracy voting)
   // TODO: Implement voting UI in follow-up PR
-  //  - Show vote Yes/No buttons instead of Approve/Reject
-  //  - Display vote progress bars (yes_votes vs total_voting_power)
-  //  - Show threshold percentage and current vote counts
-  //  - Fetch proposal data alongside requests
-  // For now, approval UI is disabled - users cannot approve requests directly
-  const handleApprovalDecision = async (requestId, decision, reason) => {
-    toast.error('Direct approval is disabled. Liquid democracy voting will be implemented in the next update.');
-    return;
-  };
-
-  // ❌ REMOVED: Batch approval (replaced by individual voting)
-  const handleBatchApprove = async () => {
-    toast.error('Batch approval is disabled. Liquid democracy voting will be implemented in the next update.');
-    return;
-  };
-
-  const toggleRequestSelection = (requestId) => {
-    setSelectedRequests(prev =>
-      prev.includes(requestId)
-        ? prev.filter(id => id !== requestId)
-        : [...prev, requestId]
-    );
-  };
-
-  const selectAllPending = () => {
-    const pendingRequests = requests.filter(r =>
-      r.status === 'Created' || r.status === 'Scheduled'
-    );
-    setSelectedRequests(pendingRequests.map(r => r.id));
-  };
-
-  const clearSelection = () => setSelectedRequests([]);
 
   // Handle voting on treasury proposals
   const handleTreasuryVote = async (proposalId, vote) => {
@@ -268,7 +233,7 @@ const UnifiedRequests = ({ tokenId, identity }) => {
           </div>
         </div>
 
-        {/* Stats and batch actions bar */}
+        {/* Stats bar */}
         <div className="flex justify-between items-center py-2 border-y">
           <div className="flex gap-4 items-center">
             {/* Stats */}
@@ -293,48 +258,6 @@ const UnifiedRequests = ({ tokenId, identity }) => {
               <span className="text-sm">Pending only</span>
             </label>
           </div>
-
-          {/* Batch actions */}
-          <div className="flex gap-2">
-            {selectedRequests.length === 0 ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={selectAllPending}
-                disabled={requests.filter(r => r.status === 'Created' || r.status === 'Scheduled').length === 0}
-              >
-                Select All Pending
-              </Button>
-            ) : (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearSelection}
-                >
-                  Clear ({selectedRequests.length})
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleBatchApprove}
-                  disabled={batchApproving}
-                >
-                  {batchApproving ? (
-                    <>
-                      <Clock className="mr-2 h-4 w-4 animate-spin" />
-                      Approving...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="mr-2 h-4 w-4" />
-                      Approve {selectedRequests.length}
-                    </>
-                  )}
-                </Button>
-              </>
-            )}
-          </div>
         </div>
 
         {/* Request list - now takes full width */}
@@ -343,19 +266,19 @@ const UnifiedRequests = ({ tokenId, identity }) => {
           loading={loading}
           error={error}
           onApprove={(id, request) => {
-            // Handle treasury proposals differently
+            // Only treasury proposals can be voted on for now
             if (request?.is_treasury_proposal) {
               handleTreasuryVote(request.proposal_id, true);
             } else {
-              handleApprovalDecision(id, 'Approved', null);
+              toast.error('Voting UI for non-treasury proposals coming soon');
             }
           }}
           onReject={(id, reason, request) => {
-            // Handle treasury proposals differently
+            // Only treasury proposals can be voted on for now
             if (request?.is_treasury_proposal) {
               handleTreasuryVote(request.proposal_id, false);
             } else {
-              handleApprovalDecision(id, 'Rejected', reason);
+              toast.error('Voting UI for non-treasury proposals coming soon');
             }
           }}
           onRetry={fetchRequests}
