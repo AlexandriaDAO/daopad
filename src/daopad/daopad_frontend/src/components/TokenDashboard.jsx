@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, memo, useMemo } from 'react';
 import { Principal } from '@dfinity/principal';
 import { useDispatch } from 'react-redux';
 import { DAOPadBackendService } from '../services/daopadBackend';
@@ -61,6 +61,8 @@ const TokenDashboard = memo(function TokenDashboard({
   const [tokenMetadata, setTokenMetadata] = useState(null);
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [activeTab, setActiveTab] = useState('accounts');
+  const [totalVotingPower, setTotalVotingPower] = useState(null);
+  const [loadingTotalVP, setLoadingTotalVP] = useState(false);
 
   const toPrincipalText = (value) => {
     if (!value) return null;
@@ -74,6 +76,7 @@ const TokenDashboard = memo(function TokenDashboard({
     loadTokenStatus();
     loadVotingPower();
     loadTokenMetadata();
+    loadTotalVotingPower();
   }, [token]);
 
   useEffect(() => {
@@ -115,6 +118,24 @@ const TokenDashboard = memo(function TokenDashboard({
       console.error('Failed to load voting power:', err);
     } finally {
       setLoadingVP(false);
+    }
+  };
+
+  const loadTotalVotingPower = async () => {
+    if (!identity || !token) return;
+
+    setLoadingTotalVP(true);
+    try {
+      const daopadService = new DAOPadBackendService(identity);
+      const tokenPrincipal = Principal.fromText(token.canister_id);
+      const result = await daopadService.getTotalVotingPowerForToken(tokenPrincipal);
+      if (result.success) {
+        setTotalVotingPower(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to load total voting power:', err);
+    } finally {
+      setLoadingTotalVP(false);
     }
   };
 
@@ -297,6 +318,13 @@ const TokenDashboard = memo(function TokenDashboard({
     return sum + (pos.usd_balance || 0);
   }, 0);
 
+  const vpPercentage = useMemo(() => {
+    if (!votingPower || !totalVotingPower || totalVotingPower === 0) {
+      return null;
+    }
+    return ((votingPower / totalVotingPower) * 100).toFixed(2);
+  }, [votingPower, totalVotingPower]);
+
   // Memoize token USD calculations for performance
   const tokenUsdValues = React.useMemo(() => {
     if (!tokens || !lpPositions) return {};
@@ -413,12 +441,19 @@ const TokenDashboard = memo(function TokenDashboard({
           </div>
           <div className="text-xs text-muted-foreground">LP Value</div>
 
-          {/* Secondary: VP with tooltip */}
+          {/* Secondary: VP with percentage and tooltip */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="text-lg font-mono cursor-help border-b border-dotted border-muted-foreground inline-block">
-                  {votingPower.toLocaleString()} VP
+                <div className="space-y-1">
+                  <div className="text-lg font-mono cursor-help border-b border-dotted border-muted-foreground inline-block">
+                    {votingPower.toLocaleString()} VP
+                  </div>
+                  {vpPercentage && (
+                    <div className="text-sm text-muted-foreground">
+                      {vpPercentage}% of total VP
+                    </div>
+                  )}
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -426,6 +461,11 @@ const TokenDashboard = memo(function TokenDashboard({
                 <p className="text-xs text-muted-foreground">
                   ${((votingPower || 0) / VP_TO_USD_RATIO).toLocaleString()} × 100 = {votingPower.toLocaleString()} VP
                 </p>
+                {totalVotingPower && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Total network VP: {totalVotingPower.toLocaleString()}
+                  </p>
+                )}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

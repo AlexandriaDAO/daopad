@@ -212,87 +212,8 @@ export const createTransferRequest = createAsyncThunk(
   }
 );
 
-// Approve request (mutation)
-export const approveOrbitRequest = createAsyncThunk(
-  'orbit/approveRequest',
-  async ({ tokenId, stationId, identity, requestId }, { rejectWithValue, dispatch }) => {
-    try {
-      const service = new DAOPadBackendService(identity);
-      const stationPrincipal = Principal.fromText(stationId);
-
-      const result = await service.approveOrbitRequest(stationPrincipal, requestId);
-
-      let parsedResult;
-      if (result?.Ok) {
-        if (result.Ok.Ok) {
-          parsedResult = { success: true, data: result.Ok.Ok };
-        } else if (result.Ok.Err) {
-          parsedResult = { success: false, error: result.Ok.Err };
-        }
-      } else if (result?.success !== undefined) {
-        parsedResult = result;
-      } else {
-        parsedResult = { success: false, error: 'Invalid response structure' };
-      }
-
-      if (parsedResult.success) {
-        // Trigger requests refetch
-        dispatch(fetchOrbitRequests({
-          tokenId,
-          stationId,
-          identity,
-          filters: {}
-        }));
-        return parsedResult.data;
-      }
-
-      throw new Error(parsedResult.error || 'Failed to approve request');
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
-
-// Reject request (mutation)
-export const rejectOrbitRequest = createAsyncThunk(
-  'orbit/rejectRequest',
-  async ({ tokenId, stationId, identity, requestId }, { rejectWithValue, dispatch }) => {
-    try {
-      const service = new DAOPadBackendService(identity);
-      const stationPrincipal = Principal.fromText(stationId);
-
-      const result = await service.rejectOrbitRequest(stationPrincipal, requestId);
-
-      let parsedResult;
-      if (result?.Ok) {
-        if (result.Ok.Ok) {
-          parsedResult = { success: true, data: result.Ok.Ok };
-        } else if (result.Ok.Err) {
-          parsedResult = { success: false, error: result.Ok.Err };
-        }
-      } else if (result?.success !== undefined) {
-        parsedResult = result;
-      } else {
-        parsedResult = { success: false, error: 'Invalid response structure' };
-      }
-
-      if (parsedResult.success) {
-        // Trigger requests refetch
-        dispatch(fetchOrbitRequests({
-          tokenId,
-          stationId,
-          identity,
-          filters: {}
-        }));
-        return parsedResult.data;
-      }
-
-      throw new Error(parsedResult.error || 'Failed to reject request');
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
+// ❌ REMOVED: Direct approval/rejection (replaced by liquid democracy voting)
+// Use voteOnOrbitRequest in components instead
 
 // ==================== INITIAL STATE ====================
 
@@ -337,16 +258,7 @@ const initialState = {
       error: null,
       lastSuccess: null,
     },
-    approveRequest: {
-      loading: false,
-      error: null,
-      lastSuccess: null,
-    },
-    rejectRequest: {
-      loading: false,
-      error: null,
-      lastSuccess: null,
-    },
+    // approveRequest & rejectRequest removed - use voting instead
   },
 };
 
@@ -473,35 +385,7 @@ const orbitSlice = createSlice({
         state.mutations.createTransfer.error = action.payload;
       });
 
-    // Approve Request
-    builder
-      .addCase(approveOrbitRequest.pending, (state) => {
-        state.mutations.approveRequest.loading = true;
-        state.mutations.approveRequest.error = null;
-      })
-      .addCase(approveOrbitRequest.fulfilled, (state) => {
-        state.mutations.approveRequest.loading = false;
-        state.mutations.approveRequest.lastSuccess = Date.now();
-      })
-      .addCase(approveOrbitRequest.rejected, (state, action) => {
-        state.mutations.approveRequest.loading = false;
-        state.mutations.approveRequest.error = action.payload;
-      });
-
-    // Reject Request
-    builder
-      .addCase(rejectOrbitRequest.pending, (state) => {
-        state.mutations.rejectRequest.loading = true;
-        state.mutations.rejectRequest.error = null;
-      })
-      .addCase(rejectOrbitRequest.fulfilled, (state) => {
-        state.mutations.rejectRequest.loading = false;
-        state.mutations.rejectRequest.lastSuccess = Date.now();
-      })
-      .addCase(rejectOrbitRequest.rejected, (state, action) => {
-        state.mutations.rejectRequest.loading = false;
-        state.mutations.rejectRequest.error = action.payload;
-      });
+    // Approve/Reject Request handlers removed - use voting instead
   },
 });
 
@@ -555,13 +439,6 @@ export const selectCreateTransferLoading = (state) =>
   state.orbit.mutations.createTransfer.loading;
 export const selectCreateTransferError = (state) =>
   state.orbit.mutations.createTransfer.error;
-export const selectApproveRequestLoading = (state) =>
-  state.orbit.mutations.approveRequest.loading;
-export const selectApproveRequestError = (state) =>
-  state.orbit.mutations.approveRequest.error;
-export const selectRejectRequestLoading = (state) =>
-  state.orbit.mutations.rejectRequest.loading;
-export const selectRejectRequestError = (state) =>
-  state.orbit.mutations.rejectRequest.error;
+// Approve/Reject selectors removed - use voting instead
 
 export default orbitSlice.reducer;
