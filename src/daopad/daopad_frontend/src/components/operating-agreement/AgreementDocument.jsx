@@ -47,8 +47,8 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
     };
 
     users.forEach(user => {
-      // Check status first
-      const isActive = user.status?.Active !== undefined;
+      // Check status first (Candid enum deserializes as string "Active" or "Inactive")
+      const isActive = user.status === 'Active';
 
       if (!isActive) {
         categories.inactive.push(user);
