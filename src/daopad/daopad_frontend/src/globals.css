@@ -359,3 +359,113 @@ button:active {
 .tab-underline[data-state="active"]::after {
   width: 80%;
 }
+
+/* Print styles for Operating Agreement */
+@media print {
+  /* Hide everything except agreement content */
+  body * {
+    visibility: hidden;
+  }
+
+  .print\:border-0 {
+    border: 0 !important;
+  }
+
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+
+  .print\:p-0 {
+    padding: 0 !important;
+  }
+
+  /* Show only the agreement document */
+  #root .prose,
+  #root .prose * {
+    visibility: visible;
+  }
+
+  #root .prose {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Professional document styling */
+  .prose {
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 11pt !important;
+    line-height: 1.6 !important;
+    color: black !important;
+    background: white !important;
+  }
+
+  .prose h1 {
+    font-size: 18pt !important;
+    page-break-after: avoid;
+  }
+
+  .prose h2 {
+    font-size: 14pt !important;
+    page-break-after: avoid;
+    margin-top: 24pt !important;
+  }
+
+  .prose h3 {
+    font-size: 12pt !important;
+    page-break-after: avoid;
+  }
+
+  /* Page breaks */
+  .prose section {
+    page-break-inside: avoid;
+  }
+
+  /* Table styling for print */
+  .prose table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 10pt !important;
+    page-break-inside: avoid;
+  }
+
+  .prose table th,
+  .prose table td {
+    border: 1px solid #000 !important;
+    padding: 4pt 8pt !important;
+  }
+
+  .prose table th {
+    background: #f0f0f0 !important;
+    font-weight: bold !important;
+  }
+
+  /* Hide buttons and interactive elements */
+  button,
+  .btn,
+  .button {
+    display: none !important;
+  }
+
+  /* Ensure links are visible but styled appropriately */
+  .prose a {
+    color: black !important;
+    text-decoration: underline !important;
+  }
+
+  /* Code blocks */
+  .prose code {
+    background: #f5f5f5 !important;
+    padding: 1pt 2pt !important;
+    font-family: 'Courier New', monospace !important;
+    font-size: 9pt !important;
+  }
+
+  /* Page margins */
+  @page {
+    margin: 1in;
+    size: letter;
+  }
+}
