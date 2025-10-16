@@ -9,8 +9,9 @@ import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { useToast } from '../../hooks/use-toast';
 import { DAOPadBackendService } from '../../services/daopadBackend';
+import { useVoting } from '../../hooks/useVoting';
 import RequestDomainSelector from './RequestDomainSelector';
-import RequestList from './RequestList';
+import { RequestList } from './requests/RequestList';
 import RequestFiltersCompact from './RequestFiltersCompact';
 import { REQUEST_DOMAIN_FILTERS, RequestDomains } from '../../utils/requestDomains';
 
@@ -40,6 +41,9 @@ const UnifiedRequests = ({ tokenId, identity }) => {
   const [showOnlyPending, setShowOnlyPending] = useState(false);
 
   const { toast } = useToast();
+
+  // Voting system integration
+  const { vote, userVotingPower, fetchVotingPower } = useVoting(tokenId);
 
   // Polling interval - adjusted to 15 seconds for performance
   const REFRESH_INTERVAL = 15000;
@@ -152,8 +156,34 @@ const UnifiedRequests = ({ tokenId, identity }) => {
     }
   }, [tokenId, identity, selectedDomain, filters, showOnlyPending, toast]);
 
-  // ❌ REMOVED: Direct approval/rejection (replaced by liquid democracy voting)
-  // TODO: Implement voting UI in follow-up PR
+  // ✅ UPDATED: Active voting replaces direct approval
+  const handleVote = async (orbitRequestId, voteChoice) => {
+    try {
+      await vote(orbitRequestId, voteChoice);
+      // Refresh requests to show updated vote counts
+      await fetchRequests();
+    } catch (err) {
+      // Error handling is done in VoteButtons component
+      console.error('Vote error:', err);
+    }
+  };
+
+  const toggleRequestSelection = (requestId) => {
+    setSelectedRequests(prev =>
+      prev.includes(requestId)
+        ? prev.filter(id => id !== requestId)
+        : [...prev, requestId]
+    );
+  };
+
+  const selectAllPending = () => {
+    const pendingRequests = requests.filter(r =>
+      r.status === 'Created' || r.status === 'Scheduled'
+    );
+    setSelectedRequests(pendingRequests.map(r => r.id));
+  };
+
+  const clearSelection = () => setSelectedRequests([]);
 
   // Handle voting on treasury proposals
   const handleTreasuryVote = async (proposalId, vote) => {
@@ -260,28 +290,14 @@ const UnifiedRequests = ({ tokenId, identity }) => {
           </div>
         </div>
 
-        {/* Request list - now takes full width */}
+        {/* Request list with voting UI */}
         <RequestList
           requests={requests}
           loading={loading}
-          error={error}
-          onApprove={(id, request) => {
-            // Only treasury proposals can be voted on for now
-            if (request?.is_treasury_proposal) {
-              handleTreasuryVote(request.proposal_id, true);
-            } else {
-              toast.error('Voting UI for non-treasury proposals coming soon');
-            }
-          }}
-          onReject={(id, reason, request) => {
-            // Only treasury proposals can be voted on for now
-            if (request?.is_treasury_proposal) {
-              handleTreasuryVote(request.proposal_id, false);
-            } else {
-              toast.error('Voting UI for non-treasury proposals coming soon');
-            }
-          }}
-          onRetry={fetchRequests}
+          tokenId={tokenId}
+          userVotingPower={userVotingPower}
+          onVote={handleVote}
+          emptyMessage="No requests found"
         />
 
         {/* Pagination */}
