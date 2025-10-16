@@ -171,9 +171,6 @@ const TokenTabs = ({ identity }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-display text-executive-ivory">Token Governance</h2>
-      </div>
 
       {showOrbitDebugPanels && OrbitStationTest && (
         <Suspense

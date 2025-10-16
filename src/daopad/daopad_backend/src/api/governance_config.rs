@@ -172,6 +172,41 @@ pub fn has_proposal_passed(
     Ok(yes_percentage >= config.required_threshold as u64)
 }
 
+/// Get total voting power for a token across all Kong Locker users
+///
+/// This sums up the voting power of all registered users for a specific token.
+/// Used by frontend to show user's VP as a percentage of total.
+#[update]
+pub async fn get_total_voting_power_for_token(
+    token_canister_id: Principal
+) -> Result<u64, String> {
+    // Import the calculation function from proposals module
+    use crate::kong_locker::voting::calculate_voting_power_for_token;
+    use crate::storage::state::KONG_LOCKER_PRINCIPALS;
+
+    // Get all registered Kong Locker principals
+    let all_kong_lockers = KONG_LOCKER_PRINCIPALS.with(|principals| {
+        principals
+            .borrow()
+            .iter()
+            .map(|(_, locker)| locker.0)
+            .collect::<Vec<Principal>>()
+    });
+
+    // Calculate total voting power across all registered users
+    let mut total_power = 0u64;
+
+    for kong_locker in all_kong_lockers {
+        // Get voting power for this specific token
+        match calculate_voting_power_for_token(kong_locker, token_canister_id).await {
+            Ok(power) => total_power += power,
+            Err(_) => continue, // Skip users with errors (e.g., no LP positions)
+        }
+    }
+
+    Ok(total_power)
+}
+
 // Governance analytics
 #[derive(CandidType, Deserialize)]
 pub struct GovernanceStats {

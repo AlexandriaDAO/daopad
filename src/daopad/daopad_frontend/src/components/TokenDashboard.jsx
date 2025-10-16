@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, memo, useMemo } from 'react';
 import { Principal } from '@dfinity/principal';
 import { useDispatch } from 'react-redux';
 import { DAOPadBackendService } from '../services/daopadBackend';
@@ -10,6 +10,7 @@ import PermissionsPage from '../pages/PermissionsPage';
 import DAOSettings from './DAOSettings';
 import CanistersTab from './canisters/CanistersTab';
 import SecurityDashboard from './security/SecurityDashboard';
+import OperatingAgreementTab from './operating-agreement/OperatingAgreementTab';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -60,6 +61,8 @@ const TokenDashboard = memo(function TokenDashboard({
   const [tokenMetadata, setTokenMetadata] = useState(null);
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [activeTab, setActiveTab] = useState('accounts');
+  const [totalVotingPower, setTotalVotingPower] = useState(null);
+  const [loadingTotalVP, setLoadingTotalVP] = useState(false);
 
   const toPrincipalText = (value) => {
     if (!value) return null;
@@ -73,6 +76,7 @@ const TokenDashboard = memo(function TokenDashboard({
     loadTokenStatus();
     loadVotingPower();
     loadTokenMetadata();
+    loadTotalVotingPower();
   }, [token]);
 
   useEffect(() => {
@@ -114,6 +118,24 @@ const TokenDashboard = memo(function TokenDashboard({
       console.error('Failed to load voting power:', err);
     } finally {
       setLoadingVP(false);
+    }
+  };
+
+  const loadTotalVotingPower = async () => {
+    if (!identity || !token) return;
+
+    setLoadingTotalVP(true);
+    try {
+      const daopadService = new DAOPadBackendService(identity);
+      const tokenPrincipal = Principal.fromText(token.canister_id);
+      const result = await daopadService.getTotalVotingPowerForToken(tokenPrincipal);
+      if (result.success) {
+        setTotalVotingPower(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to load total voting power:', err);
+    } finally {
+      setLoadingTotalVP(false);
     }
   };
 
@@ -296,6 +318,13 @@ const TokenDashboard = memo(function TokenDashboard({
     return sum + (pos.usd_balance || 0);
   }, 0);
 
+  const vpPercentage = useMemo(() => {
+    if (!votingPower || !totalVotingPower || totalVotingPower === 0) {
+      return null;
+    }
+    return ((votingPower / totalVotingPower) * 100).toFixed(2);
+  }, [votingPower, totalVotingPower]);
+
   // Memoize token USD calculations for performance
   const tokenUsdValues = React.useMemo(() => {
     if (!tokens || !lpPositions) return {};
@@ -412,12 +441,19 @@ const TokenDashboard = memo(function TokenDashboard({
           </div>
           <div className="text-xs text-muted-foreground">LP Value</div>
 
-          {/* Secondary: VP with tooltip */}
+          {/* Secondary: VP with percentage and tooltip */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="text-lg font-mono cursor-help border-b border-dotted border-muted-foreground inline-block">
-                  {votingPower.toLocaleString()} VP
+                <div className="space-y-1">
+                  <div className="text-lg font-mono cursor-help border-b border-dotted border-muted-foreground inline-block">
+                    {votingPower.toLocaleString()} VP
+                  </div>
+                  {vpPercentage && (
+                    <div className="text-sm text-muted-foreground">
+                      {vpPercentage}% of total VP
+                    </div>
+                  )}
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -425,6 +461,11 @@ const TokenDashboard = memo(function TokenDashboard({
                 <p className="text-xs text-muted-foreground">
                   ${((votingPower || 0) / VP_TO_USD_RATIO).toLocaleString()} × 100 = {votingPower.toLocaleString()} VP
                 </p>
+                {totalVotingPower && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Total network VP: {totalVotingPower.toLocaleString()}
+                  </p>
+                )}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -445,13 +486,14 @@ const TokenDashboard = memo(function TokenDashboard({
           {/* Tabs for different views */}
           <Tabs defaultValue="accounts" className="w-full" onValueChange={(value) => setActiveTab(value)}>
             <div className="flex items-center gap-3 mb-6">
-              <TabsList variant="executive" className="flex-1 grid grid-cols-6">
+              <TabsList variant="executive" className="flex-1 grid grid-cols-7">
                 <TabsTrigger variant="executive" value="accounts">Treasury</TabsTrigger>
                 <TabsTrigger variant="executive" value="activity">Activity</TabsTrigger>
                 <TabsTrigger variant="executive" value="canisters">Canisters</TabsTrigger>
                 <TabsTrigger variant="executive" value="security">Security</TabsTrigger>
                 <TabsTrigger variant="executive" value="permissions">Permissions</TabsTrigger>
                 <TabsTrigger variant="executive" value="settings">Settings</TabsTrigger>
+                <TabsTrigger variant="executive" value="agreement">Agreement</TabsTrigger>
               </TabsList>
 
               {/* Refresh Button */}
@@ -525,6 +567,17 @@ const TokenDashboard = memo(function TokenDashboard({
             <TabsContent value="settings" className="mt-4">
               {activeTab === 'settings' && (
                 <DAOSettings tokenCanisterId={token.canister_id} identity={identity} />
+              )}
+            </TabsContent>
+
+            <TabsContent value="agreement" className="mt-4">
+              {activeTab === 'agreement' && (
+                <OperatingAgreementTab
+                  tokenId={token.canister_id}
+                  stationId={orbitStation?.station_id}
+                  tokenSymbol={token.symbol}
+                  identity={identity}
+                />
               )}
             </TabsContent>
 
