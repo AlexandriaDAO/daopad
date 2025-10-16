@@ -1,4 +1,6 @@
-// Hardcoded operation thresholds from backend proposals/types.rs
+// ⚠️ IMPORTANT: These thresholds are hardcoded from:
+// daopad_backend/src/proposals/types.rs (OrbitRequestType enum)
+// If backend thresholds change, update this file accordingly!
 export const OPERATION_THRESHOLDS = [
   // Critical (90%)
   { name: 'System Upgrade', threshold: 90, risk: 'CRITICAL', duration: 72 },

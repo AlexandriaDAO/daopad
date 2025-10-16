@@ -444,16 +444,16 @@ const TokenDashboard = memo(function TokenDashboard({
       {orbitStation ? (
         <>
           {/* Tabs for different views */}
-          <Tabs defaultValue="accounts" className="w-full" onValueChange={(value) => setActiveTab(value)}>
+          <Tabs defaultValue="agreement" className="w-full" onValueChange={(value) => setActiveTab(value)}>
             <div className="flex items-center gap-3 mb-6">
               <TabsList variant="executive" className="flex-1 grid grid-cols-7">
+                <TabsTrigger variant="executive" value="agreement">Agreement</TabsTrigger>
                 <TabsTrigger variant="executive" value="accounts">Treasury</TabsTrigger>
                 <TabsTrigger variant="executive" value="activity">Activity</TabsTrigger>
                 <TabsTrigger variant="executive" value="canisters">Canisters</TabsTrigger>
                 <TabsTrigger variant="executive" value="security">Security</TabsTrigger>
                 <TabsTrigger variant="executive" value="permissions">Permissions</TabsTrigger>
                 <TabsTrigger variant="executive" value="settings">Settings</TabsTrigger>
-                <TabsTrigger variant="executive" value="agreement">Agreement</TabsTrigger>
               </TabsList>
 
               {/* Refresh Button */}
