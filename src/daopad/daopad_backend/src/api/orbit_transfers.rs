@@ -1,4 +1,4 @@
-use crate::api::orbit_requests::GetRequestResponse;
+use crate::api::orbit_requests::{GetRequestResponse, Error};
 use crate::types::orbit::{
     TransferOperationInput, TransferMetadata, NetworkInput,
     RequestExecutionSchedule, RequestOperation,
@@ -9,58 +9,13 @@ use ic_cdk::api::call::CallResult;
 #[derive(CandidType, Deserialize)]
 pub enum CreateRequestResult {
     Ok(GetRequestResponse),
-    Err(ErrorInfo),
+    Err(Error),
 }
 
 // RequestWithDetails and related types are now imported from orbit_requests.rs
 
-use std::fmt;
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct ErrorInfo {
-    pub code: String,
-    pub message: Option<String>,  // Now optional to match Orbit's Error type
-    pub details: Option<Vec<(String, String)>>,  // Add details field to match Orbit
-}
-
-impl fmt::Display for ErrorInfo {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Handle optional message gracefully
-        let msg = self.message.as_deref().unwrap_or("No message");
-
-        // Include details if present
-        if let Some(details) = &self.details {
-            let details_str = details.iter()
-                .map(|(k, v)| format!("{}: {}", k, v))
-                .collect::<Vec<_>>()
-                .join(", ");
-            write!(f, "{} - {} [{}]", self.code, msg, details_str)
-        } else {
-            write!(f, "{} - {}", self.code, msg)
-        }
-    }
-}
-
 // Simplified implementation - complex Orbit types will be added in future update
-
-#[derive(CandidType, Deserialize)]
-pub struct SubmitRequestApprovalInput {
-    pub request_id: String,
-    pub decision: RequestApprovalDecision,
-    pub reason: Option<String>,
-}
-
-#[derive(CandidType, Deserialize)]
-pub enum RequestApprovalDecision {
-    Approve,
-    Reject,
-}
-
-#[derive(CandidType, Deserialize)]
-pub enum SubmitRequestApprovalResult {
-    Ok(()),
-    Err(ErrorInfo),
-}
+// Note: SubmitRequestApprovalResult and related types are now imported from orbit_requests.rs
 
 // Note: Direct transfer functionality has been removed.
 // All transfers now go through the proposal system via create_transfer_request in orbit.rs
@@ -111,7 +66,7 @@ pub struct GetAccountInput {
 #[derive(CandidType, Deserialize)]
 pub enum GetAccountResult {
     Ok { account: Account },
-    Err(ErrorInfo),
+    Err(Error),
 }
 
 #[derive(CandidType, Deserialize)]
@@ -122,7 +77,7 @@ pub struct GetAssetInput {
 #[derive(CandidType, Deserialize)]
 pub enum GetAssetResult {
     Ok { asset: Asset },
-    Err(ErrorInfo),
+    Err(Error),
 }
 
 #[derive(CandidType, Deserialize)]
@@ -143,7 +98,7 @@ pub enum ListAssetsResult {
         next_offset: Option<u64>,
         total: u64,
     },
-    Err(ErrorInfo),
+    Err(Error),
 }
 
 // Get an account with enriched asset details
@@ -190,7 +145,7 @@ pub async fn get_account_with_assets(
             })
         }
         Ok((GetAccountResult::Err(e),)) => {
-            Err(format!("Failed to get account: {}", e))
+            Err(format!("Failed to get account: {:?}", e))
         }
         Err(e) => {
             Err(format!("Call failed: {:?}", e))
@@ -214,7 +169,7 @@ pub async fn list_station_assets(
 
     match result {
         Ok((ListAssetsResult::Ok { assets, .. },)) => Ok(assets),
-        Ok((ListAssetsResult::Err(e),)) => Err(format!("Failed to list assets: {}", e)),
+        Ok((ListAssetsResult::Err(e),)) => Err(format!("Failed to list assets: {:?}", e)),
         Err(e) => Err(format!("Call failed: {:?}", e))
     }
 }

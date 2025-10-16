@@ -384,12 +384,12 @@ async fn approve_orbit_request(
     request_id: &str,
 ) -> Result<(), ProposalError> {
     use crate::api::{
-        RequestApprovalDecision, SubmitRequestApprovalInput, SubmitRequestApprovalResult,
+        RequestApprovalStatus, SubmitRequestApprovalInput, SubmitRequestApprovalResult,
     };
 
     let input = SubmitRequestApprovalInput {
         request_id: request_id.to_string(),
-        decision: RequestApprovalDecision::Approve,
+        decision: RequestApprovalStatus::Approved,
         reason: Some("DAOPad treasury proposal approved by community vote".to_string()),
     };
 
@@ -414,12 +414,12 @@ async fn reject_orbit_request(
     request_id: &str,
 ) -> Result<(), ProposalError> {
     use crate::api::{
-        RequestApprovalDecision, SubmitRequestApprovalInput, SubmitRequestApprovalResult,
+        RequestApprovalStatus, SubmitRequestApprovalInput, SubmitRequestApprovalResult,
     };
 
     let input = SubmitRequestApprovalInput {
         request_id: request_id.to_string(),
-        decision: RequestApprovalDecision::Reject,
+        decision: RequestApprovalStatus::Rejected,
         reason: Some("DAOPad treasury proposal rejected by community vote".to_string()),
     };
 
