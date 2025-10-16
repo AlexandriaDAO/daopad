@@ -15,21 +15,41 @@ echo "✅ In isolated worktree: $REPO_ROOT"
 
 ## Your Autonomous Workflow (NO QUESTIONS ALLOWED)
 1. **Verify isolation** - You must be in worktree: `/home/theseus/alexandria/daopad-voting-ui/src/daopad`
-2. **Implement feature** - Follow plan sections below
-3. **Build & Deploy**:
+2. **Execute Phase 0: Research** - Verify backend APIs exist and work (30-60 min)
+3. **Implement feature** - Follow plan sections below
+4. **Build & Deploy**:
    - Frontend changes only:
      ```bash
+     # Verify no backend changes needed
+     git status daopad_backend/ | grep "nothing to commit" || \
+       echo "⚠️ WARNING: Backend changes detected - should be frontend-only!"
+
+     # Build frontend
      npm run build
+
+     # Deploy frontend
      ./deploy.sh --network ic --frontend-only
      ```
-4. **Create PR** (MANDATORY):
+5. **Verify Declaration Sync** (CRITICAL):
+   ```bash
+   # Check if backend declarations are in sync with frontend
+   # If deploy.sh updated src/declarations/, sync to frontend:
+   if [ -d "src/declarations/daopad_backend" ]; then
+     cp -r src/declarations/daopad_backend/* \
+       daopad_frontend/src/declarations/daopad_backend/
+     echo "✅ Declarations synced"
+   else
+     echo "⚠️ No new declarations generated (OK if no backend changes)"
+   fi
+   ```
+6. **Create PR** (MANDATORY):
    ```bash
    git add .
    git commit -m "feat: Implement liquid democracy voting UI for all Orbit requests"
    git push -u origin feature/voting-ui
    gh pr create --title "Feature: Liquid Democracy Voting UI" --body "Implements IMPLEMENT-VOTING-UI.md - adds voting interface with 50% threshold for all Orbit requests"
    ```
-5. **Iterate autonomously**:
+7. **Iterate autonomously**:
    - FOR i=1 to 5:
      - Check review: `gh pr view [NUM] --json comments`
      - Count P0 issues
@@ -135,6 +155,94 @@ daopad_frontend/src/
 
 ## 📝 Implementation Pseudocode
 
+### Phase 0: Research & Verification (MANDATORY - 30-60 min)
+
+**Follow plan-pursuit-methodology: Test before implementing**
+
+#### Step 0.1: Verify Backend API Functions
+
+```bash
+# Verify voting functions exist in Candid interface
+dfx canister --network ic call lwsav-iiaaa-aaaap-qp2qq-cai __get_candid | \
+  grep -E "(vote_on_orbit_request|get_orbit_request_proposal|ensure_proposal)"
+
+# Expected output:
+# vote_on_orbit_request : (principal, text, bool) -> (Result_35)
+# get_orbit_request_proposal : (principal, text) -> (opt OrbitRequestProposal)
+# ensure_proposal_for_request : (principal, text, OrbitRequestType) -> (Result_33)
+```
+
+#### Step 0.2: Test Voting Engine with Real Data
+
+```bash
+# Use test station: ALEX token
+export TEST_TOKEN="fec7w-zyaaa-aaaaa-qaffq-cai"
+
+# First, list requests to get a real request ID
+dfx canister --network ic call lwsav-iiaaa-aaaap-qp2qq-cai list_orbit_requests \
+  "principal \"$TEST_TOKEN\"" \
+  '(record { statuses = opt vec { variant { Created } }; ... })'
+
+# Use actual request ID from list
+export TEST_REQUEST="<copy-request-id-from-output>"
+
+# Test voting (will fail with AlreadyVoted if you already voted - that's OK!)
+dfx canister --network ic call lwsav-iiaaa-aaaap-qp2qq-cai vote_on_orbit_request \
+  "(principal \"$TEST_TOKEN\", \"$TEST_REQUEST\", true)"
+
+# Expected: variant { Ok } or variant { Err = variant { AlreadyVoted = ... } }
+# Both prove the function works!
+```
+
+#### Step 0.3: Test Proposal Fetching
+
+```bash
+# Get proposal for the request we just voted on
+dfx canister --network ic call lwsav-iiaaa-aaaap-qp2qq-cai get_orbit_request_proposal \
+  "(principal \"$TEST_TOKEN\", \"$TEST_REQUEST\")"
+
+# Expected: opt record {
+#   id = <number>;
+#   yes_votes = <number>;
+#   no_votes = <number>;
+#   total_voting_power = <number>;
+#   ...
+# }
+```
+
+#### Step 0.4: Verify Voting Power Query
+
+```bash
+# Check your voting power for ALEX token
+dfx canister --network ic call lwsav-iiaaa-aaaap-qp2qq-cai get_my_voting_power_for_token \
+  "(principal \"$TEST_TOKEN\")"
+
+# Expected: variant { Ok = <number> }
+# If Err: You need to register your Kong Locker first
+```
+
+#### Step 0.5: Read Current Frontend Code
+
+```bash
+# Identify exactly what to replace in UnifiedRequests
+rg "handleApprovalDecision|handleBatchApprove" daopad_frontend/src/components/orbit/
+
+# Check existing voting pattern in treasury
+cat daopad_frontend/src/components/orbit/UnifiedRequests.jsx | sed -n '194,211p'
+
+# Verify DAOPadBackendService has voting methods
+rg "voteOnOrbitRequest" daopad_frontend/src/services/daopadBackend.js -A 10
+```
+
+**Verification Checklist:**
+- [ ] All backend functions exist and return expected types
+- [ ] Can vote on real request (or get AlreadyVoted error)
+- [ ] Can fetch proposal data with vote counts
+- [ ] Can query voting power
+- [ ] Understand current frontend approval code to be replaced
+
+---
+
 ### Phase 1: Create Reusable Voting Components
 
 #### Step 1.1: Vote Progress Bar Component
@@ -233,9 +341,11 @@ export function VoteButtons({
   onVote,
   disabled,
   userVotingPower,
-  hasVoted
+  hasVoted,
+  onVoteComplete  // Callback to refresh proposal data
 }) {
   const [voting, setVoting] = useState(null); // 'yes' | 'no' | null
+  const [localHasVoted, setLocalHasVoted] = useState(hasVoted);
   const { toast } = useToast();
 
   const handleVote = async (vote) => {
@@ -247,18 +357,30 @@ export function VoteButtons({
         title: vote ? "Voted Yes" : "Voted No",
         description: `Your voting power: ${userVotingPower.toLocaleString()}`
       });
+      setLocalHasVoted(true);
+      if (onVoteComplete) onVoteComplete();
     } catch (error) {
-      toast({
-        title: "Vote Failed",
-        description: error.message,
-        variant: "destructive"
-      });
+      // Handle AlreadyVoted error gracefully
+      if (error.message?.includes('AlreadyVoted') || error.message?.includes('already voted')) {
+        toast({
+          title: "Already Voted",
+          description: "You have already cast your vote on this proposal",
+          variant: "default"
+        });
+        setLocalHasVoted(true);
+      } else {
+        toast({
+          title: "Vote Failed",
+          description: error.message,
+          variant: "destructive"
+        });
+      }
     } finally {
       setVoting(null);
     }
   };
 
-  if (hasVoted) {
+  if (hasVoted || localHasVoted) {
     return (
       <div className="text-sm text-muted-foreground">
         ✓ You have already voted (VP: {userVotingPower.toLocaleString()})
@@ -407,11 +529,8 @@ export function useProposal(tokenId, orbitRequestId) {
 
       if (proposalOpt.length > 0) {
         setProposal(proposalOpt[0]);
-
-        // Check if current user has voted
-        const caller = identity.getPrincipal();
-        const voteOpt = await actor.get_user_vote(proposalOpt[0].id, caller);
-        setHasVoted(voteOpt.length > 0);
+        // Note: hasVoted detection happens on vote attempt (backend returns AlreadyVoted error)
+        // We don't have a query endpoint for this, so we detect it during voting
       } else {
         setProposal(null);
         setHasVoted(false);
@@ -462,16 +581,61 @@ export function useProposal(tokenId, orbitRequestId) {
 }
 
 // Helper: Map operation type string to enum variant
+// MUST match backend's infer_request_type() at orbit_requests.rs:303-361
 function inferRequestType(operationType) {
-  // This should match the backend's infer_request_type() logic
   const typeMap = {
+    // Treasury (3)
     'Transfer': { Transfer: null },
+    'AddAccount': { AddAccount: null },
+    'EditAccount': { EditAccount: null },
+
+    // Users (3)
     'AddUser': { AddUser: null },
     'EditUser': { EditUser: null },
     'RemoveUser': { RemoveUser: null },
-    'AddAccount': { AddAccount: null },
-    'EditAccount': { EditAccount: null },
-    // ... all 33 types
+
+    // Groups (3)
+    'AddUserGroup': { AddUserGroup: null },
+    'EditUserGroup': { EditUserGroup: null },
+    'RemoveUserGroup': { RemoveUserGroup: null },
+
+    // Canisters (9)
+    'CreateExternalCanister': { CreateExternalCanister: null },
+    'ConfigureExternalCanister': { ConfigureExternalCanister: null },
+    'ChangeExternalCanister': { ChangeExternalCanister: null },
+    'CallExternalCanister': { CallExternalCanister: null },
+    'FundExternalCanister': { FundExternalCanister: null },
+    'MonitorExternalCanister': { MonitorExternalCanister: null },
+    'SnapshotExternalCanister': { SnapshotExternalCanister: null },
+    'RestoreExternalCanister': { RestoreExternalCanister: null },
+    'PruneExternalCanister': { PruneExternalCanister: null },
+
+    // System (4)
+    'SystemUpgrade': { SystemUpgrade: null },
+    'SystemRestore': { SystemRestore: null },
+    'SetDisasterRecovery': { SetDisasterRecovery: null },
+    'ManageSystemInfo': { ManageSystemInfo: null },
+
+    // Governance (4)
+    'EditPermission': { EditPermission: null },
+    'AddRequestPolicy': { AddRequestPolicy: null },
+    'EditRequestPolicy': { EditRequestPolicy: null },
+    'RemoveRequestPolicy': { RemoveRequestPolicy: null },
+
+    // Assets (3)
+    'AddAsset': { AddAsset: null },
+    'EditAsset': { EditAsset: null },
+    'RemoveAsset': { RemoveAsset: null },
+
+    // Rules (3)
+    'AddNamedRule': { AddNamedRule: null },
+    'EditNamedRule': { EditNamedRule: null },
+    'RemoveNamedRule': { RemoveNamedRule: null },
+
+    // Address Book (3)
+    'AddAddressBookEntry': { AddAddressBookEntry: null },
+    'EditAddressBookEntry': { EditAddressBookEntry: null },
+    'RemoveAddressBookEntry': { RemoveAddressBookEntry: null },
   };
 
   return typeMap[operationType] || { Other: operationType };
