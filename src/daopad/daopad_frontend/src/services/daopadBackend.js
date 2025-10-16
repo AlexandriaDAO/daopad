@@ -303,6 +303,21 @@ export class DAOPadBackendService {
     }
   }
 
+  async getTotalVotingPowerForToken(tokenCanisterId) {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.get_total_voting_power_for_token(tokenCanisterId);
+      if ('Ok' in result) {
+        return { success: true, data: Number(result.Ok) };
+      } else {
+        return { success: false, error: result.Err };
+      }
+    } catch (error) {
+      console.error('Failed to get total voting power for token:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   async getUserPendingRequests(tokenCanisterId, userPrincipal) {
     try {
       const actor = await this.getActor();
@@ -455,6 +470,22 @@ export class DAOPadBackendService {
       }
     } catch (error) {
       console.error('Failed to fetch account balances:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getAccountAssets(tokenId, accountId) {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.get_account_assets(tokenId, accountId);
+
+      if ('Ok' in result) {
+        return { success: true, data: result.Ok };
+      } else {
+        return { success: false, error: result.Err };
+      }
+    } catch (error) {
+      console.error('Failed to get account assets:', error);
       return { success: false, error: error.message };
     }
   }

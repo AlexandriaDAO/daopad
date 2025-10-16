@@ -14,7 +14,6 @@ import RequestDomainSelector from './RequestDomainSelector';
 import { RequestList } from './requests/RequestList';
 import RequestFiltersCompact from './RequestFiltersCompact';
 import { REQUEST_DOMAIN_FILTERS, RequestDomains } from '../../utils/requestDomains';
-import { Zap, Clock } from 'lucide-react';
 
 const UnifiedRequests = ({ tokenId, identity }) => {
   // State management
@@ -39,8 +38,6 @@ const UnifiedRequests = ({ tokenId, identity }) => {
     page: 0,
     hasMore: false
   });
-  const [selectedRequests, setSelectedRequests] = useState([]);
-  const [batchApproving, setBatchApproving] = useState(false);
   const [showOnlyPending, setShowOnlyPending] = useState(false);
 
   const { toast } = useToast();
@@ -266,7 +263,7 @@ const UnifiedRequests = ({ tokenId, identity }) => {
           </div>
         </div>
 
-        {/* Stats and batch actions bar */}
+        {/* Stats bar */}
         <div className="flex justify-between items-center py-2 border-y">
           <div className="flex gap-4 items-center">
             {/* Stats */}
@@ -290,48 +287,6 @@ const UnifiedRequests = ({ tokenId, identity }) => {
               />
               <span className="text-sm">Pending only</span>
             </label>
-          </div>
-
-          {/* Batch actions */}
-          <div className="flex gap-2">
-            {selectedRequests.length === 0 ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={selectAllPending}
-                disabled={requests.filter(r => r.status === 'Created' || r.status === 'Scheduled').length === 0}
-              >
-                Select All Pending
-              </Button>
-            ) : (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearSelection}
-                >
-                  Clear ({selectedRequests.length})
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleBatchApprove}
-                  disabled={batchApproving}
-                >
-                  {batchApproving ? (
-                    <>
-                      <Clock className="mr-2 h-4 w-4 animate-spin" />
-                      Approving...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="mr-2 h-4 w-4" />
-                      Approve {selectedRequests.length}
-                    </>
-                  )}
-                </Button>
-              </>
-            )}
           </div>
         </div>
 

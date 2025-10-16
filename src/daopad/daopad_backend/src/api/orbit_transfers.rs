@@ -173,3 +173,129 @@ pub async fn list_station_assets(
         Err(e) => Err(format!("Call failed: {:?}", e))
     }
 }
+
+// ========== GET ACCOUNT ASSETS WITH FORMATTED BALANCES ==========
+
+use serde::Serialize;
+use std::collections::HashMap;
+
+#[derive(CandidType, Deserialize, Serialize)]
+pub struct AccountAssetInfo {
+    pub account_id: String,
+    pub account_name: String,
+    pub assets: Vec<AssetBalanceInfo>,
+}
+
+#[derive(CandidType, Deserialize, Serialize)]
+pub struct AssetBalanceInfo {
+    pub asset_id: String,
+    pub symbol: String,
+    pub decimals: u32,
+    pub balance: u64,
+    pub balance_formatted: String,
+}
+
+#[ic_cdk::update]
+pub async fn get_account_assets(
+    token_canister_id: Principal,
+    account_id: String,
+) -> Result<AccountAssetInfo, String> {
+    let station_id = get_orbit_station_for_token(token_canister_id)
+        .ok_or("No Orbit Station registered for this token")?;
+
+    // 1. Get account details
+    let account_result: Result<(GetAccountResult,), _> = ic_cdk::call(
+        station_id,
+        "get_account",
+        (GetAccountInput {
+            account_id: account_id.clone(),
+        },),
+    )
+    .await;
+
+    let account = match account_result {
+        Ok((GetAccountResult::Ok { account },)) => account,
+        Ok((GetAccountResult::Err(e),)) => {
+            return Err(format!("Failed to get account: {:?}", e))
+        }
+        Err(e) => return Err(format!("Call failed: {:?}", e)),
+    };
+
+    // 2. Get all assets to map IDs to symbols
+    let assets_result: Result<(ListAssetsResult,), _> = ic_cdk::call(
+        station_id,
+        "list_assets",
+        (ListAssetsInput { paginate: None },),
+    )
+    .await;
+
+    let all_assets = match assets_result {
+        Ok((ListAssetsResult::Ok { assets, .. },)) => assets,
+        Ok((ListAssetsResult::Err(e),)) => {
+            return Err(format!("Failed to list assets: {:?}", e))
+        }
+        Err(e) => return Err(format!("Call failed: {:?}", e)),
+    };
+
+    // 3. Create asset map
+    let asset_map: HashMap<String, Asset> = all_assets
+        .into_iter()
+        .map(|a| (a.id.clone(), a))
+        .collect();
+
+    // 4. Build response with balances
+    let mut asset_balances = Vec::new();
+    for account_asset in account.assets {
+        if let Some(asset_info) = asset_map.get(&account_asset.asset_id) {
+            let balance_nat = account_asset
+                .balance
+                .as_ref()
+                .map(|b| b.balance.clone())
+                .unwrap_or(Nat::from(0u64));
+
+            let balance_u64 = nat_to_u64(&balance_nat);
+            let balance_formatted = format_balance(balance_u64, asset_info.decimals);
+
+            asset_balances.push(AssetBalanceInfo {
+                asset_id: account_asset.asset_id.clone(),
+                symbol: asset_info.symbol.clone(),
+                decimals: asset_info.decimals,
+                balance: balance_u64,
+                balance_formatted,
+            });
+        }
+    }
+
+    Ok(AccountAssetInfo {
+        account_id: account.id,
+        account_name: account.name,
+        assets: asset_balances,
+    })
+}
+
+fn nat_to_u64(nat: &Nat) -> u64 {
+    // Convert Nat to u64, handling overflow
+    // Try to convert to u64, use MAX if it doesn't fit
+    use std::convert::TryInto;
+    let bytes = nat.0.to_bytes_le();
+    if bytes.len() <= 8 {
+        let mut array = [0u8; 8];
+        array[..bytes.len()].copy_from_slice(&bytes);
+        u64::from_le_bytes(array)
+    } else {
+        u64::MAX
+    }
+}
+
+fn format_balance(amount: u64, decimals: u32) -> String {
+    if decimals == 0 {
+        return amount.to_string();
+    }
+
+    let divisor = 10u64.pow(decimals);
+    let whole = amount / divisor;
+    let frac = amount % divisor;
+
+    // Format with proper decimal places
+    format!("{}.{:0width$}", whole, frac, width = decimals as usize)
+}

@@ -171,8 +171,6 @@ function AppRoute() {
           <div className="space-y-1">
             <h1 className="text-3xl font-display text-executive-ivory tracking-wide">DAOPad</h1>
             <div className="h-px bg-executive-gold w-16"></div>
-            <p className="text-executive-lightGray/80 font-serif text-sm uppercase tracking-widest">Token Governance Platform</p>
-            <p className="text-xs text-executive-lightGray/60 italic">Create treasuries and vote with your locked liquidity</p>
           </div>
 
           <div className="flex items-center gap-4">

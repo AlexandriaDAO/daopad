@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, memo, useMemo } from 'react';
 import { Principal } from '@dfinity/principal';
 import { useDispatch } from 'react-redux';
 import { DAOPadBackendService } from '../services/daopadBackend';
@@ -10,16 +10,16 @@ import PermissionsPage from '../pages/PermissionsPage';
 import DAOSettings from './DAOSettings';
 import CanistersTab from './canisters/CanistersTab';
 import SecurityDashboard from './security/SecurityDashboard';
+import OperatingAgreementTab from './operating-agreement/OperatingAgreementTab';
+import TokenHeader from './token/TokenHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/dialog';
 import { upsertStationMapping } from '../features/dao/daoSlice';
 import { useActiveStation } from '../hooks/useActiveStation';
+import { useTokenMetadata } from '../hooks/useTokenMetadata';
 import OrbitStationPlaceholder from './orbit/OrbitStationPlaceholder';
 
 const TokenDashboard = memo(function TokenDashboard({
@@ -55,11 +56,13 @@ const TokenDashboard = memo(function TokenDashboard({
   const [userVotingPower, setUserVotingPower] = useState(null);
   const [loadingVP, setLoadingVP] = useState(false);
   const [showProposeForm, setShowProposeForm] = useState(false);
-  const [copyFeedback, setCopyFeedback] = useState(false);
   const [daoStatus, setDaoStatus] = useState(null);
-  const [tokenMetadata, setTokenMetadata] = useState(null);
-  const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [activeTab, setActiveTab] = useState('accounts');
+  const [totalVotingPower, setTotalVotingPower] = useState(null);
+  const [loadingTotalVP, setLoadingTotalVP] = useState(false);
+
+  // Use custom hook for token metadata
+  const { tokenMetadata, loading: loadingMetadata } = useTokenMetadata(token);
 
   const toPrincipalText = (value) => {
     if (!value) return null;
@@ -72,7 +75,7 @@ const TokenDashboard = memo(function TokenDashboard({
   useEffect(() => {
     loadTokenStatus();
     loadVotingPower();
-    loadTokenMetadata();
+    loadTotalVotingPower();
   }, [token]);
 
   useEffect(() => {
@@ -82,22 +85,6 @@ const TokenDashboard = memo(function TokenDashboard({
       setDaoStatus(null);
     }
   }, [orbitStation]);
-
-  const loadTokenMetadata = async () => {
-    if (!token) return;
-
-    setLoadingMetadata(true);
-    try {
-      const result = await DAOPadBackendService.getTokenMetadata(token.canister_id);
-      if (result.success) {
-        setTokenMetadata(result.data);
-      }
-    } catch (err) {
-      console.error('Failed to load token metadata:', err);
-    } finally {
-      setLoadingMetadata(false);
-    }
-  };
 
   const loadVotingPower = async () => {
     if (!identity || !token) return;
@@ -114,6 +101,24 @@ const TokenDashboard = memo(function TokenDashboard({
       console.error('Failed to load voting power:', err);
     } finally {
       setLoadingVP(false);
+    }
+  };
+
+  const loadTotalVotingPower = async () => {
+    if (!identity || !token) return;
+
+    setLoadingTotalVP(true);
+    try {
+      const daopadService = new DAOPadBackendService(identity);
+      const tokenPrincipal = Principal.fromText(token.canister_id);
+      const result = await daopadService.getTotalVotingPowerForToken(tokenPrincipal);
+      if (result.success) {
+        setTotalVotingPower(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to load total voting power:', err);
+    } finally {
+      setLoadingTotalVP(false);
     }
   };
 
@@ -296,6 +301,13 @@ const TokenDashboard = memo(function TokenDashboard({
     return sum + (pos.usd_balance || 0);
   }, 0);
 
+  const vpPercentage = useMemo(() => {
+    if (!votingPower || !totalVotingPower || totalVotingPower === 0) {
+      return null;
+    }
+    return ((votingPower / totalVotingPower) * 100).toFixed(2);
+  }, [votingPower, totalVotingPower]);
+
   // Memoize token USD calculations for performance
   const tokenUsdValues = React.useMemo(() => {
     if (!tokens || !lpPositions) return {};
@@ -322,136 +334,38 @@ const TokenDashboard = memo(function TokenDashboard({
 
   return (
     <div className="space-y-6">
-      {/* Compact Unified Header */}
-      <header className="flex items-center gap-4 pb-4 border-b">
-        {/* Token Logo */}
-        {token.canister_id === 'ysy5f-2qaaa-aaaap-qkmmq-cai' ? (
-          <img
-            src="/alex.png"
-            alt="ALEX"
-            className="w-12 h-12 rounded-lg object-contain flex-shrink-0"
-          />
-        ) : tokenMetadata?.logo && tokenMetadata.logo !== 'data:image/svg+xml;base64,' ? (
-          <img
-            src={tokenMetadata.logo}
-            alt={tokenMetadata?.symbol || token.symbol}
-            className="w-12 h-12 rounded-lg object-contain flex-shrink-0"
-            onError={(e) => {
-              e.target.style.display = 'none';
-            }}
-          />
-        ) : (
-          <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-            <span className="text-xl font-bold">
-              {(tokenMetadata?.symbol || token.symbol)?.charAt(0) || '?'}
-            </span>
-          </div>
-        )}
-
-        {/* Token Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{tokenMetadata?.name || token.symbol}</h1>
-            {tokens && tokens.length > 1 && (
-              <Select
-                value={activeTokenIndex?.toString() || "0"}
-                onValueChange={(value) => onTokenChange && onTokenChange(Number(value))}
-              >
-                <SelectTrigger className="w-[180px] h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {tokens.map((t, index) => (
-                    <SelectItem key={t.canister_id} value={index.toString()}>
-                      <div className="flex items-center justify-between gap-2 w-full">
-                        <span>{t.symbol}</span>
-                        <div className="flex flex-col items-end">
-                          <span className="text-xs font-mono">
-                            {((tokenVotingPowers && tokenVotingPowers[t.canister_id]) || 0).toLocaleString()} VP
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatUsdValue(tokenUsdValues[t.canister_id] || 0)}
-                          </span>
-                        </div>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant="outline">{tokenMetadata?.symbol || token.symbol}</Badge>
-            <Badge variant="outline">{token.chain}</Badge>
-            <code className="text-xs bg-muted px-2 py-1 rounded">{token.canister_id}</code>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(token.canister_id);
-                  setCopyFeedback(true);
-                  setTimeout(() => setCopyFeedback(false), 2000);
-                } catch (err) {
-                  console.error('Failed to copy:', err);
-                }
-              }}
-              className="h-6 w-6 p-0"
-              title="Copy canister ID"
-            >
-              {copyFeedback ? '✓' : '⧉'}
-            </Button>
-          </div>
-        </div>
-
-        {/* Voting Power with Prominent USD */}
-        <div className="text-right flex-shrink-0">
-          {/* Primary: USD Value */}
-          <div className="text-2xl font-bold text-green-600">
-            {formatUsdValue(totalUsdValue)}
-          </div>
-          <div className="text-xs text-muted-foreground">LP Value</div>
-
-          {/* Secondary: VP with tooltip */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="text-lg font-mono cursor-help border-b border-dotted border-muted-foreground inline-block">
-                  {votingPower.toLocaleString()} VP
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Voting Power = USD Value × 100</p>
-                <p className="text-xs text-muted-foreground">
-                  ${((votingPower || 0) / VP_TO_USD_RATIO).toLocaleString()} × 100 = {votingPower.toLocaleString()} VP
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          {orbitStation && daoStatus && (
-            <div className="mt-2">
-              {daoStatus === 'real' && <Badge className="bg-green-100 text-green-800">✓ Decentralized</Badge>}
-              {daoStatus === 'pseudo' && <Badge className="bg-yellow-100 text-yellow-800">⚠️ Pseudo-DAO</Badge>}
-              {daoStatus === 'invalid' && <Badge className="bg-red-100 text-red-800">✗ Invalid</Badge>}
-            </div>
-          )}
-        </div>
-      </header>
+      <TokenHeader
+        token={token}
+        tokenMetadata={tokenMetadata}
+        tokens={tokens}
+        activeTokenIndex={activeTokenIndex}
+        onTokenChange={onTokenChange}
+        tokenVotingPowers={tokenVotingPowers}
+        tokenUsdValues={tokenUsdValues}
+        totalUsdValue={totalUsdValue}
+        votingPower={votingPower}
+        totalVotingPower={totalVotingPower}
+        vpPercentage={vpPercentage}
+        formatUsdValue={formatUsdValue}
+        orbitStation={orbitStation}
+        daoStatus={daoStatus}
+      />
 
       {/* Main Content */}
       {orbitStation ? (
         <>
           {/* Tabs for different views */}
-          <Tabs defaultValue="accounts" className="w-full" onValueChange={(value) => setActiveTab(value)}>
+          <Tabs defaultValue="agreement" className="w-full" onValueChange={(value) => setActiveTab(value)}>
             <div className="flex items-center gap-3 mb-6">
-              <TabsList variant="executive" className="flex-1 grid grid-cols-6">
+              <TabsList variant="executive" className="flex-1 grid grid-cols-7">
+                <TabsTrigger variant="executive" value="agreement">Agreement</TabsTrigger>
                 <TabsTrigger variant="executive" value="accounts">Treasury</TabsTrigger>
                 <TabsTrigger variant="executive" value="activity">Activity</TabsTrigger>
                 <TabsTrigger variant="executive" value="canisters">Canisters</TabsTrigger>
                 <TabsTrigger variant="executive" value="security">Security</TabsTrigger>
                 <TabsTrigger variant="executive" value="permissions">Permissions</TabsTrigger>
                 <TabsTrigger variant="executive" value="settings">Settings</TabsTrigger>
+                <TabsTrigger variant="executive" value="agreement">Agreement</TabsTrigger>
               </TabsList>
 
               {/* Refresh Button */}
@@ -525,6 +439,17 @@ const TokenDashboard = memo(function TokenDashboard({
             <TabsContent value="settings" className="mt-4">
               {activeTab === 'settings' && (
                 <DAOSettings tokenCanisterId={token.canister_id} identity={identity} />
+              )}
+            </TabsContent>
+
+            <TabsContent value="agreement" className="mt-4">
+              {activeTab === 'agreement' && (
+                <OperatingAgreementTab
+                  tokenId={token.canister_id}
+                  stationId={orbitStation?.station_id}
+                  tokenSymbol={token.symbol}
+                  identity={identity}
+                />
               )}
             </TabsContent>
 

@@ -45,15 +45,16 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
 
   // Fetch accounts on mount and when dependencies change
   useEffect(() => {
-    if (stationId && identity) {
+    if (stationId && identity && tokenId) {
       dispatch(fetchOrbitAccounts({
         stationId,
         identity,
+        tokenId,
         searchQuery,
         pagination
       }));
     }
-  }, [dispatch, stationId, identity, searchQuery, pagination]);
+  }, [dispatch, stationId, identity, tokenId, searchQuery, pagination]);
 
   const handleSearch = (e) => {
     setSearchQuery(e.target.value);
@@ -64,6 +65,7 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
     dispatch(fetchOrbitAccounts({
       stationId,
       identity,
+      tokenId,
       searchQuery,
       pagination
     }));

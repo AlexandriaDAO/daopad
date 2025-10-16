@@ -60,10 +60,11 @@ export const fetchOrbitRequests = createAsyncThunk(
 // Fetch Orbit accounts with balances
 export const fetchOrbitAccounts = createAsyncThunk(
   'orbit/fetchAccounts',
-  async ({ stationId, identity, searchQuery, pagination }, { rejectWithValue }) => {
+  async ({ stationId, identity, searchQuery, pagination, tokenId }, { rejectWithValue }) => {
     try {
       const service = new DAOPadBackendService(identity);
       const stationPrincipal = Principal.fromText(stationId);
+      const tokenPrincipal = tokenId ? Principal.fromText(tokenId) : null;
 
       const response = await service.listOrbitAccounts(
         stationPrincipal,
@@ -73,26 +74,47 @@ export const fetchOrbitAccounts = createAsyncThunk(
       );
 
       if (response.success) {
-        // Fetch balances for accounts
-        const accountIds = response.data.accounts?.map(a => a.id) || [];
-        if (accountIds.length > 0) {
-          const balancesResult = await service.fetchOrbitAccountBalances(
-            stationPrincipal,
-            accountIds
+        const accounts = response.data.accounts || [];
+
+        // NEW: Fetch asset details with correct symbols for each account
+        if (accounts.length > 0 && tokenPrincipal) {
+          const enrichedAccounts = await Promise.all(
+            accounts.map(async (account) => {
+              try {
+                const assetsResult = await service.getAccountAssets(
+                  tokenPrincipal,
+                  account.id
+                );
+
+                if (assetsResult.success && assetsResult.data) {
+                  // Map assets to the format expected by selectors
+                  const assetsWithSymbols = assetsResult.data.assets.map(asset => ({
+                    id: asset.asset_id,
+                    asset_id: asset.asset_id,
+                    symbol: asset.symbol,  // ✅ CORRECT SYMBOL FROM ORBIT!
+                    decimals: asset.decimals,
+                    balance: {
+                      balance: BigInt(asset.balance),
+                      decimals: asset.decimals,
+                      asset_id: asset.asset_id,
+                    }
+                  }));
+
+                  return {
+                    ...account,
+                    assets: assetsWithSymbols,
+                  };
+                }
+              } catch (error) {
+                console.warn(`Failed to get assets for account ${account.id}:`, error);
+              }
+
+              // Fallback to original account if enrichment fails
+              return account;
+            })
           );
 
-          if (balancesResult.success) {
-            const balancesMap = {};
-            balancesResult.data.forEach((balance) => {
-              if (balance && balance.length > 0) {
-                const balanceData = balance[0];
-                if (balanceData && balanceData.account_id) {
-                  balancesMap[balanceData.account_id] = balanceData;
-                }
-              }
-            });
-            response.data.balances = balancesMap;
-          }
+          response.data.accounts = enrichedAccounts;
         }
 
         return { stationId, data: response.data };
@@ -190,87 +212,8 @@ export const createTransferRequest = createAsyncThunk(
   }
 );
 
-// Approve request (mutation)
-export const approveOrbitRequest = createAsyncThunk(
-  'orbit/approveRequest',
-  async ({ tokenId, stationId, identity, requestId }, { rejectWithValue, dispatch }) => {
-    try {
-      const service = new DAOPadBackendService(identity);
-      const stationPrincipal = Principal.fromText(stationId);
-
-      const result = await service.approveOrbitRequest(stationPrincipal, requestId);
-
-      let parsedResult;
-      if (result?.Ok) {
-        if (result.Ok.Ok) {
-          parsedResult = { success: true, data: result.Ok.Ok };
-        } else if (result.Ok.Err) {
-          parsedResult = { success: false, error: result.Ok.Err };
-        }
-      } else if (result?.success !== undefined) {
-        parsedResult = result;
-      } else {
-        parsedResult = { success: false, error: 'Invalid response structure' };
-      }
-
-      if (parsedResult.success) {
-        // Trigger requests refetch
-        dispatch(fetchOrbitRequests({
-          tokenId,
-          stationId,
-          identity,
-          filters: {}
-        }));
-        return parsedResult.data;
-      }
-
-      throw new Error(parsedResult.error || 'Failed to approve request');
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
-
-// Reject request (mutation)
-export const rejectOrbitRequest = createAsyncThunk(
-  'orbit/rejectRequest',
-  async ({ tokenId, stationId, identity, requestId }, { rejectWithValue, dispatch }) => {
-    try {
-      const service = new DAOPadBackendService(identity);
-      const stationPrincipal = Principal.fromText(stationId);
-
-      const result = await service.rejectOrbitRequest(stationPrincipal, requestId);
-
-      let parsedResult;
-      if (result?.Ok) {
-        if (result.Ok.Ok) {
-          parsedResult = { success: true, data: result.Ok.Ok };
-        } else if (result.Ok.Err) {
-          parsedResult = { success: false, error: result.Ok.Err };
-        }
-      } else if (result?.success !== undefined) {
-        parsedResult = result;
-      } else {
-        parsedResult = { success: false, error: 'Invalid response structure' };
-      }
-
-      if (parsedResult.success) {
-        // Trigger requests refetch
-        dispatch(fetchOrbitRequests({
-          tokenId,
-          stationId,
-          identity,
-          filters: {}
-        }));
-        return parsedResult.data;
-      }
-
-      throw new Error(parsedResult.error || 'Failed to reject request');
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
+// ❌ REMOVED: Direct approval/rejection (replaced by liquid democracy voting)
+// Use voteOnOrbitRequest in components instead
 
 // ==================== INITIAL STATE ====================
 
@@ -315,16 +258,7 @@ const initialState = {
       error: null,
       lastSuccess: null,
     },
-    approveRequest: {
-      loading: false,
-      error: null,
-      lastSuccess: null,
-    },
-    rejectRequest: {
-      loading: false,
-      error: null,
-      lastSuccess: null,
-    },
+    // approveRequest & rejectRequest removed - use voting instead
   },
 };
 
@@ -451,35 +385,7 @@ const orbitSlice = createSlice({
         state.mutations.createTransfer.error = action.payload;
       });
 
-    // Approve Request
-    builder
-      .addCase(approveOrbitRequest.pending, (state) => {
-        state.mutations.approveRequest.loading = true;
-        state.mutations.approveRequest.error = null;
-      })
-      .addCase(approveOrbitRequest.fulfilled, (state) => {
-        state.mutations.approveRequest.loading = false;
-        state.mutations.approveRequest.lastSuccess = Date.now();
-      })
-      .addCase(approveOrbitRequest.rejected, (state, action) => {
-        state.mutations.approveRequest.loading = false;
-        state.mutations.approveRequest.error = action.payload;
-      });
-
-    // Reject Request
-    builder
-      .addCase(rejectOrbitRequest.pending, (state) => {
-        state.mutations.rejectRequest.loading = true;
-        state.mutations.rejectRequest.error = null;
-      })
-      .addCase(rejectOrbitRequest.fulfilled, (state) => {
-        state.mutations.rejectRequest.loading = false;
-        state.mutations.rejectRequest.lastSuccess = Date.now();
-      })
-      .addCase(rejectOrbitRequest.rejected, (state, action) => {
-        state.mutations.rejectRequest.loading = false;
-        state.mutations.rejectRequest.error = action.payload;
-      });
+    // Approve/Reject Request handlers removed - use voting instead
   },
 });
 
@@ -533,13 +439,6 @@ export const selectCreateTransferLoading = (state) =>
   state.orbit.mutations.createTransfer.loading;
 export const selectCreateTransferError = (state) =>
   state.orbit.mutations.createTransfer.error;
-export const selectApproveRequestLoading = (state) =>
-  state.orbit.mutations.approveRequest.loading;
-export const selectApproveRequestError = (state) =>
-  state.orbit.mutations.approveRequest.error;
-export const selectRejectRequestLoading = (state) =>
-  state.orbit.mutations.rejectRequest.loading;
-export const selectRejectRequestError = (state) =>
-  state.orbit.mutations.rejectRequest.error;
+// Approve/Reject selectors removed - use voting instead
 
 export default orbitSlice.reducer;
