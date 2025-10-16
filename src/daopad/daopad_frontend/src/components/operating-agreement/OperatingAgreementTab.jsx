@@ -42,7 +42,7 @@ const OperatingAgreementTab = ({ tokenId, stationId, tokenSymbol, identity }) =>
     if (stationId && identity) {
       fetchAgreementData();
     }
-  }, [stationId, identity]);
+  }, [stationId, identity, tokenId]);
 
   const handleExport = (format) => {
     if (!data) return;

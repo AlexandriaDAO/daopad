@@ -3,6 +3,7 @@ mod governance_config;
 mod kong_locker;
 mod orbit;
 mod orbit_accounts;
+mod orbit_assets;
 mod orbit_canisters;
 mod orbit_permissions;
 pub mod orbit_requests;
@@ -17,6 +18,14 @@ pub use governance_config::*;
 pub use kong_locker::*;
 pub use orbit::*;
 pub use orbit_accounts::*;
+pub use orbit_assets::{
+    add_treasury_asset,
+    edit_treasury_asset,
+    remove_treasury_asset,
+    list_treasury_assets,
+    AddAssetInput,
+    AssetResponse,
+};
 pub use orbit_canisters::*;
 pub use orbit_permissions::*;
 pub use orbit_requests::*;
@@ -28,8 +37,11 @@ pub use orbit_transfers::{
     // New asset query methods and types
     get_account_with_assets,
     list_station_assets,
+    get_account_assets,
     AccountWithAssets,
     AssetWithBalance,
+    AccountAssetInfo,
+    AssetBalanceInfo,
 };
 pub use orbit_users::{
     create_remove_admin_request,

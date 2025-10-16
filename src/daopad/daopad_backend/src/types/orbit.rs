@@ -28,12 +28,55 @@ pub struct EditUserOperationInput {
     pub cancel_pending_requests: Option<bool>,
 }
 
+// Asset metadata type (used by asset operations)
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub struct AssetMetadata {
+    pub key: String,
+    pub value: String,
+}
+
 #[derive(CandidType, Deserialize)]
 pub enum RequestOperationInput {
     AddUser(AddUserOperationInput),
     EditUser(EditUserOperationInput),
     EditPermission(EditPermissionOperationInput),
     AddAccount(AddAccountOperationInput),
+    AddAsset(AddAssetOperationInput),
+    EditAsset(EditAssetOperationInput),
+    RemoveAsset(RemoveAssetOperationInput),
+}
+
+// Asset operation types
+#[derive(CandidType, Deserialize, Debug)]
+pub struct AddAssetOperationInput {
+    pub blockchain: String,
+    pub standards: Vec<String>,
+    pub symbol: String,
+    pub name: String,
+    pub metadata: Vec<AssetMetadata>,
+    pub decimals: u32,
+}
+
+#[derive(CandidType, Deserialize, Debug)]
+pub enum ChangeMetadata {
+    ReplaceAllBy(Vec<AssetMetadata>),
+    OverrideSpecifiedBy(Vec<AssetMetadata>),
+    RemoveKeys(Vec<String>),
+}
+
+#[derive(CandidType, Deserialize, Debug)]
+pub struct EditAssetOperationInput {
+    pub asset_id: String,
+    pub name: Option<String>,
+    pub blockchain: Option<String>,
+    pub standards: Option<Vec<String>>,
+    pub symbol: Option<String>,
+    pub change_metadata: Option<ChangeMetadata>,
+}
+
+#[derive(CandidType, Deserialize, Debug)]
+pub struct RemoveAssetOperationInput {
+    pub asset_id: String,
 }
 
 #[derive(CandidType, Deserialize, Debug)]
