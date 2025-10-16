@@ -229,8 +229,12 @@ pub enum ProposalError {
     #[error("No Orbit Station linked to token {0}")]
     NoStationLinked(Principal),
 
-    #[error("Orbit error: {code} - {message}")]
-    OrbitError { code: String, message: String },
+    #[error("Orbit error: {code} - {message}{}", details.as_ref().map(|d| format!(" [{}]", d)).unwrap_or_default())]
+    OrbitError {
+        code: String,
+        message: String,
+        details: Option<String>,
+    },
 
     #[error("IC call failed: {message}")]
     IcCallFailed { code: i32, message: String },

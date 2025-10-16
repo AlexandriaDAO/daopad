@@ -15,6 +15,17 @@ const MINIMUM_VP_FOR_PROPOSAL: u64 = 10_000; // Same as orbit link proposals
 const DEFAULT_VOTING_PERIOD_NANOS: u64 = 604_800_000_000_000; // 7 days
 const DEFAULT_THRESHOLD_PERCENT: u32 = 50; // Simple majority
 
+/// Helper function to format Orbit Error with details
+fn format_orbit_error_details(error: &crate::api::orbit_requests::Error) -> Option<String> {
+    error.details.as_ref().map(|details| {
+        details
+            .iter()
+            .map(|d| format!("{}: {}", d.0, d.1))
+            .collect::<Vec<_>>()
+            .join(", ")
+    })
+}
+
 /// Details for a transfer request
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct TransferDetails {
@@ -369,8 +380,9 @@ async fn create_transfer_request_in_orbit(
     match result {
         Ok((CreateRequestResult::Ok(response),)) => Ok(response.request.id),
         Ok((CreateRequestResult::Err(e),)) => Err(ProposalError::OrbitError {
-            code: e.code,
-            message: e.message.unwrap_or_else(|| "No message provided".to_string()),
+            code: e.code.clone(),
+            message: e.message.clone().unwrap_or_else(|| "No message provided".to_string()),
+            details: format_orbit_error_details(&e),
         }),
         Err((code, msg)) => Err(ProposalError::IcCallFailed {
             code: code as i32,
@@ -399,8 +411,9 @@ async fn approve_orbit_request(
     match result {
         Ok((SubmitRequestApprovalResult::Ok(_),)) => Ok(()),
         Ok((SubmitRequestApprovalResult::Err(e),)) => Err(ProposalError::OrbitError {
-            code: e.code,
-            message: e.message.unwrap_or_else(|| "No message provided".to_string()),
+            code: e.code.clone(),
+            message: e.message.clone().unwrap_or_else(|| "No message provided".to_string()),
+            details: format_orbit_error_details(&e),
         }),
         Err((code, msg)) => Err(ProposalError::IcCallFailed {
             code: code as i32,
@@ -429,8 +442,9 @@ async fn reject_orbit_request(
     match result {
         Ok((SubmitRequestApprovalResult::Ok(_),)) => Ok(()),
         Ok((SubmitRequestApprovalResult::Err(e),)) => Err(ProposalError::OrbitError {
-            code: e.code,
-            message: e.message.unwrap_or_else(|| "No message provided".to_string()),
+            code: e.code.clone(),
+            message: e.message.clone().unwrap_or_else(|| "No message provided".to_string()),
+            details: format_orbit_error_details(&e),
         }),
         Err((code, msg)) => Err(ProposalError::IcCallFailed {
             code: code as i32,
