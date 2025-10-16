@@ -1,6 +1,7 @@
 mod address_book;
 mod governance_config;
 mod kong_locker;
+mod operating_agreement;
 mod orbit;
 mod orbit_accounts;
 mod orbit_canisters;
@@ -15,6 +16,7 @@ mod utils;
 pub use address_book::*;
 pub use governance_config::*;
 pub use kong_locker::*;
+pub use operating_agreement::*;
 pub use orbit::*;
 pub use orbit_accounts::*;
 pub use orbit_canisters::*;
