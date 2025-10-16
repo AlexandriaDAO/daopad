@@ -10,6 +10,7 @@ import PermissionsPage from '../pages/PermissionsPage';
 import DAOSettings from './DAOSettings';
 import CanistersTab from './canisters/CanistersTab';
 import SecurityDashboard from './security/SecurityDashboard';
+import OperatingAgreementTab from './operating-agreement/OperatingAgreementTab';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -445,12 +446,13 @@ const TokenDashboard = memo(function TokenDashboard({
           {/* Tabs for different views */}
           <Tabs defaultValue="accounts" className="w-full" onValueChange={(value) => setActiveTab(value)}>
             <div className="flex items-center gap-3 mb-6">
-              <TabsList variant="executive" className="flex-1 grid grid-cols-6">
+              <TabsList variant="executive" className="flex-1 grid grid-cols-7">
                 <TabsTrigger variant="executive" value="accounts">Treasury</TabsTrigger>
                 <TabsTrigger variant="executive" value="activity">Activity</TabsTrigger>
                 <TabsTrigger variant="executive" value="canisters">Canisters</TabsTrigger>
                 <TabsTrigger variant="executive" value="security">Security</TabsTrigger>
                 <TabsTrigger variant="executive" value="permissions">Permissions</TabsTrigger>
+                <TabsTrigger variant="executive" value="agreement">Agreement</TabsTrigger>
                 <TabsTrigger variant="executive" value="settings">Settings</TabsTrigger>
               </TabsList>
 
@@ -517,6 +519,17 @@ const TokenDashboard = memo(function TokenDashboard({
                 <PermissionsPage
                   tokenId={token.canister_id}
                   stationId={orbitStation?.station_id}
+                  identity={identity}
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="agreement" className="mt-4">
+              {activeTab === 'agreement' && (
+                <OperatingAgreementTab
+                  tokenId={token.canister_id}
+                  stationId={orbitStation?.station_id}
+                  tokenSymbol={token.symbol}
                   identity={identity}
                 />
               )}
