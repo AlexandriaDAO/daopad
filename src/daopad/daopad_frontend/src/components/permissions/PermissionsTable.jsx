@@ -5,6 +5,7 @@ import { Button } from '../ui/button';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Loader2 } from 'lucide-react';
 import { Principal } from '@dfinity/principal';
+import { calculatePermissionRisk } from '../../utils/permissionRisk';
 
 // Debug flag - set to false in production
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERMISSIONS;
@@ -13,6 +14,7 @@ export default function PermissionsTable({ stationId, actor }) {
   const [permissions, setPermissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('treasury');
+  const [riskFilter, setRiskFilter] = useState('all');
   const [error, setError] = useState(null);
 
   const loadPermissions = useCallback(async (cancelled = { current: false }) => {
@@ -134,12 +136,6 @@ export default function PermissionsTable({ stationId, actor }) {
     });
   }, []);
 
-  // Memoize filtered permissions
-  const filteredPermissions = useMemo(
-    () => filterPermissionsByCategory(category, permissions),
-    [category, permissions, filterPermissionsByCategory]
-  );
-
   // Memoize category counts to avoid recalculation
   const categoryCounts = useMemo(() => ({
     treasury: filterPermissionsByCategory('treasury', permissions).length,
@@ -147,6 +143,35 @@ export default function PermissionsTable({ stationId, actor }) {
     users: filterPermissionsByCategory('users', permissions).length,
     system: filterPermissionsByCategory('system', permissions).length,
   }), [permissions, filterPermissionsByCategory]);
+
+  // Calculate risk once and attach to permissions (prevents double calculation)
+  const permissionsWithRisk = useMemo(() => {
+    return permissions.map(perm => ({
+      ...perm,
+      _risk: calculatePermissionRisk(perm)
+    }));
+  }, [permissions]);
+
+  // Calculate risk counts from pre-calculated risks
+  const riskCounts = useMemo(() => {
+    const counts = { critical: 0, high: 0, medium: 0, low: 0, none: 0 };
+    permissionsWithRisk.forEach(perm => {
+      counts[perm._risk.level]++;
+    });
+    return counts;
+  }, [permissionsWithRisk]);
+
+  // Memoize filtered permissions with both category and risk filtering
+  const filteredPermissions = useMemo(() => {
+    let filtered = filterPermissionsByCategory(category, permissionsWithRisk);
+
+    // Apply risk filter using pre-calculated risk
+    if (riskFilter !== 'all') {
+      filtered = filtered.filter(perm => perm._risk.level === riskFilter);
+    }
+
+    return filtered;
+  }, [category, riskFilter, permissionsWithRisk, filterPermissionsByCategory]);
 
   // Retry handler
   const handleRetry = useCallback(() => {
@@ -188,7 +213,7 @@ export default function PermissionsTable({ stationId, actor }) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {/* Filter buttons instead of tabs */}
+        {/* Category filter buttons */}
         <div className="flex gap-2 mb-4 flex-wrap">
           <Button
             variant={category === 'treasury' ? 'default' : 'outline'}
@@ -220,10 +245,47 @@ export default function PermissionsTable({ stationId, actor }) {
           </Button>
         </div>
 
+        {/* Risk filter buttons */}
+        <div className="flex gap-2 mb-4 flex-wrap border-t pt-4">
+          <span className="text-sm text-muted-foreground self-center mr-2">
+            Filter by risk:
+          </span>
+          <Button
+            variant={riskFilter === 'all' ? 'default' : 'outline'}
+            onClick={() => setRiskFilter('all')}
+            size="sm"
+          >
+            All
+          </Button>
+          <Button
+            variant={riskFilter === 'critical' ? 'destructive' : 'outline'}
+            onClick={() => setRiskFilter('critical')}
+            size="sm"
+          >
+            🚨 Critical ({riskCounts.critical})
+          </Button>
+          <Button
+            variant={riskFilter === 'high' ? 'default' : 'outline'}
+            onClick={() => setRiskFilter('high')}
+            size="sm"
+            className={riskFilter === 'high' ? 'bg-orange-600' : ''}
+          >
+            ⚠️ High ({riskCounts.high})
+          </Button>
+          <Button
+            variant={riskFilter === 'medium' ? 'default' : 'outline'}
+            onClick={() => setRiskFilter('medium')}
+            size="sm"
+            className={riskFilter === 'medium' ? 'bg-yellow-600' : ''}
+          >
+            Medium ({riskCounts.medium})
+          </Button>
+        </div>
+
         {/* Permissions list */}
         {filteredPermissions.length === 0 ? (
           <div className="text-center text-muted-foreground p-8">
-            No {category} permissions found
+            No {riskFilter !== 'all' ? `${riskFilter} risk ` : ''}{category} permissions found
           </div>
         ) : (
           <div className="space-y-2">
@@ -242,18 +304,51 @@ export default function PermissionsTable({ stationId, actor }) {
   );
 }
 
-// Keep PermissionRow component as-is
+// PermissionRow component with risk indicators
 function PermissionRow({ permission }) {
   const resourceName = getResourceName(permission.resource);
   const authScope = getAuthScope(permission.allow);
   const groups = permission?.allow?.user_groups || [];
 
+  // Use pre-calculated risk (prevents double calculation)
+  const risk = permission._risk || { level: 'none', groups: [] };
+
+  // Risk badge styling
+  const getRiskBadgeClass = (level) => {
+    switch (level) {
+      case 'critical': return 'bg-red-900 text-red-200';
+      case 'high': return 'bg-orange-900 text-orange-200';
+      case 'medium': return 'bg-yellow-900 text-yellow-200';
+      case 'low': return 'bg-blue-900 text-blue-200';
+      default: return 'hidden';
+    }
+  };
+
   return (
     <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors">
       <div className="flex-1">
-        <div className="font-medium">{resourceName}</div>
+        <div className="flex items-center gap-2 mb-1">
+          <div className="font-medium">{resourceName}</div>
+
+          {/* Risk badge */}
+          {risk.level !== 'none' && (
+            <Badge className={getRiskBadgeClass(risk.level)}>
+              {risk.level === 'critical' && '🚨 '}
+              {risk.level === 'high' && '⚠️ '}
+              {risk.level.toUpperCase()}
+            </Badge>
+          )}
+        </div>
+
         <div className="text-sm text-muted-foreground">
-          {groups.length > 0 ? `${groups.length} group(s) have access` : 'Admin only'}
+          {risk.groups.length > 0 ? (
+            // Show which non-admin groups have access
+            <span className="text-orange-400">
+              {risk.groups.join(', ')} have access
+            </span>
+          ) : (
+            <span>Admin only</span>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-2">

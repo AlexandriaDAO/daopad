@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '../ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Button } from '../ui/button';
 import { AlertTriangle, RefreshCw, CheckCircle2 } from 'lucide-react';
@@ -7,6 +7,7 @@ import { OrbitSecurityService } from '../../services/backend/orbit/security/Orbi
 import DAOTransitionChecklist from './DAOTransitionChecklist';
 import RequestPoliciesView from './RequestPoliciesView';
 import AdminRemovalActions from './AdminRemovalActions';
+import { generateMarkdownReport, generateJSONReport, downloadReport } from '../../utils/reportGenerator';
 
 const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
     const [securityData, setSecurityData] = useState(null);
@@ -142,6 +143,19 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
 
     if (!securityData) return null;
 
+    // Export handlers
+    const handleExportMarkdown = () => {
+        const markdown = generateMarkdownReport(securityData, tokenSymbol);
+        const filename = `${tokenSymbol}-security-audit-${Date.now()}.md`;
+        downloadReport(markdown, filename, 'markdown');
+    };
+
+    const handleExportJSON = () => {
+        const json = generateJSONReport(securityData);
+        const filename = `${tokenSymbol}-security-audit-${Date.now()}.json`;
+        downloadReport(json, filename, 'json');
+    };
+
     // Security dashboard showing DAO transition checklist
     return (
         <div className="w-full space-y-4">
@@ -177,6 +191,26 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
                 tokenSymbol={tokenSymbol}
                 onRefresh={fetchSecurityStatus}
             />
+
+            {/* Export section */}
+            {securityData && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Export Security Report</CardTitle>
+                        <CardDescription>
+                            Download a comprehensive security audit report for sharing with DAO members
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex gap-2">
+                        <Button onClick={handleExportMarkdown}>
+                            📄 Export as Markdown
+                        </Button>
+                        <Button onClick={handleExportJSON} variant="outline">
+                            📊 Export as JSON
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 };
