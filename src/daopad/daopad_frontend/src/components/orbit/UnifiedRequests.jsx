@@ -9,8 +9,9 @@ import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { useToast } from '../../hooks/use-toast';
 import { DAOPadBackendService } from '../../services/daopadBackend';
+import { useVoting } from '../../hooks/useVoting';
 import RequestDomainSelector from './RequestDomainSelector';
-import RequestList from './RequestList';
+import { RequestList } from './requests/RequestList';
 import RequestFiltersCompact from './RequestFiltersCompact';
 import { REQUEST_DOMAIN_FILTERS, RequestDomains } from '../../utils/requestDomains';
 import { Zap, Clock } from 'lucide-react';
@@ -43,6 +44,9 @@ const UnifiedRequests = ({ tokenId, identity }) => {
   const [showOnlyPending, setShowOnlyPending] = useState(false);
 
   const { toast } = useToast();
+
+  // Voting system integration
+  const { vote, userVotingPower, fetchVotingPower } = useVoting(tokenId);
 
   // Polling interval - adjusted to 15 seconds for performance
   const REFRESH_INTERVAL = 15000;
@@ -155,22 +159,16 @@ const UnifiedRequests = ({ tokenId, identity }) => {
     }
   }, [tokenId, identity, selectedDomain, filters, showOnlyPending, toast]);
 
-  // ❌ REMOVED: Direct approval/rejection (replaced by liquid democracy voting)
-  // TODO: Implement voting UI in follow-up PR
-  //  - Show vote Yes/No buttons instead of Approve/Reject
-  //  - Display vote progress bars (yes_votes vs total_voting_power)
-  //  - Show threshold percentage and current vote counts
-  //  - Fetch proposal data alongside requests
-  // For now, approval UI is disabled - users cannot approve requests directly
-  const handleApprovalDecision = async (requestId, decision, reason) => {
-    toast.error('Direct approval is disabled. Liquid democracy voting will be implemented in the next update.');
-    return;
-  };
-
-  // ❌ REMOVED: Batch approval (replaced by individual voting)
-  const handleBatchApprove = async () => {
-    toast.error('Batch approval is disabled. Liquid democracy voting will be implemented in the next update.');
-    return;
+  // ✅ UPDATED: Active voting replaces direct approval
+  const handleVote = async (orbitRequestId, voteChoice) => {
+    try {
+      await vote(orbitRequestId, voteChoice);
+      // Refresh requests to show updated vote counts
+      await fetchRequests();
+    } catch (err) {
+      // Error handling is done in VoteButtons component
+      console.error('Vote error:', err);
+    }
   };
 
   const toggleRequestSelection = (requestId) => {
@@ -337,28 +335,14 @@ const UnifiedRequests = ({ tokenId, identity }) => {
           </div>
         </div>
 
-        {/* Request list - now takes full width */}
+        {/* Request list with voting UI */}
         <RequestList
           requests={requests}
           loading={loading}
-          error={error}
-          onApprove={(id, request) => {
-            // Handle treasury proposals differently
-            if (request?.is_treasury_proposal) {
-              handleTreasuryVote(request.proposal_id, true);
-            } else {
-              handleApprovalDecision(id, 'Approved', null);
-            }
-          }}
-          onReject={(id, reason, request) => {
-            // Handle treasury proposals differently
-            if (request?.is_treasury_proposal) {
-              handleTreasuryVote(request.proposal_id, false);
-            } else {
-              handleApprovalDecision(id, 'Rejected', reason);
-            }
-          }}
-          onRetry={fetchRequests}
+          tokenId={tokenId}
+          userVotingPower={userVotingPower}
+          onVote={handleVote}
+          emptyMessage="No requests found"
         />
 
         {/* Pagination */}
