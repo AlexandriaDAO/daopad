@@ -1,0 +1,300 @@
+import React from 'react';
+import { Card, CardContent } from '../ui/card';
+import { OPERATION_THRESHOLDS, getRiskColor } from '../../constants/operationThresholds';
+
+const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
+  const formatDate = () => new Date().toLocaleDateString('en-US', {
+    year: 'numeric', month: 'long', day: 'numeric'
+  });
+
+  const getAdmins = () => {
+    // Extract admin users from security data
+    const adminCheck = data.security?.checks?.find(c =>
+      c.name === 'Admin User Count' || c.name?.includes('admin')
+    );
+    if (adminCheck?.details) {
+      return adminCheck.details;
+    }
+    return 'Backend only';
+  };
+
+  const getOperators = () => {
+    // Extract operator users from users list
+    const operators = data.users?.filter(u =>
+      u.groups?.some(g => g.name === 'Operator' || g.name?.includes('operator'))
+    ).map(u => u.name || 'Unnamed').join(', ');
+    return operators || 'None';
+  };
+
+  return (
+    <div className="prose prose-lg max-w-none font-serif">
+      {/* Header */}
+      <div className="text-center mb-8 border-b-2 border-gray-800 pb-4">
+        <h1 className="text-3xl font-bold mb-2">
+          LIMITED LIABILITY COMPANY OPERATING AGREEMENT
+        </h1>
+        <h2 className="text-xl">
+          {tokenSymbol} Treasury DAO LLC
+        </h2>
+        <p className="text-sm text-gray-600">
+          Effective Date: {formatDate()}
+        </p>
+        <p className="text-xs text-gray-500">
+          On-Chain Reference: Station {stationId}
+        </p>
+      </div>
+
+      {/* Warning if not decentralized */}
+      {data.security?.overall_status === 'high_risk' && (
+        <div className="bg-red-50 border-2 border-red-300 p-4 mb-6 rounded-lg">
+          <h3 className="text-red-800 font-bold">⚠️ GOVERNANCE WARNING</h3>
+          <p className="text-red-700">
+            {data.security?.risk_summary}
+          </p>
+          {data.security?.critical_issues?.length > 0 && (
+            <ul className="mt-2 list-disc pl-5">
+              {data.security.critical_issues.map((issue, i) => (
+                <li key={i} className="text-red-600">{issue.message || issue}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* Article I: Formation */}
+      <section className="mb-8">
+        <h2 className="text-2xl font-bold border-b border-gray-400 pb-2">
+          ARTICLE I: FORMATION AND PURPOSE
+        </h2>
+        <div className="mt-4 space-y-3">
+          <p>
+            <strong>1.1 Formation.</strong> The Company is organized as a
+            limited liability company under the laws of Wyoming, with its
+            operations governed entirely by smart contracts deployed on the
+            Internet Computer blockchain.
+          </p>
+          <p>
+            <strong>1.2 Smart Contract Governance.</strong> This Agreement
+            and all governance actions are executed through immutable smart
+            contracts at Orbit Station ID <code className="bg-gray-100 px-1 rounded">{stationId}</code>, which
+            serves as the authoritative source of truth for all Company operations.
+          </p>
+          <p>
+            <strong>1.3 Purpose.</strong> The Company's purpose is to manage
+            digital assets and execute transactions as directed by member
+            voting through the DAOPad governance system.
+          </p>
+        </div>
+      </section>
+
+      {/* Article II: Members */}
+      <section className="mb-8">
+        <h2 className="text-2xl font-bold border-b border-gray-400 pb-2">
+          ARTICLE II: MEMBERS AND VOTING POWER
+        </h2>
+        <div className="mt-4 space-y-3">
+          <p>
+            <strong>2.1 Membership.</strong> Membership is determined by
+            holding Kong Locker voting power for the {tokenSymbol} token.
+            Voting power equals the USD value of permanently locked LP tokens
+            multiplied by 100.
+          </p>
+          <p>
+            <strong>2.2 Current Governance Structure:</strong>
+          </p>
+          <ul className="list-disc pl-8 space-y-2">
+            <li><strong>Admin Control:</strong> {getAdmins()}</li>
+            <li><strong>Operator Users:</strong> {getOperators()}</li>
+            <li><strong>Total Users:</strong> {data.users?.length || 0}</li>
+            <li><strong>Security Score:</strong> {data.security?.decentralization_score || 0}/100</li>
+          </ul>
+          <p>
+            <strong>2.3 Voting Rights.</strong> Each member's voting weight
+            is proportional to their Kong Locker voting power. Proposals are
+            executed when the required threshold is reached.
+          </p>
+        </div>
+      </section>
+
+      {/* Article III: Voting Thresholds */}
+      <section className="mb-8">
+        <h2 className="text-2xl font-bold border-b border-gray-400 pb-2">
+          ARTICLE III: VOTING THRESHOLDS BY OPERATION TYPE
+        </h2>
+        <div className="mt-4">
+          <p className="mb-4">
+            <strong>3.1 Risk-Based Thresholds.</strong> Operations require
+            different approval thresholds based on risk level:
+          </p>
+
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b-2 border-gray-400">
+                <th className="text-left p-2">Operation</th>
+                <th className="text-center p-2">Threshold</th>
+                <th className="text-center p-2">Risk</th>
+                <th className="text-center p-2">Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              {OPERATION_THRESHOLDS.map((op, i) => (
+                <tr key={i} className="border-b border-gray-200">
+                  <td className="p-2">{op.name}</td>
+                  <td className="text-center p-2 font-bold">{op.threshold}%</td>
+                  <td className={`text-center p-2 font-bold ${getRiskColor(op.risk)}`}>
+                    {op.risk}
+                  </td>
+                  <td className="text-center p-2">{op.duration}h</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Article IV: Request Policies */}
+      <section className="mb-8">
+        <h2 className="text-2xl font-bold border-b border-gray-400 pb-2">
+          ARTICLE IV: REQUEST POLICIES
+        </h2>
+        <div className="mt-4 space-y-3">
+          <p>
+            <strong>4.1 Active Policies.</strong> The following {data.policies?.total_count || 0} policies
+            govern request approvals:
+          </p>
+
+          {data.policies?.policies?.slice(0, 10).map((policy, i) => (
+            <div key={i} className="pl-4 py-2 border-l-2 border-gray-300">
+              <p className="font-semibold">{policy.operation || 'Unknown Operation'}</p>
+              <p className="text-sm text-gray-600">→ {policy.approval_rule || policy.rule || 'No rule specified'}</p>
+            </div>
+          ))}
+
+          {(data.policies?.total_count || 0) > 10 && (
+            <p className="text-sm text-gray-500 italic">
+              ... and {data.policies.total_count - 10} more policies
+            </p>
+          )}
+
+          {(data.policies?.auto_approved_count || 0) > 0 && (
+            <div className="bg-yellow-50 p-3 mt-4 rounded">
+              <p className="text-yellow-800">
+                ⚠️ {data.policies.auto_approved_count} policies are auto-approved
+                (development mode)
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Article V: Treasury Management */}
+      <section className="mb-8">
+        <h2 className="text-2xl font-bold border-b border-gray-400 pb-2">
+          ARTICLE V: TREASURY MANAGEMENT
+        </h2>
+        <div className="mt-4 space-y-3">
+          <p>
+            <strong>5.1 Treasury Control.</strong> All treasury operations
+            require {OPERATION_THRESHOLDS.find(o => o.name === 'Transfer')?.threshold || 75}%
+            approval from voting members.
+          </p>
+          <p>
+            <strong>5.2 Asset Management.</strong> The Company may hold and
+            manage multiple digital assets as approved by member vote.
+          </p>
+          <p>
+            <strong>5.3 Transfer Authority.</strong> Fund transfers require
+            a {OPERATION_THRESHOLDS.find(o => o.name === 'Transfer')?.duration || 48} hour
+            voting period to ensure adequate deliberation.
+          </p>
+        </div>
+      </section>
+
+      {/* Article VI: External Canisters */}
+      {data.canisters && data.canisters.total > 0 && (
+        <section className="mb-8">
+          <h2 className="text-2xl font-bold border-b border-gray-400 pb-2">
+            ARTICLE VI: EXTERNAL CANISTER MANAGEMENT
+          </h2>
+          <div className="mt-4 space-y-3">
+            <p>
+              <strong>6.1 Managed Canisters.</strong> The Company controls {data.canisters.total} external
+              canister{data.canisters.total !== 1 ? 's' : ''}:
+            </p>
+            <div className="pl-4 space-y-1">
+              {data.canisters.canisters?.slice(0, 5).map((c, i) => (
+                <div key={i}>
+                  • {c.name || 'Unnamed'}: <code className="bg-gray-100 px-1 rounded text-sm">{c.canister_id}</code>
+                </div>
+              ))}
+              {data.canisters.total > 5 && (
+                <div className="text-sm text-gray-500 italic">
+                  ... and {data.canisters.total - 5} more canisters
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Article VII: Amendment */}
+      <section className="mb-8">
+        <h2 className="text-2xl font-bold border-b border-gray-400 pb-2">
+          ARTICLE VII: AMENDMENTS AND DISPUTE RESOLUTION
+        </h2>
+        <div className="mt-4 space-y-3">
+          <p>
+            <strong>7.1 Amendments.</strong> This Agreement may only be
+            amended through on-chain governance requiring {
+              OPERATION_THRESHOLDS.find(o => o.name === 'Edit Request Policy')?.threshold || 70
+            }% member approval.
+          </p>
+          <p>
+            <strong>7.2 Smart Contract Authority.</strong> In case of any
+            conflict between this document and the on-chain state, the
+            blockchain state at Station {stationId} prevails.
+          </p>
+          <p>
+            <strong>7.3 Dispute Resolution.</strong> All disputes shall be
+            resolved through member voting or, if necessary, binding arbitration
+            under Wyoming law.
+          </p>
+        </div>
+      </section>
+
+      {/* Article VIII: Dissolution */}
+      <section className="mb-8">
+        <h2 className="text-2xl font-bold border-b border-gray-400 pb-2">
+          ARTICLE VIII: DISSOLUTION
+        </h2>
+        <div className="mt-4 space-y-3">
+          <p>
+            <strong>8.1 Voluntary Dissolution.</strong> The Company may be
+            dissolved upon a {OPERATION_THRESHOLDS.find(o => o.name === 'System Upgrade')?.threshold || 90}%
+            vote of all voting power.
+          </p>
+          <p>
+            <strong>8.2 Distribution of Assets.</strong> Upon dissolution,
+            assets shall be distributed proportionally to members based on
+            their voting power at the time of dissolution.
+          </p>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <div className="mt-12 pt-8 border-t-2 border-gray-800 text-center">
+        <p className="text-sm text-gray-600">
+          This Operating Agreement is generated from on-chain data at {formatDate()}.
+        </p>
+        <p className="text-xs text-gray-500 mt-2">
+          Blockchain verification: Query Orbit Station {stationId} on the Internet Computer
+        </p>
+        <p className="text-xs text-gray-400 mt-1">
+          Document generated by DAOPad Treasury Management System
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default AgreementDocument;
