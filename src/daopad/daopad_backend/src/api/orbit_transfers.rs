@@ -14,10 +14,31 @@ pub enum CreateRequestResult {
 
 // RequestWithDetails and related types are now imported from orbit_requests.rs
 
-#[derive(CandidType, Deserialize)]
+use std::fmt;
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct ErrorInfo {
     pub code: String,
-    pub message: String,
+    pub message: Option<String>,  // Now optional to match Orbit's Error type
+    pub details: Option<Vec<(String, String)>>,  // Add details field to match Orbit
+}
+
+impl fmt::Display for ErrorInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Handle optional message gracefully
+        let msg = self.message.as_deref().unwrap_or("No message");
+
+        // Include details if present
+        if let Some(details) = &self.details {
+            let details_str = details.iter()
+                .map(|(k, v)| format!("{}: {}", k, v))
+                .collect::<Vec<_>>()
+                .join(", ");
+            write!(f, "{} - {} [{}]", self.code, msg, details_str)
+        } else {
+            write!(f, "{} - {}", self.code, msg)
+        }
+    }
 }
 
 // Simplified implementation - complex Orbit types will be added in future update
@@ -61,3 +82,139 @@ pub async fn get_transfer_requests_from_orbit(
 // All Orbit request approvals now go through vote_on_orbit_request in proposals/orbit_requests.rs
 // The internal approval functions (approve_orbit_request_internal) remain in proposals/orbit_requests.rs
 // for use after voting threshold is reached.
+
+// =========== NEW ASSET QUERY METHODS ===========
+
+use crate::api::orbit::get_orbit_station_for_token;
+use crate::types::orbit::{Account, AccountBalance, AccountAsset};
+use crate::api::orbit_accounts::{Asset, AssetMetadata};
+
+// Type definitions for asset queries
+#[derive(CandidType, Deserialize)]
+pub struct AccountWithAssets {
+    pub account: Account,
+    pub assets: Vec<AssetWithBalance>,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct AssetWithBalance {
+    pub asset: Asset,
+    pub balance: Option<AccountBalance>,
+}
+
+// Input types for Orbit API calls
+#[derive(CandidType, Deserialize)]
+pub struct GetAccountInput {
+    pub account_id: String,
+}
+
+#[derive(CandidType, Deserialize)]
+pub enum GetAccountResult {
+    Ok { account: Account },
+    Err(ErrorInfo),
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct GetAssetInput {
+    pub asset_id: String,
+}
+
+#[derive(CandidType, Deserialize)]
+pub enum GetAssetResult {
+    Ok { asset: Asset },
+    Err(ErrorInfo),
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct ListAssetsInput {
+    pub paginate: Option<PaginateInput>,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct PaginateInput {
+    pub offset: Option<u64>,
+    pub limit: Option<u16>,
+}
+
+#[derive(CandidType, Deserialize)]
+pub enum ListAssetsResult {
+    Ok {
+        assets: Vec<Asset>,
+        next_offset: Option<u64>,
+        total: u64,
+    },
+    Err(ErrorInfo),
+}
+
+// Get an account with enriched asset details
+#[ic_cdk::update]
+pub async fn get_account_with_assets(
+    token_canister_id: Principal,
+    account_id: String,
+) -> Result<AccountWithAssets, String> {
+    // Get station ID for this token
+    let station_id = get_orbit_station_for_token(token_canister_id)
+        .ok_or("No Orbit Station registered for this token")?;
+
+    // Query account from Orbit
+    let account_result: Result<(GetAccountResult,), _> = ic_cdk::call(
+        station_id,
+        "get_account",
+        (GetAccountInput { account_id: account_id.clone() },)
+    ).await;
+
+    match account_result {
+        Ok((GetAccountResult::Ok { account },)) => {
+            // For each AccountAsset, fetch full Asset details
+            let mut enriched_assets = vec![];
+
+            for account_asset in &account.assets {
+                // Query full asset details
+                let asset_result: Result<(GetAssetResult,), _> = ic_cdk::call(
+                    station_id,
+                    "get_asset",
+                    (GetAssetInput { asset_id: account_asset.asset_id.clone() },)
+                ).await;
+
+                if let Ok((GetAssetResult::Ok { asset },)) = asset_result {
+                    enriched_assets.push(AssetWithBalance {
+                        asset,
+                        balance: account_asset.balance.clone(),
+                    });
+                }
+            }
+
+            Ok(AccountWithAssets {
+                account,
+                assets: enriched_assets,
+            })
+        }
+        Ok((GetAccountResult::Err(e),)) => {
+            Err(format!("Failed to get account: {}", e))
+        }
+        Err(e) => {
+            Err(format!("Call failed: {:?}", e))
+        }
+    }
+}
+
+// List all available assets in a station
+#[ic_cdk::update]
+pub async fn list_station_assets(
+    token_canister_id: Principal,
+) -> Result<Vec<Asset>, String> {
+    let station_id = get_orbit_station_for_token(token_canister_id)
+        .ok_or("No Orbit Station registered for this token")?;
+
+    let result: Result<(ListAssetsResult,), _> = ic_cdk::call(
+        station_id,
+        "list_assets",
+        (ListAssetsInput { paginate: None },)
+    ).await;
+
+    match result {
+        Ok((ListAssetsResult::Ok { assets, .. },)) => Ok(assets),
+        Ok((ListAssetsResult::Err(e),)) => Err(format!("Failed to list assets: {}", e)),
+        Err(e) => Err(format!("Call failed: {:?}", e))
+    }
+}

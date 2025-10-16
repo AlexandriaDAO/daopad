@@ -157,6 +157,71 @@ export class OrbitAccountsService extends BackendServiceBase {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Get account with enriched asset details
+   * Returns account data with full asset metadata including balances
+   */
+  async getAccountWithAssets(tokenId, accountId) {
+    try {
+      const actor = await this.getActor();
+      const tokenPrincipal = this.toPrincipal(tokenId);
+
+      const result = await actor.get_account_with_assets(
+        tokenPrincipal,
+        accountId
+      );
+
+      if (result.Ok) {
+        return {
+          success: true,
+          data: result.Ok
+        };
+      } else {
+        return {
+          success: false,
+          error: result.Err
+        };
+      }
+    } catch (error) {
+      console.error('Failed to get account with assets:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * List all assets available in the station
+   * Returns complete asset metadata including decimals, symbols, and standards
+   */
+  async listStationAssets(tokenId) {
+    try {
+      const actor = await this.getActor();
+      const tokenPrincipal = this.toPrincipal(tokenId);
+
+      const result = await actor.list_station_assets(tokenPrincipal);
+
+      if (result.Ok) {
+        return {
+          success: true,
+          data: result.Ok
+        };
+      } else {
+        return {
+          success: false,
+          error: result.Err
+        };
+      }
+    } catch (error) {
+      console.error('Failed to list station assets:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
 }
 
 export const getOrbitAccountsService = (identity) => {

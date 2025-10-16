@@ -370,7 +370,7 @@ async fn create_transfer_request_in_orbit(
         Ok((CreateRequestResult::Ok(response),)) => Ok(response.request.id),
         Ok((CreateRequestResult::Err(e),)) => Err(ProposalError::OrbitError {
             code: e.code,
-            message: e.message,
+            message: e.message.unwrap_or_else(|| "No message provided".to_string()),
         }),
         Err((code, msg)) => Err(ProposalError::IcCallFailed {
             code: code as i32,
@@ -400,7 +400,7 @@ async fn approve_orbit_request(
         Ok((SubmitRequestApprovalResult::Ok(_),)) => Ok(()),
         Ok((SubmitRequestApprovalResult::Err(e),)) => Err(ProposalError::OrbitError {
             code: e.code,
-            message: e.message,
+            message: e.message.unwrap_or_else(|| "No message provided".to_string()),
         }),
         Err((code, msg)) => Err(ProposalError::IcCallFailed {
             code: code as i32,
@@ -430,7 +430,7 @@ async fn reject_orbit_request(
         Ok((SubmitRequestApprovalResult::Ok(_),)) => Ok(()),
         Ok((SubmitRequestApprovalResult::Err(e),)) => Err(ProposalError::OrbitError {
             code: e.code,
-            message: e.message,
+            message: e.message.unwrap_or_else(|| "No message provided".to_string()),
         }),
         Err((code, msg)) => Err(ProposalError::IcCallFailed {
             code: code as i32,
