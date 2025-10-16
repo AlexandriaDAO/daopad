@@ -26,6 +26,65 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
     return operators || 'None';
   };
 
+  // Group constants (from Orbit Station spec)
+  const ADMIN_GROUP_ID = "00000000-0000-4000-8000-000000000000";
+  const OPERATOR_GROUP_ID = "00000000-0000-4000-8000-000000000001";
+
+  // Helper: Categorize users by their highest role
+  const categorizeMembers = (users) => {
+    if (!users || users.length === 0) return {
+      admins: [],
+      operators: [],
+      members: [],
+      inactive: []
+    };
+
+    const categories = {
+      admins: [],
+      operators: [],
+      members: [],
+      inactive: []
+    };
+
+    users.forEach(user => {
+      // Check status first (Candid enum deserializes as string "Active" or "Inactive")
+      const isActive = user.status === 'Active';
+
+      if (!isActive) {
+        categories.inactive.push(user);
+        return;
+      }
+
+      // Categorize by groups (highest role wins)
+      const groupIds = user.groups?.map(g => g.id) || [];
+
+      if (groupIds.includes(ADMIN_GROUP_ID)) {
+        categories.admins.push(user);
+      } else if (groupIds.includes(OPERATOR_GROUP_ID)) {
+        categories.operators.push(user);
+      } else {
+        categories.members.push(user); // Active but no special groups
+      }
+    });
+
+    return categories;
+  };
+
+  // Helper: Format principal for display (truncate middle)
+  const formatPrincipal = (principal) => {
+    if (!principal) return 'Unknown';
+    const str = principal.toString();
+    if (str.length <= 20) return str;
+    return `${str.slice(0, 10)}...${str.slice(-7)}`;
+  };
+
+  // Helper: Get role display names from groups
+  const getRoleDisplay = (groups) => {
+    if (!groups || groups.length === 0) return 'Member';
+    const roles = groups.map(g => g.name).join(', ');
+    return roles;
+  };
+
   return (
     <div className="prose prose-lg max-w-none font-serif">
       {/* Header */}
@@ -87,32 +146,160 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
         </div>
       </section>
 
-      {/* Article II: Members */}
+      {/* Article II: Members and Governance Structure */}
       <section className="mb-8">
         <h2 className="text-2xl font-bold border-b border-gray-400 pb-2">
-          ARTICLE II: MEMBERS AND VOTING POWER
+          ARTICLE II: MEMBERS AND GOVERNANCE STRUCTURE
         </h2>
+
         <div className="mt-4 space-y-3">
           <p>
-            <strong>2.1 Membership.</strong> Membership is determined by
+            <strong>2.1 Membership Basis.</strong> Membership and voting power is determined by
             holding Kong Locker voting power for the {tokenSymbol} token.
             Voting power equals the USD value of permanently locked LP tokens
             multiplied by 100.
           </p>
-          <p>
-            <strong>2.2 Current Governance Structure:</strong>
-          </p>
-          <ul className="list-disc pl-8 space-y-2">
-            <li><strong>Admin Control:</strong> {getAdmins()}</li>
-            <li><strong>Operator Users:</strong> {getOperators()}</li>
-            <li><strong>Total Users:</strong> {data.users?.length || 0}</li>
-            <li><strong>Security Score:</strong> {data.security?.decentralization_score || 0}/100</li>
-          </ul>
-          <p>
-            <strong>2.3 Voting Rights.</strong> Each member's voting weight
-            is proportional to their Kong Locker voting power. Proposals are
-            executed when the required threshold is reached.
-          </p>
+
+          {(() => {
+            const categories = categorizeMembers(data.users);
+
+            return (
+              <>
+                {/* 2.2 Managing Partners (Admins) */}
+                <div className="mt-6">
+                  <p>
+                    <strong>2.2 Managing Partners (Administrators).</strong> The following
+                    individuals have full administrative authority over the Company's smart
+                    contracts and may unilaterally modify this Operating Agreement through
+                    on-chain governance actions:
+                  </p>
+
+                  {categories.admins.length > 0 ? (
+                    <div className="pl-4 mt-3 space-y-2">
+                      {categories.admins.map((admin, i) => (
+                        <div key={admin.id} className="py-2 border-l-2 border-blue-400 pl-3">
+                          <div className="font-semibold">{admin.name}</div>
+                          <div className="text-sm text-gray-600">
+                            Role: {getRoleDisplay(admin.groups)}
+                          </div>
+                          <div className="text-xs font-mono text-gray-500">
+                            Principal: {formatPrincipal(admin.identities?.[0])}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="pl-4 mt-2 text-sm text-yellow-700 bg-yellow-50 p-2 rounded">
+                      ⚠️ No administrators found. This may indicate an error in governance setup.
+                    </div>
+                  )}
+
+                  <p className="mt-3 text-sm italic text-gray-600">
+                    Note: Managing partners can create, approve, and execute all types of
+                    requests including system upgrades, treasury transfers, and permission changes.
+                    All smart contract modifications by managing partners are recorded on the
+                    Internet Computer blockchain for permanent verification.
+                  </p>
+                </div>
+
+                {/* 2.3 Operators */}
+                {categories.operators.length > 0 && (
+                  <div className="mt-6">
+                    <p>
+                      <strong>2.3 Operators.</strong> The following members have operational
+                      permissions to propose and manage day-to-day treasury activities, subject
+                      to approval thresholds defined in Article III:
+                    </p>
+                    <div className="pl-4 mt-3 space-y-2">
+                      {categories.operators.map((op, i) => (
+                        <div key={op.id} className="py-2 border-l-2 border-green-400 pl-3">
+                          <div className="font-semibold">{op.name}</div>
+                          <div className="text-sm text-gray-600">
+                            Role: {getRoleDisplay(op.groups)}
+                          </div>
+                          <div className="text-xs font-mono text-gray-500">
+                            Principal: {formatPrincipal(op.identities?.[0])}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2.4 General Members */}
+                {categories.members.length > 0 && (
+                  <div className="mt-6">
+                    <p>
+                      <strong>2.4 General Members.</strong> The following individuals are
+                      registered members with voting rights proportional to their Kong Locker
+                      voting power:
+                    </p>
+                    <div className="pl-4 mt-3 space-y-2">
+                      {categories.members.map((member, i) => (
+                        <div key={member.id} className="py-2 border-l-2 border-gray-400 pl-3">
+                          <div className="font-semibold">{member.name}</div>
+                          <div className="text-sm text-gray-600">
+                            Role: Member
+                          </div>
+                          <div className="text-xs font-mono text-gray-500">
+                            Principal: {formatPrincipal(member.identities?.[0])}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2.5 Inactive Members */}
+                {categories.inactive.length > 0 && (
+                  <div className="mt-6">
+                    <p>
+                      <strong>2.5 Inactive Members.</strong> The following members are currently
+                      inactive and do not have operational or voting permissions:
+                    </p>
+                    <div className="pl-4 mt-3 space-y-2">
+                      {categories.inactive.map((inactive, i) => (
+                        <div key={inactive.id} className="py-2 border-l-2 border-red-400 pl-3 opacity-60">
+                          <div className="font-semibold">{inactive.name}</div>
+                          <div className="text-sm text-gray-600">
+                            Status: Inactive
+                          </div>
+                          <div className="text-xs font-mono text-gray-500">
+                            Principal: {formatPrincipal(inactive.identities?.[0])}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2.6 Total Membership Stats */}
+                <div className="mt-6 p-4 bg-gray-50 rounded">
+                  <p>
+                    <strong>2.6 Current Membership Summary:</strong>
+                  </p>
+                  <ul className="list-disc pl-8 mt-2 space-y-1">
+                    <li>Managing Partners (Admins): {categories.admins.length}</li>
+                    <li>Operators: {categories.operators.length}</li>
+                    <li>General Members: {categories.members.length}</li>
+                    <li>Inactive Members: {categories.inactive.length}</li>
+                    <li><strong>Total Registered: {data.users?.length || 0}</strong></li>
+                  </ul>
+                </div>
+
+                {/* 2.7 Voting Rights */}
+                <div className="mt-6">
+                  <p>
+                    <strong>2.7 Voting Rights.</strong> Each member's voting weight
+                    is proportional to their Kong Locker voting power. Proposals are
+                    executed when the required threshold defined in Article III is reached.
+                    Members must have active status and voting power greater than zero to
+                    participate in governance votes.
+                  </p>
+                </div>
+              </>
+            );
+          })()}
         </div>
       </section>
 
@@ -237,23 +424,38 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
         </section>
       )}
 
-      {/* Article VII: Amendment */}
+      {/* Article VII: Amendments and Dispute Resolution */}
       <section className="mb-8">
         <h2 className="text-2xl font-bold border-b border-gray-400 pb-2">
           ARTICLE VII: AMENDMENTS AND DISPUTE RESOLUTION
         </h2>
         <div className="mt-4 space-y-3">
           <p>
-            <strong>7.1 Amendments.</strong> This Agreement may only be
-            amended through on-chain governance requiring {
-              OPERATION_THRESHOLDS.find(o => o.name === 'Edit Request Policy')?.threshold || 70
-            }% member approval.
+            <strong>7.1 Amendment Authority.</strong> This Agreement may be amended in two ways:
           </p>
-          <p>
-            <strong>7.2 Smart Contract Authority.</strong> In case of any
+          <ul className="list-disc pl-8 space-y-2">
+            <li>
+              <strong>Smart Contract Governance:</strong> Managing Partners (listed in Article II,
+              Section 2.2) have full authority to modify smart contract rules, which constitutes
+              an amendment to this Operating Agreement. All such changes are recorded on the
+              blockchain and automatically reflected in this document.
+            </li>
+            <li>
+              <strong>Community Proposals:</strong> Non-administrative changes may be proposed
+              through the DAOPad governance system, requiring {
+                OPERATION_THRESHOLDS.find(o => o.name === 'Edit Request Policy')?.threshold || 70
+              }% member approval based on voting power.
+            </li>
+          </ul>
+
+          <p className="mt-4">
+            <strong>7.2 Smart Contract Supremacy.</strong> In case of any
             conflict between this document and the on-chain state, the
-            blockchain state at Station {stationId} prevails.
+            blockchain state at Station {stationId} prevails. This document is
+            generated from on-chain data and serves as a human-readable representation
+            of the smart contract rules.
           </p>
+
           <p>
             <strong>7.3 Dispute Resolution.</strong> All disputes shall be
             resolved through member voting or, if necessary, binding arbitration
