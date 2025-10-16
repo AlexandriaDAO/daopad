@@ -435,25 +435,32 @@ const TokenDashboard = memo(function TokenDashboard({
 
         {/* Voting Power with Prominent USD */}
         <div className="text-right flex-shrink-0">
-          {/* Primary: USD Value */}
-          <div className="text-2xl font-bold text-green-600">
-            {formatUsdValue(totalUsdValue)}
+          {/* Primary: USD Value with Ownership Percentage */}
+          <div className="flex flex-col items-end gap-1">
+            <div className="text-2xl font-bold text-green-600">
+              {formatUsdValue(totalUsdValue)}
+              {vpPercentage && (
+                <span className="text-base font-normal text-muted-foreground ml-2">
+                  ({vpPercentage}%)
+                </span>
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              LP Value
+              {vpPercentage && (
+                <span className="ml-1">• {vpPercentage}% ownership</span>
+              )}
+            </div>
           </div>
-          <div className="text-xs text-muted-foreground">LP Value</div>
 
-          {/* Secondary: VP with percentage and tooltip */}
+          {/* Secondary: VP with tooltip */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="space-y-1">
+                <div className="mt-2">
                   <div className="text-lg font-mono cursor-help border-b border-dotted border-muted-foreground inline-block">
                     {votingPower.toLocaleString()} VP
                   </div>
-                  {vpPercentage && (
-                    <div className="text-sm text-muted-foreground">
-                      {vpPercentage}% of total VP
-                    </div>
-                  )}
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -464,6 +471,11 @@ const TokenDashboard = memo(function TokenDashboard({
                 {totalVotingPower && (
                   <p className="text-xs text-muted-foreground mt-1">
                     Total network VP: {totalVotingPower.toLocaleString()}
+                  </p>
+                )}
+                {vpPercentage && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Your ownership: {vpPercentage}% of total
                   </p>
                 )}
               </TooltipContent>
