@@ -86,61 +86,29 @@ export function RequestDialog({ open, requestId, onClose, onApproved }) {
     return () => clearInterval(interval);
   }, [fetchRequest, open]);
 
-  // Approve request
-  const handleApprove = async () => {
-    setIsApproving(true);
+  // Vote on request (liquid democracy)
+  const handleVote = async (vote) => {
+    const setLoading = vote ? setIsApproving : setIsRejecting;
+    setLoading(true);
 
     try {
-      await stationService.approveRequest({
-        request_id: requestId,
-        comment: approvalComment || null
+      // TODO: Implement voting via DAOPad backend
+      // await daopadBackend.voteOnOrbitRequest(tokenId, requestId, vote);
+
+      toast.error('Voting UI coming soon', {
+        description: 'Liquid democracy voting will be implemented in the next update'
       });
 
-      toast.success('Request approved', {
-        description: 'Your approval has been recorded'
-      });
-
-      // Refresh request details
-      fetchRequest();
-
-      if (onApproved) {
-        onApproved();
-      }
+      // Refresh request details when implemented
+      // fetchRequest();
+      // if (onApproved) onApproved();
     } catch (error) {
-      console.error('Approval error:', error);
-      toast.error('Approval failed', {
-        description: error.message || 'Failed to approve request'
+      console.error('Vote error:', error);
+      toast.error('Vote failed', {
+        description: error.message || 'Failed to vote'
       });
     } finally {
-      setIsApproving(false);
-    }
-  };
-
-  // Reject request
-  const handleReject = async () => {
-    setIsRejecting(true);
-
-    try {
-      await stationService.rejectRequest({
-        request_id: requestId,
-        reason: rejectionReason || 'Request rejected'
-      });
-
-      toast.success('Request rejected', {
-        description: 'The request has been rejected'
-      });
-
-      // Refresh request details
-      fetchRequest();
-
-      onClose();
-    } catch (error) {
-      console.error('Rejection error:', error);
-      toast.error('Rejection failed', {
-        description: error.message || 'Failed to reject request'
-      });
-    } finally {
-      setIsRejecting(false);
+      setLoading(false);
     }
   };
 
@@ -315,36 +283,36 @@ export function RequestDialog({ open, requestId, onClose, onApproved }) {
                         />
                       </div>
                       <Button
-                        onClick={handleApprove}
+                        onClick={() => handleVote(true)}
                         disabled={isApproving}
                         className="w-full"
                       >
                         {isApproving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         <ThumbsUp className="mr-2 h-4 w-4" />
-                        Approve Request
+                        Vote Yes
                       </Button>
 
                       <Separator />
 
                       <div>
-                        <Label htmlFor="rejection-reason">Rejection Reason</Label>
+                        <Label htmlFor="rejection-reason">Vote No Comment (Optional)</Label>
                         <Textarea
                           id="rejection-reason"
-                          placeholder="Provide a reason for rejection..."
+                          placeholder="Add a comment with your No vote..."
                           value={rejectionReason}
                           onChange={(e) => setRejectionReason(e.target.value)}
                           className="mt-2"
                         />
                       </div>
                       <Button
-                        onClick={handleReject}
+                        onClick={() => handleVote(false)}
                         disabled={isRejecting}
                         variant="destructive"
                         className="w-full"
                       >
                         {isRejecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         <ThumbsDown className="mr-2 h-4 w-4" />
-                        Reject Request
+                        Vote No
                       </Button>
                     </CardContent>
                   </Card>
