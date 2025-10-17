@@ -10,7 +10,16 @@
 
 ## Workflow Steps
 
-### 0. Create Worktree (MANDATORY FIRST STEP)
+### 1. Sync Main Repo Master (MANDATORY FIRST STEP)
+```bash
+# Ensure main repo master is up to date
+cd /home/theseus/alexandria/daopad
+git checkout master
+git pull
+```
+**CRITICAL**: Main repo master is READ-ONLY. Never commit there. Only `git pull`.
+
+### 2. Create Worktree (MANDATORY SECOND STEP)
 ```bash
 cd /home/theseus/alexandria/daopad
 git worktree add ../daopad-[FEATURE] -b feature/[feature-name] master
@@ -18,7 +27,7 @@ cd ../daopad-[FEATURE]/src/daopad
 ```
 All planning happens IN the worktree, not main repo.
 
-### 1. Research (30-60 min)
+### 3. Research (30-60 min)
 ```bash
 # Find all related files
 rg "keyword" daopad_backend/ daopad_frontend/ --files-with-matches
@@ -27,13 +36,13 @@ rg "keyword" daopad_backend/ daopad_frontend/ --files-with-matches
 dfx canister --network ic call fec7w-zyaaa-aaaaa-qaffq-cai <method> '(args)'
 ```
 
-### 2. Document Current State
+### 4. Document Current State
 - File tree (before/after)
 - Existing implementations with line numbers
 - Dependencies and constraints
 - For refactoring: list dead code, duplicates, complexity
 
-### 3. Plan Implementation
+### 5. Plan Implementation
 Use PSEUDOCODE for all code:
 ```markdown
 ## Backend: `path/to/file.rs` (NEW/MODIFY)
@@ -53,7 +62,7 @@ export function Component() {
 \`\`\`
 ```
 
-### 4. Testing Requirements
+### 6. Testing Requirements
 ```markdown
 ## Testing
 - Type discovery: dfx canister --network ic call
@@ -63,7 +72,7 @@ export function Component() {
 - Sync declarations: cp -r src/declarations/* frontend/src/declarations/
 ```
 
-### 5. Embed Orchestrator (MANDATORY TOP OF PLAN)
+### 7. Embed Orchestrator (MANDATORY TOP OF PLAN)
 Every plan MUST start with this exact header (fill in placeholders):
 ```markdown
 # 🤖 AUTONOMOUS PR ORCHESTRATOR - DO NOT SKIP
@@ -135,7 +144,7 @@ echo "✅ In isolated worktree: $REPO_ROOT"
 3. Implementation pseudocode
 4. Testing requirements
 
-### 6. Commit Plan & Handoff
+### 8. Commit Plan & Handoff
 ```bash
 git add [PLAN].md
 git commit -m "Add implementation plan"
@@ -146,7 +155,7 @@ git push -u origin feature/[name]
 ```
 The plan is ready with embedded PR orchestrator.
 
-To execute: pursue @/home/theseus/alexandria/daopad-[FEATURE]/src/daopad/[PLAN].md
+When done, return this prompt to the user: "Execute @/home/theseus/alexandria/daopad-[FEATURE]/src/daopad/[PLAN].md"
 
 The implementing agent MUST:
 1. Read the orchestrator header (cannot skip - it's at the top)
@@ -201,18 +210,3 @@ cp -r src/declarations/daopad_backend/* daopad_frontend/src/declarations/daopad_
 - **Use pseudocode**: Implementer writes real code
 - **One responsibility**: You plan, they implement
 - **Isolation mandatory**: Multiple agents work in parallel
-
-## Usage Modes
-
-**Recommended (Plan Mode):**
-```
-/plan
-Plan [feature] using @.claude/workflows/plan-pursuit-methodology-condensed.md
-```
-System enforces no implementation.
-
-**Fallback (Direct):**
-```
-Plan [feature] using @.claude/workflows/plan-pursuit-methodology-condensed.md
-```
-Requires agent discipline to not implement.
