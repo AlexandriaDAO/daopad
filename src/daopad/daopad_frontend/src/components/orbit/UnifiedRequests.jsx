@@ -45,9 +45,6 @@ const UnifiedRequests = ({ tokenId, identity }) => {
   // Voting system integration
   const { vote, userVotingPower, fetchVotingPower } = useVoting(tokenId);
 
-  // Polling interval - adjusted to 15 seconds for performance
-  const REFRESH_INTERVAL = 15000;
-
   // Fetch requests from backend (which proxies to Orbit Station)
   const fetchRequests = useCallback(async () => {
     console.log('[UnifiedRequests] fetchRequests called', {
@@ -219,49 +216,17 @@ const UnifiedRequests = ({ tokenId, identity }) => {
     }
   };
 
-  // Use ref to track if we should poll
-  const fetchRequestsRef = useRef(fetchRequests);
-  const intervalIdRef = useRef(null);
-  const mountIdRef = useRef(Math.random().toString(36).substr(2, 9));
-
+  // Initial fetch on mount
   useEffect(() => {
-    fetchRequestsRef.current = fetchRequests;
+    console.log('[UnifiedRequests] Initial mount - fetching requests');
+    fetchRequests();
   }, [fetchRequests]);
 
-  // Initial fetch and polling setup - only runs once
+  // Fetch when filters change
   useEffect(() => {
-    const mountId = mountIdRef.current;
-    console.log(`[UnifiedRequests ${mountId}] Setting up initial fetch and polling`);
-
-    // Initial fetch
-    fetchRequestsRef.current();
-
-    // Clear any existing interval (defensive)
-    if (intervalIdRef.current) {
-      console.log(`[UnifiedRequests ${mountId}] Clearing existing interval before creating new one`);
-      clearInterval(intervalIdRef.current);
-    }
-
-    // Set up polling interval
-    intervalIdRef.current = setInterval(() => {
-      console.log(`[UnifiedRequests ${mountId}] Polling interval fired (every 15s)`);
-      fetchRequestsRef.current();
-    }, REFRESH_INTERVAL);
-
-    return () => {
-      console.log(`[UnifiedRequests ${mountId}] Cleaning up polling interval ${intervalIdRef.current}`);
-      if (intervalIdRef.current) {
-        clearInterval(intervalIdRef.current);
-        intervalIdRef.current = null;
-      }
-    };
-  }, []); // Empty deps - only run once
-
-  // Fetch when filters change (but don't restart polling)
-  useEffect(() => {
-    console.log('[UnifiedRequests] Filters/domain changed, fetching once');
-    fetchRequestsRef.current();
-  }, [selectedDomain, filters.page, showOnlyPending]);
+    console.log('[UnifiedRequests] Filters changed - fetching requests');
+    fetchRequests();
+  }, [selectedDomain, filters.page, showOnlyPending, fetchRequests]);
 
   // Handle domain change
   const handleDomainChange = (domain) => {
