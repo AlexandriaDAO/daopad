@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Principal } from '@dfinity/principal';
 import {
   Card,
@@ -45,11 +45,16 @@ const UnifiedRequests = ({ tokenId, identity }) => {
   // Voting system integration
   const { vote, userVotingPower, fetchVotingPower } = useVoting(tokenId);
 
-  // Polling interval - adjusted to 15 seconds for performance
-  const REFRESH_INTERVAL = 15000;
-
   // Fetch requests from backend (which proxies to Orbit Station)
   const fetchRequests = useCallback(async () => {
+    console.log('[UnifiedRequests] fetchRequests called', {
+      tokenId,
+      hasIdentity: !!identity,
+      selectedDomain,
+      showOnlyPending,
+      filtersPage: filters.page
+    });
+
     if (!tokenId || !identity) return;
 
     try {
@@ -154,7 +159,7 @@ const UnifiedRequests = ({ tokenId, identity }) => {
     } finally {
       setLoading(false);
     }
-  }, [tokenId, identity, selectedDomain, filters, showOnlyPending, toast]);
+  }, [tokenId, identity, selectedDomain, filters, showOnlyPending]); // Removed toast from dependencies
 
   // ✅ UPDATED: Active voting replaces direct approval
   const handleVote = async (orbitRequestId, voteChoice) => {
@@ -164,7 +169,13 @@ const UnifiedRequests = ({ tokenId, identity }) => {
       await fetchRequests();
     } catch (err) {
       // Error handling is done in VoteButtons component
-      console.error('Vote error:', err);
+      console.error('[UnifiedRequests] Vote error:', {
+        error: err,
+        message: err?.message,
+        errorString: String(err),
+        requestId: orbitRequestId,
+        vote: voteChoice
+      });
     }
   };
 
@@ -205,14 +216,17 @@ const UnifiedRequests = ({ tokenId, identity }) => {
     }
   };
 
-  // Set up polling
+  // Initial fetch on mount
   useEffect(() => {
+    console.log('[UnifiedRequests] Initial mount - fetching requests');
     fetchRequests();
-
-    const interval = setInterval(fetchRequests, REFRESH_INTERVAL);
-
-    return () => clearInterval(interval);
   }, [fetchRequests]);
+
+  // Fetch when filters change
+  useEffect(() => {
+    console.log('[UnifiedRequests] Filters changed - fetching requests');
+    fetchRequests();
+  }, [selectedDomain, filters.page, showOnlyPending, fetchRequests]);
 
   // Handle domain change
   const handleDomainChange = (domain) => {

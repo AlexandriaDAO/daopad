@@ -1,6 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useIdentity } from '@/hooks/useIdentity';
 import { useStationService } from '@/hooks/useStationService';
 import { useActiveStation } from '@/hooks/useActiveStation';
+import { DAOPadBackendService } from '@/services/daopadBackend';
+import { Principal } from '@dfinity/principal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,8 +36,9 @@ import { formatDateTime, formatPrincipalShort } from '@/utils/format';
 import { cn } from '@/lib/utils';
 import { RequestOperationView } from './RequestOperationView';
 
-export function RequestDialog({ open, requestId, onClose, onApproved }) {
+export function RequestDialog({ open, requestId, tokenId, onClose, onApproved }) {
   const { toast } = useToast();
+  const { identity } = useIdentity();
   const { activeStation } = useActiveStation();
   const stationService = useStationService();
   const [approvalComment, setApprovalComment] = useState('');
@@ -48,6 +52,12 @@ export function RequestDialog({ open, requestId, onClose, onApproved }) {
   // Mutation states
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+
+  // Proposal state for DAOPad governance
+  const [proposal, setProposal] = useState(null);
+  const [loadingProposal, setLoadingProposal] = useState(false);
+  const [proposalError, setProposalError] = useState(null);
+  const [userVotingPower, setUserVotingPower] = useState(null);
 
   // Fetch request details
   const fetchRequest = useCallback(async () => {
@@ -86,26 +96,117 @@ export function RequestDialog({ open, requestId, onClose, onApproved }) {
     return () => clearInterval(interval);
   }, [fetchRequest, open]);
 
+  // Fetch proposal data for this request
+  const fetchProposal = useCallback(async () => {
+    if (!requestId || !tokenId || !open || !identity) {
+      setProposal(null);
+      return;
+    }
+
+    setLoadingProposal(true);
+    setProposalError(null);
+
+    try {
+      const daopadBackend = new DAOPadBackendService(identity);
+
+      // Convert tokenId to Principal if it's a string
+      const tokenPrincipal = typeof tokenId === 'string'
+        ? Principal.fromText(tokenId)
+        : tokenId;
+
+      // Check if proposal exists for this request
+      const result = await daopadBackend.getOrbitRequestProposal(tokenPrincipal, requestId);
+
+      if (result.success && result.data) {
+        setProposal(result.data);
+      } else if (result.success && !result.data) {
+        // No proposal exists yet - this is normal for new requests
+        console.log('No proposal found for request:', requestId);
+      } else {
+        setProposalError(result.error || 'Failed to fetch proposal');
+      }
+    } catch (err) {
+      console.error('Failed to fetch proposal:', err);
+      setProposalError(err.message);
+    } finally {
+      setLoadingProposal(false);
+    }
+  }, [requestId, tokenId, open, identity]);
+
+  // Fetch user's voting power
+  const fetchUserVotingPower = useCallback(async () => {
+    if (!tokenId || !open || !identity) {
+      setUserVotingPower(null);
+      return;
+    }
+
+    try {
+      const daopadBackend = new DAOPadBackendService(identity);
+      const tokenPrincipal = typeof tokenId === 'string'
+        ? Principal.fromText(tokenId)
+        : tokenId;
+
+      const result = await daopadBackend.getMyVotingPowerForToken(tokenPrincipal);
+      if (result.success) {
+        setUserVotingPower(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch voting power:', err);
+    }
+  }, [tokenId, open, identity]);
+
+  // Fetch proposal when dialog opens
+  useEffect(() => {
+    fetchProposal();
+  }, [fetchProposal]);
+
+  // Fetch user's voting power when dialog opens
+  useEffect(() => {
+    fetchUserVotingPower();
+  }, [fetchUserVotingPower]);
+
   // Vote on request (liquid democracy)
   const handleVote = async (vote) => {
     const setLoading = vote ? setIsApproving : setIsRejecting;
     setLoading(true);
 
     try {
-      // TODO: Implement voting via DAOPad backend
-      // await daopadBackend.voteOnOrbitRequest(tokenId, requestId, vote);
+      const daopadBackend = new DAOPadBackendService(identity);
 
-      toast.error('Voting UI coming soon', {
-        description: 'Liquid democracy voting will be implemented in the next update'
-      });
+      // Convert tokenId to Principal if it's a string
+      const tokenPrincipal = typeof tokenId === 'string'
+        ? Principal.fromText(tokenId)
+        : tokenId;
 
-      // Refresh request details when implemented
-      // fetchRequest();
-      // if (onApproved) onApproved();
+      // Call backend voting method
+      const result = await daopadBackend.voteOnOrbitRequest(
+        tokenPrincipal,
+        requestId,
+        vote
+      );
+
+      if (result.success) {
+        toast.success(`Vote ${vote ? 'Yes' : 'No'} recorded`, {
+          description: 'Your vote has been counted. Refreshing proposal data...'
+        });
+
+        // Refresh both request and proposal data
+        await Promise.all([
+          fetchRequest(),
+          fetchProposal()
+        ]);
+
+        // Notify parent component
+        if (onApproved) onApproved();
+      } else {
+        throw new Error(result.error || 'Failed to vote');
+      }
     } catch (error) {
       console.error('Vote error:', error);
+
+      // Show specific error message
       toast.error('Vote failed', {
-        description: error.message || 'Failed to vote'
+        description: error.message || 'Failed to submit vote'
       });
     } finally {
       setLoading(false);
@@ -140,6 +241,124 @@ export function RequestDialog({ open, requestId, onClose, onApproved }) {
     const approved = request.approvals_count || 0;
     const required = request.approvals_required;
     return (approved / required) * 100;
+  };
+
+  // Helper functions for proposal display
+  const getOperationTypeName = (requestType) => {
+    if (typeof requestType === 'string') return requestType;
+    if (typeof requestType === 'object' && requestType !== null) {
+      const key = Object.keys(requestType)[0];
+      return key;
+    }
+    return 'Unknown';
+  };
+
+  const getThresholdPercentage = (requestType) => {
+    const typeName = getOperationTypeName(requestType);
+
+    const thresholds = {
+      // Critical - 90%
+      'SystemUpgrade': 90,
+      'SystemRestore': 90,
+      'SetDisasterRecovery': 90,
+      'ManageSystemInfo': 90,
+
+      // Treasury - 75%
+      'Transfer': 75,
+      'AddAccount': 75,
+      'EditAccount': 75,
+
+      // Governance - 70%
+      'EditPermission': 70,
+      'AddRequestPolicy': 70,
+      'EditRequestPolicy': 70,
+      'RemoveRequestPolicy': 70,
+
+      // Canister & Rules - 60%
+      'CreateExternalCanister': 60,
+      'ConfigureExternalCanister': 60,
+      'ChangeExternalCanister': 60,
+      'CallExternalCanister': 60,
+      'FundExternalCanister': 60,
+      'MonitorExternalCanister': 60,
+      'SnapshotExternalCanister': 60,
+      'RestoreExternalCanister': 60,
+      'PruneExternalCanister': 60,
+      'AddNamedRule': 60,
+      'EditNamedRule': 60,
+      'RemoveNamedRule': 60,
+
+      // User/Group - 50%
+      'AddUser': 50,
+      'EditUser': 50,
+      'RemoveUser': 50,
+      'AddUserGroup': 50,
+      'EditUserGroup': 50,
+      'RemoveUserGroup': 50,
+
+      // Assets - 40%
+      'AddAsset': 40,
+      'EditAsset': 40,
+      'RemoveAsset': 40,
+
+      // Address Book - 30%
+      'AddAddressBookEntry': 30,
+      'EditAddressBookEntry': 30,
+      'RemoveAddressBookEntry': 30,
+    };
+
+    return thresholds[typeName] || 75; // Default to 75% for unknown
+  };
+
+  const getRiskLevel = (requestType) => {
+    const threshold = getThresholdPercentage(requestType);
+    if (threshold >= 90) return 'CRITICAL';
+    if (threshold >= 70) return 'HIGH';
+    if (threshold >= 60) return 'MEDIUM-HIGH';
+    if (threshold >= 50) return 'MEDIUM';
+    if (threshold >= 40) return 'LOW';
+    return 'VERY LOW';
+  };
+
+  const getRiskLevelColor = (requestType) => {
+    const level = getRiskLevel(requestType);
+    const colors = {
+      'CRITICAL': 'bg-red-100 text-red-800',
+      'HIGH': 'bg-orange-100 text-orange-800',
+      'MEDIUM-HIGH': 'bg-yellow-100 text-yellow-800',
+      'MEDIUM': 'bg-blue-100 text-blue-800',
+      'LOW': 'bg-green-100 text-green-800',
+      'VERY LOW': 'bg-gray-100 text-gray-800',
+    };
+    return colors[level] || colors['MEDIUM'];
+  };
+
+  const getVotingProgress = (proposal) => {
+    const totalVP = Number(proposal.total_voting_power);
+    const yesVotes = Number(proposal.yes_votes);
+    const threshold = getThresholdPercentage(proposal.request_type);
+
+    if (totalVP === 0) return 0;
+
+    const requiredVotes = (totalVP * threshold) / 100;
+    const progress = (yesVotes / requiredVotes) * 100;
+
+    return Math.min(100, progress);
+  };
+
+  const getVotingProgressText = (proposal) => {
+    const totalVP = Number(proposal.total_voting_power);
+    const yesVotes = Number(proposal.yes_votes);
+    const threshold = getThresholdPercentage(proposal.request_type);
+    const requiredVotes = Math.ceil((totalVP * threshold) / 100);
+
+    const remaining = Math.max(0, requiredVotes - yesVotes);
+
+    if (remaining === 0) {
+      return '✓ Threshold reached! Awaiting execution.';
+    }
+
+    return `${remaining.toLocaleString()} more votes needed to reach ${threshold}% threshold`;
   };
 
   return (
@@ -220,6 +439,114 @@ export function RequestDialog({ open, requestId, onClose, onApproved }) {
                         </p>
                       </div>
                     </div>
+
+                    {proposal && (
+                      <>
+                        <Separator />
+
+                        <div>
+                          <Label className="text-xs text-muted-foreground mb-2 block">
+                            Community Voting (DAOPad Governance)
+                          </Label>
+
+                          <div className="space-y-2 p-3 bg-muted/50 rounded-md">
+                            <div className="flex justify-between text-sm">
+                              <span className="font-medium">Operation Type:</span>
+                              <Badge variant="outline">
+                                {getOperationTypeName(proposal.request_type)}
+                              </Badge>
+                            </div>
+
+                            <div className="flex justify-between text-sm">
+                              <span className="font-medium">Required Threshold:</span>
+                              <span className="font-mono">
+                                {getThresholdPercentage(proposal.request_type)}%
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between text-sm">
+                              <span className="font-medium">Risk Level:</span>
+                              <Badge className={getRiskLevelColor(proposal.request_type)}>
+                                {getRiskLevel(proposal.request_type)}
+                              </Badge>
+                            </div>
+
+                            <Separator className="my-2" />
+
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div className="text-center p-2 bg-green-50 rounded">
+                                <div className="font-bold text-green-700">
+                                  {Number(proposal.yes_votes).toLocaleString()}
+                                </div>
+                                <div className="text-xs text-muted-foreground">Yes Votes</div>
+                              </div>
+
+                              <div className="text-center p-2 bg-red-50 rounded">
+                                <div className="font-bold text-red-700">
+                                  {Number(proposal.no_votes).toLocaleString()}
+                                </div>
+                                <div className="text-xs text-muted-foreground">No Votes</div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <Progress
+                                value={getVotingProgress(proposal)}
+                                className="h-2"
+                              />
+                              <p className="text-xs text-muted-foreground text-center">
+                                {getVotingProgressText(proposal)}
+                              </p>
+                            </div>
+
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>Expires:</span>
+                              <span>{formatDateTime(proposal.expires_at)}</span>
+                            </div>
+                          </div>
+
+                          {proposal.status && Object.keys(proposal.status)[0] === 'Active' && userVotingPower && userVotingPower > 0 && (
+                            <div className="mt-3 space-y-2">
+                              <div className="text-xs text-center text-muted-foreground">
+                                Your voting power: <strong>{Number(userVotingPower).toLocaleString()} VP</strong>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2">
+                                <Button
+                                  onClick={() => handleVote(true)}
+                                  disabled={isApproving || isRejecting}
+                                  variant="default"
+                                  size="sm"
+                                >
+                                  {isApproving && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                                  <ThumbsUp className="mr-2 h-3 w-3" />
+                                  Vote Yes
+                                </Button>
+
+                                <Button
+                                  onClick={() => handleVote(false)}
+                                  disabled={isApproving || isRejecting}
+                                  variant="destructive"
+                                  size="sm"
+                                >
+                                  {isRejecting && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                                  <ThumbsDown className="mr-2 h-3 w-3" />
+                                  Vote No
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
+                          {proposal.status && Object.keys(proposal.status)[0] === 'Active' && (!userVotingPower || userVotingPower === 0) && (
+                            <Alert variant="default" className="mt-3">
+                              <AlertDescription className="text-xs">
+                                You need voting power to vote. Lock LP tokens in Kong Locker to participate.
+                              </AlertDescription>
+                            </Alert>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
 
