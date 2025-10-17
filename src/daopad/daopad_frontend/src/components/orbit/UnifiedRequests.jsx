@@ -221,26 +221,39 @@ const UnifiedRequests = ({ tokenId, identity }) => {
 
   // Use ref to track if we should poll
   const fetchRequestsRef = useRef(fetchRequests);
+  const intervalIdRef = useRef(null);
+  const mountIdRef = useRef(Math.random().toString(36).substr(2, 9));
+
   useEffect(() => {
     fetchRequestsRef.current = fetchRequests;
   }, [fetchRequests]);
 
   // Initial fetch and polling setup - only runs once
   useEffect(() => {
-    console.log('[UnifiedRequests] Setting up initial fetch and polling');
+    const mountId = mountIdRef.current;
+    console.log(`[UnifiedRequests ${mountId}] Setting up initial fetch and polling`);
 
     // Initial fetch
     fetchRequestsRef.current();
 
+    // Clear any existing interval (defensive)
+    if (intervalIdRef.current) {
+      console.log(`[UnifiedRequests ${mountId}] Clearing existing interval before creating new one`);
+      clearInterval(intervalIdRef.current);
+    }
+
     // Set up polling interval
-    const interval = setInterval(() => {
-      console.log('[UnifiedRequests] Polling interval fired (every 15s)');
+    intervalIdRef.current = setInterval(() => {
+      console.log(`[UnifiedRequests ${mountId}] Polling interval fired (every 15s)`);
       fetchRequestsRef.current();
     }, REFRESH_INTERVAL);
 
     return () => {
-      console.log('[UnifiedRequests] Cleaning up polling interval');
-      clearInterval(interval);
+      console.log(`[UnifiedRequests ${mountId}] Cleaning up polling interval ${intervalIdRef.current}`);
+      if (intervalIdRef.current) {
+        clearInterval(intervalIdRef.current);
+        intervalIdRef.current = null;
+      }
     };
   }, []); // Empty deps - only run once
 

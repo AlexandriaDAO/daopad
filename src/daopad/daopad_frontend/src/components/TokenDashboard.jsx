@@ -403,9 +403,7 @@ const TokenDashboard = memo(function TokenDashboard({
             </TabsContent>
 
             <TabsContent value="activity" className="mt-4">
-              {activeTab === 'activity' && (
-                <UnifiedRequests tokenId={token.canister_id} identity={identity} />
-              )}
+              <UnifiedRequests tokenId={token.canister_id} identity={identity} />
             </TabsContent>
 
             <TabsContent value="canisters" className="mt-4">
