@@ -154,7 +154,7 @@ const UnifiedRequests = ({ tokenId, identity }) => {
     } finally {
       setLoading(false);
     }
-  }, [tokenId, identity, selectedDomain, filters, showOnlyPending, toast]);
+  }, [tokenId, identity, selectedDomain, filters, showOnlyPending]); // Removed toast from dependencies
 
   // ✅ UPDATED: Active voting replaces direct approval
   const handleVote = async (orbitRequestId, voteChoice) => {
