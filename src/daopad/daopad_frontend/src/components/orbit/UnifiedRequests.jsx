@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Principal } from '@dfinity/principal';
 import {
   Card,
@@ -50,6 +50,14 @@ const UnifiedRequests = ({ tokenId, identity }) => {
 
   // Fetch requests from backend (which proxies to Orbit Station)
   const fetchRequests = useCallback(async () => {
+    console.log('[UnifiedRequests] fetchRequests called', {
+      tokenId,
+      hasIdentity: !!identity,
+      selectedDomain,
+      showOnlyPending,
+      filtersPage: filters.page
+    });
+
     if (!tokenId || !identity) return;
 
     try {
@@ -164,7 +172,13 @@ const UnifiedRequests = ({ tokenId, identity }) => {
       await fetchRequests();
     } catch (err) {
       // Error handling is done in VoteButtons component
-      console.error('Vote error:', err);
+      console.error('[UnifiedRequests] Vote error:', {
+        error: err,
+        message: err?.message,
+        errorString: String(err),
+        requestId: orbitRequestId,
+        vote: voteChoice
+      });
     }
   };
 
@@ -205,14 +219,36 @@ const UnifiedRequests = ({ tokenId, identity }) => {
     }
   };
 
-  // Set up polling
+  // Use ref to track if we should poll
+  const fetchRequestsRef = useRef(fetchRequests);
   useEffect(() => {
-    fetchRequests();
-
-    const interval = setInterval(fetchRequests, REFRESH_INTERVAL);
-
-    return () => clearInterval(interval);
+    fetchRequestsRef.current = fetchRequests;
   }, [fetchRequests]);
+
+  // Initial fetch and polling setup - only runs once
+  useEffect(() => {
+    console.log('[UnifiedRequests] Setting up initial fetch and polling');
+
+    // Initial fetch
+    fetchRequestsRef.current();
+
+    // Set up polling interval
+    const interval = setInterval(() => {
+      console.log('[UnifiedRequests] Polling interval fired (every 15s)');
+      fetchRequestsRef.current();
+    }, REFRESH_INTERVAL);
+
+    return () => {
+      console.log('[UnifiedRequests] Cleaning up polling interval');
+      clearInterval(interval);
+    };
+  }, []); // Empty deps - only run once
+
+  // Fetch when filters change (but don't restart polling)
+  useEffect(() => {
+    console.log('[UnifiedRequests] Filters/domain changed, fetching once');
+    fetchRequestsRef.current();
+  }, [selectedDomain, filters.page, showOnlyPending]);
 
   // Handle domain change
   const handleDomainChange = (domain) => {
