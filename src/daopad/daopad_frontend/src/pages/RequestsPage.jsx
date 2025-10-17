@@ -293,6 +293,7 @@ export function RequestsPage() {
       <RequestDialog
         open={dialogOpen}
         requestId={selectedRequestId}
+        tokenId={activeStation?.token_id}
         onClose={handleCloseDialog}
         onApproved={handleRequestApproved}
       />
