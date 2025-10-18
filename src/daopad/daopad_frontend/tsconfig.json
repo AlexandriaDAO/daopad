@@ -5,7 +5,7 @@
     "module": "ESNext",
 
     "strict": false,
-    "noImplicitAny": false,
+    "noImplicitAny": true,
     "strictNullChecks": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
