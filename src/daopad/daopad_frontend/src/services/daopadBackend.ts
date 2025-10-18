@@ -1,7 +1,8 @@
-import { Actor, HttpAgent } from '@dfinity/agent';
+import { Actor, HttpAgent, type Identity } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
 import { idlFactory as generatedIdlFactory, canisterId as generatedCanisterId } from 'declarations/daopad_backend';
 import { idlFactory as orbitStationIdlFactory } from './orbitStation.did.js';
+import type { ServiceResponse } from '../types';
 
 // DAOPad Backend Canister ID
 const DEFAULT_BACKEND_CANISTER_ID = 'lwsav-iiaaa-aaaap-qp2qq-cai';
@@ -25,7 +26,7 @@ const icrc1MetadataIDL = ({ IDL }) => {
 // Use generated candid interface to stay in sync with the deployed backend
 const idlFactory = generatedIdlFactory;
 
-const orbitErrorMessage = (errorRecord) => {
+const orbitErrorMessage = (errorRecord: any): string => {
   if (!errorRecord || typeof errorRecord !== 'object') {
     return 'Orbit Station error';
   }
@@ -65,7 +66,7 @@ const orbitErrorMessage = (errorRecord) => {
 };
 
 
-export const getBackendActor = async (identity) => {
+export const getBackendActor = async (identity: Identity | null): Promise<any> => {
   const isLocal = import.meta.env.VITE_DFX_NETWORK === 'local';
   const host = isLocal ? 'http://localhost:4943' : 'https://icp0.io';
 
@@ -85,17 +86,31 @@ export const getBackendActor = async (identity) => {
 };
 
 export class DAOPadBackendService {
-  constructor(identity) {
+  protected identity: Identity | null;
+  protected actor: any | null;
+  protected lastIdentity: Identity | null;
+
+  constructor(identity: Identity | null) {
     this.identity = identity;
     this.actor = null;
+    this.lastIdentity = null;
   }
 
-  async getActor() {
+  async getActor(): Promise<any> {
     if (!this.actor || this.identity !== this.lastIdentity) {
       this.actor = await getBackendActor(this.identity);
       this.lastIdentity = this.identity;
     }
     return this.actor;
+  }
+
+  /**
+   * Helper to check authentication before making authenticated calls
+   */
+  protected ensureAuthenticated(): void {
+    if (!this.identity) {
+      throw new Error('Authentication required: Please log in to perform this action');
+    }
   }
 
   // Kong Locker Integration
@@ -288,9 +303,16 @@ export class DAOPadBackendService {
     }
   }
 
-  async getMyVotingPowerForToken(tokenCanisterId) {
+  async getMyVotingPowerForToken(tokenCanisterId: Principal | string): Promise<ServiceResponse<number>> {
     try {
+      // Auth validation: This requires authentication
+      this.ensureAuthenticated();
+
       const actor = await this.getActor();
+      if (!actor) {
+        return { success: false, error: 'Failed to get authenticated actor' };
+      }
+
       const result = await actor.get_my_voting_power_for_token(tokenCanisterId);
       if ('Ok' in result) {
         return { success: true, data: Number(result.Ok) };
@@ -299,7 +321,13 @@ export class DAOPadBackendService {
       }
     } catch (error) {
       console.error('Failed to get voting power for token:', error);
-      return { success: false, error: error.message };
+      // Clear identity/actor if authentication error
+      if (error instanceof Error && error.message?.includes('authentication')) {
+        this.identity = null;
+        this.actor = null;
+      }
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: message };
     }
   }
 
@@ -377,8 +405,15 @@ export class DAOPadBackendService {
   // ❌ REMOVED: approveOrbitRequest, rejectOrbitRequest, batchApproveRequests
   // Replaced by liquid democracy voting system
 
-  async voteOnOrbitRequest(tokenCanisterId, requestId, vote) {
+  async voteOnOrbitRequest(
+    tokenCanisterId: Principal | string,
+    requestId: string,
+    vote: boolean
+  ): Promise<ServiceResponse<string>> {
     try {
+      // Auth validation: Voting requires authentication
+      this.ensureAuthenticated();
+
       const actor = await this.getActor();
       const result = await actor.vote_on_orbit_request(
         tokenCanisterId,
