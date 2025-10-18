@@ -51,16 +51,15 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
     // - undefined if vote failed or old response format
 
     if (updatedProposalData === null) {
-      // Proposal was executed or rejected - it no longer exists
-      // Clear the proposal state to reflect this
-      setProposal(null);
-      // Note: Parent component should handle showing the new status
+      // Proposal was executed or rejected - no longer exists
+      // Refetch to get the latest state and clear proposal
+      fetchProposal();
     } else if (updatedProposalData === undefined) {
       // Old response format or error - refetch to be safe
       fetchProposal();
     }
     // If updatedProposalData is truthy, it's already set by the backend response
-  }, [fetchProposal, setProposal]);
+  }, [fetchProposal]);
 
   const statusInfo = statusConfig[request.status] || statusConfig.Created;
   const StatusIcon = statusInfo.icon;
