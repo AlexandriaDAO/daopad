@@ -6,6 +6,9 @@ import { useProposal } from '@/hooks/useProposal';
 import VoteProgressBar from './VoteProgressBar';
 import VoteButtons from './VoteButtons';
 
+// Backend needs ~100-500ms to commit votes to storage before they appear in queries
+const VOTE_BACKEND_COMMIT_DELAY_MS = 500;
+
 const statusConfig = {
   Created: { icon: Clock, color: 'text-yellow-500', label: 'Pending' },
   Approved: { icon: CheckCircle, color: 'text-green-500', label: 'Approved' },
@@ -109,7 +112,7 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
                   userVotingPower={userVotingPower}
                   hasVoted={hasVoted}
                   disabled={proposal.status && Object.keys(proposal.status)[0] !== 'Active'}
-                  onVoteComplete={() => setTimeout(fetchProposal, 500)}
+                  onVoteComplete={() => setTimeout(fetchProposal, VOTE_BACKEND_COMMIT_DELAY_MS)}
                 />
               </>
             )}
