@@ -1,10 +1,11 @@
 /// <reference types="vitest" />
-import { fileURLToPath, URL } from 'url';
+import { fileURLToPath, URL } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import environment from 'vite-plugin-environment';
 import dotenv from 'dotenv';
 import { visualizer } from 'rollup-plugin-visualizer';
+import type { PluginOption } from 'vite';
 
 dotenv.config({ path: '../../.env' });
 
@@ -54,11 +55,11 @@ export default defineConfig({
       open: false,
       gzipSize: true,
       brotliSize: true,
-    }),
+    }) as PluginOption,
   ],
   test: {
     environment: 'jsdom',
-    setupFiles: 'src/setupTests.js',
+    setupFiles: 'src/setupTests.ts',
   },
   resolve: {
     alias: [
