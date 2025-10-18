@@ -1,10 +1,20 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import type { Principal } from '@dfinity/principal';
+
+// Define the auth state interface
+export interface AuthState {
+    principal: Principal | null;
+    isAuthenticated: boolean;
+    isLoading: boolean;
+    error: string | null;
+    isInitialized: boolean;
+}
 
 // Define the initial state using the AuthState interface
-const initialState = {
+const initialState: AuthState = {
     principal: null,
     isAuthenticated: false,
-    isLoading: false, 
+    isLoading: false,
     error: null,
     isInitialized: false,
 };
@@ -13,13 +23,13 @@ const authSlice = createSlice({
     name: "auth",
     initialState,
     reducers: {
-        setAuthLoading: (state, action) => {
+        setAuthLoading: (state, action: PayloadAction<boolean>) => {
             state.isLoading = action.payload;
         },
-        setAuthError: (state, action) => {
+        setAuthError: (state, action: PayloadAction<string | null>) => {
             state.error = action.payload;
         },
-        setAuthInitialized: (state, action) => {
+        setAuthInitialized: (state, action: PayloadAction<boolean>) => {
             state.isInitialized = action.payload;
             if (action.payload) {
                 if (state.isLoading && !state.principal) {
@@ -27,7 +37,7 @@ const authSlice = createSlice({
                 }
             }
         },
-        setAuthSuccess: (state, action) => {
+        setAuthSuccess: (state, action: PayloadAction<Principal>) => {
             state.principal = action.payload;
             state.isAuthenticated = true;
             state.isLoading = false;

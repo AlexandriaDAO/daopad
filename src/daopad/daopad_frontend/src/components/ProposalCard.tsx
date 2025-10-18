@@ -52,7 +52,7 @@ const ProposalCard = memo(function ProposalCard({
   canVote,
   isVotingLoading
 }: ProposalCardProps) {
-  const approvals = (proposal as any).approvals || [];
+  const approvals = proposal.approvals || [];
   const approvalProgress = 0; // We'll calculate this based on policy rules if available
 
   return (
@@ -146,14 +146,14 @@ const ProposalCard = memo(function ProposalCard({
   );
 }, (prevProps: ProposalCardProps, nextProps: ProposalCardProps): boolean => {
   // Only re-render if these specific props changed
-  const prevApprovals = (prevProps.proposal as any).approvals || [];
-  const nextApprovals = (nextProps.proposal as any).approvals || [];
+  const prevApprovals = prevProps.proposal.approvals || [];
+  const nextApprovals = nextProps.proposal.approvals || [];
 
   // Check if approval statuses changed (not just length)
   const approvalsEqual = prevApprovals.length === nextApprovals.length &&
-    prevApprovals.every((prev: any, i: number) => {
+    prevApprovals.every((prev, i) => {
       const next = nextApprovals[i];
-      return prev?.status?.Approved === next?.status?.Approved;
+      return prev?.status === next?.status;
     });
 
   return (

@@ -68,6 +68,20 @@ export class BackendServiceBase {
   }
 
   /**
+   * Type guard to check if an object has a toText method
+   */
+  private hasToTextMethod(value: unknown): value is { toText: () => string } {
+    return typeof value === 'object' && value !== null && 'toText' in value && typeof (value as Record<string, unknown>).toText === 'function';
+  }
+
+  /**
+   * Type guard to check if an object has a toString method
+   */
+  private hasToStringMethod(value: unknown): value is { toString: () => string } {
+    return typeof value === 'object' && value !== null && 'toString' in value && typeof (value as Record<string, unknown>).toString === 'function';
+  }
+
+  /**
    * Convert to Principal with proper error handling
    * @throws Error if value is invalid or cannot be converted
    */
@@ -90,14 +104,14 @@ export class BackendServiceBase {
     }
 
     // Handle objects with toText method (e.g., from Candid)
-    if (typeof (value as any).toText === 'function') {
+    if (this.hasToTextMethod(value)) {
       return value as Principal;
     }
 
     // Try converting toString() to Principal as last resort
-    if (typeof (value as any).toString === 'function') {
+    if (this.hasToStringMethod(value)) {
       try {
-        return Principal.fromText((value as any).toString());
+        return Principal.fromText(value.toString());
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         throw new Error(`Cannot convert to Principal: ${typeof value} (${message})`);
@@ -119,12 +133,12 @@ export class BackendServiceBase {
       return principal;
     }
 
-    if (typeof (principal as any).toText === 'function') {
-      return (principal as Principal).toText();
+    if (this.hasToTextMethod(principal)) {
+      return principal.toText();
     }
 
-    if (typeof (principal as any).toString === 'function') {
-      return (principal as any).toString();
+    if (this.hasToStringMethod(principal)) {
+      return principal.toString();
     }
 
     return String(principal);

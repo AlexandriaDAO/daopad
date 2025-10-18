@@ -1,25 +1,52 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { DAOPadBackendService } from '../../services/daopadBackend';
+import type { TokenMetadata } from '../../types';
+import type { Principal } from '@dfinity/principal';
+
+// Token state interface
+export interface TokenState {
+  metadata: Record<string, TokenMetadata>;
+  loading: Record<string, boolean>;
+  error: Record<string, string | null>;
+  lastFetch: Record<string, number>;
+}
+
+interface FetchTokenMetadataArgs {
+  tokenId: Principal | string;
+}
+
+interface FetchTokenMetadataResult {
+  tokenId: string;
+  metadata: TokenMetadata;
+}
 
 // Fetch token metadata
-export const fetchTokenMetadata = createAsyncThunk(
+export const fetchTokenMetadata = createAsyncThunk<
+  FetchTokenMetadataResult,
+  FetchTokenMetadataArgs,
+  { rejectValue: string }
+>(
   'token/fetchMetadata',
   async ({ tokenId }, { rejectWithValue }) => {
     try {
       const result = await DAOPadBackendService.getTokenMetadata(tokenId);
 
       if (result.success) {
-        return { tokenId, metadata: result.data };
+        return {
+          tokenId: typeof tokenId === 'string' ? tokenId : tokenId.toText(),
+          metadata: result.data!
+        };
       }
       throw new Error(result.error || 'Failed to fetch token metadata');
     } catch (error) {
-      return rejectWithValue(error.message);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return rejectWithValue(message);
     }
   }
 );
 
-const initialState = {
-  metadata: {}, // tokenId -> metadata object
+const initialState: TokenState = {
+  metadata: {},
   loading: {},
   error: {},
   lastFetch: {},
@@ -29,7 +56,7 @@ const tokenSlice = createSlice({
   name: 'token',
   initialState,
   reducers: {
-    clearTokenMetadata: (state, action) => {
+    clearTokenMetadata: (state, action: PayloadAction<string>) => {
       const tokenId = action.payload;
       delete state.metadata[tokenId];
       delete state.loading[tokenId];

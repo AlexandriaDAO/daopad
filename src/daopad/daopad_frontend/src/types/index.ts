@@ -51,6 +51,13 @@ export type ProposalStatus =
   | { Rejected: null }
   | { Executed: null };
 
+// Approval status for requests
+export interface RequestApproval {
+  approver_id: string;
+  status: 'Approved' | 'Rejected';
+  decided_at: bigint;
+}
+
 // Request types (from Orbit)
 export interface OrbitRequest {
   id: string;
@@ -58,7 +65,7 @@ export interface OrbitRequest {
   operation: RequestOperation | string;
   status: RequestStatus;
   created_at: bigint;
-  approvals?: number;
+  approvals?: RequestApproval[];
   rejections?: number;
   summary?: string;
   requested_by?: Principal;
