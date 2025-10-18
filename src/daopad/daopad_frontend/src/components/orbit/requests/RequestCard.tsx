@@ -109,7 +109,7 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
                   userVotingPower={userVotingPower}
                   hasVoted={hasVoted}
                   disabled={proposal.status && Object.keys(proposal.status)[0] !== 'Active'}
-                  onVoteComplete={fetchProposal}
+                  onVoteComplete={() => setTimeout(fetchProposal, 500)}
                 />
               </>
             )}
