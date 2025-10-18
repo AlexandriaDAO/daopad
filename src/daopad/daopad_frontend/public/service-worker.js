@@ -1,4 +1,5 @@
-const CACHE_VERSION = 'v2'; // Increment on each deploy
+// Service worker for DAOPad
+const CACHE_VERSION = 'v3'; // Increment on each deploy
 const CACHE_NAME = `daopad-${CACHE_VERSION}`;
 
 self.addEventListener('install', (event) => {
