@@ -1,10 +1,19 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { AuthClient } from "@dfinity/auth-client";
-import { HttpAgent } from "@dfinity/agent";
+import { HttpAgent, type Identity } from "@dfinity/agent";
 
-const AuthContext = createContext();
+interface AuthContextType {
+	authClient: AuthClient | null;
+	identity: Identity | null;
+	isAuthenticated: boolean;
+	isLoading: boolean;
+	login: () => Promise<void>;
+	logout: () => Promise<void>;
+}
 
-export const useAuth = () => {
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const useAuth = (): AuthContextType => {
 	const context = useContext(AuthContext);
 	if (!context) {
 		throw new Error("useAuth must be used within IIProvider");
@@ -12,11 +21,15 @@ export const useAuth = () => {
 	return context;
 };
 
-const IIProvider = ({ children }) => {
-	const [authClient, setAuthClient] = useState(null);
-	const [identity, setIdentity] = useState(null);
-	const [isAuthenticated, setIsAuthenticated] = useState(false);
-	const [isLoading, setIsLoading] = useState(true);
+interface IIProviderProps {
+	children: React.ReactNode;
+}
+
+const IIProvider: React.FC<IIProviderProps> = ({ children }) => {
+	const [authClient, setAuthClient] = useState<AuthClient | null>(null);
+	const [identity, setIdentity] = useState<Identity | null>(null);
+	const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+	const [isLoading, setIsLoading] = useState<boolean>(true);
 
 	const isLocal = import.meta.env.VITE_DFX_NETWORK === "local";
 	const internetIdentityUrl = isLocal
@@ -30,7 +43,7 @@ const IIProvider = ({ children }) => {
 		initAuth();
 	}, []);
 
-	const initAuth = async () => {
+	const initAuth = async (): Promise<void> => {
 		try {
 			const client = await AuthClient.create({
 				idleOptions: {
@@ -55,7 +68,7 @@ const IIProvider = ({ children }) => {
 		}
 	};
 
-	const login = async () => {
+	const login = async (): Promise<void> => {
 		if (!authClient) return;
 
 		try {
@@ -66,7 +79,7 @@ const IIProvider = ({ children }) => {
 					setIdentity(identity);
 					setIsAuthenticated(true);
 				},
-				onError: (error) => {
+				onError: (error?: string) => {
 					console.error("Login error:", error);
 				},
 				derivationOrigin: "https://yj5ba-aiaaa-aaaap-qkmoa-cai.icp0.io",
@@ -77,7 +90,7 @@ const IIProvider = ({ children }) => {
 		}
 	};
 
-	const logout = async () => {
+	const logout = async (): Promise<void> => {
 		if (!authClient) return;
 
 		try {
