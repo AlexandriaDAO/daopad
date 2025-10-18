@@ -63,7 +63,7 @@ export class OrbitAgreementService extends BackendServiceBase {
       let treasuryResult = null;
       try {
         treasuryResult = await actor.get_treasury_management_data(
-          Principal.fromText(tokenId)
+          Principal.fromText(stationId)
         );
       } catch (e) {
         console.log('Treasury data not available:', e.message);

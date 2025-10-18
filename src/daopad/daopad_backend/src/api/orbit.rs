@@ -327,11 +327,8 @@ use std::collections::HashMap;
 /// - Backend privilege summary
 #[update]
 pub async fn get_treasury_management_data(
-    token_canister_id: Principal,
+    station_id: Principal,
 ) -> Result<TreasuryManagementData, String> {
-    // 1. Get station ID for token
-    let station_id = get_orbit_station_for_token(token_canister_id)
-        .ok_or_else(|| format!("No Orbit Station found for token {}", token_canister_id))?;
 
     // 2. List all accounts
     let accounts_input = ListAccountsInput {
