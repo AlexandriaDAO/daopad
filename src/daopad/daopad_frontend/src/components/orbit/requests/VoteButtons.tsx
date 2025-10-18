@@ -45,7 +45,7 @@ export function VoteButtons({
   if (hasVoted || localHasVoted) {
     return (
       <div className="text-sm text-muted-foreground">
-        ✓ You have already voted (VP: {userVotingPower.toLocaleString()})
+        ✓ You have already voted (VP: {(userVotingPower || 0).toLocaleString()})
       </div>
     );
   }

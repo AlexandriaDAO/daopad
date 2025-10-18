@@ -45,12 +45,22 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
 
   // Handle vote completion with optional updated data
   const handleVoteComplete = useCallback((updatedProposalData) => {
-    // If backend returned updated proposal, data is already fresh
-    // Otherwise, refetch from backend
-    if (!updatedProposalData) {
+    // Backend returns:
+    // - Some(proposal) if still active (data is fresh, no refetch needed)
+    // - None if executed/rejected (proposal removed from storage)
+    // - undefined if vote failed or old response format
+
+    if (updatedProposalData === null) {
+      // Proposal was executed or rejected - it no longer exists
+      // Clear the proposal state to reflect this
+      setProposal(null);
+      // Note: Parent component should handle showing the new status
+    } else if (updatedProposalData === undefined) {
+      // Old response format or error - refetch to be safe
       fetchProposal();
     }
-  }, [fetchProposal]);
+    // If updatedProposalData is truthy, it's already set by the backend response
+  }, [fetchProposal, setProposal]);
 
   const statusInfo = statusConfig[request.status] || statusConfig.Created;
   const StatusIcon = statusInfo.icon;
@@ -125,8 +135,8 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
                 {hasVoted && userVote && (
                   <div className="text-xs text-muted-foreground mt-2">
                     Your vote: <span className="font-medium">
-                      {Object.keys(userVote)[0]}
-                    </span> ({userVotingPower.toLocaleString()} VP)
+                      {userVote}
+                    </span> ({(userVotingPower || 0).toLocaleString()} VP)
                   </div>
                 )}
               </>
