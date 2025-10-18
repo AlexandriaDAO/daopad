@@ -747,7 +747,8 @@ type Result_31 = variant { Ok : vec Asset; Err : text };
 type Result_32 = variant { Ok : vec Permission; Err : text };
 type Result_33 = variant { Ok : EnhancedSecurityDashboard; Err : text };
 type Result_34 = variant { Ok; Err : text };
-type Result_35 = variant { Ok; Err : ProposalError };
+type Result_35 = variant { Ok : opt OrbitRequestProposal; Err : ProposalError };
+type Result_36 = variant { Ok; Err : ProposalError };
 type Result_4 = variant { Ok : nat32; Err : text };
 type Result_5 = variant { Ok : CreateAccountResponse; Err : text };
 type Result_6 = variant { Ok : nat64; Err : ProposalError };
@@ -846,6 +847,12 @@ type UserDTO = record {
 type UserGroup = record { id : text; name : text };
 type UserSpecifier = variant { Id : vec text; Any; Group : vec text };
 type UserStatus = variant { Inactive; Active };
+type UserVoteInfo = record {
+  vote_choice : opt VoteChoice;
+  has_voted : bool;
+  voting_power_used : opt nat64;
+};
+type VoteChoice = variant { No; Yes };
 type VotingThresholds = record {
   transfer_funds : nat32;
   change_permissions : nat32;
@@ -1039,10 +1046,14 @@ service : () -> {
   // Get active proposal for a token (if any)
   get_treasury_proposal : (principal) -> (opt TreasuryProposal) query;
   get_user_pending_requests : (principal, principal) -> (Result_24);
+  // Get detailed vote information for the current user on a specific Orbit request
+  get_user_vote_on_request : (principal, text) -> (UserVoteInfo) query;
   get_voting_thresholds : (principal) -> (Result_25) query;
   has_proposal_passed : (principal, ProposalType, nat64, nat64, nat64) -> (
       Result_26,
     ) query;
+  // Check if the current user has voted on a specific Orbit request
+  has_user_voted_on_request : (principal, text) -> (bool) query;
   health_check : () -> (text) query;
   initialize_default_thresholds : (principal) -> (Result);
   list_active_proposals : () -> (vec OrbitLinkProposal) query;
@@ -1123,10 +1134,11 @@ service : () -> {
   vote_on_orbit_proposal : (nat64, bool) -> (Result_34);
   // Vote on ANY Orbit request (not just treasury transfers)
   // When threshold is reached, executes immediately by approving the Orbit request.
+  // Returns the updated proposal if still active, or None if executed/rejected.
   vote_on_orbit_request : (principal, text, bool) -> (Result_35);
   // Vote on a treasury proposal
   // 
   // When threshold is reached, executes immediately by approving the Orbit request.
   // Follows the same pattern as orbit_link.rs vote_on_proposal.
-  vote_on_treasury_proposal : (nat64, bool) -> (Result_35);
+  vote_on_treasury_proposal : (nat64, bool) -> (Result_36);
 }

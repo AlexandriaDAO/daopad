@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
@@ -30,7 +30,7 @@ function getOperationType(request) {
 
 export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
   const operationType = getOperationType(request);
-  const { proposal, loading, hasVoted, ensureProposal, fetchProposal } = useProposal(
+  const { proposal, loading, hasVoted, userVote, ensureProposal, fetchProposal } = useProposal(
     tokenId,
     request.id,
     operationType
@@ -42,6 +42,15 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
       ensureProposal();
     }
   }, [proposal, loading, request.status, ensureProposal]);
+
+  // Handle vote completion with optional updated data
+  const handleVoteComplete = useCallback((updatedProposalData) => {
+    // If backend returned updated proposal, data is already fresh
+    // Otherwise, refetch from backend
+    if (!updatedProposalData) {
+      fetchProposal();
+    }
+  }, [fetchProposal]);
 
   const statusInfo = statusConfig[request.status] || statusConfig.Created;
   const StatusIcon = statusInfo.icon;
@@ -109,8 +118,17 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
                   userVotingPower={userVotingPower}
                   hasVoted={hasVoted}
                   disabled={proposal.status && Object.keys(proposal.status)[0] !== 'Active'}
-                  onVoteComplete={fetchProposal}
+                  onVoteComplete={handleVoteComplete}
                 />
+
+                {/* Display user's vote choice */}
+                {hasVoted && userVote && (
+                  <div className="text-xs text-muted-foreground mt-2">
+                    Your vote: <span className="font-medium">
+                      {Object.keys(userVote)[0]}
+                    </span> ({userVotingPower.toLocaleString()} VP)
+                  </div>
+                )}
               </>
             )}
           </div>

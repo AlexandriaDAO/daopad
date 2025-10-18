@@ -14,7 +14,8 @@ pub use treasury::{
 // Re-export orbit request voting functions
 pub use orbit_requests::{
     ensure_proposal_for_request, ensure_proposals_for_requests, get_orbit_request_proposal,
-    infer_request_type, list_orbit_request_proposals, vote_on_orbit_request,
+    get_user_vote_on_request, has_user_voted_on_request, infer_request_type,
+    list_orbit_request_proposals, vote_on_orbit_request, UserVoteInfo,
 };
 
 // Re-export types

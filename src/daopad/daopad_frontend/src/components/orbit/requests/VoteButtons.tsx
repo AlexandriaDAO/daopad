@@ -20,10 +20,15 @@ export function VoteButtons({
     setVoting(vote ? 'yes' : 'no');
 
     try {
-      await onVote(orbitRequestId, vote);
+      // onVote now returns updated proposal data
+      const result = await onVote(orbitRequestId, vote);
       toast.success(`${vote ? "Voted Yes" : "Voted No"} - Your voting power: ${userVotingPower.toLocaleString()}`);
       setLocalHasVoted(true);
-      if (onVoteComplete) onVoteComplete();
+
+      // Pass updated proposal data to onVoteComplete
+      if (onVoteComplete) {
+        onVoteComplete(result?.data || null);
+      }
     } catch (error) {
       // Handle AlreadyVoted error gracefully
       if (error.message?.includes('AlreadyVoted') || error.message?.includes('already voted')) {

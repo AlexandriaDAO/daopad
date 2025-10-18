@@ -6,7 +6,7 @@ use crate::storage::state::{
     KONG_LOCKER_PRINCIPALS, ORBIT_REQUEST_PROPOSALS, ORBIT_REQUEST_VOTES, TOKEN_ORBIT_STATIONS,
 };
 use crate::types::StorablePrincipal;
-use candid::Principal;
+use candid::{CandidType, Deserialize, Principal};
 use ic_cdk::api::time;
 use ic_cdk::{query, update};
 
@@ -27,12 +27,13 @@ fn format_orbit_error_details(error: &crate::api::orbit_requests::Error) -> Opti
 
 /// Vote on ANY Orbit request (not just treasury transfers)
 /// When threshold is reached, executes immediately by approving the Orbit request.
+/// Returns the updated proposal if still active, or None if executed/rejected.
 #[update]
 pub async fn vote_on_orbit_request(
     token_id: Principal,
     orbit_request_id: String,
     vote: bool,
-) -> Result<(), ProposalError> {
+) -> Result<Option<OrbitRequestProposal>, ProposalError> {
     let voter = ic_cdk::caller();
 
     if voter == Principal::anonymous() {
@@ -151,6 +152,9 @@ pub async fn vote_on_orbit_request(
             proposal.yes_votes,
             required_votes
         );
+
+        // Return None since proposal is executed and removed from storage
+        return Ok(None);
     } else if proposal.no_votes >= (current_total_vp - required_votes) {
         // POLICY: Rejected when mathematically impossible to reach threshold
         // Matches treasury.rs:275 - uses >= for consistency
@@ -178,6 +182,9 @@ pub async fn vote_on_orbit_request(
         });
 
         ic_cdk::println!("Orbit request {:?} rejected and cleaned up", proposal.id);
+
+        // Return None since proposal is rejected and removed from storage
+        return Ok(None);
     } else {
         // Still active - update vote counts and refresh total VP
         proposal.total_voting_power = current_total_vp;
@@ -186,9 +193,10 @@ pub async fn vote_on_orbit_request(
                 .borrow_mut()
                 .insert((StorablePrincipal(token_id), orbit_request_id), proposal.clone());
         });
-    }
 
-    Ok(())
+        // Return updated proposal so frontend doesn't need to refetch
+        Ok(Some(proposal))
+    }
 }
 
 /// Get proposal for a specific Orbit request
@@ -216,6 +224,80 @@ pub fn list_orbit_request_proposals(token_id: Principal) -> Vec<OrbitRequestProp
             .map(|(_, p)| p.clone())
             .collect()
     })
+}
+
+/// User vote information for a specific request
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct UserVoteInfo {
+    pub has_voted: bool,
+    pub vote_choice: Option<VoteChoice>,
+    pub voting_power_used: Option<u64>,
+}
+
+/// Check if the current user has voted on a specific Orbit request
+#[query]
+pub fn has_user_voted_on_request(
+    token_id: Principal,
+    orbit_request_id: String,
+) -> bool {
+    let caller = ic_cdk::caller();
+
+    // Get proposal to find ProposalId
+    let proposal = ORBIT_REQUEST_PROPOSALS.with(|proposals| {
+        proposals
+            .borrow()
+            .get(&(StorablePrincipal(token_id), orbit_request_id))
+            .cloned()
+    });
+
+    match proposal {
+        Some(p) => {
+            ORBIT_REQUEST_VOTES.with(|votes| {
+                votes
+                    .borrow()
+                    .contains_key(&(p.id, StorablePrincipal(caller)))
+            })
+        }
+        None => false,
+    }
+}
+
+/// Get detailed vote information for the current user on a specific Orbit request
+#[query]
+pub fn get_user_vote_on_request(
+    token_id: Principal,
+    orbit_request_id: String,
+) -> UserVoteInfo {
+    let caller = ic_cdk::caller();
+
+    let proposal = ORBIT_REQUEST_PROPOSALS.with(|proposals| {
+        proposals
+            .borrow()
+            .get(&(StorablePrincipal(token_id), orbit_request_id))
+            .cloned()
+    });
+
+    match proposal {
+        Some(p) => {
+            let vote = ORBIT_REQUEST_VOTES.with(|votes| {
+                votes
+                    .borrow()
+                    .get(&(p.id, StorablePrincipal(caller)))
+                    .cloned()
+            });
+
+            UserVoteInfo {
+                has_voted: vote.is_some(),
+                vote_choice: vote,
+                voting_power_used: None, // Could query Kong Locker if needed
+            }
+        }
+        None => UserVoteInfo {
+            has_voted: false,
+            vote_choice: None,
+            voting_power_used: None,
+        },
+    }
 }
 
 /// Auto-create proposals for multiple requests (bulk operation)
