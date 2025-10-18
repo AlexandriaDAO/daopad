@@ -49,7 +49,7 @@ export class OrbitAgreementService extends BackendServiceBase {
         console.log('Canisters not available:', e.message);
       }
 
-      // 5. Get voting power distribution (NEW)
+      // 5. Get voting power distribution
       let votingPowerResult = null;
       try {
         votingPowerResult = await actor.get_all_voting_powers_for_token(
@@ -59,13 +59,24 @@ export class OrbitAgreementService extends BackendServiceBase {
         console.log('Voting power data not available:', e.message);
       }
 
+      // 6. Get treasury management data (NEW)
+      let treasuryResult = null;
+      try {
+        treasuryResult = await actor.get_treasury_management_data(
+          Principal.fromText(tokenId)
+        );
+      } catch (e) {
+        console.log('Treasury data not available:', e.message);
+      }
+
       // Extract and format data
       const data = {
         security: null,
         policies: null,
         users: [],
         canisters: null,
-        votingPowers: null,  // NEW
+        votingPowers: null,
+        treasury: null,  // NEW
         timestamp: Date.now()
       };
 
@@ -108,7 +119,7 @@ export class OrbitAgreementService extends BackendServiceBase {
         };
       }
 
-      // Process voting power data (NEW)
+      // Process voting power data
       if (votingPowerResult && votingPowerResult.Ok) {
         data.votingPowers = {
           entries: votingPowerResult.Ok.entries.map(entry => ({
@@ -119,6 +130,35 @@ export class OrbitAgreementService extends BackendServiceBase {
           })),
           total_voting_power: Number(votingPowerResult.Ok.total_voting_power),
           total_holders: votingPowerResult.Ok.total_holders
+        };
+      }
+
+      // Process treasury data (NEW)
+      if (treasuryResult && treasuryResult.Ok) {
+        data.treasury = {
+          accounts: treasuryResult.Ok.accounts.map(acc => ({
+            account_id: acc.account_id,
+            account_name: acc.account_name,
+            assets: acc.assets.map(asset => ({
+              symbol: asset.symbol,
+              decimals: asset.decimals,
+              balance: asset.balance,
+              balance_formatted: asset.balance_formatted
+            })),
+            transfer_policy: acc.transfer_policy,
+            config_policy: acc.config_policy,
+            can_transfer: acc.can_transfer,
+            can_edit: acc.can_edit,
+            addresses: acc.addresses
+          })),
+          address_book: treasuryResult.Ok.address_book.map(entry => ({
+            id: entry.id,
+            name: entry.name,
+            address: entry.address,
+            blockchain: entry.blockchain,
+            purpose: entry.purpose && entry.purpose.length > 0 ? entry.purpose[0] : null
+          })),
+          backend_privileges_summary: treasuryResult.Ok.backend_privileges_summary
         };
       }
 

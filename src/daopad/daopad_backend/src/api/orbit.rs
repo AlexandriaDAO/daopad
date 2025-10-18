@@ -3,7 +3,9 @@ use crate::storage::state::TOKEN_ORBIT_STATIONS;
 use crate::types::orbit::{
     AccountBalance, AccountMetadata, AddAccountOperationInput, Allow, AuthScope,
     FetchAccountBalancesInput, FetchAccountBalancesResult, ListAccountsInput, ListAccountsResult,
-    SystemInfoResult, SystemInfoResponse,
+    SystemInfoResult, SystemInfoResponse, TreasuryManagementData, TreasuryAccountDetails,
+    TreasuryAddressBookEntry, AssetBalanceInfo, ListAddressBookInput, ListAddressBookResult,
+    RequestPolicyRule,
 };
 use crate::types::StorablePrincipal;
 use crate::types::TokenInfo;
@@ -310,4 +312,198 @@ pub async fn get_user_pending_requests(
         .collect();
 
     Ok(user_requests)
+}
+
+// ========== TREASURY MANAGEMENT FOR OPERATING AGREEMENT ==========
+
+use crate::api::orbit_accounts::Asset;
+use std::collections::HashMap;
+
+/// Get comprehensive treasury management data for Operating Agreement Article V
+///
+/// This method aggregates:
+/// - All treasury accounts with balances and policies
+/// - Address book entries (authorized recipients)
+/// - Backend privilege summary
+#[update]
+pub async fn get_treasury_management_data(
+    token_canister_id: Principal,
+) -> Result<TreasuryManagementData, String> {
+    // 1. Get station ID for token
+    let station_id = get_orbit_station_for_token(token_canister_id)
+        .ok_or_else(|| format!("No Orbit Station found for token {}", token_canister_id))?;
+
+    // 2. List all accounts
+    let accounts_input = ListAccountsInput {
+        search_term: None,
+        paginate: None,
+    };
+
+    let accounts_result: Result<(ListAccountsResult,), _> = ic_cdk::call(
+        station_id,
+        "list_accounts",
+        (accounts_input,)
+    ).await;
+
+    let (accounts, privileges) = match accounts_result {
+        Ok((ListAccountsResult::Ok { accounts, privileges, .. },)) => (accounts, privileges),
+        Ok((ListAccountsResult::Err(e),)) => {
+            return Err(format!("Failed to list accounts: {:?}", e));
+        }
+        Err((code, msg)) => {
+            return Err(format!("Failed to call list_accounts: {:?} - {}", code, msg));
+        }
+    };
+
+    // 3. Get all assets once for lookup
+    let assets_result: Result<(crate::api::orbit_transfers::ListAssetsResult,), _> = ic_cdk::call(
+        station_id,
+        "list_assets",
+        (crate::api::orbit_transfers::ListAssetsInput { paginate: None },)
+    ).await;
+
+    let asset_map: HashMap<String, Asset> = match assets_result {
+        Ok((crate::api::orbit_transfers::ListAssetsResult::Ok { assets, .. },)) => {
+            assets.into_iter().map(|a| (a.id.clone(), a)).collect()
+        }
+        _ => HashMap::new(),
+    };
+
+    // 4. Build treasury account details
+    let mut treasury_accounts = Vec::new();
+    for account in accounts {
+        // Get privileges for this account
+        let priv_info = privileges.iter().find(|p| p.id == account.id);
+        let can_transfer = priv_info.map_or(false, |p| p.can_transfer);
+        let can_edit = priv_info.map_or(false, |p| p.can_edit);
+
+        // Format assets with balances
+        let mut asset_balances = Vec::new();
+        for account_asset in &account.assets {
+            if let Some(asset_info) = asset_map.get(&account_asset.asset_id) {
+                let balance_nat = account_asset.balance.as_ref()
+                    .map(|b| b.balance.clone())
+                    .unwrap_or(candid::Nat::from(0u64));
+
+                let balance_u64 = nat_to_u64(&balance_nat);
+                let balance_formatted = format_balance(balance_u64, asset_info.decimals);
+
+                asset_balances.push(AssetBalanceInfo {
+                    symbol: asset_info.symbol.clone(),
+                    decimals: asset_info.decimals,
+                    balance: balance_u64.to_string(),
+                    balance_formatted,
+                });
+            }
+        }
+
+        treasury_accounts.push(TreasuryAccountDetails {
+            account_id: account.id.clone(),
+            account_name: account.name.clone(),
+            assets: asset_balances,
+            transfer_policy: format_policy(&account.transfer_request_policy),
+            config_policy: format_policy(&account.configs_request_policy),
+            can_transfer,
+            can_edit,
+            addresses: account.addresses.clone(),
+        });
+    }
+
+    // 5. Get address book entries
+    let address_book_input = ListAddressBookInput {
+        ids: None,
+        addresses: None,
+        paginate: None,
+    };
+
+    let address_book_result: Result<(ListAddressBookResult,), _> = ic_cdk::call(
+        station_id,
+        "list_address_book_entries",
+        (address_book_input,)
+    ).await;
+
+    let address_book = match address_book_result {
+        Ok((ListAddressBookResult::Ok { address_book_entries, .. },)) => {
+            address_book_entries.iter().map(|entry| {
+                // Extract name from metadata if present
+                let name = entry.metadata.iter()
+                    .find(|m| m.key == "name")
+                    .map(|m| m.value.clone())
+                    .unwrap_or_else(|| entry.address_owner.clone());
+
+                let purpose = entry.metadata.iter()
+                    .find(|m| m.key == "purpose")
+                    .map(|m| m.value.clone());
+
+                TreasuryAddressBookEntry {
+                    id: entry.id.clone(),
+                    name,
+                    address: entry.address.clone(),
+                    blockchain: entry.blockchain.clone(),
+                    purpose,
+                }
+            }).collect()
+        }
+        _ => vec![],
+    };
+
+    // 6. Generate summary of backend's privileges
+    let transfer_count = treasury_accounts.iter().filter(|a| a.can_transfer).count();
+    let edit_count = treasury_accounts.iter().filter(|a| a.can_edit).count();
+    let backend_summary = format!(
+        "DAOPad backend can initiate transfers from {} account(s) and edit {} account(s)",
+        transfer_count, edit_count
+    );
+
+    Ok(TreasuryManagementData {
+        accounts: treasury_accounts,
+        address_book,
+        backend_privileges_summary: backend_summary,
+    })
+}
+
+// Helper: Format policy for human reading
+fn format_policy(policy: &Option<RequestPolicyRule>) -> String {
+    match policy {
+        None => "No policy configured".to_string(),
+        Some(RequestPolicyRule::AutoApproved) => "Auto-Approved".to_string(),
+        Some(RequestPolicyRule::Quorum(q)) => {
+            format!("Requires {} approver(s)", q.min_approved)
+        }
+        Some(RequestPolicyRule::QuorumPercentage(qp)) => {
+            format!("Requires {}% approval", qp.min_approved)
+        }
+        Some(RequestPolicyRule::AllowListed) => "Allow-listed".to_string(),
+        Some(RequestPolicyRule::AllowListedByMetadata(_)) => "Allow-listed by metadata".to_string(),
+        Some(RequestPolicyRule::AnyOf(_)) => "Any-of rule".to_string(),
+        Some(RequestPolicyRule::AllOf(_)) => "All-of rule".to_string(),
+        Some(RequestPolicyRule::Not(_)) => "Negation rule".to_string(),
+        Some(RequestPolicyRule::NamedRule(id)) => format!("Named rule: {}", id),
+    }
+}
+
+fn nat_to_u64(nat: &candid::Nat) -> u64 {
+    use std::convert::TryInto;
+    let bytes = nat.0.to_bytes_le();
+    if bytes.len() <= 8 {
+        let mut array = [0u8; 8];
+        array[..bytes.len()].copy_from_slice(&bytes);
+        u64::from_le_bytes(array)
+    } else {
+        u64::MAX
+    }
+}
+
+fn format_balance(amount: u64, decimals: u32) -> String {
+    if decimals == 0 {
+        return amount.to_string();
+    }
+
+    let divisor = 10u64.pow(decimals);
+    let whole = amount / divisor;
+    let frac = amount % divisor;
+
+    // Format with proper decimal places, trim trailing zeros
+    let formatted = format!("{}.{:0width$}", whole, frac, width = decimals as usize);
+    formatted.trim_end_matches('0').trim_end_matches('.').to_string()
 }
