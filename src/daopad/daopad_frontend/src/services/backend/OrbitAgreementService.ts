@@ -49,12 +49,23 @@ export class OrbitAgreementService extends BackendServiceBase {
         console.log('Canisters not available:', e.message);
       }
 
+      // 5. Get voting power distribution (NEW)
+      let votingPowerResult = null;
+      try {
+        votingPowerResult = await actor.get_all_voting_powers_for_token(
+          Principal.fromText(tokenId)
+        );
+      } catch (e) {
+        console.log('Voting power data not available:', e.message);
+      }
+
       // Extract and format data
       const data = {
         security: null,
         policies: null,
         users: [],
         canisters: null,
+        votingPowers: null,  // NEW
         timestamp: Date.now()
       };
 
@@ -94,6 +105,20 @@ export class OrbitAgreementService extends BackendServiceBase {
         data.canisters = {
           canisters: canistersData.canisters || [],
           total: canistersData.total || 0
+        };
+      }
+
+      // Process voting power data (NEW)
+      if (votingPowerResult && votingPowerResult.Ok) {
+        data.votingPowers = {
+          entries: votingPowerResult.Ok.entries.map(entry => ({
+            user_principal: entry.user_principal.toString(),
+            kong_locker_principal: entry.kong_locker_principal.toString(),
+            voting_power: Number(entry.voting_power),
+            equity_percentage: entry.equity_percentage
+          })),
+          total_voting_power: Number(votingPowerResult.Ok.total_voting_power),
+          total_holders: votingPowerResult.Ok.total_holders
         };
       }
 
