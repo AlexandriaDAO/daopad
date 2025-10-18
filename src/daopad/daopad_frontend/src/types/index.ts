@@ -64,6 +64,62 @@ export interface OrbitRequest {
   requested_by?: Principal;
 }
 
+// Canister Method for external canister calls
+export interface CanisterMethod {
+  canister_id: Principal;
+  method_name: string;
+}
+
+// External Canister Operation Types
+export type CanisterKind =
+  | { CreateNew: { initial_cycles?: bigint; subnet_selection?: SubnetSelection } }
+  | { AddExisting: { canister_id: Principal } };
+
+export type SubnetSelection =
+  | { Specific: Principal }
+  | { Any: null };
+
+export interface CreateExternalCanisterOperation {
+  name: string;
+  kind: CanisterKind;
+  labels?: string[];
+  description?: string;
+  metadata: Array<{ key: string; value: string }>;
+}
+
+export interface CallExternalCanisterOperation {
+  validation_method?: CanisterMethod;
+  execution_method: CanisterMethod;
+  arg_checksum?: string;
+  arg_rendering?: string;
+  execution_method_cycles?: bigint;
+  execution_method_reply?: Uint8Array;
+  arg?: Uint8Array;
+}
+
+export interface ChangeExternalCanisterOperation {
+  canister_id: Principal;
+  mode: CanisterInstallMode;
+  module: Uint8Array;
+  arg?: Uint8Array;
+}
+
+export type CanisterInstallMode =
+  | { Install: null }
+  | { Reinstall: null }
+  | { Upgrade: null };
+
+// System Info Operation
+export interface ManageSystemInfoOperation {
+  name?: string;
+  // Additional system info fields can be added here
+}
+
+// Disaster Recovery Operation
+export interface SetDisasterRecoveryOperation {
+  committee?: { user_group_id: string; quorum: number };
+}
+
 export type RequestOperation =
   | { Transfer: TransferOperation }
   | { AddUser: AddUserOperation }
@@ -73,15 +129,15 @@ export type RequestOperation =
   | { AddAddressBookEntry: AddAddressBookEntryOperation }
   | { EditAddressBookEntry: EditAddressBookEntryOperation }
   | { RemoveAddressBookEntry: RemoveAddressBookEntryOperation }
-  | { CreateExternalCanister: any }
-  | { CallExternalCanister: any }
+  | { CreateExternalCanister: CreateExternalCanisterOperation }
+  | { CallExternalCanister: CallExternalCanisterOperation }
   | { EditPermission: EditPermissionOperation }
   | { AddRequestPolicy: AddRequestPolicyOperation }
   | { EditRequestPolicy: EditRequestPolicyOperation }
   | { RemoveRequestPolicy: RemoveRequestPolicyOperation }
-  | { ManageSystemInfo: any }
-  | { SetDisasterRecovery: any }
-  | { ChangeExternalCanister: any };
+  | { ManageSystemInfo: ManageSystemInfoOperation }
+  | { SetDisasterRecovery: SetDisasterRecoveryOperation }
+  | { ChangeExternalCanister: ChangeExternalCanisterOperation };
 
 export interface TransferOperation {
   from_account_id?: string;
@@ -113,12 +169,18 @@ export interface AddAccountOperation {
   metadata?: Record<string, string>[];
 }
 
+// Account permission types
+export type AccountPermission =
+  | { Public: null }
+  | { Restricted: null }
+  | { Private: null };
+
 export interface EditAccountOperation {
   account_id: string;
   name?: string;
-  read_permission?: any;
-  configs_permission?: any;
-  transfer_permission?: any;
+  read_permission?: AccountPermission;
+  configs_permission?: AccountPermission;
+  transfer_permission?: AccountPermission;
 }
 
 export interface AddAddressBookEntryOperation {
@@ -129,31 +191,72 @@ export interface AddAddressBookEntryOperation {
   metadata?: Record<string, string>[];
 }
 
+// Metadata change operation
+export type MetadataChange =
+  | { ReplaceAllBy: Array<{ key: string; value: string }> }
+  | { RemoveKeys: string[] }
+  | { OverrideSpecifiedBy: Array<{ key: string; value: string }> };
+
 export interface EditAddressBookEntryOperation {
   address_book_entry_id: string;
   address_owner?: string;
-  change_metadata?: any;
+  change_metadata?: MetadataChange;
 }
 
 export interface RemoveAddressBookEntryOperation {
   address_book_entry_id: string;
 }
 
+// Resource and permission types
+export type Resource =
+  | { Account: { account_id: string } }
+  | { AddressBook: { address_book_entry_id: string } }
+  | { ChangeCanister: null }
+  | { ExternalCanister: { canister_id: Principal; policies: string[] } }
+  | { Permission: { resource: ResourceSpecifier } }
+  | { RequestPolicy: { resource: ResourceSpecifier } }
+  | { Request: { request_id: string } }
+  | { System: null }
+  | { User: { user_id: string } }
+  | { UserGroup: { user_group_id: string } };
+
+export type ResourceSpecifier =
+  | { Any: null }
+  | { Resource: Resource };
+
+export type AuthScope =
+  | { Restricted: null }
+  | { Authenticated: null }
+  | { Public: null };
+
 export interface EditPermissionOperation {
-  resource: any;
-  auth_scope?: any;
+  resource: ResourceSpecifier;
+  auth_scope?: AuthScope;
   users?: string[];
   groups?: string[];
 }
 
+// Request policy types
+export type UserSpecifier =
+  | { Any: null }
+  | { Group: string[] }
+  | { Id: string[] };
+
+export type RequestPolicyRule =
+  | { AutoApproved: null }
+  | { AllowListed: null }
+  | { AllowListedByMetadata: { key: string; value: string } }
+  | { Quorum: { min_approved: number; approvers: UserSpecifier } }
+  | { QuorumPercentage: { min_approved: number; approvers: UserSpecifier } };
+
 export interface AddRequestPolicyOperation {
-  specifier: any;
-  rule: any;
+  specifier: ResourceSpecifier;
+  rule: RequestPolicyRule;
 }
 
 export interface EditRequestPolicyOperation {
   policy_id: string;
-  rule?: any;
+  rule?: RequestPolicyRule;
 }
 
 export interface RemoveRequestPolicyOperation {
@@ -242,18 +345,23 @@ export interface AddressEntry {
 }
 
 // Permission types
+export type Allow =
+  | { Read: null }
+  | { Update: null }
+  | { Delete: null };
+
 export interface Permission {
-  resource: any;
-  auth_scope?: any;
+  resource: ResourceSpecifier;
+  auth_scope?: AuthScope;
   users: string[];
   groups: string[];
-  allow: any;
+  allow: Allow;
 }
 
 export interface RequestPolicy {
   id: string;
-  specifier: any;
-  rule: any;
+  specifier: ResourceSpecifier;
+  rule: RequestPolicyRule;
 }
 
 // User types
