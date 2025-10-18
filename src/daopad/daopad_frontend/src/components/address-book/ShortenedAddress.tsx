@@ -1,6 +1,13 @@
 import React, { useMemo, useState } from 'react';
 
-const ShortenedAddress = ({ address, format, maxLength = 16, className = '' }) => {
+interface ShortenedAddressProps {
+  address: string;
+  format: string;
+  maxLength?: number;
+  className?: string;
+}
+
+const ShortenedAddress: React.FC<ShortenedAddressProps> = ({ address, format, maxLength = 16, className = '' }) => {
   const [showFull, setShowFull] = useState(false);
 
   const shortened = useMemo(() => {

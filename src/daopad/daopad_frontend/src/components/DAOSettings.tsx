@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Principal } from '@dfinity/principal';
+import type { Identity } from '@dfinity/agent';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -7,10 +8,29 @@ import { Copy, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { DAOPadBackendService } from '../services/daopadBackend';
 
-const DAOSettings = ({ tokenCanisterId, identity }) => {
-    const [systemInfo, setSystemInfo] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+interface DAOSettingsProps {
+  tokenCanisterId: Principal | string;
+  identity: Identity | null;
+}
+
+interface SystemInfo {
+  name: string;
+  raw_rand_successful: boolean;
+  cycles: bigint;
+  last_upgrade_timestamp: bigint;
+  upgrader_id: string;
+  cycles_top_up_strategy?: CycleStrategy;
+}
+
+type CycleStrategy =
+  | { Disabled: null }
+  | { MintFromNativeToken: { account_name?: [string]; account_id: string } }
+  | { WithdrawFromCyclesLedger: { account_name?: [string]; account_id: string } };
+
+const DAOSettings: React.FC<DAOSettingsProps> = ({ tokenCanisterId, identity }) => {
+    const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchSystemInfo = async () => {
@@ -34,7 +54,8 @@ const DAOSettings = ({ tokenCanisterId, identity }) => {
                 }
             } catch (err) {
                 console.error('Failed to fetch system info:', err);
-                setError(err.message || 'Failed to fetch system information');
+                const errorMessage = err instanceof Error ? err.message : 'Failed to fetch system information';
+                setError(errorMessage);
             } finally {
                 setLoading(false);
             }
@@ -43,18 +64,18 @@ const DAOSettings = ({ tokenCanisterId, identity }) => {
         fetchSystemInfo();
     }, [tokenCanisterId]);
 
-    const copyToClipboard = (text) => {
+    const copyToClipboard = (text: string): void => {
         navigator.clipboard.writeText(text);
         // TODO: Add toast notification here
     };
 
-    const formatCycles = (cycles) => {
+    const formatCycles = (cycles: bigint | number | null): string => {
         if (!cycles) return '0';
         const tc = Number(cycles) / 1e12;
         return `${tc.toFixed(3)} TC`;
     };
 
-    const formatCycleStrategy = (strategy) => {
+    const formatCycleStrategy = (strategy: CycleStrategy | undefined): string => {
         if (!strategy) return 'Unknown';
 
         if ('Disabled' in strategy) {
@@ -71,9 +92,9 @@ const DAOSettings = ({ tokenCanisterId, identity }) => {
         return 'Unknown';
     };
 
-    const formatDate = (timestamp) => {
+    const formatDate = (timestamp: bigint | number | null): string => {
         if (!timestamp) return 'Never';
-        return new Date(timestamp).toLocaleString();
+        return new Date(Number(timestamp)).toLocaleString();
     };
 
     if (loading) {

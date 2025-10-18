@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { Principal } from '@dfinity/principal';
+import type { Identity } from '@dfinity/agent';
 import { OrbitStationService } from '../services/orbitStation';
-import { LPLockingService } from '../services/lpLockingService';
 import { DAOPadBackendService } from '../services/daopadBackend';
 import ProposalCard from './ProposalCard';
 import ProposalDetailsModal from './ProposalDetailsModal';
@@ -11,36 +11,79 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { OrbitRequest } from '../types';
 
-const DaoProposals = ({ identity, dao }) => {
-  const [proposals, setProposals] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedProposal, setSelectedProposal] = useState(null);
-  const [showDetails, setShowDetails] = useState(false);
-  const [lpPositions, setLpPositions] = useState([]);
-  const [lpLoading, setLpLoading] = useState(false);
-  const [votingLoading, setVotingLoading] = useState({}); // Track loading state per proposal
-  const [filter, setFilter] = useState({
+// DAO structure based on backend responses
+interface DAO {
+  token_canister: Principal;
+  station_canister: [Principal] | [];
+  is_registered: boolean;
+}
+
+interface DaoProposalsProps {
+  identity: Identity | null;
+  dao: DAO | null;
+}
+
+interface FilterState {
+  status: string | null;
+  type: string | null;
+  limit: number;
+  offset: number;
+}
+
+interface RootState {
+  auth: {
+    isAuthenticated: boolean;
+  };
+}
+
+interface VotingLoadingState {
+  [proposalId: string]: 'approving' | 'rejecting' | 'approved' | 'rejected';
+}
+
+// LP Position structure (for display only - backend method doesn't exist yet)
+interface LPPosition {
+  symbol_0: string;
+  symbol_1: string;
+  amount_0: number;
+  amount_1: number;
+  balance: number;
+  usd_balance: number;
+}
+
+const DaoProposals: React.FC<DaoProposalsProps> = ({ identity, dao }) => {
+  const [proposals, setProposals] = useState<OrbitRequest[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedProposal, setSelectedProposal] = useState<OrbitRequest | null>(null);
+  const [showDetails, setShowDetails] = useState<boolean>(false);
+  const [lpPositions, setLpPositions] = useState<LPPosition[]>([]);
+  const [lpLoading, setLpLoading] = useState<boolean>(false);
+  const [votingLoading, setVotingLoading] = useState<VotingLoadingState>({}); // Track loading state per proposal
+  const [filter, setFilter] = useState<FilterState>({
     status: null,
     type: null,
     limit: 20,
     offset: 0
   });
 
-  const { isAuthenticated } = useSelector(state => state.auth);
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
     if (dao?.station_canister?.[0] && identity && isAuthenticated) {
       fetchProposals();
-      fetchLPPositions();
+      // Note: fetchLPPositions() disabled - backend method doesn't exist yet
+      // TODO: Implement getMyLpPositions in DAOPadBackendService
     } else {
       setLoading(false);
       setProposals([]);
     }
   }, [dao, identity, isAuthenticated, filter]);
 
-  const fetchLPPositions = useCallback(async () => {
+  // Disabled: Backend method getMyLpPositions doesn't exist yet
+  // TODO: Implement this method in DAOPadBackendService when LP position tracking is added
+  const fetchLPPositions = useCallback(async (): Promise<void> => {
     if (!identity || !isAuthenticated) {
       setLpPositions([]);
       return;
@@ -48,15 +91,18 @@ const DaoProposals = ({ identity, dao }) => {
 
     setLpLoading(true);
     try {
-      const daopadService = new DAOPadBackendService(identity);
-      const result = await daopadService.getMyLpPositions();
+      // const daopadService = new DAOPadBackendService(identity);
+      // const result = await daopadService.getMyLpPositions();
 
-      if (result.success) {
-        setLpPositions(result.data || []);
-      } else {
-        console.error('Failed to fetch LP positions:', result.error);
-        setLpPositions([]);
-      }
+      // Placeholder - method doesn't exist in backend yet
+      setLpPositions([]);
+
+      // if (result.success) {
+      //   setLpPositions(result.data || []);
+      // } else {
+      //   console.error('Failed to fetch LP positions:', result.error);
+      //   setLpPositions([]);
+      // }
     } catch (err) {
       console.error('Error fetching LP positions:', err);
       setLpPositions([]);
@@ -65,7 +111,7 @@ const DaoProposals = ({ identity, dao }) => {
     }
   }, [identity, isAuthenticated]);
 
-  const fetchProposals = useCallback(async () => {
+  const fetchProposals = useCallback(async (): Promise<void> => {
     if (!dao?.station_canister?.[0]) {
       setError('No station canister for this DAO');
       setLoading(false);
@@ -87,23 +133,26 @@ const DaoProposals = ({ identity, dao }) => {
       }
     } catch (err) {
       console.error('Error fetching proposals:', err);
-      setError(err.message || 'An error occurred while fetching proposals');
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred while fetching proposals';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   }, [dao, identity, filter]);
 
-  const handleProposalClick = (proposal) => {
+  const handleProposalClick = (proposal: OrbitRequest): void => {
     setSelectedProposal(proposal);
     setShowDetails(true);
   };
 
-  const handleCloseDetails = () => {
+  const handleCloseDetails = (): void => {
     setShowDetails(false);
     setSelectedProposal(null);
   };
 
-  const handleVote = async (proposalId, vote) => {
+  const handleVote = async (proposalId: string, vote: boolean): Promise<void> => {
+    if (!dao || !identity) return;
+
     // Set loading state immediately for instant feedback
     setVotingLoading(prev => ({ ...prev, [proposalId]: vote ? 'approving' : 'rejecting' }));
 
@@ -129,7 +178,8 @@ const DaoProposals = ({ identity, dao }) => {
       }
     } catch (err) {
       console.error('Error voting on proposal:', err);
-      alert(`❌ Error: ${err.message}`);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      alert(`❌ Error: ${errorMessage}`);
     } finally {
       // Clear loading state after a short delay to show success feedback
       setTimeout(() => {
@@ -142,15 +192,15 @@ const DaoProposals = ({ identity, dao }) => {
     }
   };
 
-  const handleApprove = async (proposalId) => {
+  const handleApprove = async (proposalId: string): Promise<void> => {
     await handleVote(proposalId, true);
   };
 
-  const handleReject = async (proposalId, reason) => {
+  const handleReject = async (proposalId: string, reason?: string): Promise<void> => {
     await handleVote(proposalId, false);
   };
 
-  const getTokenName = () => {
+  const getTokenName = (): string => {
     // Could be enhanced to fetch actual token metadata
     const tokenId = dao?.token_canister?.toString();
     if (tokenId === '54fqz-5iaaa-aaaap-qkmqa-cai') return 'ALEX';

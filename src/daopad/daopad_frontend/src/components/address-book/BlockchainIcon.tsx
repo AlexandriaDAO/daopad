@@ -1,7 +1,14 @@
 import React from 'react';
-import { Globe, Coins, Bitcoin } from 'lucide-react';
+import { Globe, Coins, Bitcoin, type LucideIcon } from 'lucide-react';
 
-const BLOCKCHAIN_CONFIG = {
+interface BlockchainConfig {
+  name: string;
+  symbol: string;
+  color: string;
+  icon: LucideIcon;
+}
+
+const BLOCKCHAIN_CONFIG: Record<string, BlockchainConfig> = {
   icp: {
     name: 'Internet Computer',
     symbol: 'ICP',
@@ -22,7 +29,14 @@ const BLOCKCHAIN_CONFIG = {
   }
 };
 
-const BlockchainIcon = ({ blockchain, size = 'md', showLabel = false, className = '' }) => {
+interface BlockchainIconProps {
+  blockchain: string;
+  size?: 'sm' | 'md' | 'lg';
+  showLabel?: boolean;
+  className?: string;
+}
+
+const BlockchainIcon: React.FC<BlockchainIconProps> = ({ blockchain, size = 'md', showLabel = false, className = '' }) => {
   const config = BLOCKCHAIN_CONFIG[blockchain] || BLOCKCHAIN_CONFIG.icp;
   const Icon = config.icon;
 

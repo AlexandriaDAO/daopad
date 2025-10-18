@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { Principal } from '@dfinity/principal';
+import type { Identity } from '@dfinity/agent';
 import { DAOPadBackendService } from '../services/daopadBackend';
 import { KongLockerService } from '../services/kongLockerService';
 import { setKongLockerCanister, setKongLockerLoading, setKongLockerError } from '../features/dao/daoSlice';
@@ -9,20 +10,25 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const KongLockerSetup = ({ identity, onComplete }) => {
+interface KongLockerSetupProps {
+  identity: Identity | null;
+  onComplete?: () => void;
+}
+
+const KongLockerSetup: React.FC<KongLockerSetupProps> = ({ identity, onComplete }) => {
   const dispatch = useDispatch();
-  const [error, setError] = useState('');
-  const [isChecking, setIsChecking] = useState(false);
-  const [hasLockCanister, setHasLockCanister] = useState(null);
-  const [detectedCanister, setDetectedCanister] = useState(null);
-  const [validationStep, setValidationStep] = useState('');
+  const [error, setError] = useState<string>('');
+  const [isChecking, setIsChecking] = useState<boolean>(false);
+  const [hasLockCanister, setHasLockCanister] = useState<boolean | null>(null);
+  const [detectedCanister, setDetectedCanister] = useState<string | null>(null);
+  const [validationStep, setValidationStep] = useState<string>('');
   
   // Check if user has a Kong Locker canister on mount
   useEffect(() => {
     checkForExistingLockCanister();
   }, [identity]);
 
-  const checkForExistingLockCanister = async () => {
+  const checkForExistingLockCanister = async (): Promise<void> => {
     if (!identity) return;
 
     setIsChecking(true);
@@ -46,8 +52,8 @@ const KongLockerSetup = ({ identity, onComplete }) => {
     }
   };
 
-  const handleAutoConnect = async () => {
-    if (!detectedCanister) {
+  const handleAutoConnect = async (): Promise<void> => {
+    if (!detectedCanister || !identity) {
       setError('No Kong Locker canister detected');
       return;
     }
@@ -75,8 +81,9 @@ const KongLockerSetup = ({ identity, onComplete }) => {
       }
     } catch (err) {
       console.error('Error registering Kong Locker canister:', err);
-      setError(err.message || 'An error occurred');
-      dispatch(setKongLockerError(err.message));
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMessage);
+      dispatch(setKongLockerError(errorMessage));
     } finally {
       setIsChecking(false);
       setValidationStep('');

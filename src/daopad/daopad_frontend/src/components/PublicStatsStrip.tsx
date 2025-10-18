@@ -3,13 +3,30 @@ import { useSelector } from 'react-redux';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const PublicStatsStrip = () => {
-  const stats = useSelector(state => state.dao.publicDashboard.stats);
-  const isLoading = useSelector(state => state.dao.publicDashboard.isLoading);
-  const lastUpdated = useSelector(state => state.dao.publicDashboard.lastUpdated);
-  const hasPartialData = useSelector(state => state.dao.publicDashboard.hasPartialData);
+interface RootState {
+  dao: {
+    publicDashboard: {
+      stats: any;
+      isLoading: boolean;
+      lastUpdated: number | null;
+      hasPartialData: boolean;
+    };
+  };
+}
 
-  const StatCard = ({ label, value, loading }) => (
+interface StatCardProps {
+  label: string;
+  value: number | string;
+  loading: boolean;
+}
+
+const PublicStatsStrip: React.FC = () => {
+  const stats = useSelector((state: RootState) => state.dao.publicDashboard.stats);
+  const isLoading = useSelector((state: RootState) => state.dao.publicDashboard.isLoading);
+  const lastUpdated = useSelector((state: RootState) => state.dao.publicDashboard.lastUpdated);
+  const hasPartialData = useSelector((state: RootState) => state.dao.publicDashboard.hasPartialData);
+
+  const StatCard: React.FC<StatCardProps> = ({ label, value, loading }) => (
     <Card className="bg-executive-darkGray/50 border-executive-gold/20 p-4">
       <p className="text-xs text-executive-lightGray/60 uppercase tracking-wider mb-1">
         {label}

@@ -2,14 +2,15 @@ import React, { memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import type { OrbitRequest, RequestStatus } from '../types';
 
-const formatDate = (timestamp) => {
+const formatDate = (timestamp: bigint | undefined): string => {
   if (!timestamp) return 'N/A';
-  const date = new Date(timestamp);
+  const date = new Date(Number(timestamp) / 1000000); // Convert nanoseconds to milliseconds
   return date.toLocaleString();
 };
 
-const getStatusColor = (status) => {
+const getStatusColor = (status: RequestStatus): string => {
   if (typeof status === 'object') {
     const key = Object.keys(status)[0];
     switch(key) {
@@ -27,15 +28,31 @@ const getStatusColor = (status) => {
   return '#6c757d';
 };
 
-const getStatusText = (status) => {
+const getStatusText = (status: RequestStatus): string => {
   if (typeof status === 'object') {
     return Object.keys(status)[0];
   }
   return 'Unknown';
 };
 
-const ProposalCard = memo(function ProposalCard({ proposal, onClick, onApprove, onReject, canVote, isVotingLoading }) {
-  const approvals = proposal.approvals || [];
+interface ProposalCardProps {
+  proposal: OrbitRequest;
+  onClick: (proposal: OrbitRequest) => void;
+  onApprove: (proposalId: string) => Promise<void>;
+  onReject: (proposalId: string, reason?: string) => Promise<void>;
+  canVote: boolean;
+  isVotingLoading?: 'approving' | 'rejecting' | 'approved' | 'rejected';
+}
+
+const ProposalCard = memo(function ProposalCard({
+  proposal,
+  onClick,
+  onApprove,
+  onReject,
+  canVote,
+  isVotingLoading
+}: ProposalCardProps) {
+  const approvals = (proposal as any).approvals || [];
   const approvalProgress = 0; // We'll calculate this based on policy rules if available
 
   return (
@@ -127,14 +144,14 @@ const ProposalCard = memo(function ProposalCard({ proposal, onClick, onApprove, 
       </CardContent>
     </Card>
   );
-}, (prevProps, nextProps) => {
+}, (prevProps: ProposalCardProps, nextProps: ProposalCardProps): boolean => {
   // Only re-render if these specific props changed
-  const prevApprovals = prevProps.proposal.approvals || [];
-  const nextApprovals = nextProps.proposal.approvals || [];
+  const prevApprovals = (prevProps.proposal as any).approvals || [];
+  const nextApprovals = (nextProps.proposal as any).approvals || [];
 
   // Check if approval statuses changed (not just length)
   const approvalsEqual = prevApprovals.length === nextApprovals.length &&
-    prevApprovals.every((prev, i) => {
+    prevApprovals.every((prev: any, i: number) => {
       const next = nextApprovals[i];
       return prev?.status?.Approved === next?.status?.Approved;
     });
@@ -144,9 +161,7 @@ const ProposalCard = memo(function ProposalCard({ proposal, onClick, onApprove, 
     prevProps.proposal.status === nextProps.proposal.status &&
     approvalsEqual &&
     prevProps.canVote === nextProps.canVote &&
-    prevProps.isVotingLoading === nextProps.isVotingLoading &&
-    prevProps.proposal.yesVotes === nextProps.proposal.yesVotes &&
-    prevProps.proposal.noVotes === nextProps.proposal.noVotes
+    prevProps.isVotingLoading === nextProps.isVotingLoading
   );
 });
 

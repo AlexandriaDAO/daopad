@@ -4,21 +4,22 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import type { OrbitRequest, RequestStatus } from '../types';
 
-const formatDate = (timestamp) => {
+const formatDate = (timestamp: bigint | undefined): string => {
   if (!timestamp) return 'N/A';
-  const date = new Date(timestamp);
+  const date = new Date(Number(timestamp) / 1000000); // Convert nanoseconds to milliseconds
   return date.toLocaleString();
 };
 
-const getStatusText = (status) => {
+const getStatusText = (status: RequestStatus): string => {
   if (typeof status === 'object') {
     return Object.keys(status)[0];
   }
   return 'Unknown';
 };
 
-const getStatusColor = (status) => {
+const getStatusColor = (status: RequestStatus): string => {
   if (typeof status === 'object') {
     const key = Object.keys(status)[0];
     switch(key) {
@@ -36,7 +37,15 @@ const getStatusColor = (status) => {
   return '#6c757d';
 };
 
-const ProposalDetailsModal = ({ proposal, onClose }) => {
+interface ProposalDetailsModalProps {
+  proposal: OrbitRequest;
+  onClose: () => void;
+  onApprove?: (proposalId: string) => Promise<void>;
+  onReject?: (proposalId: string, reason?: string) => Promise<void>;
+  canVote?: boolean;
+}
+
+const ProposalDetailsModal: React.FC<ProposalDetailsModalProps> = ({ proposal, onClose }) => {
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
