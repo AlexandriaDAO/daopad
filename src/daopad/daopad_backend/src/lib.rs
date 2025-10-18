@@ -11,7 +11,7 @@ pub use api::*;
 pub use proposals::orbit_link::{OrbitLinkProposal, ProposalStatus};
 pub use proposals::{
     OrbitRequestProposal, OrbitRequestType, ProposalError, ProposalId, ProposalType,
-    TransferDetails, TreasuryProposal, VoteChoice,
+    TransferDetails, TreasuryProposal, UserVoteInfo, VoteChoice,
 };
 pub use types::orbit::{
     AccountBalance, ListAccountsResult,

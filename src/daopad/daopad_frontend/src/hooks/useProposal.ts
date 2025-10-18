@@ -69,7 +69,40 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
   const [proposal, setProposal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hasVoted, setHasVoted] = useState(false);
+  const [userVote, setUserVote] = useState(null); // 'Yes' | 'No' | null
   const [error, setError] = useState(null);
+
+  // Fetch user's vote status
+  const fetchVoteStatus = useCallback(async () => {
+    if (!identity || !tokenId || !orbitRequestId) return;
+
+    try {
+      const backend = new DAOPadBackendService(identity);
+      const result = await backend.getUserVoteStatus(
+        Principal.fromText(tokenId),
+        orbitRequestId
+      );
+
+      if (result.success && result.data) {
+        setHasVoted(result.data.has_voted);
+        // Extract vote choice from variant: { Yes: null } or { No: null }
+        if (result.data.vote_choice && result.data.vote_choice.length > 0) {
+          const voteVariant = result.data.vote_choice[0];
+          if (voteVariant && typeof voteVariant === 'object') {
+            if ('Yes' in voteVariant) {
+              setUserVote('Yes');
+            } else if ('No' in voteVariant) {
+              setUserVote('No');
+            }
+          }
+        } else {
+          setUserVote(null);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch vote status:', err);
+    }
+  }, [identity, tokenId, orbitRequestId]);
 
   // Fetch proposal for this Orbit request
   const fetchProposal = useCallback(async () => {
@@ -82,18 +115,40 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
     setError(null);
     try {
       const backend = new DAOPadBackendService(identity);
-      const result = await backend.getOrbitRequestProposal(
-        Principal.fromText(tokenId),
-        orbitRequestId
-      );
 
-      if (result.success) {
-        setProposal(result.data);
-        // Note: hasVoted detection happens on vote attempt (backend returns AlreadyVoted error)
-        // We don't have a query endpoint for this, so we detect it during voting
+      // Fetch both proposal and vote status in parallel
+      const [proposalResult, voteResult] = await Promise.all([
+        backend.getOrbitRequestProposal(
+          Principal.fromText(tokenId),
+          orbitRequestId
+        ),
+        backend.getUserVoteStatus(
+          Principal.fromText(tokenId),
+          orbitRequestId
+        )
+      ]);
+
+      if (proposalResult.success) {
+        setProposal(proposalResult.data);
       } else {
         setProposal(null);
-        setHasVoted(false);
+      }
+
+      if (voteResult.success && voteResult.data) {
+        setHasVoted(voteResult.data.has_voted);
+        // Extract vote choice from variant
+        if (voteResult.data.vote_choice && voteResult.data.vote_choice.length > 0) {
+          const voteVariant = voteResult.data.vote_choice[0];
+          if (voteVariant && typeof voteVariant === 'object') {
+            if ('Yes' in voteVariant) {
+              setUserVote('Yes');
+            } else if ('No' in voteVariant) {
+              setUserVote('No');
+            }
+          }
+        } else {
+          setUserVote(null);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch proposal:', err);
@@ -138,6 +193,7 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
     proposal,
     loading,
     hasVoted,
+    userVote,
     error,
     fetchProposal,
     ensureProposal

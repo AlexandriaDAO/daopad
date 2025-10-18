@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
@@ -30,7 +30,7 @@ function getOperationType(request) {
 
 export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
   const operationType = getOperationType(request);
-  const { proposal, loading, hasVoted, ensureProposal, fetchProposal } = useProposal(
+  const { proposal, loading, hasVoted, userVote, ensureProposal, fetchProposal } = useProposal(
     tokenId,
     request.id,
     operationType
@@ -42,6 +42,25 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
       ensureProposal();
     }
   }, [proposal, loading, request.status, ensureProposal]);
+
+  // Handle vote completion with optional updated data
+  const handleVoteComplete = useCallback((updatedProposalData) => {
+    // Backend returns:
+    // - Some(proposal) if still active (data is fresh, no refetch needed)
+    // - None if executed/rejected (proposal removed from storage)
+    // - undefined if vote failed or old response format
+
+    if (updatedProposalData === null) {
+      // Proposal was executed or rejected - it no longer exists
+      // Clear the proposal state to reflect this
+      setProposal(null);
+      // Note: Parent component should handle showing the new status
+    } else if (updatedProposalData === undefined) {
+      // Old response format or error - refetch to be safe
+      fetchProposal();
+    }
+    // If updatedProposalData is truthy, it's already set by the backend response
+  }, [fetchProposal, setProposal]);
 
   const statusInfo = statusConfig[request.status] || statusConfig.Created;
   const StatusIcon = statusInfo.icon;
@@ -109,8 +128,17 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
                   userVotingPower={userVotingPower}
                   hasVoted={hasVoted}
                   disabled={proposal.status && Object.keys(proposal.status)[0] !== 'Active'}
-                  onVoteComplete={fetchProposal}
+                  onVoteComplete={handleVoteComplete}
                 />
+
+                {/* Display user's vote choice */}
+                {hasVoted && userVote && (
+                  <div className="text-xs text-muted-foreground mt-2">
+                    Your vote: <span className="font-medium">
+                      {userVote}
+                    </span> ({(userVotingPower || 0).toLocaleString()} VP)
+                  </div>
+                )}
               </>
             )}
           </div>

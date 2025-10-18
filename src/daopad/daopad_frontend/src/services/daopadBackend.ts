@@ -405,11 +405,28 @@ export class DAOPadBackendService {
   // ❌ REMOVED: approveOrbitRequest, rejectOrbitRequest, batchApproveRequests
   // Replaced by liquid democracy voting system
 
+  async getUserVoteStatus(
+    tokenCanisterId: Principal | string,
+    requestId: string
+  ): Promise<ServiceResponse<any>> {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.get_user_vote_on_request(
+        tokenCanisterId,
+        requestId
+      );
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Failed to get user vote status:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   async voteOnOrbitRequest(
     tokenCanisterId: Principal | string,
     requestId: string,
     vote: boolean
-  ): Promise<ServiceResponse<string>> {
+  ): Promise<ServiceResponse<any | null>> {
     try {
       // Auth validation: Voting requires authentication
       this.ensureAuthenticated();
@@ -421,7 +438,12 @@ export class DAOPadBackendService {
         vote, // boolean: true = Yes, false = No
       );
       if ('Ok' in result) {
-        return { success: true };
+        // result.Ok is opt OrbitRequestProposal (array with 0 or 1 element)
+        // Returns updated proposal if still active, or null if executed/rejected
+        const proposalData = Array.isArray(result.Ok) && result.Ok.length > 0
+          ? result.Ok[0]
+          : null;
+        return { success: true, data: proposalData };
       } else {
         return { success: false, error: result.Err };
       }
