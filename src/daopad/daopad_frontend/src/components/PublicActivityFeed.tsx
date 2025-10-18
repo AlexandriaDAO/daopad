@@ -2,14 +2,39 @@ import React from 'react';
 import { useSelector } from 'react-redux';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Principal } from '@dfinity/principal';
 
-const PublicActivityFeed = () => {
-  const proposals = useSelector(state => state.dao.publicDashboard.proposals);
-  const isLoading = useSelector(state => state.dao.publicDashboard.isLoading);
-  const hasPartialData = useSelector(state => state.dao.publicDashboard.hasPartialData);
+interface ProposalStatus {
+  Active?: null;
+  Approved?: null;
+  Rejected?: null;
+}
+
+interface ProposalData {
+  token_canister_id: Principal;
+  status: ProposalStatus;
+  yes_votes: bigint;
+  no_votes: bigint;
+  total_voting_power: bigint;
+}
+
+interface RootState {
+  dao: {
+    publicDashboard: {
+      proposals: ProposalData[];
+      isLoading: boolean;
+      hasPartialData: boolean;
+    };
+  };
+}
+
+const PublicActivityFeed: React.FC = () => {
+  const proposals = useSelector((state: RootState) => state.dao.publicDashboard.proposals);
+  const isLoading = useSelector((state: RootState) => state.dao.publicDashboard.isLoading);
+  const hasPartialData = useSelector((state: RootState) => state.dao.publicDashboard.hasPartialData);
 
   // Simple proposal display component
-  const ProposalItem = ({ proposal }) => {
+  const ProposalItem: React.FC<{ proposal: ProposalData }> = ({ proposal }) => {
     // Determine status text
     const getStatusText = () => {
       if (proposal.status?.Active !== undefined) return 'Active';

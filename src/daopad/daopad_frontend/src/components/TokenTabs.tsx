@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import type { Identity } from '@dfinity/agent';
+import { Principal } from '@dfinity/principal';
 import { DAOPadBackendService } from '../services/daopadBackend';
 import { KongLockerService } from '../services/kongLockerService';
 import TokenDashboard from './TokenDashboard';
@@ -8,20 +10,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
+import type { Token, VotingPower, LPPosition } from '../types';
 
-const TokenTabs = ({ identity }) => {
-  const [tokens, setTokens] = useState([]);
-  const [activeTab, setActiveTab] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [tokenVotingPowers, setTokenVotingPowers] = useState({});
-  const [userLPPositions, setUserLPPositions] = useState([]);
+interface TokenTabsProps {
+  identity: Identity | null;
+}
+
+const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
+  const [tokens, setTokens] = useState<Token[]>([]);
+  const [activeTab, setActiveTab] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>('');
+  const [tokenVotingPowers, setTokenVotingPowers] = useState<Record<string, VotingPower[]>>({});
+  const [userLPPositions, setUserLPPositions] = useState<LPPosition[]>([]);
 
   useEffect(() => {
     loadTokensAndPowers();
   }, [identity]);
 
-  const loadTokensAndPowers = async () => {
+  const loadTokensAndPowers = async (): Promise<void> => {
     if (!identity) return;
 
     setLoading(true);
@@ -62,8 +69,8 @@ const TokenTabs = ({ identity }) => {
         setUserLPPositions(positions);
 
         // Calculate voting power per token
-        const votingPowers = {};
-        lockedTokens.forEach(token => {
+        const votingPowers: Record<string, VotingPower[]> = {};
+        lockedTokens.forEach((token: Token) => {
           const tokenPositions = positions.filter(pos =>
             pos.address_0 === token.canister_id || pos.address_1 === token.canister_id
           );
