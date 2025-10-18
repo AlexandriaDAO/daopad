@@ -207,6 +207,80 @@ pub async fn get_total_voting_power_for_token(
     Ok(total_power)
 }
 
+#[derive(CandidType, Deserialize, Clone)]
+pub struct VotingPowerEntry {
+    pub user_principal: Principal,
+    pub kong_locker_principal: Principal,
+    pub voting_power: u64,
+    pub equity_percentage: f64,  // Percentage of total (0-100)
+}
+
+#[derive(CandidType, Deserialize, Clone)]
+pub struct AllVotingPowersResponse {
+    pub entries: Vec<VotingPowerEntry>,
+    pub total_voting_power: u64,
+    pub total_holders: u32,
+}
+
+/// Get all voting powers for a token with equity percentages
+///
+/// Returns list of all Kong Locker holders with their voting power and equity percentage.
+/// Only includes users with voting_power > 0.
+#[update]
+pub async fn get_all_voting_powers_for_token(
+    token_canister_id: Principal
+) -> Result<AllVotingPowersResponse, String> {
+    use crate::kong_locker::voting::calculate_voting_power_for_token;
+    use crate::storage::state::KONG_LOCKER_PRINCIPALS;
+
+    // 1. Get all registered Kong Locker principals
+    let all_registrations = KONG_LOCKER_PRINCIPALS.with(|principals| {
+        principals
+            .borrow()
+            .iter()
+            .map(|(user, locker)| (user.0, locker.0))
+            .collect::<Vec<(Principal, Principal)>>()
+    });
+
+    // 2. Calculate voting power for each user
+    let mut entries: Vec<VotingPowerEntry> = Vec::new();
+    let mut total_power = 0u64;
+
+    for (user_principal, kong_locker_principal) in all_registrations {
+        // Get voting power for this specific token
+        match calculate_voting_power_for_token(kong_locker_principal, token_canister_id).await {
+            Ok(power) => {
+                if power > 0 {
+                    entries.push(VotingPowerEntry {
+                        user_principal,
+                        kong_locker_principal,
+                        voting_power: power,
+                        equity_percentage: 0.0, // Will calculate after total is known
+                    });
+                    total_power += power;
+                }
+            }
+            Err(_) => continue, // Skip users with errors (e.g., no LP positions)
+        }
+    }
+
+    // 3. Calculate equity percentages
+    if total_power > 0 {
+        for entry in entries.iter_mut() {
+            entry.equity_percentage = (entry.voting_power as f64 / total_power as f64) * 100.0;
+        }
+    }
+
+    // 4. Sort by voting power (highest first)
+    entries.sort_by(|a, b| b.voting_power.cmp(&a.voting_power));
+
+    Ok(AllVotingPowersResponse {
+        total_holders: entries.len() as u32,
+        total_voting_power: total_power,
+        entries,
+    })
+}
+
 // Governance analytics
 #[derive(CandidType, Deserialize)]
 pub struct GovernanceStats {

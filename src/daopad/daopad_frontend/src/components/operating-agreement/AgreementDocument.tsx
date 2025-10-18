@@ -397,15 +397,103 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
         </div>
       </section>
 
-      {/* Article VI: External Canisters */}
-      {data.canisters && data.canisters.total > 0 && (
+      {/* Article VI: Equity Distribution */}
+      {data.votingPowers && data.votingPowers.total_holders > 0 && (
         <section className="mb-8">
           <h2 className="text-2xl font-bold border-b border-gray-400 pb-2">
-            ARTICLE VI: EXTERNAL CANISTER MANAGEMENT
+            ARTICLE VI: EQUITY DISTRIBUTION
           </h2>
           <div className="mt-4 space-y-3">
             <p>
-              <strong>6.1 Managed Canisters.</strong> The Company controls {data.canisters.total} external
+              <strong>6.1 Equity Basis.</strong> Member equity is determined by voting
+              power derived from permanently locked liquidity pool (LP) tokens in Kong Locker
+              canisters. Voting power equals the total USD value of locked LP tokens
+              containing the {tokenSymbol} token, multiplied by 100.
+            </p>
+
+            <p>
+              <strong>6.2 Current Equity Distribution.</strong> As of {formatDate()},
+              the Company has {data.votingPowers.total_holders} equity holder
+              {data.votingPowers.total_holders !== 1 ? 's' : ''} with total voting
+              power of {data.votingPowers.total_voting_power.toLocaleString()}.
+            </p>
+
+            <div className="mt-4">
+              <p className="font-semibold mb-3">Member Equity Breakdown:</p>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-gray-400">
+                    <th className="text-left p-2">Member</th>
+                    <th className="text-left p-2">Principal</th>
+                    <th className="text-right p-2">Voting Power</th>
+                    <th className="text-right p-2">Equity %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.votingPowers.entries.map((entry, i) => {
+                    const user = data.users?.find(u =>
+                      u.identities?.[0]?.toString() === entry.user_principal
+                    );
+                    const userName = user?.name || 'Unregistered Member';
+                    return (
+                      <tr key={i} className="border-b border-gray-200">
+                        <td className="p-2">{userName}</td>
+                        <td className="p-2">
+                          <code className="text-xs bg-gray-100 px-1 rounded">
+                            {formatPrincipal(entry.user_principal)}
+                          </code>
+                        </td>
+                        <td className="text-right p-2 font-mono">
+                          {entry.voting_power.toLocaleString()}
+                        </td>
+                        <td className="text-right p-2 font-bold">
+                          {entry.equity_percentage.toFixed(2)}%
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-gray-400 font-bold">
+                    <td className="p-2" colSpan={2}>TOTAL</td>
+                    <td className="text-right p-2 font-mono">
+                      {data.votingPowers.total_voting_power.toLocaleString()}
+                    </td>
+                    <td className="text-right p-2">100.00%</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <p className="mt-4">
+              <strong>6.3 Dynamic Equity.</strong> Equity percentages automatically
+              adjust based on changes in locked LP token values and the addition or
+              removal of liquidity by members. All equity calculations are performed
+              on-chain and are verifiable at any time.
+            </p>
+
+            <p>
+              <strong>6.4 Verification.</strong> Equity percentages can be independently
+              verified by querying:
+            </p>
+            <ul className="list-disc pl-8 mt-2 space-y-1">
+              <li>Kong Locker Factory: <code className="bg-gray-100 px-1 rounded text-sm">eazgb-giaaa-aaaap-qqc2q-cai</code></li>
+              <li>KongSwap for LP positions: <code className="bg-gray-100 px-1 rounded text-sm">2ipq2-uqaaa-aaaar-qailq-cai</code></li>
+              <li>DAOPad Backend for equity distribution: <code className="bg-gray-100 px-1 rounded text-sm">lwsav-iiaaa-aaaap-qp2qq-cai</code></li>
+            </ul>
+          </div>
+        </section>
+      )}
+
+      {/* Article VII: External Canisters */}
+      {data.canisters && data.canisters.total > 0 && (
+        <section className="mb-8">
+          <h2 className="text-2xl font-bold border-b border-gray-400 pb-2">
+            ARTICLE VII: EXTERNAL CANISTER MANAGEMENT
+          </h2>
+          <div className="mt-4 space-y-3">
+            <p>
+              <strong>7.1 Managed Canisters.</strong> The Company controls {data.canisters.total} external
               canister{data.canisters.total !== 1 ? 's' : ''}:
             </p>
             <div className="pl-4 space-y-1">
@@ -424,14 +512,14 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
         </section>
       )}
 
-      {/* Article VII: Amendments and Dispute Resolution */}
+      {/* Article VIII: Amendments and Dispute Resolution */}
       <section className="mb-8">
         <h2 className="text-2xl font-bold border-b border-gray-400 pb-2">
-          ARTICLE VII: AMENDMENTS AND DISPUTE RESOLUTION
+          ARTICLE VIII: AMENDMENTS AND DISPUTE RESOLUTION
         </h2>
         <div className="mt-4 space-y-3">
           <p>
-            <strong>7.1 Amendment Authority.</strong> This Agreement may be amended in two ways:
+            <strong>8.1 Amendment Authority.</strong> This Agreement may be amended in two ways:
           </p>
           <ul className="list-disc pl-8 space-y-2">
             <li>
@@ -449,7 +537,7 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
           </ul>
 
           <p className="mt-4">
-            <strong>7.2 Smart Contract Supremacy.</strong> In case of any
+            <strong>8.2 Smart Contract Supremacy.</strong> In case of any
             conflict between this document and the on-chain state, the
             blockchain state at Station {stationId} prevails. This document is
             generated from on-chain data and serves as a human-readable representation
@@ -457,26 +545,26 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
           </p>
 
           <p>
-            <strong>7.3 Dispute Resolution.</strong> All disputes shall be
+            <strong>8.3 Dispute Resolution.</strong> All disputes shall be
             resolved through member voting or, if necessary, binding arbitration
             under Wyoming law.
           </p>
         </div>
       </section>
 
-      {/* Article VIII: Dissolution */}
+      {/* Article IX: Dissolution */}
       <section className="mb-8">
         <h2 className="text-2xl font-bold border-b border-gray-400 pb-2">
-          ARTICLE VIII: DISSOLUTION
+          ARTICLE IX: DISSOLUTION
         </h2>
         <div className="mt-4 space-y-3">
           <p>
-            <strong>8.1 Voluntary Dissolution.</strong> The Company may be
+            <strong>9.1 Voluntary Dissolution.</strong> The Company may be
             dissolved upon a {OPERATION_THRESHOLDS.find(o => o.name === 'System Upgrade')?.threshold || 90}%
             vote of all voting power.
           </p>
           <p>
-            <strong>8.2 Distribution of Assets.</strong> Upon dissolution,
+            <strong>9.2 Distribution of Assets.</strong> Upon dissolution,
             assets shall be distributed proportionally to members based on
             their voting power at the time of dissolution.
           </p>

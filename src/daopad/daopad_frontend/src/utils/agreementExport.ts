@@ -82,10 +82,37 @@ ${(data.policies?.total_count || 0) > 10 ? `
 
 **5.3 Transfer Authority.** Fund transfers require a ${OPERATION_THRESHOLDS.find(o => o.name === 'Transfer')?.duration || 48} hour voting period to ensure adequate deliberation.
 
-${data.canisters && data.canisters.total > 0 ? `
-## ARTICLE VI: EXTERNAL CANISTER MANAGEMENT
+${data.votingPowers && data.votingPowers.total_holders > 0 ? `
+## ARTICLE VI: EQUITY DISTRIBUTION
 
-**6.1 Managed Canisters.** The Company controls ${data.canisters.total} external canister${data.canisters.total !== 1 ? 's' : ''}:
+**6.1 Equity Basis.** Member equity is determined by voting power derived from permanently locked liquidity pool (LP) tokens in Kong Locker canisters. Voting power equals the total USD value of locked LP tokens containing the ${tokenSymbol} token, multiplied by 100.
+
+**6.2 Current Equity Distribution.** As of ${formatDate()}, the Company has ${data.votingPowers.total_holders} equity holder${data.votingPowers.total_holders !== 1 ? 's' : ''} with total voting power of ${data.votingPowers.total_voting_power.toLocaleString()}.
+
+### Member Equity Breakdown:
+
+| Member | Principal | Voting Power | Equity % |
+|--------|-----------|--------------|----------|
+${data.votingPowers.entries.map(entry => {
+  const user = data.users?.find(u => u.identities?.[0]?.toString() === entry.user_principal);
+  const userName = user?.name || 'Unregistered Member';
+  return `| ${userName} | \`${entry.user_principal}\` | ${entry.voting_power.toLocaleString()} | ${entry.equity_percentage.toFixed(2)}% |`;
+}).join('\n')}
+| **TOTAL** | - | **${data.votingPowers.total_voting_power.toLocaleString()}** | **100.00%** |
+
+**6.3 Dynamic Equity.** Equity percentages automatically adjust based on changes in locked LP token values and the addition or removal of liquidity by members. All equity calculations are performed on-chain and are verifiable at any time.
+
+**6.4 Verification.** Equity percentages can be independently verified by querying:
+
+- Kong Locker Factory: \`eazgb-giaaa-aaaap-qqc2q-cai\`
+- KongSwap for LP positions: \`2ipq2-uqaaa-aaaar-qailq-cai\`
+- DAOPad Backend for equity distribution: \`lwsav-iiaaa-aaaap-qp2qq-cai\`
+` : ''}
+
+${data.canisters && data.canisters.total > 0 ? `
+## ARTICLE VII: EXTERNAL CANISTER MANAGEMENT
+
+**7.1 Managed Canisters.** The Company controls ${data.canisters.total} external canister${data.canisters.total !== 1 ? 's' : ''}:
 
 ${data.canisters.canisters?.slice(0, 5).map(c =>
   `- ${c.name || 'Unnamed'}: \`${c.canister_id}\``
@@ -94,19 +121,19 @@ ${data.canisters.canisters?.slice(0, 5).map(c =>
 ${data.canisters.total > 5 ? `*... and ${data.canisters.total - 5} more canisters*` : ''}
 ` : ''}
 
-## ARTICLE VII: AMENDMENTS AND DISPUTE RESOLUTION
+## ARTICLE VIII: AMENDMENTS AND DISPUTE RESOLUTION
 
-**7.1 Amendments.** This Agreement may only be amended through on-chain governance requiring ${OPERATION_THRESHOLDS.find(o => o.name === 'Edit Request Policy')?.threshold || 70}% member approval.
+**8.1 Amendments.** This Agreement may only be amended through on-chain governance requiring ${OPERATION_THRESHOLDS.find(o => o.name === 'Edit Request Policy')?.threshold || 70}% member approval.
 
-**7.2 Smart Contract Authority.** In case of any conflict between this document and the on-chain state, the blockchain state at Station ${stationId} prevails.
+**8.2 Smart Contract Authority.** In case of any conflict between this document and the on-chain state, the blockchain state at Station ${stationId} prevails.
 
-**7.3 Dispute Resolution.** All disputes shall be resolved through member voting or, if necessary, binding arbitration under Wyoming law.
+**8.3 Dispute Resolution.** All disputes shall be resolved through member voting or, if necessary, binding arbitration under Wyoming law.
 
-## ARTICLE VIII: DISSOLUTION
+## ARTICLE IX: DISSOLUTION
 
-**8.1 Voluntary Dissolution.** The Company may be dissolved upon a ${OPERATION_THRESHOLDS.find(o => o.name === 'System Upgrade')?.threshold || 90}% vote of all voting power.
+**9.1 Voluntary Dissolution.** The Company may be dissolved upon a ${OPERATION_THRESHOLDS.find(o => o.name === 'System Upgrade')?.threshold || 90}% vote of all voting power.
 
-**8.2 Distribution of Assets.** Upon dissolution, assets shall be distributed proportionally to members based on their voting power at the time of dissolution.
+**9.2 Distribution of Assets.** Upon dissolution, assets shall be distributed proportionally to members based on their voting power at the time of dissolution.
 
 ---
 
