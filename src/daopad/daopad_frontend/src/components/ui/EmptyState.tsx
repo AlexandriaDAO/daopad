@@ -1,16 +1,17 @@
 import React from 'react';
-import { FileX, Users, Wallet, FolderOpen, Search, AlertCircle } from 'lucide-react';
+import { FileX, Users, Wallet, FolderOpen, Search, AlertCircle, LucideIcon } from 'lucide-react';
+
+export interface EmptyStateProps {
+  icon?: LucideIcon
+  title: string
+  description?: string
+  action?: React.ReactNode
+  className?: string
+}
 
 /**
  * EmptyState - Reusable component for empty state displays
  * Provides consistent empty state UI across the application
- *
- * @param {Object} props
- * @param {React.ComponentType} props.icon - Lucide icon component to display
- * @param {string} props.title - Main title text
- * @param {string} [props.description] - Optional description text
- * @param {React.ReactNode} [props.action] - Optional action button/component
- * @param {string} [props.className] - Additional CSS classes
  */
 export function EmptyState({
   icon: Icon = FileX,
@@ -18,7 +19,7 @@ export function EmptyState({
   description,
   action,
   className = ''
-}) {
+}: EmptyStateProps) {
   return (
     <div className={`flex flex-col items-center justify-center py-12 ${className}`}>
       <Icon className="h-12 w-12 text-muted-foreground mb-4" />
@@ -33,9 +34,23 @@ export function EmptyState({
   );
 }
 
+interface PresetEmptyStateProps {
+  action?: React.ReactNode
+}
+
+interface NoResultsProps {
+  searchTerm?: string
+  action?: React.ReactNode
+}
+
+interface ErrorStateProps {
+  message?: string
+  action?: React.ReactNode
+}
+
 // Common preset empty states for consistency
 export const EmptyStates = {
-  NoData: ({ action }) => (
+  NoData: ({ action }: PresetEmptyStateProps) => (
     <EmptyState
       icon={FileX}
       title="No data available"
@@ -44,7 +59,7 @@ export const EmptyStates = {
     />
   ),
 
-  NoMembers: ({ action }) => (
+  NoMembers: ({ action }: PresetEmptyStateProps) => (
     <EmptyState
       icon={Users}
       title="No members yet"
@@ -53,7 +68,7 @@ export const EmptyStates = {
     />
   ),
 
-  NoAccounts: ({ action }) => (
+  NoAccounts: ({ action }: PresetEmptyStateProps) => (
     <EmptyState
       icon={Wallet}
       title="No treasury accounts found"
@@ -62,7 +77,7 @@ export const EmptyStates = {
     />
   ),
 
-  NoResults: ({ searchTerm, action }) => (
+  NoResults: ({ searchTerm, action }: NoResultsProps) => (
     <EmptyState
       icon={Search}
       title="No results found"
@@ -71,7 +86,7 @@ export const EmptyStates = {
     />
   ),
 
-  NoRequests: ({ action }) => (
+  NoRequests: ({ action }: PresetEmptyStateProps) => (
     <EmptyState
       icon={FolderOpen}
       title="No requests found"
@@ -80,7 +95,7 @@ export const EmptyStates = {
     />
   ),
 
-  Error: ({ message, action }) => (
+  Error: ({ message, action }: ErrorStateProps) => (
     <EmptyState
       icon={AlertCircle}
       title="Something went wrong"

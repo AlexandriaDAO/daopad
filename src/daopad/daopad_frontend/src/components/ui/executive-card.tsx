@@ -1,5 +1,11 @@
-import { Card, CardHeader, CardTitle, CardContent } from './card';
+import * as React from 'react';
+import { Card, CardHeader, CardTitle, CardContent, CardProps, CardHeaderProps } from './card';
 import { cn } from '@/lib/utils';
+
+export interface ExecutiveCardProps extends CardProps {
+  variant?: 'default' | 'gold' | 'gold-highlight'
+  hover?: boolean
+}
 
 /**
  * Enhanced card with golden accent options
@@ -11,7 +17,7 @@ export function ExecutiveCard({
   hover = true,
   className,
   ...props
-}) {
+}: ExecutiveCardProps) {
   return (
     <Card
       className={cn(
@@ -45,6 +51,10 @@ export function ExecutiveCard({
   );
 }
 
+export interface ExecutiveCardHeaderProps extends CardHeaderProps {
+  showDivider?: boolean
+}
+
 /**
  * Enhanced card header with optional decorative divider
  */
@@ -53,7 +63,7 @@ export function ExecutiveCardHeader({
   showDivider = false,
   className,
   ...props
-}) {
+}: ExecutiveCardHeaderProps) {
   return (
     <CardHeader
       className={cn(

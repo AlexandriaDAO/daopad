@@ -1,10 +1,13 @@
+import * as React from 'react';
 import { cn } from '@/lib/utils';
+
+export interface LoadingShimmerProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 /**
  * Loading shimmer component with golden accent animation
  * Used for skeleton loading states
  */
-export function LoadingShimmer({ className }) {
+export function LoadingShimmer({ className, ...props }: LoadingShimmerProps) {
   return (
     <div
       className={cn(
@@ -14,6 +17,7 @@ export function LoadingShimmer({ className }) {
         "before:animate-shimmer",
         className
       )}
+      {...props}
     >
       <div className="h-full w-full bg-executive-charcoal/80"></div>
     </div>

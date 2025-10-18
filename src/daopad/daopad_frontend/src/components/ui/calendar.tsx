@@ -4,10 +4,14 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "lucide-react"
-import { DayPicker, getDefaultClassNames } from "react-day-picker";
+import { DayPicker, DayPickerProps, getDefaultClassNames, DayButtonProps } from "react-day-picker";
 
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
+
+export type CalendarProps = DayPickerProps & {
+  buttonVariant?: "ghost" | "default" | "destructive" | "outline" | "secondary" | "link"
+}
 
 function Calendar({
   className,
@@ -18,7 +22,7 @@ function Calendar({
   formatters,
   components,
   ...props
-}) {
+}: CalendarProps) {
   const defaultClassNames = getDefaultClassNames()
 
   return (
@@ -138,10 +142,10 @@ function CalendarDayButton({
   day,
   modifiers,
   ...props
-}) {
+}: DayButtonProps) {
   const defaultClassNames = getDefaultClassNames()
 
-  const ref = React.useRef(null)
+  const ref = React.useRef<HTMLButtonElement>(null)
   React.useEffect(() => {
     if (modifiers.focused) ref.current?.focus()
   }, [modifiers.focused])
