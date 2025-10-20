@@ -135,7 +135,7 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
           <p>
             <strong>1.2 Smart Contract Governance.</strong> This Agreement
             and all governance actions are executed through immutable smart
-            contracts at Orbit Station ID <code className="bg-gray-100 px-1 rounded">{stationId}</code>, which
+            contracts at Orbit Station ID <code className="bg-muted text-foreground px-1 rounded">{stationId}</code>, which
             serves as the authoritative source of truth for all Company operations.
           </p>
           <p>
@@ -382,17 +382,159 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
         <div className="mt-4 space-y-3">
           <p>
             <strong>5.1 Treasury Control.</strong> All treasury operations
-            require {OPERATION_THRESHOLDS.find(o => o.name === 'Transfer')?.threshold || 75}%
-            approval from voting members.
+            require approval thresholds defined in Article III based on operation risk.
+            Transfer operations require {OPERATION_THRESHOLDS.find(o => o.name === 'Transfer')?.threshold || 75}%
+            voting power approval to execute.
           </p>
-          <p>
-            <strong>5.2 Asset Management.</strong> The Company may hold and
-            manage multiple digital assets as approved by member vote.
+
+          {/* 5.2 Treasury Accounts */}
+          {data.treasury && data.treasury.accounts.length > 0 && (
+            <div className="mt-6">
+              <p>
+                <strong>5.2 Treasury Accounts.</strong> The Company maintains the following
+                treasury accounts on the Internet Computer blockchain:
+              </p>
+
+              <div className="pl-4 mt-3 space-y-4">
+                {data.treasury.accounts.map((account, i) => (
+                  <div key={account.account_id} className="border-l-4 border-blue-400 pl-4 py-2 bg-gray-50">
+                    <h4 className="font-bold text-lg">{account.account_name}</h4>
+
+                    {/* Account ID */}
+                    <div className="text-xs text-gray-500 font-mono mb-2">
+                      ID: {account.account_id}
+                    </div>
+
+                    {/* Assets and Balances */}
+                    {account.assets.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-sm font-semibold">Holdings:</p>
+                        <ul className="list-disc pl-6 text-sm">
+                          {account.assets.map((asset, j) => (
+                            <li key={j}>
+                              {asset.balance_formatted} {asset.symbol}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Transfer Policy */}
+                    <div className="mt-2">
+                      <p className="text-sm">
+                        <span className="font-semibold">Transfer Approval:</span> {account.transfer_policy}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-semibold">Configuration Changes:</span> {account.config_policy}
+                      </p>
+                    </div>
+
+                    {/* Addresses */}
+                    {account.addresses.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-sm font-semibold">Account Addresses:</p>
+                        <ul className="list-none pl-2 text-xs font-mono">
+                          {account.addresses.map((addr, k) => (
+                            <li key={k} className="break-all">
+                              {addr.format}: <code className="bg-muted px-1 rounded">{addr.address}</code>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 5.3 Transfer Authorization */}
+          <div className="mt-6">
+            <p>
+              <strong>5.3 Transfer Initiation and Approval.</strong>
+            </p>
+            <ul className="list-disc pl-8 mt-2 space-y-1">
+              <li>
+                <strong>Who Can Propose Transfers:</strong> {data.treasury?.backend_privileges_summary ||
+                "Only authorized members with sufficient voting power can propose transfers"}
+              </li>
+              <li>
+                <strong>Approval Process:</strong> All transfers require DAOPad community voting
+                reaching the {OPERATION_THRESHOLDS.find(o => o.name === 'Transfer')?.threshold || 75}%
+                threshold of total voting power. Voting period lasts {
+                  OPERATION_THRESHOLDS.find(o => o.name === 'Transfer')?.duration || 48
+                } hours to ensure adequate deliberation.
+              </li>
+              <li>
+                <strong>Execution:</strong> Once the voting threshold is reached, the DAOPad backend
+                submits the approved request to Orbit Station for execution. The Orbit Station
+                executes the transfer according to the account's configured policy.
+              </li>
+            </ul>
+          </div>
+
+          {/* 5.4 Authorized Recipients (Address Book) */}
+          {data.treasury && data.treasury.address_book.length > 0 && (
+            <div className="mt-6">
+              <p>
+                <strong>5.4 Authorized Payment Recipients.</strong> The Company maintains
+                an address book of {data.treasury.address_book.length} authorized recipient(s)
+                for recurring or pre-approved payments:
+              </p>
+
+              <table className="w-full border-collapse mt-3">
+                <thead>
+                  <tr className="border-b-2 border-gray-400">
+                    <th className="text-left p-2">Name</th>
+                    <th className="text-left p-2">Address</th>
+                    <th className="text-left p-2">Blockchain</th>
+                    <th className="text-left p-2">Purpose</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.treasury.address_book.map((entry, i) => (
+                    <tr key={entry.id} className="border-b border-gray-200">
+                      <td className="p-2">{entry.name}</td>
+                      <td className="p-2">
+                        <code className="text-xs bg-muted text-foreground px-1 rounded break-all">
+                          {entry.address.length > 30
+                            ? `${entry.address.slice(0, 15)}...${entry.address.slice(-12)}`
+                            : entry.address
+                          }
+                        </code>
+                      </td>
+                      <td className="p-2">{entry.blockchain}</td>
+                      <td className="p-2">{entry.purpose || 'General'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <p className="text-sm text-gray-600 mt-2 italic">
+                Note: Adding or modifying authorized recipients requires {
+                  OPERATION_THRESHOLDS.find(o => o.name === 'Add Address Book Entry')?.threshold || 30
+                }% voting approval.
+              </p>
+            </div>
+          )}
+
+          {/* 5.5 Asset Management */}
+          <p className="mt-4">
+            <strong>5.5 Asset Management.</strong> The Company may hold and manage multiple
+            digital assets across its treasury accounts as approved by member vote. Adding
+            new assets or accounts requires {
+              OPERATION_THRESHOLDS.find(o => o.name === 'Add Account')?.threshold || 40
+            }% voting approval. Editing existing accounts requires the configured approval
+            policy for that specific account.
           </p>
-          <p>
-            <strong>5.3 Transfer Authority.</strong> Fund transfers require
-            a {OPERATION_THRESHOLDS.find(o => o.name === 'Transfer')?.duration || 48} hour
-            voting period to ensure adequate deliberation.
+
+          {/* 5.6 Recurring Payments (Placeholder) */}
+          <p className="mt-4">
+            <strong>5.6 Recurring Payments.</strong> While the Company's Orbit Station
+            supports scheduled and recurring transfers, no automated payment schedules are
+            currently configured. Any future recurring payments (e.g., team salaries,
+            service subscriptions) must be approved through the standard governance process
+            before being configured in the treasury system.
           </p>
         </div>
       </section>
@@ -439,7 +581,7 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
                       <tr key={i} className="border-b border-gray-200">
                         <td className="p-2">{userName}</td>
                         <td className="p-2">
-                          <code className="text-xs bg-gray-100 px-1 rounded">
+                          <code className="text-xs bg-muted text-foreground px-1 rounded">
                             {formatPrincipal(entry.user_principal)}
                           </code>
                         </td>
@@ -477,9 +619,9 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
               verified by querying:
             </p>
             <ul className="list-disc pl-8 mt-2 space-y-1">
-              <li>Kong Locker Factory: <code className="bg-gray-100 px-1 rounded text-sm">eazgb-giaaa-aaaap-qqc2q-cai</code></li>
-              <li>KongSwap for LP positions: <code className="bg-gray-100 px-1 rounded text-sm">2ipq2-uqaaa-aaaar-qailq-cai</code></li>
-              <li>DAOPad Backend for equity distribution: <code className="bg-gray-100 px-1 rounded text-sm">lwsav-iiaaa-aaaap-qp2qq-cai</code></li>
+              <li>Kong Locker Factory: <code className="bg-muted text-foreground px-1 rounded text-sm">eazgb-giaaa-aaaap-qqc2q-cai</code></li>
+              <li>KongSwap for LP positions: <code className="bg-muted text-foreground px-1 rounded text-sm">2ipq2-uqaaa-aaaar-qailq-cai</code></li>
+              <li>DAOPad Backend for equity distribution: <code className="bg-muted text-foreground px-1 rounded text-sm">lwsav-iiaaa-aaaap-qp2qq-cai</code></li>
             </ul>
           </div>
         </section>
@@ -499,7 +641,7 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
             <div className="pl-4 space-y-1">
               {data.canisters.canisters?.slice(0, 5).map((c, i) => (
                 <div key={i}>
-                  • {c.name || 'Unnamed'}: <code className="bg-gray-100 px-1 rounded text-sm">{c.canister_id}</code>
+                  • {c.name || 'Unnamed'}: <code className="bg-muted text-foreground px-1 rounded text-sm">{c.canister_id}</code>
                 </div>
               ))}
               {data.canisters.total > 5 && (

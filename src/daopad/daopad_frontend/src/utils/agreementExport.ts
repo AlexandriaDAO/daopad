@@ -76,11 +76,45 @@ ${(data.policies?.total_count || 0) > 10 ? `
 
 ## ARTICLE V: TREASURY MANAGEMENT
 
-**5.1 Treasury Control.** All treasury operations require ${OPERATION_THRESHOLDS.find(o => o.name === 'Transfer')?.threshold || 75}% approval from voting members.
+**5.1 Treasury Control.** All treasury operations require approval thresholds defined in Article III based on operation risk. Transfer operations require ${OPERATION_THRESHOLDS.find(o => o.name === 'Transfer')?.threshold || 75}% voting power approval to execute.
 
-**5.2 Asset Management.** The Company may hold and manage multiple digital assets as approved by member vote.
+${data.treasury && data.treasury.accounts.length > 0 ? `
+**5.2 Treasury Accounts.** The Company maintains the following treasury accounts on the Internet Computer blockchain:
 
-**5.3 Transfer Authority.** Fund transfers require a ${OPERATION_THRESHOLDS.find(o => o.name === 'Transfer')?.duration || 48} hour voting period to ensure adequate deliberation.
+${data.treasury.accounts.map(acc => `
+### ${acc.account_name}
+
+- **Account ID**: \`${acc.account_id}\`
+${acc.assets.length > 0 ? `- **Holdings**:
+${acc.assets.map(asset => `  - ${asset.balance_formatted} ${asset.symbol}`).join('\n')}` : ''}
+- **Transfer Approval**: ${acc.transfer_policy}
+- **Configuration Changes**: ${acc.config_policy}
+${acc.addresses.length > 0 ? `- **Account Addresses**:
+${acc.addresses.map(addr => `  - ${addr.format}: \`${addr.address}\``).join('\n')}` : ''}
+`).join('\n')}
+` : ''}
+
+**5.3 Transfer Initiation and Approval.**
+
+- **Who Can Propose Transfers**: ${data.treasury?.backend_privileges_summary || "Only authorized members with sufficient voting power can propose transfers"}
+- **Approval Process**: All transfers require DAOPad community voting reaching the ${OPERATION_THRESHOLDS.find(o => o.name === 'Transfer')?.threshold || 75}% threshold of total voting power. Voting period lasts ${OPERATION_THRESHOLDS.find(o => o.name === 'Transfer')?.duration || 48} hours.
+- **Execution**: Once the voting threshold is reached, the DAOPad backend submits the approved request to Orbit Station for execution.
+
+${data.treasury && data.treasury.address_book.length > 0 ? `
+**5.4 Authorized Payment Recipients.** The Company maintains an address book of ${data.treasury.address_book.length} authorized recipient(s):
+
+| Name | Address | Blockchain | Purpose |
+|------|---------|------------|---------|
+${data.treasury.address_book.map(entry =>
+  `| ${entry.name} | \`${entry.address}\` | ${entry.blockchain} | ${entry.purpose || 'General'} |`
+).join('\n')}
+
+*Note: Adding or modifying authorized recipients requires ${OPERATION_THRESHOLDS.find(o => o.name === 'Add Address Book Entry')?.threshold || 30}% voting approval.*
+` : ''}
+
+**5.5 Asset Management.** The Company may hold and manage multiple digital assets across its treasury accounts as approved by member vote. Adding new assets or accounts requires ${OPERATION_THRESHOLDS.find(o => o.name === 'Add Account')?.threshold || 40}% voting approval.
+
+**5.6 Recurring Payments.** While the Company's Orbit Station supports scheduled and recurring transfers, no automated payment schedules are currently configured. Any future recurring payments must be approved through the standard governance process.
 
 ${data.votingPowers && data.votingPowers.total_holders > 0 ? `
 ## ARTICLE VI: EQUITY DISTRIBUTION

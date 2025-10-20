@@ -272,7 +272,7 @@ pub struct AccountMetadata {
     pub value: String,
 }
 
-#[derive(CandidType, Deserialize, Debug, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
 pub struct AccountAddress {
     pub address: String,
     pub format: String,
@@ -1266,4 +1266,80 @@ pub struct RequestPoliciesDetails {
     pub total_count: usize,
     pub auto_approved_count: usize,
     pub bypass_count: usize,
+}
+
+// ===== TREASURY MANAGEMENT TYPES =====
+
+// Asset balance info used in treasury views
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub struct AssetBalanceInfo {
+    pub symbol: String,
+    pub decimals: u32,
+    pub balance: String,
+    pub balance_formatted: String,
+}
+
+// Treasury account details for operating agreement
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub struct TreasuryAccountDetails {
+    pub account_id: String,
+    pub account_name: String,
+    pub assets: Vec<AssetBalanceInfo>,
+    pub transfer_policy: String,
+    pub config_policy: String,
+    pub can_transfer: bool,
+    pub can_edit: bool,
+    pub addresses: Vec<AccountAddress>,
+}
+
+// Address book entry for treasury management
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub struct TreasuryAddressBookEntry {
+    pub id: String,
+    pub name: String,
+    pub address: String,
+    pub blockchain: String,
+    pub purpose: Option<String>,
+}
+
+// Complete treasury management data
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
+pub struct TreasuryManagementData {
+    pub accounts: Vec<TreasuryAccountDetails>,
+    pub address_book: Vec<TreasuryAddressBookEntry>,
+    pub backend_privileges_summary: String,
+}
+
+// Address book query types
+#[derive(CandidType, Serialize, Debug)]
+pub struct ListAddressBookInput {
+    pub ids: Option<Vec<String>>,
+    pub addresses: Option<Vec<String>>,
+    pub paginate: Option<PaginationInput>,
+}
+
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub struct OrbitAddressBookEntry {
+    pub id: String,
+    pub address_owner: String,
+    pub address: String,
+    pub blockchain: String,
+    pub metadata: Vec<AccountMetadata>,
+}
+
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub struct AddressBookPrivilege {
+    pub id: String,
+    pub can_edit: bool,
+}
+
+#[derive(CandidType, Deserialize, Debug)]
+pub enum ListAddressBookResult {
+    Ok {
+        address_book_entries: Vec<OrbitAddressBookEntry>,
+        next_offset: Option<u64>,
+        total: u64,
+        privileges: Vec<AddressBookPrivilege>,
+    },
+    Err(Error),
 }

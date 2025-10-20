@@ -32,6 +32,8 @@ pub use types::orbit::{
     Permission, AuthScope,
     // Request policies types
     RequestPoliciesDetails, RequestPolicyInfo,
+    // Treasury management types
+    TreasuryManagementData, TreasuryAccountDetails, TreasuryAddressBookEntry, AssetBalanceInfo,
 };
 pub use types::{TokenInfo, VotingThresholds};
 
