@@ -286,3 +286,123 @@ async fn get_high_vp_members(
     // For now, return empty until Kong integration is complete
     Ok(vec![])
 }
+
+/// Create EditAccount requests to set AutoApproved for all accounts
+///
+/// IMPORTANT: Backend cannot approve these requests (separation of duties).
+/// After calling this, manually approve requests in Orbit UI.
+///
+/// Workflow:
+/// 1. Call this function to create EditAccount requests
+/// 2. Open Orbit Station UI → Requests tab
+/// 3. Approve each "Enable AutoApproved" request
+/// 4. Verify accounts show AutoApproved policies
+///
+/// This is a one-time bootstrap process to enable autonomous DAOPad operations.
+#[update]
+pub async fn create_autoapprove_all_accounts(
+    token_canister_id: Principal,
+) -> Result<Vec<String>, String> {
+    // 1. Get station ID from token mapping
+    let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
+        stations.borrow()
+            .get(&StorablePrincipal(token_canister_id))
+            .map(|s| s.0)
+            .ok_or_else(|| "No Orbit Station linked to this token".to_string())
+    })?;
+
+    // 2. List all accounts in Orbit Station
+    let list_input = ListAccountsInput {
+        search_term: None,
+        paginate: None,
+    };
+
+    let accounts_result: (ListAccountsResult,) =
+        call(station_id, "list_accounts", (list_input,))
+        .await
+        .map_err(|e| format!("Failed to list accounts: {:?}", e))?;
+
+    let accounts = match accounts_result.0 {
+        ListAccountsResult::Ok { accounts, .. } => accounts,
+        ListAccountsResult::Err(e) => return Err(format!("Orbit error: {}", e)),
+    };
+
+    // 3. Create EditAccount request for each account
+    let mut request_ids = Vec::new();
+    let mut errors = Vec::new();
+
+    for account in accounts {
+        // Check if already AutoApproved
+        let already_autoapproved = match &account.transfer_request_policy {
+            Some(RequestPolicyRule::AutoApproved) => true,
+            _ => false,
+        };
+
+        if already_autoapproved {
+            ic_cdk::println!("Account '{}' already has AutoApproved policy, skipping", account.name);
+            continue;
+        }
+
+        // Create EditAccount operation
+        let edit_input = EditAccountOperationInput {
+            account_id: account.id.clone(),
+            name: None,
+            change_assets: None,
+            read_permission: None,
+            configs_permission: None,
+            transfer_permission: None,
+            configs_request_policy: None,
+            transfer_request_policy: Some(RequestPolicyRule::AutoApproved),
+        };
+
+        let request_input = CreateRequestInput {
+            operation: RequestOperationInput::EditAccount(edit_input),
+            title: Some(format!("Enable AutoApproved for account: {}", account.name)),
+            summary: Some(format!(
+                "Bootstrap step: Change transfer policy to AutoApproved for account '{}'. \
+                 This allows DAOPad backend to execute community-approved treasury operations without redundant approval step. \
+                 \n\n\
+                 Security: Real governance happens in DAOPad (50%+ voting power, 7-day period), Orbit just executes. \
+                 \n\n\
+                 After approval, backend can create transfer requests that auto-execute after community vote passes.",
+                account.name
+            )),
+            execution_plan: Some(RequestExecutionSchedule::Immediate),
+            expiration_dt: None,
+        };
+
+        // Create request in Orbit
+        let result: Result<(CreateRequestResult,), _> =
+            call(station_id, "create_request", (request_input,))
+            .await;
+
+        match result {
+            Ok((CreateRequestResult::Ok(response),)) => {
+                ic_cdk::println!("Created AutoApproved request for account '{}': {}", account.name, response.request.id);
+                request_ids.push(response.request.id);
+            },
+            Ok((CreateRequestResult::Err(e),)) => {
+                let error_msg = format!("Failed for account '{}': {}", account.name, e.code);
+                ic_cdk::println!("{}", error_msg);
+                errors.push(error_msg);
+            },
+            Err((code, msg)) => {
+                let error_msg = format!("IC error for account '{}': {:?} - {}", account.name, code, msg);
+                ic_cdk::println!("{}", error_msg);
+                errors.push(error_msg);
+            }
+        }
+    }
+
+    // 4. Return results
+    if !errors.is_empty() {
+        return Err(format!(
+            "Created {} request(s) successfully, but encountered {} error(s): {}",
+            request_ids.len(),
+            errors.len(),
+            errors.join("; ")
+        ));
+    }
+
+    Ok(request_ids)
+}
