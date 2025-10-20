@@ -41,6 +41,7 @@ pub enum RequestOperationInput {
     EditUser(EditUserOperationInput),
     EditPermission(EditPermissionOperationInput),
     AddAccount(AddAccountOperationInput),
+    EditAccount(EditAccountOperationInput),
     AddAsset(AddAssetOperationInput),
     EditAsset(EditAssetOperationInput),
     RemoveAsset(RemoveAssetOperationInput),
@@ -441,6 +442,26 @@ pub struct AddAccountOperationInput {
     pub read_permission: Allow,
     pub configs_permission: Allow,
     pub transfer_permission: Allow,
+    pub configs_request_policy: Option<RequestPolicyRule>,
+    pub transfer_request_policy: Option<RequestPolicyRule>,
+}
+
+// Change assets enum for EditAccount operation
+#[derive(CandidType, Deserialize, Debug)]
+pub enum ChangeAssets {
+    ReplaceWith { assets: Vec<String> }, // Asset UUIDs
+    Change { add_assets: Vec<String>, remove_assets: Vec<String> },
+}
+
+// Edit account operation types
+#[derive(CandidType, Deserialize, Debug)]
+pub struct EditAccountOperationInput {
+    pub account_id: String, // UUID
+    pub name: Option<String>,
+    pub change_assets: Option<ChangeAssets>,
+    pub read_permission: Option<Allow>,
+    pub configs_permission: Option<Allow>,
+    pub transfer_permission: Option<Allow>,
     pub configs_request_policy: Option<RequestPolicyRule>,
     pub transfer_request_policy: Option<RequestPolicyRule>,
 }
