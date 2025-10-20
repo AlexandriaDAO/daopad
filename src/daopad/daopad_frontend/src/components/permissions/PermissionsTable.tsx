@@ -354,23 +354,14 @@ function PermissionRow({ permission, getGroupName }) {
           )}
         </div>
 
+        {/* Show all groups with access - simple and clear */}
         <div className="text-sm text-muted-foreground">
-          {risk.groups.length > 0 ? (
-            // Show actual group names instead of UUIDs
-            <span className="text-orange-400">
-              {risk.groups.map(uuid => getGroupName(uuid)).join(', ')} have access
-            </span>
+          {groups.length > 0 ? (
+            <span>Groups: {groups.map(uuid => getGroupName(uuid)).join(', ')}</span>
           ) : (
-            <span>Admin only</span>
+            <span>No groups assigned</span>
           )}
         </div>
-
-        {/* Optionally show all groups with access */}
-        {groups.length > 0 && (
-          <div className="text-xs text-muted-foreground mt-1">
-            Groups: {groups.map(uuid => getGroupName(uuid)).join(', ')}
-          </div>
-        )}
       </div>
       <div className="flex items-center gap-2">
         <Badge variant={authScope === 'Public' ? 'default' : 'secondary'}>
