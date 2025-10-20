@@ -1,5 +1,6 @@
 // Risk calculation for permissions based on security analysis
 const ADMIN_GROUP_ID = '00000000-0000-4000-8000-000000000000';
+const OPERATOR_GROUP_ID = '00000000-0000-4000-8000-000000000001';
 
 const RISK_MATRIX = {
   critical: [
@@ -37,24 +38,28 @@ const RISK_MATRIX = {
 
 export function calculatePermissionRisk(permission) {
   const resourceType = getResourceType(permission.resource);
-  const nonAdminGroups = (permission.allow?.user_groups || [])
-    .filter(g => g !== ADMIN_GROUP_ID);
 
-  if (nonAdminGroups.length === 0) {
+  // Filter out both admin AND operator for "admin only" detection
+  const nonDefaultGroups = (permission.allow?.user_groups || [])
+    .filter(g => g !== ADMIN_GROUP_ID && g !== OPERATOR_GROUP_ID);
+
+  // If only admin/operator have access, it's lower risk
+  if (nonDefaultGroups.length === 0) {
     return { level: 'none', groups: [] };
   }
 
+  // Risk based on resource type AND which groups have access
   if (RISK_MATRIX.critical.includes(resourceType)) {
-    return { level: 'critical', groups: nonAdminGroups };
+    return { level: 'critical', groups: nonDefaultGroups };
   }
   if (RISK_MATRIX.high.includes(resourceType)) {
-    return { level: 'high', groups: nonAdminGroups };
+    return { level: 'high', groups: nonDefaultGroups };
   }
   if (RISK_MATRIX.medium.includes(resourceType)) {
-    return { level: 'medium', groups: nonAdminGroups };
+    return { level: 'medium', groups: nonDefaultGroups };
   }
 
-  return { level: 'low', groups: nonAdminGroups };
+  return { level: 'low', groups: nonDefaultGroups };
 }
 
 function getResourceType(resource) {

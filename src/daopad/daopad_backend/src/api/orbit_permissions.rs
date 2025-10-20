@@ -6,6 +6,8 @@ use crate::types::orbit::{
     EditPermissionOperationInput,
     RequestOperationInput,
     CreateRequestInput, CreateRequestResult,
+    ListUserGroupsInput, ListUserGroupsResult,
+    UserGroup,
 };
 
 /// List all permissions for a station (admin proxy)
@@ -103,6 +105,43 @@ pub async fn create_edit_permission_request(
         }
         CreateRequestResult::Err(e) => {
             Err(format!("Orbit returned error: {:?}", e))
+        }
+    }
+}
+
+/// List all user groups in a station (admin proxy)
+///
+/// Fetches the complete list of user groups including Admin, Operator, and custom groups.
+/// Frontend uses this to map UUIDs to human-readable names in permissions display.
+///
+/// Since Orbit restricts user group queries to admin users only, this backend method
+/// acts as an admin proxy to fetch user groups on behalf of frontend users.
+#[ic_cdk::update]
+pub async fn list_station_user_groups(
+    station_id: Principal
+) -> Result<Vec<UserGroup>, String> {
+    // Construct input for Orbit's list_user_groups API
+    let input = ListUserGroupsInput {
+        search_term: None,
+        paginate: None,
+    };
+
+    // Call Orbit station's list_user_groups
+    let result: (ListUserGroupsResult,) = ic_cdk::call(
+        station_id,
+        "list_user_groups",
+        (input,)
+    )
+    .await
+    .map_err(|e| format!("Failed to list user groups: {:?}", e))?;
+
+    // Handle result and extract groups
+    match result.0 {
+        ListUserGroupsResult::Ok(response) => {
+            Ok(response.user_groups)
+        }
+        ListUserGroupsResult::Err(e) => {
+            Err(format!("Orbit returned error: {}", e))
         }
     }
 }
