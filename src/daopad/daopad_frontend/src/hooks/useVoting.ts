@@ -57,15 +57,19 @@ export function useVoting(tokenId) {
           if (typeof result.error === 'string') {
             errorString = result.error;
           } else if (typeof result.error === 'object' && result.error !== null) {
-            // Handle error variants from backend
-            errorString = JSON.stringify(result.error);
+            // Handle error variants from backend - avoid JSON.stringify for BigInt
+            try {
+              errorString = JSON.stringify(result.error);
+            } catch (e) {
+              // If JSON.stringify fails (e.g., BigInt), convert to string differently
+              errorString = String(result.error);
+            }
           } else {
             errorString = String(result.error);
           }
         }
 
         console.log('[useVoting] Error details:', {
-          originalError: result.error,
           errorString,
           errorType: typeof result.error
         });

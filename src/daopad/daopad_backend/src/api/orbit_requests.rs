@@ -275,6 +275,17 @@ fn parse_requests(
                         .map(|v| parse_approvals(v))
                         .unwrap_or_default();
 
+                    // Extract operation type from the request
+                    let operation = field(fields, "operation")
+                        .and_then(|v| {
+                            // Operation is a variant like { Transfer: {...} }
+                            if let IDLValue::Variant(variant) = v {
+                                label_name(&variant.0.id)
+                            } else {
+                                None
+                            }
+                        });
+
                     let requester_name = info_map.get(&id).cloned();
 
                     Some(OrbitRequestSummary {
@@ -288,6 +299,7 @@ fn parse_requests(
                         created_at,
                         expiration_dt,
                         approvals,
+                        operation,
                     })
                 } else {
                     None
@@ -464,6 +476,7 @@ pub struct OrbitRequestSummary {
     pub created_at: String,
     pub expiration_dt: String,
     pub approvals: Vec<OrbitApprovalSummary>,
+    pub operation: Option<String>,  // Operation type (Transfer, EditUser, etc.)
 }
 
 #[derive(CandidType, Deserialize, Clone, Debug)]
