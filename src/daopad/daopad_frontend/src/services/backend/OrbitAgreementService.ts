@@ -62,11 +62,13 @@ export class OrbitAgreementService extends BackendServiceBase {
       // 6. Get treasury management data (NEW)
       let treasuryResult = null;
       try {
+        console.log('[OrbitAgreement] Fetching treasury data for station:', stationId);
         treasuryResult = await actor.get_treasury_management_data(
           Principal.fromText(stationId)
         );
+        console.log('[OrbitAgreement] Treasury result:', treasuryResult);
       } catch (e) {
-        console.log('Treasury data not available:', e.message);
+        console.error('[OrbitAgreement] Treasury data error:', e);
       }
 
       // Extract and format data
@@ -135,6 +137,7 @@ export class OrbitAgreementService extends BackendServiceBase {
 
       // Process treasury data (NEW)
       if (treasuryResult && treasuryResult.Ok) {
+        console.log('[OrbitAgreement] Processing treasury data, accounts:', treasuryResult.Ok.accounts.length);
         data.treasury = {
           accounts: treasuryResult.Ok.accounts.map(acc => ({
             account_id: acc.account_id,
@@ -160,6 +163,9 @@ export class OrbitAgreementService extends BackendServiceBase {
           })),
           backend_privileges_summary: treasuryResult.Ok.backend_privileges_summary
         };
+        console.log('[OrbitAgreement] Treasury data set:', data.treasury);
+      } else {
+        console.log('[OrbitAgreement] No treasury data - treasuryResult:', treasuryResult);
       }
 
       return {
