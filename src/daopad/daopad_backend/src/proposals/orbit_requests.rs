@@ -84,13 +84,30 @@ pub async fn vote_on_orbit_request(
         return Err(ProposalError::AlreadyVoted(proposal.id));
     }
 
-    // 5. Get voting power
-    let voting_power = get_user_voting_power_for_token(voter, token_id)
-        .await
-        .map_err(|_| ProposalError::NoVotingPower)?;
+    // 5. Get voting power with detailed error handling
+    let voting_power = match get_user_voting_power_for_token(voter, token_id).await {
+        Ok(vp) => vp,
+        Err(e) if e.contains("register") => {
+            return Err(ProposalError::Custom(
+                "You need to register with Kong Locker first. Visit Settings > Kong Locker to register.".to_string()
+            ));
+        },
+        Err(e) if e.contains("Failed to get LP") => {
+            return Err(ProposalError::Custom(
+                "Kong Locker service is temporarily unavailable. Please try again in a few minutes.".to_string()
+            ));
+        },
+        Err(_) => {
+            return Err(ProposalError::Custom(
+                "You need LP tokens to vote. Lock liquidity at kong.land to get voting power.".to_string()
+            ));
+        }
+    };
 
     if voting_power == 0 {
-        return Err(ProposalError::NoVotingPower);
+        return Err(ProposalError::Custom(
+            format!("No voting power for this token. You need to provide liquidity for this token on KongSwap to participate in governance.")
+        ));
     }
 
     // 6. Record vote

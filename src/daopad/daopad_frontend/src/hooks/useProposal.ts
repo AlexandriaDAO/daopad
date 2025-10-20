@@ -59,6 +59,9 @@ function inferRequestType(operationType) {
     'AddAddressBookEntry': { AddAddressBookEntry: null },
     'EditAddressBookEntry': { EditAddressBookEntry: null },
     'RemoveAddressBookEntry': { RemoveAddressBookEntry: null },
+
+    // Handle Unknown as a fallback type - default to Transfer for now
+    'Unknown': { Transfer: null },
   };
 
   return typeMap[operationType] || { Other: operationType };
@@ -106,26 +109,43 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
 
   // Auto-create proposal if it doesn't exist
   const ensureProposal = useCallback(async () => {
-    if (!identity || !tokenId || !orbitRequestId || !operationType) return;
+    if (!identity || !tokenId || !orbitRequestId || !operationType) {
+      console.log('[useProposal] Missing required params for ensureProposal:', {
+        hasIdentity: !!identity,
+        tokenId,
+        orbitRequestId,
+        operationType
+      });
+      return;
+    }
 
     try {
+      console.log('[useProposal] Creating proposal for:', {
+        tokenId,
+        orbitRequestId,
+        operationType
+      });
+
       const backend = new DAOPadBackendService(identity);
       const actor = await backend.getActor();
 
       // Infer request type from operation string
       const requestType = inferRequestType(operationType);
+      console.log('[useProposal] Request type:', requestType);
 
-      await actor.ensure_proposal_for_request(
+      const result = await actor.ensure_proposal_for_request(
         Principal.fromText(tokenId),
         orbitRequestId,
         requestType
       );
 
+      console.log('[useProposal] Proposal created:', result);
+
       // Refresh proposal data
       await fetchProposal();
     } catch (err) {
-      console.error('Failed to create proposal:', err);
-      setError(err.message);
+      console.error('[useProposal] Failed to create proposal:', err);
+      setError(err.message || 'Failed to create proposal');
     }
   }, [identity, tokenId, orbitRequestId, operationType, fetchProposal]);
 

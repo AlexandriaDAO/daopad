@@ -571,6 +571,7 @@ type ProposalError = variant {
   InvalidTransferDetails : text;
   NotActive;
   NotFound : nat64;
+  Custom : text;
   NoStationLinked : principal;
   IcCallFailed : record { code : int32; message : text };
   OrbitError : record { code : text; message : text; details : opt text };

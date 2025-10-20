@@ -39,6 +39,7 @@ const UnifiedRequests = ({ tokenId, identity }) => {
     hasMore: false
   });
   const [showOnlyPending, setShowOnlyPending] = useState(false);
+  const [selectedRequests, setSelectedRequests] = useState([]);
 
   const { toast } = useToast();
 
@@ -167,15 +168,30 @@ const UnifiedRequests = ({ tokenId, identity }) => {
       await vote(orbitRequestId, voteChoice);
       // Refresh requests to show updated vote counts
       await fetchRequests();
-    } catch (err) {
-      // Error handling is done in VoteButtons component
+    } catch (error) {
+      // Improved structured error logging
       console.error('[UnifiedRequests] Vote error:', {
-        error: err,
-        message: err?.message,
-        errorString: String(err),
+        error: error,
+        code: error.code || 'UNKNOWN',
+        message: error.message || error.toString(),
+        canRetry: error.canRetry || false,
         requestId: orbitRequestId,
-        vote: voteChoice
+        vote: voteChoice,
+        timestamp: new Date().toISOString()
       });
+
+      // User-friendly error handling based on error type
+      if (error.code === 'SERVICE_UNAVAILABLE') {
+        setError('Kong Locker service is down. Retrying...');
+        // Auto-retry for service unavailable errors
+        setTimeout(() => {
+          handleVote(orbitRequestId, voteChoice);
+        }, 3000);
+      } else if (error.message && !error.code) {
+        // For non-structured errors, show the message
+        setError(error.message);
+      }
+      // Structured errors are handled by VoteButtons component
     }
   };
 
