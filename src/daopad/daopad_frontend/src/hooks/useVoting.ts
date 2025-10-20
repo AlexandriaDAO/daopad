@@ -37,7 +37,7 @@ export function useVoting(tokenId) {
     fetchVotingPower();
   }, [fetchVotingPower]);
 
-  // Vote on an Orbit request
+  // Vote on an Orbit request with improved error handling
   const vote = useCallback(async (orbitRequestId, voteChoice) => {
     if (!identity) throw new Error('Not authenticated');
 
@@ -51,12 +51,50 @@ export function useVoting(tokenId) {
       );
 
       if (!result.success) {
-        throw new Error(result.error || 'Failed to submit vote');
+        // Parse specific error types
+        const error = result.error || 'Vote failed';
+
+        let errorCode = 'UNKNOWN_ERROR';
+        let canRetry = false;
+
+        if (error.includes('register with Kong Locker')) {
+          errorCode = 'KONG_LOCKER_NOT_REGISTERED';
+        } else if (error.includes('temporarily unavailable')) {
+          errorCode = 'SERVICE_UNAVAILABLE';
+          canRetry = true;
+        } else if (error.includes('No voting power')) {
+          errorCode = 'NO_VOTING_POWER';
+        } else if (error.includes('Already voted')) {
+          errorCode = 'ALREADY_VOTED';
+        } else if (error.includes('expired')) {
+          errorCode = 'PROPOSAL_EXPIRED';
+        }
+
+        // Throw structured error object
+        throw {
+          code: errorCode,
+          message: getReadableError(errorCode, error),
+          canRetry,
+          originalError: error
+        };
       }
 
       return { success: true };
     } catch (error) {
-      throw new Error(error.message || 'Failed to submit vote');
+      console.error('[useVoting] Vote error:', error);
+
+      // If already structured, pass through
+      if (error.code) {
+        throw error;
+      }
+
+      // Otherwise structure it
+      throw {
+        code: 'UNKNOWN_ERROR',
+        message: error.message || 'Failed to submit vote',
+        canRetry: false,
+        originalError: error
+      };
     } finally {
       setVoting(false);
     }
@@ -69,4 +107,18 @@ export function useVoting(tokenId) {
     fetchVotingPower,
     loadingVP
   };
+}
+
+// Helper function to convert error codes to user-friendly messages
+function getReadableError(code: string, fallback: string): string {
+  const errorMap = {
+    'KONG_LOCKER_NOT_REGISTERED': 'Please register with Kong Locker in Settings first',
+    'SERVICE_UNAVAILABLE': 'Service temporarily down. Please try again.',
+    'NO_VOTING_POWER': 'You need LP tokens for this token to vote',
+    'ALREADY_VOTED': 'You have already voted on this proposal',
+    'PROPOSAL_EXPIRED': 'This proposal has expired',
+    'UNKNOWN_ERROR': fallback || 'Vote failed. Please try again.'
+  };
+
+  return errorMap[code] || fallback;
 }

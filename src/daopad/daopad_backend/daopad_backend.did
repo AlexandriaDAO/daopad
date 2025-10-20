@@ -565,6 +565,7 @@ type ProposalError = variant {
   InvalidTransferDetails : text;
   NotActive;
   NotFound : nat64;
+  Custom : text;
   NoStationLinked : principal;
   IcCallFailed : record { code : int32; message : text };
   OrbitError : record { code : text; message : text; details : opt text };
@@ -1047,6 +1048,8 @@ service : () -> {
   // 
   // Fetches a single permission by resource type from Orbit Station.
   get_station_permission : (principal, Resource) -> (Result_23);
+  // Get current test mode status with details
+  get_test_mode_status : () -> (text) query;
   // Get total voting power for a token across all Kong Locker users
   // 
   // This sums up the voting power of all registered users for a specific token.
@@ -1062,6 +1065,8 @@ service : () -> {
     ) query;
   health_check : () -> (text) query;
   initialize_default_thresholds : (principal) -> (Result);
+  // Check if test mode is currently enabled
+  is_test_mode : () -> (bool) query;
   list_active_proposals : () -> (vec OrbitLinkProposal) query;
   list_address_book_entries : (ListAddressBookEntriesInput) -> (
       ListAddressBookEntriesResult,
@@ -1128,6 +1133,9 @@ service : () -> {
       text,
       opt text,
     ) -> (Result_1);
+  // Enable or disable test mode for voting
+  // Only allowed in non-mainnet environments or by authorized admins
+  set_test_mode : (bool) -> (Result);
   set_voting_thresholds : (principal, VotingThresholds) -> (Result);
   snapshot_orbit_canister_request : (
       principal,

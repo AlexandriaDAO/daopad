@@ -223,6 +223,9 @@ pub enum ProposalError {
     #[error("Authentication required")]
     AuthRequired,
 
+    #[error("{0}")]
+    Custom(String),
+
     #[error("An active proposal already exists for this token. Please wait for it to complete before creating a new one.")]
     ActiveProposalExists,
 

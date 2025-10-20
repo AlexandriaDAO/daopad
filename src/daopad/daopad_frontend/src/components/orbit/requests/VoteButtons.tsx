@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 export function VoteButtons({
   proposalId,
@@ -13,28 +14,80 @@ export function VoteButtons({
   hasVoted,
   onVoteComplete
 }) {
+  const navigate = useNavigate();
   const [voting, setVoting] = useState(null); // 'yes' | 'no' | null
   const [localHasVoted, setLocalHasVoted] = useState(hasVoted);
+  const [voteError, setVoteError] = useState(null);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const handleVote = async (vote) => {
     setVoting(vote ? 'yes' : 'no');
+    setVoteError(null);
 
     try {
       await onVote(orbitRequestId, vote);
-      toast.success(`${vote ? "Voted Yes" : "Voted No"} - Your voting power: ${userVotingPower.toLocaleString()}`);
+
+      // Only set success state if vote actually succeeded
+      toast.success(`Vote recorded! ${vote ? "Yes" : "No"} with ${userVotingPower.toLocaleString()} VP`);
       setLocalHasVoted(true);
-      if (onVoteComplete) onVoteComplete();
-    } catch (error) {
-      // Handle AlreadyVoted error gracefully
-      if (error.message?.includes('AlreadyVoted') || error.message?.includes('already voted')) {
-        toast.info("You have already cast your vote on this proposal");
-        setLocalHasVoted(true);
-      } else {
-        toast.error(error.message || "Failed to vote");
+
+      if (onVoteComplete) {
+        setTimeout(onVoteComplete, 500); // Small delay for UI feedback
       }
+    } catch (error) {
+      setVoteError(error);
+
+      // Handle specific error types
+      if (error.code === 'ALREADY_VOTED') {
+        setLocalHasVoted(true);
+        toast.info(error.message);
+      } else if (error.code === 'KONG_LOCKER_NOT_REGISTERED') {
+        toast.error(
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            <div>
+              <p>{error.message}</p>
+              <button
+                onClick={() => navigate('/settings/kong-locker')}
+                className="mt-1 text-xs underline hover:text-primary"
+              >
+                Go to Settings →
+              </button>
+            </div>
+          </div>
+        );
+      } else if (error.canRetry) {
+        toast.warning(
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            <div>
+              <p>{error.message}</p>
+              <button
+                onClick={() => retryVote(vote)}
+                className="mt-1 text-xs underline hover:text-primary"
+              >
+                Retry Vote →
+              </button>
+            </div>
+          </div>
+        );
+      } else {
+        toast.error(error.message || 'Vote failed');
+      }
+
+      // Don't set localHasVoted unless actually voted!
     } finally {
       setVoting(null);
     }
+  };
+
+  // Retry mechanism for temporary failures
+  const retryVote = async (vote) => {
+    setIsRetrying(true);
+    toast.info("Retrying vote...");
+    await new Promise(r => setTimeout(r, 2000)); // Wait 2s
+    await handleVote(vote);
+    setIsRetrying(false);
   };
 
   if (hasVoted || localHasVoted) {

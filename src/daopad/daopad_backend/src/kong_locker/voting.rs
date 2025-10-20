@@ -1,5 +1,6 @@
 use crate::kong_locker::registration::get_kong_locker_for_user;
 use crate::types::UserBalancesReply;
+use crate::utils::is_test_mode;
 use candid::Principal;
 use ic_cdk::call;
 
@@ -9,10 +10,31 @@ pub async fn get_user_voting_power_for_token(
     caller: Principal,
     token_canister_id: Principal,
 ) -> Result<u64, String> {
+    // Check test mode first for development
+    if is_test_mode() {
+        return Ok(get_test_voting_power(caller));
+    }
+
     let kong_locker_principal =
         get_kong_locker_for_user(caller).ok_or("Must register Kong Locker canister first")?;
 
     calculate_voting_power_for_token(kong_locker_principal, token_canister_id).await
+}
+
+// Provide test voting power for development and testing
+fn get_test_voting_power(user: Principal) -> u64 {
+    let user_str = user.to_string();
+
+    // Give different test users different VP for testing various scenarios
+    if user_str.contains("daopad") {
+        1_000_000  // 1M VP for daopad identity
+    } else if user_str.contains("test") {
+        500_000    // 500k VP for test users
+    } else if user_str.contains("admin") {
+        750_000    // 750k VP for admin users
+    } else {
+        100_000    // 100k VP for everyone else in test mode
+    }
 }
 
 pub async fn calculate_voting_power_for_token(
