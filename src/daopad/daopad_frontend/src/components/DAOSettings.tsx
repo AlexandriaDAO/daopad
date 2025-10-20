@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Principal } from '@dfinity/principal';
 import type { Identity } from '@dfinity/agent';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Copy, AlertCircle } from 'lucide-react';
+import { Copy, AlertCircle, Shield, Lock } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { DAOPadBackendService } from '../services/daopadBackend';
+import PermissionsPage from '../pages/PermissionsPage';
+import SecurityDashboard from './security/SecurityDashboard';
 
 interface DAOSettingsProps {
   tokenCanisterId: Principal | string;
   identity: Identity | null;
+  stationId?: string;
+  tokenSymbol?: string;
+  tokenId?: string;
 }
 
 interface SystemInfo {
@@ -27,10 +32,12 @@ type CycleStrategy =
   | { MintFromNativeToken: { account_name?: [string]; account_id: string } }
   | { WithdrawFromCyclesLedger: { account_name?: [string]; account_id: string } };
 
-const DAOSettings: React.FC<DAOSettingsProps> = ({ tokenCanisterId, identity }) => {
+const DAOSettings: React.FC<DAOSettingsProps> = ({ tokenCanisterId, identity, stationId, tokenSymbol, tokenId }) => {
     const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const [showPermissions, setShowPermissions] = useState<boolean>(false);
+    const [showSecurity, setShowSecurity] = useState<boolean>(false);
 
     useEffect(() => {
         const fetchSystemInfo = async () => {
@@ -247,6 +254,73 @@ const DAOSettings: React.FC<DAOSettingsProps> = ({ tokenCanisterId, identity }) 
                             </div>
                         </div>
                     </CardContent>
+                </Card>
+            )}
+
+            {/* Permissions Section (Collapsible) */}
+            {stationId && (
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Shield className="h-5 w-5" />
+                                <CardTitle>Permissions</CardTitle>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowPermissions(!showPermissions)}
+                            >
+                                {showPermissions ? 'Hide' : 'Load'} Permissions
+                            </Button>
+                        </div>
+                        <CardDescription>
+                            User groups, roles, and access control settings
+                        </CardDescription>
+                    </CardHeader>
+                    {showPermissions && (
+                        <CardContent>
+                            <PermissionsPage
+                                tokenId={tokenId}
+                                stationId={stationId}
+                                identity={identity}
+                            />
+                        </CardContent>
+                    )}
+                </Card>
+            )}
+
+            {/* Security Section (Collapsible) */}
+            {stationId && (
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Lock className="h-5 w-5" />
+                                <CardTitle>Security Audit</CardTitle>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowSecurity(!showSecurity)}
+                            >
+                                {showSecurity ? 'Hide' : 'Run'} Security Checks
+                            </Button>
+                        </div>
+                        <CardDescription>
+                            Comprehensive DAO security analysis and admin controls
+                        </CardDescription>
+                    </CardHeader>
+                    {showSecurity && (
+                        <CardContent>
+                            <SecurityDashboard
+                                stationId={stationId}
+                                tokenSymbol={tokenSymbol}
+                                identity={identity}
+                                tokenId={tokenId}
+                            />
+                        </CardContent>
+                    )}
                 </Card>
             )}
         </div>
