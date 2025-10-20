@@ -912,6 +912,9 @@ service : () -> {
       text,
       opt text,
     ) -> (Result_1);
+  // Check if treasury accounts have AutoApproved transfer policies
+  // This is CRITICAL for DAOPad liquid democracy to work
+  check_account_autoapproved_status : (principal) -> (Result_2);
   // Check addressbook injection with allowlisted policies
   check_addressbook_injection : (principal) -> (Result_2);
   // Check admin control layer: admin count, backend admin status, operator group size
@@ -1161,7 +1164,7 @@ service : () -> {
     ) -> (Result_1);
   // Perform all security checks in one call
   // 
-  // This is a convenience method that calls all 16 individual security check methods
+  // This is a convenience method that calls all 17 individual security check methods
   // and combines their results into a single response. This is useful for:
   // - Getting a complete security overview in one call
   // - Frontend components that need all checks at once

@@ -12,6 +12,7 @@ use crate::types::orbit::{
     PaginationInput,
     RequestPoliciesDetails, RequestPolicyInfo, RequestSpecifier,
     ListNamedRulesResult, ListNamedRulesInput, NamedRule,
+    Account, ListAccountsInput, ListAccountsResult,
 };
 
 const ADMIN_GROUP_ID: &str = "00000000-0000-4000-8000-000000000000";
@@ -646,27 +647,40 @@ fn check_proposal_policies_impl(policies: &Vec<crate::types::orbit::RequestPolic
         });
     }
 
-    // Check for auto-approvals (warning for dev)
+    // CORRECTED: AutoApproved is GOOD for DAOPad architecture
     if auto_approved_count > 0 {
         checks.push(SecurityCheck {
             category: "Request Policies".to_string(),
             name: "Auto-Approval Policies".to_string(),
-            status: CheckStatus::Warn,
-            message: format!("{} policies are auto-approved (development mode)", auto_approved_count),
-            severity: Some(Severity::Low),
-            details: Some(format!("Auto-approved policies skip all voting - OK for testing, but should be changed for production")),
-            recommendation: Some("Before going live, change auto-approved policies to require Admin approval".to_string()),
+            status: CheckStatus::Pass,
+            message: format!("{} policies use AutoApproved (liquid democracy mode)", auto_approved_count),
+            severity: Some(Severity::None),
+            details: Some(
+                "AutoApproved policies enable DAOPad's liquid democracy architecture. \
+                 Community votes in DAOPad (50%+ threshold, 7-day period), then Orbit \
+                 executes automatically. Backend cannot approve its own requests \
+                 (separation of duties), so AutoApproved is required.".to_string()
+            ),
+            recommendation: None,
             related_permissions: None,
         });
     } else {
+        // WARN if NOT using AutoApproved (unusual for DAOPad)
         checks.push(SecurityCheck {
             category: "Request Policies".to_string(),
             name: "Auto-Approval Policies".to_string(),
-            status: CheckStatus::Pass,
-            message: "No auto-approved policies (production-ready)".to_string(),
-            severity: Some(Severity::None),
-            details: None,
-            recommendation: None,
+            status: CheckStatus::Warn,
+            message: "No auto-approved policies detected".to_string(),
+            severity: Some(Severity::Low),
+            details: Some(
+                "DAOPad typically uses AutoApproved policies for request operations. \
+                 Without AutoApproved, requests may require redundant manual approval \
+                 in Orbit UI.".to_string()
+            ),
+            recommendation: Some(
+                "Check if AutoApproved is needed for your account transfer policies. \
+                 See Security tab for account-specific status.".to_string()
+            ),
             related_permissions: None,
         });
     }
@@ -1164,14 +1178,14 @@ fn check_remove_operations_impl(
 
 /// Perform all security checks in one call
 ///
-/// This is a convenience method that calls all 16 individual security check methods
+/// This is a convenience method that calls all 17 individual security check methods
 /// and combines their results into a single response. This is useful for:
 /// - Getting a complete security overview in one call
 /// - Frontend components that need all checks at once
 /// - Simplifying frontend code by providing a single endpoint
 #[ic_cdk::update]
 pub async fn perform_all_security_checks(station_id: Principal) -> Result<Vec<SecurityCheck>, String> {
-    // Call all 16 individual checks sequentially (8 existing + 8 new bypass detection)
+    // Call all 17 individual checks sequentially (8 existing + 8 bypass detection + 1 treasury setup)
     // Note: These are already async and make inter-canister calls
 
     // Existing 8 checks
@@ -1193,6 +1207,9 @@ pub async fn perform_all_security_checks(station_id: Principal) -> Result<Vec<Se
     let snapshot_result = check_snapshot_operations(station_id).await;
     let namedrule_result = check_named_rule_bypass(station_id).await;
     let remove_result = check_remove_operations(station_id).await;
+
+    // NEW: Treasury setup check (account AutoApproved status)
+    let account_autoapproved_result = check_account_autoapproved_status(station_id).await;
 
     // Combine all checks into a single vector
     let mut all_checks = Vec::new();
@@ -1359,7 +1376,124 @@ pub async fn perform_all_security_checks(station_id: Principal) -> Result<Vec<Se
         )),
     }
 
+    match account_autoapproved_result {
+        Ok(checks) => all_checks.extend(checks),
+        Err(ref e) => all_checks.push(create_error_check(
+            "Treasury Setup",
+            "Account AutoApproved Status",
+            Severity::Critical,
+            e
+        )),
+    }
+
     Ok(all_checks)
+}
+
+// ===== CHECK CATEGORY 17: TREASURY SETUP - ACCOUNT AUTOAPPROVED STATUS =====
+
+/// Check if treasury accounts have AutoApproved transfer policies
+/// This is CRITICAL for DAOPad liquid democracy to work
+#[ic_cdk::update]
+pub async fn check_account_autoapproved_status(
+    station_id: Principal
+) -> Result<Vec<SecurityCheck>, String> {
+    // Fetch accounts from Orbit Station
+    let accounts = fetch_accounts(station_id).await?;
+
+    // Analyze AutoApproved status
+    Ok(check_account_autoapproved_impl(&accounts))
+}
+
+fn check_account_autoapproved_impl(accounts: &Vec<Account>) -> Vec<SecurityCheck> {
+    let mut checks = Vec::new();
+
+    // Categorize accounts
+    let mut autoapproved_accounts = Vec::new();
+    let mut non_autoapproved_accounts = Vec::new();
+
+    for account in accounts {
+        match &account.transfer_request_policy {
+            Some(RequestPolicyRule::AutoApproved) => {
+                autoapproved_accounts.push(account.name.clone());
+            },
+            _ => {
+                non_autoapproved_accounts.push(account.name.clone());
+            }
+        }
+    }
+
+    // Determine status
+    if non_autoapproved_accounts.is_empty() {
+        // ALL accounts configured - GOOD
+        checks.push(SecurityCheck {
+            category: "Treasury Setup".to_string(),
+            name: "Account AutoApproved Status".to_string(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "All {} account(s) configured with AutoApproved policies",
+                autoapproved_accounts.len()
+            ),
+            severity: Some(Severity::None),
+            details: Some(
+                "Treasury accounts are ready for liquid democracy. \
+                 Community votes in DAOPad, backend executes approved operations. \
+                 No manual Orbit approval needed.".to_string()
+            ),
+            recommendation: None,
+            related_permissions: None,
+        });
+    } else {
+        // SOME accounts NOT configured - CRITICAL
+        checks.push(SecurityCheck {
+            category: "Treasury Setup".to_string(),
+            name: "Account AutoApproved Status".to_string(),
+            status: CheckStatus::Fail,
+            message: format!(
+                "{} account(s) NOT configured - treasury operations will fail",
+                non_autoapproved_accounts.len()
+            ),
+            severity: Some(Severity::Critical),
+            details: Some(format!(
+                "Accounts needing setup: {}\n\n\
+                 WHY THIS MATTERS:\n\
+                 - Backend creates transfer requests after community vote passes\n\
+                 - Backend CANNOT approve its own requests (Orbit separation of duties)\n\
+                 - Without AutoApproved, requests stuck 'Pending' forever\n\
+                 - Users see failed transfers with no explanation\n\n\
+                 SECURITY NOTE:\n\
+                 This is NOT a security risk. Real governance happens in DAOPad \
+                 (50%+ vote required). AutoApproved just tells Orbit to execute \
+                 after the vote passes.",
+                non_autoapproved_accounts.join(", ")
+            )),
+            recommendation: Some(
+                "Use the setup wizard below to configure AutoApproved policies.".to_string()
+            ),
+            related_permissions: None,
+        });
+    }
+
+    checks
+}
+
+// Helper: Fetch accounts from Orbit Station
+async fn fetch_accounts(station_id: Principal) -> Result<Vec<Account>, String> {
+    let input = ListAccountsInput {
+        search_term: None,
+        paginate: None,
+    };
+
+    let result: Result<(ListAccountsResult,), _> = ic_cdk::call(
+        station_id,
+        "list_accounts",
+        (input,)
+    ).await;
+
+    match result {
+        Ok((ListAccountsResult::Ok { accounts, .. },)) => Ok(accounts),
+        Ok((ListAccountsResult::Err(e),)) => Err(format!("Orbit error: {:?}", e)),
+        Err((code, msg)) => Err(format!("Failed to list accounts: {:?} - {}", code, msg)),
+    }
 }
 
 // ===== PUBLIC DASHBOARD ENDPOINT =====
