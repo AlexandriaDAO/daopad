@@ -1,4 +1,4 @@
-import { OPERATION_THRESHOLDS } from '../constants/operationThresholds';
+import { OPERATION_THRESHOLDS, getOperationsByCategory, getCategories } from '../constants/operationThresholds';
 
 export const generateMarkdown = (data, tokenSymbol, stationId) => {
   const formatDate = () => new Date().toLocaleDateString('en-US', {
@@ -50,15 +50,68 @@ ${data.security?.overall_status === 'high_risk' ? `
 
 **2.3 Voting Rights.** Each member's voting weight is proportional to their Kong Locker voting power. Proposals are executed when the required threshold is reached.
 
-## ARTICLE III: VOTING THRESHOLDS BY OPERATION TYPE
+## ARTICLE III: CONDITIONS FOR AMENDING OPERATING AGREEMENT
 
-**3.1 Risk-Based Thresholds.** Operations require different approval thresholds based on risk level:
+**3.1 Amendment Authority.** This Operating Agreement is a living document that reflects the on-chain state of the ${tokenSymbol} Treasury DAO. The Agreement can be amended only through the decentralized governance process according to the following principles:
 
-| Operation | Threshold | Risk | Duration |
-|-----------|-----------|------|----------|
-${OPERATION_THRESHOLDS.map(op =>
-  `| ${op.name} | ${op.threshold}% | ${op.risk} | ${op.duration}h |`
+- **Community Voting Required:** All amendments require approval through weighted voting based on locked liquidity provider (LP) token value
+- **Voting Power Formula:** Each member's voting power equals USD value of locked LP tokens × 100 (queried from Kong Locker)
+- **Backend as Executor:** The DAOPad backend canister serves as the sole executor of approved amendments in Orbit Station
+- **No Unilateral Control:** No individual or centralized authority can modify agreement terms without community approval
+- **Smart Contract Enforcement:** All amendments are executed autonomously by smart contracts upon reaching voting thresholds
+
+**3.2 Amendment Categories and Requirements.** The following ${getCategories().length} categories of operations can modify this Agreement. Each operation has specific approval requirements based on risk level:
+
+${getCategories().map(category => {
+  const operations = getOperationsByCategory(category.name);
+  if (operations.length === 0) return '';
+
+  return `### ${category.name} Operations (${operations.length})
+*${category.description}*
+
+| Operation | Modifies | Threshold | Duration | Examples |
+|-----------|----------|-----------|----------|----------|
+${operations.map(op =>
+  `| ${op.name} | ${op.modifies.slice(0, 2).join('; ')}${op.modifies.length > 2 ? '...' : ''} | ${op.threshold}% | ${op.duration}h | ${op.examples.slice(0, 2).join('; ')} |`
 ).join('\n')}
+`;
+}).join('\n')}
+
+**3.3 Amendment Process.** All amendments follow a standardized on-chain governance process:
+
+1. **Proposal Creation:** Any token holder with sufficient voting power creates an on-chain proposal in DAOPad specifying the desired amendment
+2. **Voting Period:** Community members vote for or against the proposal during the designated deliberation period (24-72 hours depending on operation risk)
+3. **Vote Weighting:** Each vote is weighted by the member's voting power, calculated as USD value of locked LP tokens × 100 (queried from Kong Locker)
+4. **Threshold Check:** At the end of the voting period, the proposal passes if yes votes exceed the required threshold percentage of total voting power
+5. **Automatic Execution:** Once approved, the DAOPad backend canister autonomously executes the amendment by calling the appropriate method in Orbit Station
+6. **Agreement Update:** This Operating Agreement automatically reflects the new on-chain state, as it is derived from smart contract data
+7. **Irreversibility:** Most amendments (especially transfers and deletions) are irreversible and require careful deliberation before approval
+
+**3.4 Voting Threshold Rationale.** Voting thresholds are calibrated to balance operational efficiency with security and decentralization:
+
+- **90% - Critical System Operations:** System upgrades and disaster recovery changes require near-unanimous consent due to their impact on the entire DAO infrastructure
+- **75% - Treasury Operations:** Fund transfers and account modifications require supermajority approval to prevent theft or misuse of DAO assets
+- **70% - Governance Operations:** Permission and policy changes require strong consensus to prevent centralization of control
+- **60% - External Canister Operations:** Canister management operations require majority-plus approval to ensure careful oversight of DAO-controlled infrastructure
+- **50% - User Management:** Member and group operations require simple majority to allow efficient organizational changes while preventing unilateral control
+- **40% - Asset Management:** Asset registry operations have lower thresholds as they don't directly move funds, only configure asset types
+- **30% - Address Book Operations:** Trusted address management has the lowest threshold as it's primarily operational convenience and doesn't grant spending authority
+
+**3.5 Immutable Provisions.** The following core principles cannot be amended through the on-chain governance process and would require deploying new smart contracts and forming a new legal entity:
+
+- **Decentralized Governance Requirement:** The DAO cannot revert to centralized control or unilateral decision-making without community approval
+- **Smart Contract Execution:** All decisions must be executed by autonomous smart contracts, not manual human intervention
+- **Voting Power Based on Locked Liquidity:** Voting power must remain tied to locked LP token value, preventing arbitrary power allocation
+- **On-Chain Transparency:** All operations, votes, and state changes must be recorded on the Internet Computer blockchain
+- **Wyoming DAO LLC Legal Structure:** Changing the legal entity type requires forming a new company; the existing LLC structure is fixed
+- **Internet Computer Platform:** Migrating to a different blockchain would require new smart contracts and cannot be done via amendment
+
+**3.6 Emergency Provisions.** In the event of catastrophic failure or security compromise, the following emergency procedures apply:
+
+- **Disaster Recovery Committee:** If configured (via 90% threshold vote), a designated committee can restore the DAO from backup snapshots without standard voting if the Station becomes inaccessible
+- **System Restore:** Snapshot restoration requires 90% approval in normal circumstances, but the Disaster Recovery Committee can act independently in true emergencies
+- **Emergency Threshold:** The Disaster Recovery Committee itself requires quorum vote (specified in committee configuration) to execute emergency operations
+- **No Bypass of Governance:** Emergency provisions do not allow bypassing governance for normal operations, only for disaster recovery when the standard process is unavailable
 
 ## ARTICLE IV: REQUEST POLICIES
 
