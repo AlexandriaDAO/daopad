@@ -17,7 +17,7 @@ pub use types::orbit::{
     AccountBalance, ListAccountsResult,
     PaginationInput, Resource, SystemInfoResponse,
     // User types
-    UserDTO,
+    UserDTO, UserGroup,
     // External canister types
     ChangeExternalCanisterOperationInput, ConfigureExternalCanisterOperationInput,
     CreateExternalCanisterOperationInput, ExternalCanister, ExternalCanisterCallerMethodCallInput,

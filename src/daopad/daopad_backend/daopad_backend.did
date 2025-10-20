@@ -758,9 +758,10 @@ type Result_31 = variant { Ok : ListOrbitRequestsResponse; Err : text };
 type Result_32 = variant { Ok : vec UserDTO; Err : text };
 type Result_33 = variant { Ok : vec Asset; Err : text };
 type Result_34 = variant { Ok : vec Permission; Err : text };
-type Result_35 = variant { Ok : EnhancedSecurityDashboard; Err : text };
-type Result_36 = variant { Ok; Err : text };
-type Result_37 = variant { Ok; Err : ProposalError };
+type Result_35 = variant { Ok : vec UserGroup; Err : text };
+type Result_36 = variant { Ok : EnhancedSecurityDashboard; Err : text };
+type Result_37 = variant { Ok; Err : text };
+type Result_38 = variant { Ok; Err : ProposalError };
 type Result_4 = variant { Ok : nat32; Err : text };
 type Result_5 = variant { Ok : CreateAccountResponse; Err : text };
 type Result_6 = variant { Ok : nat64; Err : ProposalError };
@@ -1128,6 +1129,14 @@ service : () -> {
   // Since Orbit restricts permission queries to admin users only, this backend method
   // acts as an admin proxy to fetch permissions on behalf of frontend users.
   list_station_permissions : (principal, opt vec Resource) -> (Result_34);
+  // List all user groups in a station (admin proxy)
+  // 
+  // Fetches the complete list of user groups including Admin, Operator, and custom groups.
+  // Frontend uses this to map UUIDs to human-readable names in permissions display.
+  // 
+  // Since Orbit restricts user group queries to admin users only, this backend method
+  // acts as an admin proxy to fetch user groups on behalf of frontend users.
+  list_station_user_groups : (principal) -> (Result_35);
   list_treasury_assets : (principal) -> (Result_33);
   monitor_orbit_canister_request : (
       principal,
@@ -1148,7 +1157,7 @@ service : () -> {
   // This is the public-facing endpoint that frontend calls.
   // It combines perform_all_security_checks + build_dashboard to return
   // the full EnhancedSecurityDashboard with decentralization score.
-  perform_security_check : (principal) -> (Result_35);
+  perform_security_check : (principal) -> (Result_36);
   propose_orbit_station_link : (principal, principal) -> (Result_17);
   prune_orbit_canister_snapshots_request : (
       principal,
@@ -1173,13 +1182,13 @@ service : () -> {
     ) -> (Result_1);
   unregister_kong_locker : () -> (Result);
   validate_account_name : (principal, text) -> (Result_28);
-  vote_on_orbit_proposal : (nat64, bool) -> (Result_36);
+  vote_on_orbit_proposal : (nat64, bool) -> (Result_37);
   // Vote on ANY Orbit request (not just treasury transfers)
   // When threshold is reached, executes immediately by approving the Orbit request.
-  vote_on_orbit_request : (principal, text, bool) -> (Result_37);
+  vote_on_orbit_request : (principal, text, bool) -> (Result_38);
   // Vote on a treasury proposal
   // 
   // When threshold is reached, executes immediately by approving the Orbit request.
   // Follows the same pattern as orbit_link.rs vote_on_proposal.
-  vote_on_treasury_proposal : (nat64, bool) -> (Result_37);
+  vote_on_treasury_proposal : (nat64, bool) -> (Result_38);
 }

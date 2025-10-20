@@ -10,12 +10,26 @@ import { calculatePermissionRisk } from '../../utils/permissionRisk';
 // Debug flag - set to false in production
 const DEBUG = import.meta.env.DEV || import.meta.env.VITE_DEBUG_PERMISSIONS;
 
-export default function PermissionsTable({ stationId, actor }) {
+export default function PermissionsTable({ stationId, actor, userGroups = [], loadingGroups = false }) {
   const [permissions, setPermissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('treasury');
   const [riskFilter, setRiskFilter] = useState('all');
   const [error, setError] = useState(null);
+
+  // Create lookup map for fast UUID→name conversion
+  const groupNameMap = useMemo(() => {
+    const map = new Map();
+    userGroups.forEach(group => {
+      map.set(group.id, group.name);
+    });
+    return map;
+  }, [userGroups]);
+
+  // Helper function to get group name from UUID
+  const getGroupName = useCallback((uuid) => {
+    return groupNameMap.get(uuid) || uuid; // Fallback to UUID if not found
+  }, [groupNameMap]);
 
   const loadPermissions = useCallback(async (cancelled = { current: false }) => {
     // Add debug logging
@@ -295,7 +309,7 @@ export default function PermissionsTable({ stationId, actor }) {
               const authScope = perm.allow?.auth_scope ? Object.keys(perm.allow.auth_scope)[0] : 'unknown';
               const key = `${resourceType}-${authScope}-${JSON.stringify(perm.allow?.users || [])}-${JSON.stringify(perm.allow?.user_groups || [])}`;
 
-              return <PermissionRow key={key} permission={perm} />;
+              return <PermissionRow key={key} permission={perm} getGroupName={getGroupName} />;
             })}
           </div>
         )}
@@ -305,7 +319,7 @@ export default function PermissionsTable({ stationId, actor }) {
 }
 
 // PermissionRow component with risk indicators
-function PermissionRow({ permission }) {
+function PermissionRow({ permission, getGroupName }) {
   const resourceName = getResourceName(permission.resource);
   const authScope = getAuthScope(permission.allow);
   const groups = permission?.allow?.user_groups || [];
@@ -342,14 +356,21 @@ function PermissionRow({ permission }) {
 
         <div className="text-sm text-muted-foreground">
           {risk.groups.length > 0 ? (
-            // Show which non-admin groups have access
+            // Show actual group names instead of UUIDs
             <span className="text-orange-400">
-              {risk.groups.join(', ')} have access
+              {risk.groups.map(uuid => getGroupName(uuid)).join(', ')} have access
             </span>
           ) : (
             <span>Admin only</span>
           )}
         </div>
+
+        {/* Optionally show all groups with access */}
+        {groups.length > 0 && (
+          <div className="text-xs text-muted-foreground mt-1">
+            Groups: {groups.map(uuid => getGroupName(uuid)).join(', ')}
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-2">
         <Badge variant={authScope === 'Public' ? 'default' : 'secondary'}>
