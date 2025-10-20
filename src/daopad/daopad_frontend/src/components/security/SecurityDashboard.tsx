@@ -101,7 +101,7 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
                         <div className="flex items-center justify-center gap-2">
                             <RefreshCw className="w-5 h-5 animate-spin text-blue-500" />
                             <span className="text-gray-600">
-                                Analyzing DAO security... ({completedCount}/16 checks complete)
+                                Analyzing DAO security... ({completedCount}/17 checks complete)
                             </span>
                         </div>
 
