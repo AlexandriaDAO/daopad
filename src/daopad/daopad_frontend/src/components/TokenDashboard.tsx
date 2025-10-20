@@ -357,13 +357,11 @@ const TokenDashboard = memo(function TokenDashboard({
           {/* Tabs for different views */}
           <Tabs defaultValue="agreement" className="w-full" onValueChange={(value) => setActiveTab(value)}>
             <div className="flex items-center gap-3 mb-6">
-              <TabsList variant="executive" className="flex-1 grid grid-cols-7">
+              <TabsList variant="executive" className="flex-1 grid grid-cols-5">
                 <TabsTrigger variant="executive" value="agreement">Agreement</TabsTrigger>
                 <TabsTrigger variant="executive" value="accounts">Treasury</TabsTrigger>
                 <TabsTrigger variant="executive" value="activity">Activity</TabsTrigger>
                 <TabsTrigger variant="executive" value="canisters">Canisters</TabsTrigger>
-                <TabsTrigger variant="executive" value="security">Security</TabsTrigger>
-                <TabsTrigger variant="executive" value="permissions">Permissions</TabsTrigger>
                 <TabsTrigger variant="executive" value="settings">Settings</TabsTrigger>
               </TabsList>
 
@@ -412,30 +410,15 @@ const TokenDashboard = memo(function TokenDashboard({
               )}
             </TabsContent>
 
-            <TabsContent value="security" className="mt-4">
-              {activeTab === 'security' && (
-                <SecurityDashboard
-                  stationId={orbitStation.station_id}
-                  tokenSymbol={token.symbol}
-                  identity={identity}
-                  tokenId={token.canister_id}
-                />
-              )}
-            </TabsContent>
-
-            <TabsContent value="permissions" className="mt-4">
-              {activeTab === 'permissions' && (
-                <PermissionsPage
-                  tokenId={token.canister_id}
-                  stationId={orbitStation?.station_id}
-                  identity={identity}
-                />
-              )}
-            </TabsContent>
-
             <TabsContent value="settings" className="mt-4">
               {activeTab === 'settings' && (
-                <DAOSettings tokenCanisterId={token.canister_id} identity={identity} />
+                <DAOSettings
+                  tokenCanisterId={token.canister_id}
+                  identity={identity}
+                  stationId={orbitStation?.station_id}
+                  tokenSymbol={token.symbol}
+                  tokenId={token.canister_id}
+                />
               )}
             </TabsContent>
 
