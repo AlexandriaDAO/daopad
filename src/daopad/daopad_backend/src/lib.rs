@@ -3,7 +3,6 @@ mod kong_locker;
 mod proposals;
 mod storage;
 mod types;
-mod utils;
 
 use candid::{Nat, Principal};
 use ic_cdk::init;
