@@ -1423,7 +1423,25 @@ fn check_account_autoapproved_impl(accounts: &Vec<Account>) -> Vec<SecurityCheck
     }
 
     // Determine status
-    if non_autoapproved_accounts.is_empty() {
+    if accounts.is_empty() {
+        // NO accounts exist - WARNING (station needs treasury setup)
+        checks.push(SecurityCheck {
+            category: "Treasury Setup".to_string(),
+            name: "Account AutoApproved Status".to_string(),
+            status: CheckStatus::Warn,
+            message: "No treasury accounts found".to_string(),
+            severity: Some(Severity::Low),
+            details: Some(
+                "Orbit Station has no accounts configured yet. \
+                 Create treasury accounts first, then configure AutoApproved policies. \
+                 Accounts can be created through the Orbit Station UI or via DAOPad.".to_string()
+            ),
+            recommendation: Some(
+                "Create at least one treasury account in Orbit Station before configuring AutoApproved policies.".to_string()
+            ),
+            related_permissions: None,
+        });
+    } else if non_autoapproved_accounts.is_empty() {
         // ALL accounts configured - GOOD
         checks.push(SecurityCheck {
             category: "Treasury Setup".to_string(),
