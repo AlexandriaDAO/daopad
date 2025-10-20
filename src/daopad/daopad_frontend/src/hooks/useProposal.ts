@@ -59,6 +59,9 @@ function inferRequestType(operationType) {
     'AddAddressBookEntry': { AddAddressBookEntry: null },
     'EditAddressBookEntry': { EditAddressBookEntry: null },
     'RemoveAddressBookEntry': { RemoveAddressBookEntry: null },
+
+    // Handle Unknown as a fallback type - default to Transfer for now
+    'Unknown': { Transfer: null },
   };
 
   return typeMap[operationType] || { Other: operationType };

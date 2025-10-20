@@ -19,12 +19,32 @@ const statusConfig = {
 
 // Extract operation type from request object
 function getOperationType(request) {
+  console.log('[getOperationType] Request:', request);
+
+  // Check multiple possible locations for operation type
   if (request.operation) {
     if (typeof request.operation === 'string') return request.operation;
     if (typeof request.operation === 'object' && request.operation !== null) {
       return Object.keys(request.operation)[0];
     }
   }
+
+  // Check if it's in operation_type field (from backend)
+  if (request.operation_type) {
+    if (typeof request.operation_type === 'string') return request.operation_type;
+    if (typeof request.operation_type === 'object' && request.operation_type !== null) {
+      return Object.keys(request.operation_type)[0];
+    }
+  }
+
+  // Check if it's nested in the request structure
+  if (request.request && request.request.operation) {
+    if (typeof request.request.operation === 'string') return request.request.operation;
+    if (typeof request.request.operation === 'object' && request.request.operation !== null) {
+      return Object.keys(request.request.operation)[0];
+    }
+  }
+
   return 'Unknown';
 }
 
