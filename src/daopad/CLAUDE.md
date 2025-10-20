@@ -44,6 +44,73 @@ project_root/
 - Voting power = USD value of locked LP tokens × 100
 - Query with: `dfx canister --network ic call kong_locker get_all_voting_powers`
 
+## ⚠️ CRITICAL: Orbit Station Setup Requirements
+
+### The AutoApproved Policy Requirement
+
+**Fundamental Limitation**: Orbit Station enforces separation of duties - a user/canister CANNOT approve requests it creates itself.
+
+**DAOPad Architecture**: Backend canister (`lwsav-iiaaa-aaaap-qp2qq-cai`) is the ONLY admin. All Orbit operations are created BY the backend (acting as proxy for users who vote in DAOPad).
+
+**The Problem**:
+```
+User votes in DAOPad → Backend creates Orbit request (as itself)
+                     → Backend tries to approve (BLOCKED - separation of duties)
+                     → Request stuck in "Pending" forever
+                     → No other users exist in Orbit to approve
+```
+
+**The Solution**: Configure ALL Orbit account policies to `AutoApproved` during initial setup. This tells Orbit to trust the backend and auto-execute requests upon creation.
+
+**Security**: NOT a concern because:
+- Real governance happens in DAOPad (Kong Locker voting, 50%+ threshold, 7-day periods)
+- Orbit approval would be redundant (same entity creates & approves)
+- Backend is already trusted by design (it's the DAO's canister)
+- AutoApproved is a first-class Orbit feature for this exact use case
+- Community votes BEFORE backend submits to Orbit
+
+**Analogy**: Think of Orbit like a gun safe:
+- Traditional Orbit: Multiple people must enter codes to open (Quorum)
+- DAOPad: Community votes on whether to open it (50%+ threshold), THEN backend opens it (AutoApproved)
+
+The security is in the voting process, not in having multiple people turn the key.
+
+### Required One-Time Setup
+
+Before DAOPad can execute treasury operations, Orbit Station accounts MUST be configured:
+
+**Manual Method** (via Orbit UI):
+1. Open Orbit Station UI → Settings → Accounts
+2. For each account, edit transfer policy → Select "AutoApproved"
+3. Approve the policy change request
+4. Verify all accounts show AutoApproved
+
+**Automated Method** (future - function not yet implemented):
+```bash
+# This function doesn't exist yet but should be created
+dfx canister --network ic call daopad_backend create_autoapprove_all_accounts \
+  '(principal "TOKEN_CANISTER_ID")'
+```
+
+**Verification**:
+```bash
+# Check account policies
+dfx canister --network ic call ORBIT_STATION_ID list_accounts '(record {})'
+
+# Look for: transfer_request_policy = variant { AutoApproved }
+# ✅ DAOPad-Ready:  variant { AutoApproved }
+# ❌ NOT Ready:     variant { Quorum {...} } or variant { QuorumPercentage {...} }
+```
+
+### Migration Status Indicator
+
+Check if Orbit is DAOPad-ready:
+- **Stage 1** (Fresh Orbit): Policies require specific user approvals → Action: Complete AutoApproved setup
+- **Stage 2** (In Progress): AutoApproved requests created but pending approval → Action: Approve in Orbit UI
+- **Stage 3** (Ready): All accounts show AutoApproved policies → Status: Production ready
+
+For detailed migration guide, see `docs/ORBIT_MIGRATION_STATUS.md`
+
 ## 🏗️ Design Principles
 
 ### Minimal Storage Principle
