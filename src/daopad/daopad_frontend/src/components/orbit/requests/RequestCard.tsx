@@ -38,12 +38,31 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
 
   // Auto-create proposal when card is viewed (only for Created status)
   useEffect(() => {
-    if (!proposal && !loading && request.status === 'Created') {
+    // Extract status from variant if needed (backend returns { Created: null })
+    const statusValue = typeof request.status === 'object' && request.status !== null
+      ? Object.keys(request.status)[0]
+      : request.status;
+
+    console.log('[RequestCard] Proposal check:', {
+      requestId: request.id,
+      status: statusValue,
+      hasProposal: !!proposal,
+      loading,
+      operationType
+    });
+
+    if (!proposal && !loading && (statusValue === 'Created' || statusValue === 'Scheduled')) {
+      console.log('[RequestCard] Creating proposal for request:', request.id);
       ensureProposal();
     }
   }, [proposal, loading, request.status, ensureProposal]);
 
-  const statusInfo = statusConfig[request.status] || statusConfig.Created;
+  // Extract status from variant if needed
+  const statusValue = typeof request.status === 'object' && request.status !== null
+    ? Object.keys(request.status)[0]
+    : request.status;
+
+  const statusInfo = statusConfig[statusValue] || statusConfig.Created;
   const StatusIcon = statusInfo.icon;
 
   return (
@@ -61,7 +80,7 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
           </div>
           <div className="flex gap-2">
             <Badge variant="outline">{operationType}</Badge>
-            <Badge variant={request.status === 'Created' ? 'default' : 'secondary'}>
+            <Badge variant={statusValue === 'Created' ? 'default' : 'secondary'}>
               {statusInfo.label}
             </Badge>
           </div>
@@ -76,7 +95,7 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
         </div>
 
         {/* Voting section - only for Created status requests */}
-        {request.status === 'Created' && (
+        {(statusValue === 'Created' || statusValue === 'Scheduled') && (
           <div className="mt-4 space-y-3 border-t pt-4">
             <h4 className="font-medium text-sm">Community Vote</h4>
 
@@ -117,7 +136,7 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
         )}
 
         {/* Show proposal results for completed requests */}
-        {request.status !== 'Created' && proposal && (
+        {statusValue !== 'Created' && statusValue !== 'Scheduled' && proposal && (
           <div className="mt-4 space-y-2 border-t pt-4">
             <h4 className="font-medium text-sm">Final Vote Results</h4>
             <VoteProgressBar
