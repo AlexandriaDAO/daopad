@@ -135,7 +135,7 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
           <p>
             <strong>1.2 Smart Contract Governance.</strong> This Agreement
             and all governance actions are executed through immutable smart
-            contracts at Orbit Station ID <code className="bg-gray-100 px-1 rounded">{stationId}</code>, which
+            contracts at Orbit Station ID <code className="bg-muted text-foreground px-1 rounded">{stationId}</code>, which
             serves as the authoritative source of truth for all Company operations.
           </p>
           <p>
@@ -436,7 +436,7 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
                         <ul className="list-none pl-2 text-xs font-mono">
                           {account.addresses.map((addr, k) => (
                             <li key={k} className="break-all">
-                              {addr.format}: <code className="bg-white px-1">{addr.address}</code>
+                              {addr.format}: <code className="bg-muted px-1 rounded">{addr.address}</code>
                             </li>
                           ))}
                         </ul>
@@ -496,7 +496,7 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
                     <tr key={entry.id} className="border-b border-gray-200">
                       <td className="p-2">{entry.name}</td>
                       <td className="p-2">
-                        <code className="text-xs bg-gray-100 px-1 rounded break-all">
+                        <code className="text-xs bg-muted text-foreground px-1 rounded break-all">
                           {entry.address.length > 30
                             ? `${entry.address.slice(0, 15)}...${entry.address.slice(-12)}`
                             : entry.address
@@ -581,7 +581,7 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
                       <tr key={i} className="border-b border-gray-200">
                         <td className="p-2">{userName}</td>
                         <td className="p-2">
-                          <code className="text-xs bg-gray-100 px-1 rounded">
+                          <code className="text-xs bg-muted text-foreground px-1 rounded">
                             {formatPrincipal(entry.user_principal)}
                           </code>
                         </td>
@@ -619,9 +619,9 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
               verified by querying:
             </p>
             <ul className="list-disc pl-8 mt-2 space-y-1">
-              <li>Kong Locker Factory: <code className="bg-gray-100 px-1 rounded text-sm">eazgb-giaaa-aaaap-qqc2q-cai</code></li>
-              <li>KongSwap for LP positions: <code className="bg-gray-100 px-1 rounded text-sm">2ipq2-uqaaa-aaaar-qailq-cai</code></li>
-              <li>DAOPad Backend for equity distribution: <code className="bg-gray-100 px-1 rounded text-sm">lwsav-iiaaa-aaaap-qp2qq-cai</code></li>
+              <li>Kong Locker Factory: <code className="bg-muted text-foreground px-1 rounded text-sm">eazgb-giaaa-aaaap-qqc2q-cai</code></li>
+              <li>KongSwap for LP positions: <code className="bg-muted text-foreground px-1 rounded text-sm">2ipq2-uqaaa-aaaar-qailq-cai</code></li>
+              <li>DAOPad Backend for equity distribution: <code className="bg-muted text-foreground px-1 rounded text-sm">lwsav-iiaaa-aaaap-qp2qq-cai</code></li>
             </ul>
           </div>
         </section>
@@ -641,7 +641,7 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
             <div className="pl-4 space-y-1">
               {data.canisters.canisters?.slice(0, 5).map((c, i) => (
                 <div key={i}>
-                  • {c.name || 'Unnamed'}: <code className="bg-gray-100 px-1 rounded text-sm">{c.canister_id}</code>
+                  • {c.name || 'Unnamed'}: <code className="bg-muted text-foreground px-1 rounded text-sm">{c.canister_id}</code>
                 </div>
               ))}
               {data.canisters.total > 5 && (

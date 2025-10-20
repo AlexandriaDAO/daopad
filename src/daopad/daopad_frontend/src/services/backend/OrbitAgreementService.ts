@@ -43,7 +43,7 @@ export class OrbitAgreementService extends BackendServiceBase {
       try {
         canistersResult = await actor.list_orbit_canisters(
           Principal.fromText(tokenId),
-          { limit: [100], offset: [] }
+          { limit: [100], offset: [], sort_by: [] }
         );
       } catch (e) {
         console.log('Canisters not available:', e.message);
