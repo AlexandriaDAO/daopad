@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, CardContent } from '../ui/card';
 import { OPERATION_THRESHOLDS, getRiskColor } from '../../constants/operationThresholds';
+import { MutabilitySection } from './MutabilitySection';
 
 const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
   const formatDate = () => new Date().toLocaleDateString('en-US', {
@@ -303,41 +304,8 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
         </div>
       </section>
 
-      {/* Article III: Voting Thresholds */}
-      <section className="mb-8">
-        <h2 className="text-2xl font-bold border-b border-gray-400 pb-2">
-          ARTICLE III: VOTING THRESHOLDS BY OPERATION TYPE
-        </h2>
-        <div className="mt-4">
-          <p className="mb-4">
-            <strong>3.1 Risk-Based Thresholds.</strong> Operations require
-            different approval thresholds based on risk level:
-          </p>
-
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b-2 border-gray-400">
-                <th className="text-left p-2">Operation</th>
-                <th className="text-center p-2">Threshold</th>
-                <th className="text-center p-2">Risk</th>
-                <th className="text-center p-2">Duration</th>
-              </tr>
-            </thead>
-            <tbody>
-              {OPERATION_THRESHOLDS.map((op, i) => (
-                <tr key={i} className="border-b border-gray-200">
-                  <td className="p-2">{op.name}</td>
-                  <td className="text-center p-2 font-bold">{op.threshold}%</td>
-                  <td className={`text-center p-2 font-bold ${getRiskColor(op.risk)}`}>
-                    {op.risk}
-                  </td>
-                  <td className="text-center p-2">{op.duration}h</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      {/* Article III: Conditions for Amending Operating Agreement */}
+      <MutabilitySection data={data} tokenSymbol={tokenSymbol} />
 
       {/* Article IV: Request Policies */}
       <section className="mb-8">
