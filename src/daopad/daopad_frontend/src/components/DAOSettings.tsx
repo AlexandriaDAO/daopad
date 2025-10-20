@@ -13,9 +13,9 @@ import SecurityDashboard from './security/SecurityDashboard';
 interface DAOSettingsProps {
   tokenCanisterId: Principal | string;
   identity: Identity | null;
-  stationId?: string;
+  stationId?: Principal | string;
   tokenSymbol?: string;
-  tokenId?: string;
+  tokenId?: Principal | string;
 }
 
 interface SystemInfo {
@@ -258,7 +258,7 @@ const DAOSettings: React.FC<DAOSettingsProps> = ({ tokenCanisterId, identity, st
             )}
 
             {/* Permissions Section (Collapsible) */}
-            {stationId && (
+            {stationId && tokenId && (
                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between">
