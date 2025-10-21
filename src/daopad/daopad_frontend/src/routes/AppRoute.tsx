@@ -10,7 +10,7 @@ import {
   clearDaoState,
   fetchPublicDashboard
 } from '../features/dao/daoSlice';
-import { DAOPadBackendService } from '../services/daopadBackend';
+import { getKongLockerService } from '../services/backend';
 
 // Components
 import KongLockerSetup from '../components/KongLockerSetup';
@@ -105,8 +105,8 @@ function AppRoute() {
 
     setIsCheckingKongLocker(true);
     try {
-      const daopadService = new DAOPadBackendService(identity);
-      const result = await daopadService.getMyKongLockerCanister();
+      const kongLockerService = getKongLockerService(identity);
+      const result = await kongLockerService.getMyCanister();
 
       if (result.success && result.data) {
         // Convert Principal object to string

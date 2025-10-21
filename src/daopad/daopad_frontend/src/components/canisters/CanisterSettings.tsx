@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { canisterService } from '../../services/canisterService';
+import { getOrbitCanisterService } from '../../services/backend';
 import { canisterCapabilities } from '../../utils/canisterCapabilities';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -53,7 +53,7 @@ export default function CanisterSettings({ canister, privileges, orbitStationId,
         .map(l => l.trim())
         .filter(l => l);
 
-      const result = await canisterService.updateCanisterMetadata(
+      const result = await getOrbitCanisterService(identity).updateCanisterMetadata(
         orbitStationId,
         canister.id,
         {
@@ -101,7 +101,7 @@ export default function CanisterSettings({ canister, privileges, orbitStationId,
         settings.wasm_memory_limit = [BigInt(formData.wasm_memory_limit)];
       }
 
-      const result = await canisterService.updateCanisterSettings(
+      const result = await getOrbitCanisterService(identity).updateCanisterSettings(
         orbitStationId,
         canister.id,
         settings
@@ -127,7 +127,7 @@ export default function CanisterSettings({ canister, privileges, orbitStationId,
     }
 
     try {
-      const result = await canisterService.archiveCanister(
+      const result = await getOrbitCanisterService(identity).archiveCanister(
         orbitStationId,
         canister.id,
         !(canister.state && 'Active' in canister.state)
@@ -157,7 +157,7 @@ export default function CanisterSettings({ canister, privileges, orbitStationId,
     }
 
     try {
-      const result = await canisterService.deleteCanister(
+      const result = await getOrbitCanisterService(identity).deleteCanister(
         orbitStationId,
         canister.id
       );

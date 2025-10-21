@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
 import { Shield, Info, Users } from 'lucide-react';
 import { PermissionsTable } from '../components/permissions';
-import { DAOPadBackendService } from '../services/daopadBackend';
+import { getProposalService } from '../services/backend';
 import { Principal } from '@dfinity/principal';
 import { Badge } from '../components/ui/badge';
 
@@ -19,7 +19,7 @@ const PermissionsPage = ({ tokenId, stationId, identity }) => {
       if (identity) {
         setLoadingActor(true);
         try {
-          const daopadService = new DAOPadBackendService(identity);
+          const daopadService = getProposalService(identity);
           const backendActor = await daopadService.getActor();
           console.log('[PermissionsPage] Actor created successfully');
           setActor(backendActor);

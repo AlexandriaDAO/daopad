@@ -9,7 +9,7 @@ import {
 import { Button } from '../ui/button';
 import { AccountWizard } from './account-wizard/AccountWizard';
 import { Loader2 } from 'lucide-react';
-import { DAOPadBackendService } from '../../services/daopadBackend';
+import { getProposalService } from '../../services/backend';
 import OrbitSetupInstructions from './OrbitSetupInstructions';
 
 const CreateAccountDialog = ({ open, onClose, tokenId, tokenSymbol, onSuccess }) => {
@@ -67,7 +67,7 @@ const CreateAccountDialog = ({ open, onClose, tokenId, tokenSymbol, onSuccess })
   const checkBackendStatus = async () => {
     setCheckingStatus(true);
     try {
-      const backend = new DAOPadBackendService();
+      const backend = getProposalService();
       const result = await backend.checkBackendStatus(tokenId);
 
       if (result.success) {
@@ -104,7 +104,7 @@ const CreateAccountDialog = ({ open, onClose, tokenId, tokenSymbol, onSuccess })
 
     setLoadingAssets(true);
     try {
-      const backend = new DAOPadBackendService();
+      const backend = getProposalService();
       const result = await backend.getAvailableAssets(tokenId);
 
       if (result.success) {
@@ -177,7 +177,7 @@ const CreateAccountDialog = ({ open, onClose, tokenId, tokenSymbol, onSuccess })
     setError(null);
 
     try {
-      const backend = new DAOPadBackendService();
+      const backend = getProposalService();
       const result = await backend.createTreasuryAccount(tokenId, accountConfig);
 
       if (result.success) {

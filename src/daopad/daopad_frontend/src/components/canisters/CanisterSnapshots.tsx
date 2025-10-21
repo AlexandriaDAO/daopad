@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { canisterService } from '../../services/canisterService';
+import { getOrbitCanisterService } from '../../services/backend';
 import { canisterCapabilities } from '../../utils/canisterCapabilities';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -39,7 +39,7 @@ export default function CanisterSnapshots({ canister, privileges, orbitStationId
     setError(null);
 
     try {
-      const result = await canisterService.listSnapshots(
+      const result = await getOrbitCanisterService(identity).listSnapshots(
         orbitStationId,
         canister.canister_id
       );
@@ -77,7 +77,7 @@ export default function CanisterSnapshots({ canister, privileges, orbitStationId
     setSuccess(null);
 
     try {
-      const result = await canisterService.takeSnapshot(
+      const result = await getOrbitCanisterService(identity).takeSnapshot(
         orbitStationId,
         canister.id
       );
@@ -106,7 +106,7 @@ export default function CanisterSnapshots({ canister, privileges, orbitStationId
     setSuccess(null);
 
     try {
-      const result = await canisterService.restoreSnapshot(
+      const result = await getOrbitCanisterService(identity).restoreSnapshot(
         orbitStationId,
         canister.id,
         snapshot.id
@@ -136,7 +136,7 @@ export default function CanisterSnapshots({ canister, privileges, orbitStationId
     setSuccess(null);
 
     try {
-      const result = await canisterService.deleteSnapshot(
+      const result = await getOrbitCanisterService(identity).deleteSnapshot(
         orbitStationId,
         canister.id,
         snapshot.id

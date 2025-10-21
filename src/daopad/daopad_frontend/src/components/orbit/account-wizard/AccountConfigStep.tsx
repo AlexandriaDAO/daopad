@@ -10,7 +10,7 @@ import {
 } from '../../ui/select';
 import { Checkbox } from '../../ui/checkbox';
 import { AlertCircle } from 'lucide-react';
-import { DAOPadBackendService } from '../../../services/daopadBackend';
+import { getProposalService } from '../../../services/backend';
 
 export const AccountConfigStep = ({
   accountConfig,
@@ -45,7 +45,7 @@ export const AccountConfigStep = ({
 
     setValidatingName(true);
     try {
-      const backend = new DAOPadBackendService();
+      const backend = getProposalService();
       const result = await backend.validateAccountName(tokenId, name);
 
       if (result.success && !result.isValid) {

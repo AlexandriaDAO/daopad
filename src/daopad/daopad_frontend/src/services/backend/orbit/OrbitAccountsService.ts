@@ -1,5 +1,5 @@
 import { BackendServiceBase } from '../base/BackendServiceBase';
-import { parseOrbitResult } from '../utils/errorParsers';
+import { parseOrbitResult } from '../../utils/errorParsers';
 
 export class OrbitAccountsService extends BackendServiceBase {
   /**

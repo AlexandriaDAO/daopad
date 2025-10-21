@@ -1,8 +1,7 @@
 import React, { useState, useEffect, memo, useMemo } from 'react';
 import { Principal } from '@dfinity/principal';
 import { useDispatch } from 'react-redux';
-import { DAOPadBackendService } from '../services/daopadBackend';
-import { OrbitStationService } from '../services/orbitStation';
+import { getProposalService, getKongLockerService, getOrbitUserService } from '../services/backend';
 import AccountsTable from './tables/AccountsTable';
 import UnifiedRequests from './orbit/UnifiedRequests';
 import AddressBookPage from '../pages/AddressBookPage';
@@ -91,7 +90,7 @@ const TokenDashboard = memo(function TokenDashboard({
 
     setLoadingVP(true);
     try {
-      const daopadService = new DAOPadBackendService(identity);
+      const daopadService = getProposalService(identity);
       const tokenPrincipal = Principal.fromText(token.canister_id);
       const result = await daopadService.getMyVotingPowerForToken(tokenPrincipal);
       if (result.success) {
@@ -109,7 +108,7 @@ const TokenDashboard = memo(function TokenDashboard({
 
     setLoadingTotalVP(true);
     try {
-      const daopadService = new DAOPadBackendService(identity);
+      const daopadService = getProposalService(identity);
       const tokenPrincipal = Principal.fromText(token.canister_id);
       const result = await daopadService.getTotalVotingPowerForToken(tokenPrincipal);
       if (result.success) {
@@ -129,7 +128,7 @@ const TokenDashboard = memo(function TokenDashboard({
     setError('');
 
     try {
-      const daopadService = new DAOPadBackendService(identity);
+      const daopadService = getProposalService(identity);
       const tokenPrincipal = Principal.fromText(token.canister_id);
 
       const stationResult = await daopadService.getOrbitStationForToken(tokenPrincipal);
@@ -186,8 +185,8 @@ const TokenDashboard = memo(function TokenDashboard({
     if (!orbitStation?.station_id) return;
 
     try {
-      const orbitService = new OrbitStationService(identity, orbitStation.station_id);
-      const result = await orbitService.getAllMembersWithRoles();
+      const userService = getOrbitUserService(identity);
+      const result = await userService.listUsers(orbitStation.station_id, {});
 
       if (result.success) {
         const membersList = result.data.members;
@@ -233,7 +232,7 @@ const TokenDashboard = memo(function TokenDashboard({
     setError('');
 
     try {
-      const daopadService = new DAOPadBackendService(identity);
+      const daopadService = getProposalService(identity);
       const tokenPrincipal = Principal.fromText(token.canister_id);
       const stationPrincipal = Principal.fromText(stationId.trim());
 
@@ -264,7 +263,7 @@ const TokenDashboard = memo(function TokenDashboard({
     setError('');
 
     try {
-      const daopadService = new DAOPadBackendService(identity);
+      const daopadService = getProposalService(identity);
       const result = await daopadService.voteOnOrbitProposal(activeProposal.id, vote);
 
       if (result.success) {

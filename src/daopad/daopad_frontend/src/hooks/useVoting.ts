@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../providers/AuthProvider/IIProvider';
-import { DAOPadBackendService } from '../services/daopadBackend';
+import { getKongLockerService, getProposalService } from '../services/backend';
 import { Principal } from '@dfinity/principal';
 
 export function useVoting(tokenId) {
@@ -15,8 +15,8 @@ export function useVoting(tokenId) {
 
     try {
       setLoadingVP(true);
-      const backend = new DAOPadBackendService(identity);
-      const result = await backend.getMyVotingPowerForToken(Principal.fromText(tokenId));
+      const kongService = getKongLockerService(identity);
+      const result = await kongService.getVotingPower(tokenId);
 
       if (result.success) {
         setUserVotingPower(Number(result.data));
@@ -43,12 +43,8 @@ export function useVoting(tokenId) {
 
     setVoting(true);
     try {
-      const backend = new DAOPadBackendService(identity);
-      const result = await backend.voteOnOrbitRequest(
-        Principal.fromText(tokenId),
-        orbitRequestId,
-        voteChoice
-      );
+      const proposalService = getProposalService(identity);
+      const result = await proposalService.vote(orbitRequestId, voteChoice);
 
       if (!result.success) {
         // Parse specific error types - ensure error is a string

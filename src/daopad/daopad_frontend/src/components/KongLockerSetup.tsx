@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { Principal } from '@dfinity/principal';
 import type { Identity } from '@dfinity/agent';
-import { DAOPadBackendService } from '../services/daopadBackend';
-import { KongLockerService } from '../services/kongLockerService';
+import { getKongLockerService } from '../services/backend';
+import { KongLockerService } from '../services/backend';
 import { setKongLockerCanister, setKongLockerLoading, setKongLockerError } from '../features/dao/daoSlice';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -66,9 +66,9 @@ const KongLockerSetup: React.FC<KongLockerSetupProps> = ({ identity, onComplete 
       setValidationStep('Connecting to your Kong Locker...');
 
       // Register with DAOPad backend using the detected canister
-      const daopadService = new DAOPadBackendService(identity);
+      const daopadService = getKongLockerService(identity);
       const kongLockerPrincipal = Principal.fromText(detectedCanister);
-      const result = await daopadService.registerWithKongLocker(kongLockerPrincipal);
+      const result = await daopadService.register(kongLockerPrincipal);
 
       if (result.success) {
         dispatch(setKongLockerCanister(detectedCanister));

@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { DAOPadBackendService } from '../../services/daopadBackend';
+import { UtilityService } from '../../services/backend';
 import type { TokenMetadata } from '../../types';
 import type { Principal } from '@dfinity/principal';
 
@@ -29,7 +29,7 @@ export const fetchTokenMetadata = createAsyncThunk<
   'token/fetchMetadata',
   async ({ tokenId }, { rejectWithValue }) => {
     try {
-      const result = await DAOPadBackendService.getTokenMetadata(tokenId);
+      const result = await UtilityService.getTokenMetadata(tokenId);
 
       if (result.success) {
         return {

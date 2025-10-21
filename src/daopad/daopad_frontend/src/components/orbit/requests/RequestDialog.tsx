@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useIdentity } from '@/hooks/useIdentity';
 import { useStationService } from '@/hooks/useStationService';
 import { useActiveStation } from '@/hooks/useActiveStation';
-import { DAOPadBackendService } from '@/services/daopadBackend';
+import { getProposalService } from '@/services';
 import { Principal } from '@dfinity/principal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -107,15 +107,10 @@ export function RequestDialog({ open, requestId, tokenId, onClose, onApproved })
     setProposalError(null);
 
     try {
-      const daopadBackend = new DAOPadBackendService(identity);
-
-      // Convert tokenId to Principal if it's a string
-      const tokenPrincipal = typeof tokenId === 'string'
-        ? Principal.fromText(tokenId)
-        : tokenId;
+      const proposalService = getProposalService(identity);
 
       // Check if proposal exists for this request
-      const result = await daopadBackend.getOrbitRequestProposal(tokenPrincipal, requestId);
+      const result = await proposalService.getOrbitRequestProposal(tokenId, requestId);
 
       if (result.success && result.data) {
         setProposal(result.data);
@@ -141,7 +136,7 @@ export function RequestDialog({ open, requestId, tokenId, onClose, onApproved })
     }
 
     try {
-      const daopadBackend = new DAOPadBackendService(identity);
+      const daopadBackend = getProposalService(identity);
       const tokenPrincipal = typeof tokenId === 'string'
         ? Principal.fromText(tokenId)
         : tokenId;
@@ -171,7 +166,7 @@ export function RequestDialog({ open, requestId, tokenId, onClose, onApproved })
     setLoading(true);
 
     try {
-      const daopadBackend = new DAOPadBackendService(identity);
+      const daopadBackend = getProposalService(identity);
 
       // Convert tokenId to Principal if it's a string
       const tokenPrincipal = typeof tokenId === 'string'

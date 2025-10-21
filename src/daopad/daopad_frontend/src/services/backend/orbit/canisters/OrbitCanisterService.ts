@@ -1,5 +1,5 @@
 import { BackendServiceBase } from '../../base/BackendServiceBase';
-import { formatOrbitError } from '../../utils/errorParsers';
+import { formatOrbitError } from '../../../utils/errorParsers';
 
 export class OrbitCanisterService extends BackendServiceBase {
   /**

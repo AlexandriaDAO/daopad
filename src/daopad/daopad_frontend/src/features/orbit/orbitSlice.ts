@@ -1,5 +1,11 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { DAOPadBackendService } from '../../services/daopadBackend';
+import {
+  getKongLockerService,
+  getOrbitRequestsService,
+  getOrbitAccountsService,
+  getTokenService,
+  getProposalService
+} from '../../services/backend';
 import { Principal } from '@dfinity/principal';
 
 // ==================== ASYNC THUNKS ====================
@@ -9,9 +15,8 @@ export const fetchVotingPower = createAsyncThunk(
   'orbit/fetchVotingPower',
   async ({ tokenId, identity }, { rejectWithValue }) => {
     try {
-      const service = new DAOPadBackendService(identity);
-      const tokenPrincipal = Principal.fromText(tokenId);
-      const result = await service.getMyVotingPowerForToken(tokenPrincipal);
+      const service = getKongLockerService(identity);
+      const result = await service.getVotingPower(tokenId);
 
       if (result.success) {
         return { tokenId, votingPower: result.data };
@@ -28,8 +33,7 @@ export const fetchOrbitRequests = createAsyncThunk(
   'orbit/fetchRequests',
   async ({ tokenId, stationId, filters, identity }, { rejectWithValue }) => {
     try {
-      const service = new DAOPadBackendService(identity);
-      const tokenPrincipal = Principal.fromText(tokenId);
+      const service = getOrbitRequestsService(identity);
 
       const requestInput = {
         statuses: filters.statuses || ['Created', 'Approved', 'Processing', 'Scheduled'],
@@ -45,7 +49,7 @@ export const fetchOrbitRequests = createAsyncThunk(
         limit: filters.limit || 20,
       };
 
-      const result = await service.listOrbitRequests(tokenPrincipal, requestInput);
+      const result = await service.listRequests(stationId, requestInput);
 
       if (result.success) {
         return { tokenId, stationId, data: result.data };
@@ -62,12 +66,10 @@ export const fetchOrbitAccounts = createAsyncThunk(
   'orbit/fetchAccounts',
   async ({ stationId, identity, searchQuery, pagination, tokenId }, { rejectWithValue }) => {
     try {
-      const service = new DAOPadBackendService(identity);
-      const stationPrincipal = Principal.fromText(stationId);
-      const tokenPrincipal = tokenId ? Principal.fromText(tokenId) : null;
+      const service = getOrbitAccountsService(identity);
 
-      const response = await service.listOrbitAccounts(
-        stationPrincipal,
+      const response = await service.listAccounts(
+        stationId,
         searchQuery || undefined,
         pagination.limit || 20,
         pagination.offset || 0
@@ -81,7 +83,7 @@ export const fetchOrbitAccounts = createAsyncThunk(
           const enrichedAccounts = await Promise.all(
             accounts.map(async (account) => {
               try {
-                const assetsResult = await service.getAccountAssets(
+                const assetsResult = await accountsService.getAccountWithAssets(
                   tokenPrincipal,
                   account.id
                 );
@@ -131,10 +133,11 @@ export const fetchOrbitStationStatus = createAsyncThunk(
   'orbit/fetchStationStatus',
   async ({ tokenId, identity }, { rejectWithValue }) => {
     try {
-      const service = new DAOPadBackendService(identity);
-      const tokenPrincipal = Principal.fromText(tokenId);
+      const tokenService = getTokenService(identity);
+      const proposalService = getProposalService(identity);
+      const accountsService = getOrbitAccountsService(identity);
 
-      const stationResult = await service.getOrbitStationForToken(tokenPrincipal);
+      const stationResult = await tokenService.getStationForToken(tokenId);
       if (stationResult.success && stationResult.data) {
         const stationText = typeof stationResult.data === 'string'
           ? stationResult.data
@@ -148,7 +151,7 @@ export const fetchOrbitStationStatus = createAsyncThunk(
       }
 
       // Check for active proposal
-      const proposalResult = await service.getActiveProposalForToken(tokenPrincipal);
+      const proposalResult = await proposalService.getActiveForToken(tokenId);
       if (proposalResult.success && proposalResult.data) {
         return {
           tokenId,
@@ -169,8 +172,7 @@ export const createTransferRequest = createAsyncThunk(
   'orbit/createTransferRequest',
   async ({ tokenId, stationId, identity, params }, { rejectWithValue, dispatch }) => {
     try {
-      const service = new DAOPadBackendService(identity);
-      const stationPrincipal = Principal.fromText(stationId);
+      const service = getOrbitRequestsService(identity);
 
       const fullParams = {
         ...params,
@@ -178,7 +180,7 @@ export const createTransferRequest = createAsyncThunk(
         tags: params.tags || [],
       };
 
-      const result = await service.createTransferRequest(stationPrincipal, fullParams);
+      const result = await service.createTransfer(stationId, fullParams);
 
       // Parse Orbit's double-wrapped Result
       let parsedResult;

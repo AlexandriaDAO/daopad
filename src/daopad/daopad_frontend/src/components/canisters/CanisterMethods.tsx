@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { canisterService } from '../../services/canisterService';
+import { getOrbitCanisterService } from '../../services/backend';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
