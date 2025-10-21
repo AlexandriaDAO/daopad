@@ -25,6 +25,29 @@ import { useStationService } from '@/hooks/useStationService';
 import { Info, ArrowRight, Wallet } from 'lucide-react';
 import { formatBalance, formatAddress } from '@/utils/format';
 
+// TypeScript interfaces
+interface Asset {
+  asset_id: string;
+  symbol: string;
+  decimals: number;
+  balance: string;
+}
+
+interface Account {
+  id: string;
+  name: string;
+  address: string;
+  assets: Asset[];
+}
+
+interface TransferDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  account: Account | null;
+  asset?: Asset | null;
+  onTransferComplete?: () => void;
+}
+
 // Transfer validation schema
 const transferFormSchema = z.object({
   asset_id: z.string().min(1, 'Please select an asset'),
@@ -37,7 +60,7 @@ const transferFormSchema = z.object({
   fee: z.string().optional(),
 });
 
-export default function TransferDialog({ open, onOpenChange, account, asset, onTransferComplete }) {
+export default function TransferDialog({ open, onOpenChange, account, asset, onTransferComplete }: TransferDialogProps) {
   const station = useStationService();
   const [estimatedFee, setEstimatedFee] = useState(null);
   const [availableBalance, setAvailableBalance] = useState(null);
@@ -59,7 +82,24 @@ export default function TransferDialog({ open, onOpenChange, account, asset, onT
     }
   }, [selectedAsset]);
 
-  const handleSubmit = async (data) => {
+  const handleSubmit = async (data: z.infer<typeof transferFormSchema>) => {
+    // Validation: Check account exists
+    if (!account?.id) {
+      throw new Error('Account ID is required');
+    }
+
+    // Validation: Check sufficient balance
+    const selectedAsset = availableAssets.find(a => a.asset_id === data.asset_id);
+    if (selectedAsset) {
+      const amountNum = parseFloat(data.amount);
+      const balanceNum = parseFloat(selectedAsset.balance);
+      const feeNum = parseFloat(data.fee || estimatedFee || '0');
+
+      if (amountNum + feeNum > balanceNum) {
+        throw new Error('Insufficient balance including fees');
+      }
+    }
+
     // Create transfer request
     const transferRequest = {
       from_account_id: account.id,

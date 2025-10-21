@@ -14,10 +14,22 @@ import {
   Form,
 } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+
+// Helper function to get explicit Tailwind grid classes (required for JIT compiler)
+const getTabsGridClass = (count: number): string => {
+  const gridClasses: Record<number, string> = {
+    1: 'grid w-full grid-cols-1',
+    2: 'grid w-full grid-cols-2',
+    3: 'grid w-full grid-cols-3',
+    4: 'grid w-full grid-cols-4',
+    5: 'grid w-full grid-cols-5',
+    6: 'grid w-full grid-cols-6',
+  };
+  return gridClasses[count] || 'grid w-full grid-cols-2'; // Default to 2 cols
+};
 
 interface TabConfig {
   value: string;
@@ -54,7 +66,6 @@ export function BaseFormDialog<TSchema extends z.ZodType>({
 }: BaseFormDialogProps<TSchema>) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const form = useForm<z.infer<TSchema>>({
     resolver: zodResolver(schema),
@@ -65,14 +76,12 @@ export function BaseFormDialog<TSchema extends z.ZodType>({
   useEffect(() => {
     if (!open) {
       form.reset();
-      setError(null);
     }
-  }, [open, form]);
+  }, [open]); // form.reset is stable, no need in deps
 
   // Submission handler with error handling
   const handleSubmit = async (data: z.infer<TSchema>) => {
     setIsSubmitting(true);
-    setError(null);
 
     try {
       await onSubmit(data);
@@ -83,7 +92,7 @@ export function BaseFormDialog<TSchema extends z.ZodType>({
       form.reset();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred';
-      setError(message);
+      // Only show toast notification (remove duplicate inline alert)
       toast.error('Operation Failed', {
         description: message,
       });
@@ -102,18 +111,10 @@ export function BaseFormDialog<TSchema extends z.ZodType>({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            {/* Error display */}
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
             {/* Tabs or direct content */}
             {tabs ? (
               <Tabs defaultValue={tabs[0].value} className="w-full">
-                <TabsList className={`grid w-full grid-cols-${tabs.length}`}>
+                <TabsList className={getTabsGridClass(tabs.length)}>
                   {tabs.map((tab) => (
                     <TabsTrigger key={tab.value} value={tab.value}>
                       {tab.icon && <tab.icon className="h-4 w-4 mr-2" />}
