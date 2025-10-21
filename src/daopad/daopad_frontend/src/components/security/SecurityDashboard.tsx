@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Principal } from '@dfinity/principal';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Button } from '../ui/button';
@@ -12,9 +11,6 @@ import AutoApprovedSetupWizard from './AutoApprovedSetupWizard';
 import { generateMarkdownReport, generateJSONReport, downloadReport } from '../../utils/reportGenerator';
 
 const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
-    // Convert tokenId to Principal if it's a string
-    const tokenPrincipal = typeof tokenId === 'string' ? Principal.fromText(tokenId) : tokenId;
-    const stationPrincipal = typeof stationId === 'string' ? Principal.fromText(stationId) : stationId;
     const [securityData, setSecurityData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -44,7 +40,7 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
     const [completedCount, setCompletedCount] = useState(0);
 
     const fetchSecurityStatus = async () => {
-        if (!stationPrincipal || !identity) return;
+        if (!stationId || !identity) return;
 
         setLoading(true);
         setError(null);
@@ -73,7 +69,7 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
             };
 
             const result = await securityService.performComprehensiveSecurityCheck(
-                stationPrincipal,
+                stationId,
                 onProgress
             );
 
@@ -91,10 +87,10 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
     };
 
     useEffect(() => {
-        if (stationPrincipal && identity) {
+        if (stationId && identity) {
             fetchSecurityStatus();
         }
-    }, [stationPrincipal, identity]);
+    }, [stationId, identity]);
 
 
     if (loading) {
@@ -178,7 +174,7 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
             {/* Show request policies if toggled */}
             {showPolicies && (
                 <RequestPoliciesView
-                    stationId={stationPrincipal}
+                    stationId={stationId}
                 />
             )}
 
@@ -189,23 +185,23 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
                 check.status === 'Fail'
             ) && (
                 <AutoApprovedSetupWizard
-                    tokenId={tokenPrincipal}
-                    stationId={stationPrincipal}
+                    tokenId={tokenId}
+                    stationId={stationId}
                     onComplete={fetchSecurityStatus}
                 />
             )}
 
             {/* Admin removal actions */}
             <AdminRemovalActions
-                tokenId={tokenPrincipal}
-                stationId={stationPrincipal}
+                tokenId={tokenId}
+                stationId={stationId}
                 identity={identity}
             />
 
             {/* Existing checklist */}
             <DAOTransitionChecklist
                 securityData={securityData}
-                stationId={stationPrincipal}
+                stationId={stationId}
                 tokenSymbol={tokenSymbol}
                 onRefresh={fetchSecurityStatus}
             />
