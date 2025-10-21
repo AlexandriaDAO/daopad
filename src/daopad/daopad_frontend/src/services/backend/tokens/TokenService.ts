@@ -73,6 +73,36 @@ export class TokenService extends BackendServiceBase {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Get my voting power for a specific token
+   */
+  async getMyVotingPowerForToken(tokenId) {
+    try {
+      const actor = await this.getActor();
+      const tokenPrincipal = this.toPrincipal(tokenId);
+      const result = await actor.get_my_voting_power_for_token(tokenPrincipal);
+      return this.wrapResult(result);
+    } catch (error) {
+      console.error('Failed to get my voting power:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get total voting power for a specific token
+   */
+  async getTotalVotingPowerForToken(tokenId) {
+    try {
+      const actor = await this.getActor();
+      const tokenPrincipal = this.toPrincipal(tokenId);
+      const result = await actor.get_total_voting_power_for_token(tokenPrincipal);
+      return this.wrapResult(result);
+    } catch (error) {
+      console.error('Failed to get total voting power:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 export const getTokenService = (identity) => {
