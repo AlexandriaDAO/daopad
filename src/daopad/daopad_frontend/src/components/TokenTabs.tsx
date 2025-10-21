@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import type { Identity } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
-import { getProposalService } from '../services/backend';
+import { getProposalService, getTokenService } from '../services/backend';
 import { KongLockerService } from '../services/backend';
 import TokenDashboard from './TokenDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,11 +35,12 @@ const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
     setError('');
 
     try {
-      const daopadService = getProposalService(identity);
+      // Use TokenService for token operations
+      const tokenService = getTokenService(identity);
       const kongLockerService = new KongLockerService(identity);
 
-      // Get user's locked tokens
-      const tokensResult = await daopadService.getMyLockedTokens();
+      // Get user's locked tokens (FROM TokenService)
+      const tokensResult = await tokenService.getMyLockedTokens();
       if (!tokensResult.success) {
         setError(tokensResult.error || 'Failed to load tokens');
         return;
@@ -51,10 +52,8 @@ const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
         return;
       }
 
-      // Don't set tokens yet - wait until we have voting powers
-
-      // Get user's Kong Locker canister
-      const canisterResult = await daopadService.getMyKongLockerCanister();
+      // Get user's Kong Locker canister (FROM KongLockerService)
+      const canisterResult = await kongLockerService.getMyCanister();
       if (!canisterResult.success || !canisterResult.data) {
         setError('Kong Locker canister not found');
         return;
@@ -62,8 +61,8 @@ const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
 
       const lockCanisterPrincipal = canisterResult.data.toString();
 
-      // Get LP positions to calculate per-token voting power
-      const positionsResult = await kongLockerService.getLPPositions(lockCanisterPrincipal);
+      // Get LP positions (FROM KongLockerService, no params)
+      const positionsResult = await kongLockerService.getPositions();
       if (positionsResult.success) {
         const positions = positionsResult.data || [];
         setUserLPPositions(positions);
@@ -75,7 +74,6 @@ const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
             pos.address_0 === token.canister_id || pos.address_1 === token.canister_id
           );
 
-          // Use the total USD value of the entire LP position (both sides combined)
           const totalUsdValue = tokenPositions.reduce((sum, pos) => {
             return sum + (pos.usd_balance || 0);
           }, 0);

@@ -36,7 +36,7 @@ const KongLockerSetup: React.FC<KongLockerSetupProps> = ({ identity, onComplete 
 
     try {
       const kongLockerService = new KongLockerService(identity);
-      const result = await kongLockerService.getMyLockCanister();
+      const result = await kongLockerService.getMyCanister();
 
       if (result.success && result.data) {
         setHasLockCanister(true);
