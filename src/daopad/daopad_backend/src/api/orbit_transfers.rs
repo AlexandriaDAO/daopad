@@ -1,11 +1,8 @@
-use crate::api::orbit_requests::{GetRequestResponse, Error};
+use crate::api::orbit_requests::Error;
 use crate::types::orbit::{
-    TransferOperationInput, TransferMetadata, NetworkInput,
-    RequestExecutionSchedule, RequestOperation,
     CreateRequestResponse,
 };
 use candid::{CandidType, Deserialize, Nat, Principal};
-use ic_cdk::api::call::CallResult;
 
 // CreateRequestResult with CORRECT response type (CreateRequestResponse, not GetRequestResponse)
 #[derive(CandidType, Deserialize)]
@@ -43,8 +40,8 @@ pub async fn get_transfer_requests_from_orbit(
 // =========== NEW ASSET QUERY METHODS ===========
 
 use crate::api::orbit::get_orbit_station_for_token;
-use crate::types::orbit::{Account, AccountBalance, AccountAsset};
-use crate::api::orbit_accounts::{Asset, AssetMetadata};
+use crate::types::orbit::{Account, AccountBalance};
+use crate::api::orbit_accounts::Asset;
 
 // Type definitions for asset queries
 #[derive(CandidType, Deserialize)]
@@ -278,7 +275,6 @@ pub async fn get_account_assets(
 fn nat_to_u64(nat: &Nat) -> u64 {
     // Convert Nat to u64, handling overflow
     // Try to convert to u64, use MAX if it doesn't fit
-    use std::convert::TryInto;
     let bytes = nat.0.to_bytes_le();
     if bytes.len() <= 8 {
         let mut array = [0u8; 8];

@@ -1873,7 +1873,6 @@ fn format_permission_action(action: &PermissionAction) -> String {
     match action {
         PermissionAction::Read => "Read".to_string(),
         PermissionAction::Update => "Update".to_string(),
-        _ => "Unknown".to_string(),
     }
 }
 

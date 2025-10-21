@@ -370,42 +370,6 @@ fn parse_list_requests_response(raw_bytes: Vec<u8>) -> Result<ListOrbitRequestsR
     }
 }
 
-fn parse_submit_response(raw_bytes: Vec<u8>) -> Result<(), String> {
-    let args = IDLArgs::from_bytes(&raw_bytes)
-        .map_err(|e| format!("Failed to parse Orbit approval response: {e}"))?;
-    let value = args
-        .args
-        .into_iter()
-        .next()
-        .ok_or_else(|| "Orbit response was empty".to_string())?;
-
-    if let IDLValue::Variant(variant) = value {
-        // Check if it's Ok variant (either by name or by hash)
-        let is_ok = match &variant.0.id {
-            Label::Named(name) => name == "Ok",
-            Label::Id(id) => *id == 17724,  // Candid hash of "Ok"
-            _ => false,
-        };
-
-        let is_err = match &variant.0.id {
-            Label::Named(name) => name == "Err",
-            Label::Id(id) => *id == 3456837,  // Candid hash of "Err"
-            _ => false,
-        };
-
-        if is_ok {
-            Ok(())
-        } else if is_err {
-            Err(parse_error_message(&variant.0.val))
-        } else {
-            let label = label_name(&variant.0.id).unwrap_or_else(|| "Unknown".to_string());
-            Err(format!("Orbit returned unexpected variant: {label}"))
-        }
-    } else {
-        Err("Unexpected Orbit response type".to_string())
-    }
-}
-
 // ------------------------------------------------------------------------------
 
 // Exact RequestStatusCode from spec.did lines 302-311

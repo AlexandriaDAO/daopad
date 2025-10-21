@@ -41,7 +41,6 @@ pub use orbit_transfers::{
     AccountWithAssets,
     AssetWithBalance,
     AccountAssetInfo,
-    AssetBalanceInfo,
 };
 pub use orbit_users::{
     create_remove_admin_request,

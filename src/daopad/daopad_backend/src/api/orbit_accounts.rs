@@ -68,7 +68,7 @@ pub enum ListAssetsResult {
 // Create treasury account through proposal system
 #[update]
 async fn create_treasury_account(
-    token_id: Principal,
+    _token_id: Principal,
     account_config: CreateAccountConfig
 ) -> Result<CreateAccountResponse, String> {
     // Note: Direct account creation has been removed to enforce proposal-based governance.

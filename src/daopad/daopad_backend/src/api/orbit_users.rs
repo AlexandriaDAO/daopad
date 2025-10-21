@@ -1,16 +1,15 @@
-use candid::{CandidType, Deserialize, Principal};
+use candid::Principal;
 use ic_cdk::update;
 use crate::types::orbit::{
     CreateRequestInput, RequestOperationInput,
     EditUserOperationInput, RequestExecutionSchedule,
-    CreateRequestResult, UserStatus,
+    CreateRequestResult,
     ListUsersInput, ListUsersResult, UserDTO
 };
 use crate::storage::state::TOKEN_ORBIT_STATIONS;
 use crate::types::StorablePrincipal;
 
 // Group UUIDs from Orbit Station spec
-const ADMIN_GROUP_ID: &str = "00000000-0000-4000-8000-000000000000";
 const OPERATOR_GROUP_ID: &str = "00000000-0000-4000-8000-000000000001";
 
 /// List all users in Orbit Station with their groups
