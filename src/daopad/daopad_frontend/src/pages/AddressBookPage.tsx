@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, Plus } from 'lucide-react';
-import { addressBookService } from '../services/backend';
+import { getOrbitAddressBookService } from '../services/backend';
 import AddressBookDialog from '../components/address-book/AddressBookDialog';
 import AddressBookTable from '../components/address-book/AddressBookTable';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ const AddressBookPage = ({ identity }) => {
   // Initialize service with identity
   useEffect(() => {
     if (identity) {
-      addressBookService.setIdentity(identity);
+      getOrbitAddressBookService.setIdentity(identity);
     }
   }, [identity]);
   // State management - Lines 155-170 in Vue component
@@ -61,7 +61,7 @@ const AddressBookPage = ({ identity }) => {
         }
       };
 
-      const result = await addressBookService.listAddressBookEntries(input);
+      const result = await getOrbitAddressBookService.listAddressBookEntries(input);
       if (result.Ok) {
         setEntries(result.Ok.address_book_entries);
         setPrivileges(
@@ -148,7 +148,7 @@ const AddressBookPage = ({ identity }) => {
 
     if (window.confirm(`Are you sure you want to delete the address book entry for ${entry.address_owner}?`)) {
       try {
-        const result = await addressBookService.removeAddressBookEntry(entry.id);
+        const result = await getOrbitAddressBookService.removeAddressBookEntry(entry.id);
         if (result.Ok) {
           // Refresh the list
           setForceReload(prev => prev + 1);

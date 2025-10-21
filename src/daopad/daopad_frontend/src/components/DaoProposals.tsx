@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { Principal } from '@dfinity/principal';
 import type { Identity } from '@dfinity/agent';
 import { OrbitStationService } from '../services/backend';
-import { DAOPadBackendService } from '../services/backend';
+import { getProposalService } from '../services/backend';
 import ProposalCard from './ProposalCard';
 import ProposalDetailsModal from './ProposalDetailsModal';
 import { Button } from '@/components/ui/button';
@@ -74,7 +74,7 @@ const DaoProposals: React.FC<DaoProposalsProps> = ({ identity, dao }) => {
     if (dao?.station_canister?.[0] && identity && isAuthenticated) {
       fetchProposals();
       // Note: fetchLPPositions() disabled - backend method doesn't exist yet
-      // TODO: Implement getMyLpPositions in DAOPadBackendService
+      // TODO: Implement getMyLpPositions in getProposalService
     } else {
       setLoading(false);
       setProposals([]);
@@ -82,7 +82,7 @@ const DaoProposals: React.FC<DaoProposalsProps> = ({ identity, dao }) => {
   }, [dao, identity, isAuthenticated, filter]);
 
   // Disabled: Backend method getMyLpPositions doesn't exist yet
-  // TODO: Implement this method in DAOPadBackendService when LP position tracking is added
+  // TODO: Implement this method in getProposalService when LP position tracking is added
   const fetchLPPositions = useCallback(async (): Promise<void> => {
     if (!identity || !isAuthenticated) {
       setLpPositions([]);
@@ -91,7 +91,7 @@ const DaoProposals: React.FC<DaoProposalsProps> = ({ identity, dao }) => {
 
     setLpLoading(true);
     try {
-      // const daopadService = new DAOPadBackendService(identity);
+      // const daopadService = getProposalService(identity);
       // const result = await daopadService.getMyLpPositions();
 
       // Placeholder - method doesn't exist in backend yet
@@ -157,7 +157,7 @@ const DaoProposals: React.FC<DaoProposalsProps> = ({ identity, dao }) => {
     setVotingLoading(prev => ({ ...prev, [proposalId]: vote ? 'approving' : 'rejecting' }));
 
     try {
-      const daopadService = new DAOPadBackendService(identity);
+      const daopadService = getProposalService(identity);
       // Use voting method instead of direct approval
       const result = await daopadService.voteOnOrbitRequest(dao.token_canister, proposalId, vote);
 

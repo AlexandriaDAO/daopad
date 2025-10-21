@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { canisterService } from '../../services/backend';
+import { getOrbitCanisterService } from '../../services/backend';
 import CanisterCard from './CanisterCard';
 import CanisterFilters from './CanisterFilters';
 import CreateCanisterWizard from './CreateCanisterWizard';
@@ -41,7 +41,7 @@ export default function CanistersTab({ token, stationId }) {
       console.log('Token canister ID:', token.canister_id);
       console.log('Filters:', JSON.stringify(filters, null, 2));
 
-      const result = await canisterService.listCanisters(
+      const result = await getOrbitCanisterService(null).listCanisters(
         token.canister_id,
         filters
       );

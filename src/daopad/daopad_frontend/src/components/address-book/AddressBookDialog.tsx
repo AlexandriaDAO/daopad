@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import AddressBookForm from './AddressBookForm';
-import { addressBookService } from '../../services/backend';
+import { getOrbitAddressBookService } from '../../services/backend';
 
 const AddressBookDialog = ({
   trigger,
@@ -30,7 +30,7 @@ const AddressBookDialog = ({
 
       if (mode === 'create') {
         // Create new entry
-        result = await addressBookService.createAddressBookEntry(formData);
+        result = await getOrbitAddressBookService.createAddressBookEntry(formData);
       } else if (mode === 'edit' && entry) {
         // Edit existing entry
         const editData = {
@@ -41,7 +41,7 @@ const AddressBookDialog = ({
             ReplaceAllBy: formData.metadata
           } : undefined
         };
-        result = await addressBookService.editAddressBookEntry(editData);
+        result = await getOrbitAddressBookService.editAddressBookEntry(editData);
       }
 
       if (result?.Ok) {

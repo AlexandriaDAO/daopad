@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { canisterService } from '../../services/backend';
+import { getOrbitCanisterService } from '../../services/backend';
 import { Button } from '../ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Alert, AlertDescription } from '../ui/alert';
@@ -30,7 +30,7 @@ export default function CanisterDetails({ orbitStationId, canisterId, onBack }) 
 
     try {
       // Fetch canister details from Orbit Station
-      const result = await canisterService.getCanisterDetails(
+      const result = await getOrbitCanisterService(null).getCanisterDetails(
         orbitStationId,
         canisterId
       );

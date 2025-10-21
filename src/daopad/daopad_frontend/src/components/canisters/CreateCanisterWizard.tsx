@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Principal } from '@dfinity/principal';
-import { canisterService } from '../../services/backend';
+import { getOrbitCanisterService } from '../../services/backend';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -102,7 +102,7 @@ export default function CreateCanisterWizard({ token, onSuccess, onClose }) {
 
       if (mode === 'create') {
         // Create new canister
-        result = await canisterService.createCanister(token.canister_id, {
+        result = await getOrbitCanisterService(null).createCanister(token.canister_id, {
           kind: {
             CreateNew: {
               initial_cycles: formData.initial_cycles ?
@@ -130,7 +130,7 @@ export default function CreateCanisterWizard({ token, onSuccess, onClose }) {
         });
       } else {
         // Import existing canister
-        result = await canisterService.importCanister(
+        result = await getOrbitCanisterService(null).importCanister(
           token.canister_id,
           formData.canister_id,
           {

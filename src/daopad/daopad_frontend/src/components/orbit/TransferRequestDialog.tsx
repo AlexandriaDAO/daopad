@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { DAOPadBackendService } from '@/services';
+import { getOrbitAccountsService } from '@/services';
 import { Principal } from '@dfinity/principal';
 import AddressInput from '@/components/inputs/AddressInput';
 import { validateAddress, BlockchainType } from '@/utils/addressValidation';
@@ -105,7 +105,7 @@ export default function TransferRequestDialog({
 
     try {
       console.log('📡 Creating backend service...');
-      const backend = new DAOPadBackendService(identity);
+      const accountsService = getOrbitAccountsService(identity);
 
       // Convert amount using string-based decimal arithmetic to avoid floating point errors
       console.log('💰 Converting amount:', data.amount, 'with decimals:', asset.decimals);
@@ -155,11 +155,17 @@ export default function TransferRequestDialog({
       }
 
       // Make backend call
-      console.log('🌐 Calling backend.createTreasuryTransferProposal...');
-      const result = await backend.createTreasuryTransferProposal(
-        Principal.fromText(tokenId),
-        transferDetails
-      );
+      console.log('🌐 Calling accountsService.createTransferRequest...');
+      const result = await accountsService.createTransferRequest({
+        stationId,
+        accountId: transferDetails.from_account_id,
+        toAddress: transferDetails.to,
+        assetId: transferDetails.from_asset_id,
+        amount: transferDetails.amount,
+        network: 'InternetComputer',
+        standard: 'ICRC1',
+        metadata: transferDetails.memo ? [['memo', transferDetails.memo]] : []
+      });
 
       console.log('📥 Backend response:', safeStringify(result));
 

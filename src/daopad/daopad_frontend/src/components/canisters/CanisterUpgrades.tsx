@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { canisterService } from '../../services/backend';
+import { getOrbitCanisterService } from '../../services/backend';
 import { canisterCapabilities } from '../../utils/canisterCapabilities';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -94,7 +94,7 @@ export default function CanisterUpgrades({ canister, privileges, orbitStationId,
     try {
       // Take snapshot if requested
       if (takeSnapshot) {
-        const snapshotResult = await canisterService.takeSnapshot(
+        const snapshotResult = await getOrbitCanisterService(null).takeSnapshot(
           orbitStationId,
           canister.id
         );
@@ -108,7 +108,7 @@ export default function CanisterUpgrades({ canister, privileges, orbitStationId,
       }
 
       // Submit upgrade request
-      const result = await canisterService.upgradeCanister(
+      const result = await getOrbitCanisterService(null).upgradeCanister(
         orbitStationId,
         canister.id,
         wasmModule,
@@ -142,7 +142,7 @@ export default function CanisterUpgrades({ canister, privileges, orbitStationId,
     }
 
     try {
-      const result = await canisterService.rollbackCanister(
+      const result = await getOrbitCanisterService(null).rollbackCanister(
         orbitStationId,
         canister.id,
         historyItem.moduleHash

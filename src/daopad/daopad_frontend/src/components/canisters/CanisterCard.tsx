@@ -1,5 +1,5 @@
 import { useState, useEffect, memo } from 'react';
-import { canisterService } from '../../services/backend';
+import { getOrbitCanisterService } from '../../services/backend';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -26,7 +26,7 @@ const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure
       setLoading(true);
       try {
         // Use Principal for IC management canister calls
-        const result = await canisterService.getCanisterStatus(
+        const result = await getOrbitCanisterService(null).getCanisterStatus(
           canister.canister_id  // This is the Principal
         );
         // Only update state if component is still mounted and this is the latest request

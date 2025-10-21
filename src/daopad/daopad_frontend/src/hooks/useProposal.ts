@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../providers/AuthProvider/IIProvider';
-import { DAOPadBackendService } from '../services/backend';
+import { getProposalService } from '../services/backend';
 import { Principal } from '@dfinity/principal';
 
 // Helper: Map operation type string to enum variant
@@ -84,8 +84,8 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
     setLoading(true);
     setError(null);
     try {
-      const backend = new DAOPadBackendService(identity);
-      const result = await backend.getOrbitRequestProposal(
+      const proposalService = getProposalService(identity);
+      const result = await proposalService.getOrbitRequestProposal(
         Principal.fromText(tokenId),
         orbitRequestId
       );
@@ -126,8 +126,8 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
         operationType
       });
 
-      const backend = new DAOPadBackendService(identity);
-      const actor = await backend.getActor();
+      const proposalService = getProposalService(identity);
+      const actor = await proposalService.getActor();
 
       // Infer request type from operation string
       const requestType = inferRequestType(operationType);

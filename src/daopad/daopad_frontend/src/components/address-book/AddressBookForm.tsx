@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Link, Globe, Tag, Plus, X } from 'lucide-react';
-import { addressBookService } from '../../services/backend';
+import { getOrbitAddressBookService } from '../../services/backend';
 import BlockchainIcon from './BlockchainIcon';
 
 // Validation constants from models/address_book.rs Lines 120-124
@@ -59,7 +59,7 @@ const AddressBookForm = ({
   // Auto-detect address format - Line 136-143 in Vue component
   useEffect(() => {
     if (formData.blockchain && formData.address && !isEditMode) {
-      const detected = addressBookService.detectAddressFormat(formData.address, formData.blockchain);
+      const detected = getOrbitAddressBookService.detectAddressFormat(formData.address, formData.blockchain);
       if (detected) {
         setDetectedFormat(detected);
         setFormData(prev => ({ ...prev, address_format: detected }));
@@ -86,7 +86,7 @@ const AddressBookForm = ({
         newErrors.address = `Address cannot exceed ${ADDRESS_MAX} characters`;
       } else if (formData.address_format) {
         // Validate address format
-        if (!addressBookService.validateAddress(formData.address, formData.address_format, formData.blockchain)) {
+        if (!getOrbitAddressBookService.validateAddress(formData.address, formData.address_format, formData.blockchain)) {
           newErrors.address = 'Invalid address format';
         }
       }

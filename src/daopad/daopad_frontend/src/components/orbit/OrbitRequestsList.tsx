@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { DAOPadBackendService } from '@/services';
+import { getOrbitAccountsService, getOrbitRequestsService } from '@/services';
 import {
   Table,
   TableBody,
@@ -46,8 +46,8 @@ export default function OrbitRequestsList({ tokenId, identity }) {
     setError(null);
 
     try {
-      const backend = new DAOPadBackendService(identity);
-      const result = await backend.getTransferRequests(tokenId);
+      const accountsService = getOrbitAccountsService(identity);
+      const result = await accountsService.getTransferRequests(tokenId);
 
       if (result.success) {
         setRequests(result.data);
@@ -80,8 +80,8 @@ export default function OrbitRequestsList({ tokenId, identity }) {
     setApprovingId(requestId);
 
     try {
-      const backend = new DAOPadBackendService(identity);
-      const result = await backend.approveTransferRequest(requestId, tokenId);
+      const accountsService = getOrbitAccountsService(identity);
+      const result = await accountsService.approveTransfer(requestId, tokenId);
 
       if (result.success) {
         toast.success("Approval Submitted", {
@@ -109,8 +109,8 @@ export default function OrbitRequestsList({ tokenId, identity }) {
     setRejectingId(requestId);
 
     try {
-      const backend = new DAOPadBackendService(identity);
-      const result = await backend.rejectTransferRequest(requestId, tokenId);
+      const requestsService = getOrbitRequestsService(identity);
+      const result = await requestsService.reject(tokenId, requestId, 'Rejected via UI');
 
       if (result.success) {
         toast.success("Rejection Submitted", {

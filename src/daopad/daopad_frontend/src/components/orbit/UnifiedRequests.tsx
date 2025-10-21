@@ -8,7 +8,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { useToast } from '../../hooks/use-toast';
-import { DAOPadBackendService } from '../../services/backend';
+import { getProposalService } from '../../services/backend';
 import { useVoting } from '../../hooks/useVoting';
 import RequestDomainSelector from './RequestDomainSelector';
 import { RequestList } from './requests/RequestList';
@@ -63,7 +63,7 @@ const UnifiedRequests = ({ tokenId, identity }) => {
       setError(null);
 
       // Use backend proxy - it already works!
-      const backend = new DAOPadBackendService(identity);
+      const backend = getProposalService(identity);
       const actor = await backend.getActor();
 
       // Get domain filters
@@ -217,7 +217,7 @@ const UnifiedRequests = ({ tokenId, identity }) => {
     if (!identity) return;
 
     try {
-      const backend = new DAOPadBackendService(identity);
+      const backend = getProposalService(identity);
       const result = await backend.voteOnTreasuryProposal(proposalId, vote);
 
       if (result.success) {

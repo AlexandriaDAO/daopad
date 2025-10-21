@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import type { Identity } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
-import { DAOPadBackendService } from '../services/backend';
+import { getProposalService } from '../services/backend';
 import { KongLockerService } from '../services/backend';
 import TokenDashboard from './TokenDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,7 +35,7 @@ const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
     setError('');
 
     try {
-      const daopadService = new DAOPadBackendService(identity);
+      const daopadService = getProposalService(identity);
       const kongLockerService = new KongLockerService(identity);
 
       // Get user's locked tokens

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { canisterService } from '../../services/backend';
+import { getOrbitCanisterService } from '../../services/backend';
 import {
   Dialog,
   DialogContent,
@@ -85,7 +85,7 @@ export default function MethodCallDialog({
 
       // Call validation method
       const args = inputMode === 'json' ? JSON.parse(jsonInput) : formData;
-      const result = await canisterService.validateMethodCall(
+      const result = await getOrbitCanisterService(null).validateMethodCall(
         orbitStationId,
         canister.id,
         method.validation_method,
@@ -131,7 +131,7 @@ export default function MethodCallDialog({
       const attachCycles = cycles ? BigInt(parseFloat(cycles) * 1e12) : undefined;
 
       // Submit method call request
-      const result = await canisterService.callCanisterMethod(
+      const result = await getOrbitCanisterService(null).callCanisterMethod(
         orbitStationId,
         canister.id,
         method.name,
