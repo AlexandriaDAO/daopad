@@ -1,7 +1,7 @@
 import React, { useState, useEffect, memo, useMemo } from 'react';
 import { Principal } from '@dfinity/principal';
 import { useDispatch } from 'react-redux';
-import { getProposalService, getKongLockerService, getOrbitUserService } from '../services/backend';
+import { getProposalService, getTokenService, getKongLockerService, getOrbitUserService } from '../services/backend';
 import AccountsTable from './tables/AccountsTable';
 import UnifiedRequests from './orbit/UnifiedRequests';
 import AddressBookPage from '../pages/AddressBookPage';
@@ -90,9 +90,9 @@ const TokenDashboard = memo(function TokenDashboard({
 
     setLoadingVP(true);
     try {
-      const daopadService = getProposalService(identity);
+      const tokenService = getTokenService(identity);
       const tokenPrincipal = Principal.fromText(token.canister_id);
-      const result = await daopadService.getMyVotingPowerForToken(tokenPrincipal);
+      const result = await tokenService.getMyVotingPowerForToken(tokenPrincipal);
       if (result.success) {
         setUserVotingPower(result.data);
       }
@@ -108,9 +108,9 @@ const TokenDashboard = memo(function TokenDashboard({
 
     setLoadingTotalVP(true);
     try {
-      const daopadService = getProposalService(identity);
+      const tokenService = getTokenService(identity);
       const tokenPrincipal = Principal.fromText(token.canister_id);
-      const result = await daopadService.getTotalVotingPowerForToken(tokenPrincipal);
+      const result = await tokenService.getTotalVotingPowerForToken(tokenPrincipal);
       if (result.success) {
         setTotalVotingPower(result.data);
       }
@@ -128,10 +128,10 @@ const TokenDashboard = memo(function TokenDashboard({
     setError('');
 
     try {
-      const daopadService = getProposalService(identity);
+      const tokenService = getTokenService(identity);
       const tokenPrincipal = Principal.fromText(token.canister_id);
 
-      const stationResult = await daopadService.getOrbitStationForToken(tokenPrincipal);
+      const stationResult = await tokenService.getStationForToken(tokenPrincipal);
       if (stationResult.success && stationResult.data) {
         const stationText = toPrincipalText(stationResult.data);
         setOrbitStation({
