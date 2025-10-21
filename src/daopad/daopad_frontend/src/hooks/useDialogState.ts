@@ -24,10 +24,10 @@ export function useDialogState<T = any>(
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const reset = useCallback(() => {
-    setData(initialData || null);
-    setIsLoading(false);
-    setError(null);
-    setIsSubmitting(false);
+    setData(() => initialData || null);
+    setIsLoading(() => false);
+    setError(() => null);
+    setIsSubmitting(() => false);
   }, [initialData]);
 
   return [

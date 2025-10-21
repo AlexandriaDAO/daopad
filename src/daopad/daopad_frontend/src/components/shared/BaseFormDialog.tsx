@@ -20,6 +20,11 @@ import { Loader2 } from 'lucide-react';
 
 // Helper function to get explicit Tailwind grid classes (required for JIT compiler)
 const getTabsGridClass = (count: number): string => {
+  // Runtime validation for tab count
+  if (count < 1 || count > 6) {
+    console.warn(`Invalid tab count: ${count}. Must be between 1-6. Falling back to 2 columns.`);
+  }
+
   const gridClasses: Record<number, string> = {
     1: 'grid w-full grid-cols-1',
     2: 'grid w-full grid-cols-2',
@@ -77,7 +82,7 @@ export function BaseFormDialog<TSchema extends z.ZodType>({
     if (!open) {
       form.reset();
     }
-  }, [open]); // form.reset is stable, no need in deps
+  }, [open, form.reset]); // form.reset is stable from useForm
 
   // Submission handler with error handling
   const handleSubmit = async (data: z.infer<TSchema>) => {
