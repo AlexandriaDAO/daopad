@@ -25,7 +25,9 @@ const AutoApprovedSetupWizard: React.FC<Props> = ({ tokenId, stationId, onComple
         setError(null);
 
         try {
-            const result = await daopad_backend.create_autoapprove_all_accounts(tokenId);
+            // Convert tokenId to Principal if it's a string
+            const tokenPrincipal = typeof tokenId === 'string' ? Principal.fromText(tokenId) : tokenId;
+            const result = await daopad_backend.create_autoapprove_all_accounts(tokenPrincipal);
 
             if ('Ok' in result) {
                 const ids = result.Ok;
