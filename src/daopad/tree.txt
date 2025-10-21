@@ -2,7 +2,7 @@
 │   ├── agents/
 │   ├── prompts/
 │   ├── workflows/
-│   └── settings.local.json (21 lines)
+│   └── settings.local.json (26 lines)
 ├── .dfx_temp/
 │   └── .config/
 │       └── dfx/
@@ -18,25 +18,25 @@
 │   │   │   ├── address_book.rs (228 lines)
 │   │   │   ├── governance_config.rs (316 lines)
 │   │   │   ├── kong_locker.rs (65 lines)
-│   │   │   ├── mod.rs (53 lines)
-│   │   │   ├── orbit_accounts.rs (288 lines)
+│   │   │   ├── mod.rs (52 lines)
+│   │   │   ├── orbit_accounts.rs (408 lines)
 │   │   │   ├── orbit_assets.rs (270 lines)
 │   │   │   ├── orbit_canisters.rs (306 lines)
 │   │   │   ├── orbit_permissions.rs (148 lines)
-│   │   │   ├── orbit_requests.rs (773 lines)
-│   │   │   ├── orbit_security.rs (1956 lines)
-│   │   │   ├── orbit_transfers.rs (304 lines)
-│   │   │   ├── orbit_users.rs (155 lines)
-│   │   │   ├── orbit.rs (507 lines)
+│   │   │   ├── orbit_requests.rs (737 lines)
+│   │   │   ├── orbit_security.rs (2107 lines)
+│   │   │   ├── orbit_transfers.rs (300 lines)
+│   │   │   ├── orbit_users.rs (154 lines)
+│   │   │   ├── orbit.rs (506 lines)
 │   │   │   ├── proposals.rs (41 lines)
 │   │   │   └── utils.rs (19 lines)
 │   │   ├── kong_locker/
 │   │   │   ├── mod.rs (8 lines)
 │   │   │   ├── registration.rs (47 lines)
-│   │   │   ├── tokens.rs (86 lines)
+│   │   │   ├── tokens.rs (82 lines)
 │   │   │   └── voting.rs (60 lines)
 │   │   ├── proposals/
-│   │   │   ├── mod.rs (25 lines)
+│   │   │   ├── mod.rs (24 lines)
 │   │   │   ├── orbit_link.rs (357 lines)
 │   │   │   ├── orbit_requests.rs (468 lines)
 │   │   │   ├── storage.rs (52 lines)
@@ -51,11 +51,11 @@
 │   │   │   ├── governance.rs (24 lines)
 │   │   │   ├── kong_locker.rs (34 lines)
 │   │   │   ├── mod.rs (10 lines)
-│   │   │   ├── orbit.rs (1346 lines)
+│   │   │   ├── orbit.rs (1367 lines)
 │   │   │   └── storage.rs (22 lines)
 │   │   └── lib.rs (46 lines)
 │   ├── Cargo.toml (18 lines)
-│   ├── daopad_backend.did (1196 lines)
+│   ├── daopad_backend.did (1213 lines)
 │   └── README.md (104 lines)
 ├── daopad_frontend/
 │   ├── src/
@@ -110,7 +110,7 @@
 │   │   │   │   │   └── RuleBuilder.tsx (386 lines)
 │   │   │   │   ├── requests/
 │   │   │   │   │   ├── RequestCard.tsx (174 lines)
-│   │   │   │   │   ├── RequestDialog.tsx (702 lines)
+│   │   │   │   │   ├── RequestDialog.tsx (697 lines)
 │   │   │   │   │   ├── RequestFilters.tsx (206 lines)
 │   │   │   │   │   ├── RequestList.tsx (49 lines)
 │   │   │   │   │   ├── RequestOperationView.tsx (578 lines)
@@ -133,16 +133,17 @@
 │   │   │   │   ├── RequestFiltersCompact.tsx (340 lines)
 │   │   │   │   ├── RequestList.tsx (318 lines)
 │   │   │   │   ├── TransferDialog.tsx (388 lines)
-│   │   │   │   ├── TransferRequestDialog.tsx (330 lines)
+│   │   │   │   ├── TransferRequestDialog.tsx (336 lines)
 │   │   │   │   └── UnifiedRequests.tsx (377 lines)
 │   │   │   ├── permissions/
 │   │   │   │   ├── index.ts (1 lines)
 │   │   │   │   └── PermissionsTable.tsx (407 lines)
 │   │   │   ├── security/
 │   │   │   │   ├── AdminRemovalActions.tsx (195 lines)
+│   │   │   │   ├── AutoApprovedSetupWizard.tsx (227 lines)
 │   │   │   │   ├── DAOTransitionChecklist.tsx (329 lines)
 │   │   │   │   ├── RequestPoliciesView.tsx (297 lines)
-│   │   │   │   └── SecurityDashboard.tsx (218 lines)
+│   │   │   │   └── SecurityDashboard.tsx (232 lines)
 │   │   │   ├── tables/
 │   │   │   │   ├── AccountsTable.tsx (339 lines)
 │   │   │   │   └── OrbitTable.tsx (352 lines)
@@ -190,7 +191,7 @@
 │   │   │   ├── ProposalDetailsModal.tsx (179 lines)
 │   │   │   ├── PublicActivityFeed.tsx (123 lines)
 │   │   │   ├── PublicStatsStrip.tsx (79 lines)
-│   │   │   ├── TokenDashboard.tsx (622 lines)
+│   │   │   ├── TokenDashboard.tsx (621 lines)
 │   │   │   ├── TokenTabs.tsx (222 lines)
 │   │   │   └── TreasuryShowcase.tsx (92 lines)
 │   │   ├── constants/
@@ -210,7 +211,7 @@
 │   │   │   ├── orbit/
 │   │   │   │   ├── orbitSelectors.test.ts (268 lines)
 │   │   │   │   ├── orbitSelectors.ts (227 lines)
-│   │   │   │   └── orbitSlice.ts (445 lines)
+│   │   │   │   └── orbitSlice.ts (447 lines)
 │   │   │   ├── station/
 │   │   │   │   └── stationSlice.ts (416 lines)
 │   │   │   └── token/
@@ -234,7 +235,7 @@
 │   │   │   ├── useSmartFetch.ts (53 lines)
 │   │   │   ├── useStationService.ts (97 lines)
 │   │   │   ├── useTokenMetadata.ts (46 lines)
-│   │   │   └── useVoting.ts (148 lines)
+│   │   │   └── useVoting.ts (144 lines)
 │   │   ├── lib/
 │   │   │   └── utils.ts (6 lines)
 │   │   ├── lp_lock_frontend/
@@ -257,41 +258,37 @@
 │   │   │   │   ├── base/
 │   │   │   │   │   └── BackendServiceBase.ts (147 lines)
 │   │   │   │   ├── kong-locker/
-│   │   │   │   │   └── KongLockerService.ts (96 lines)
+│   │   │   │   │   └── KongLockerService.ts (110 lines)
 │   │   │   │   ├── orbit/
+│   │   │   │   │   ├── address-book/
+│   │   │   │   │   │   └── OrbitAddressBookService.ts (249 lines)
 │   │   │   │   │   ├── canisters/
 │   │   │   │   │   │   └── OrbitCanisterService.ts (400 lines)
 │   │   │   │   │   ├── governance/
 │   │   │   │   │   │   └── OrbitGovernanceService.ts (165 lines)
 │   │   │   │   │   ├── security/
-│   │   │   │   │   │   └── OrbitSecurityService.ts (430 lines)
+│   │   │   │   │   │   └── OrbitSecurityService.ts (433 lines)
 │   │   │   │   │   ├── users/
-│   │   │   │   │   │   └── OrbitUserService.ts (111 lines)
+│   │   │   │   │   │   └── OrbitUserService.ts (117 lines)
 │   │   │   │   │   ├── OrbitAccountsService.ts (232 lines)
 │   │   │   │   │   └── OrbitRequestsService.ts (192 lines)
 │   │   │   │   ├── proposals/
-│   │   │   │   │   └── ProposalService.ts (141 lines)
+│   │   │   │   │   └── ProposalService.ts (171 lines)
 │   │   │   │   ├── tokens/
 │   │   │   │   │   └── TokenService.ts (83 lines)
 │   │   │   │   ├── utility/
 │   │   │   │   │   └── UtilityService.ts (152 lines)
-│   │   │   │   ├── index.ts (29 lines)
+│   │   │   │   ├── index.ts (35 lines)
 │   │   │   │   └── OrbitAgreementService.ts (183 lines)
 │   │   │   ├── orbit/
 │   │   │   │   ├── stationClient.ts (234 lines)
 │   │   │   │   └── stationService.ts (342 lines)
 │   │   │   ├── utils/
 │   │   │   │   └── errorParsers.ts (71 lines)
-│   │   │   ├── addressBookService.ts (321 lines)
 │   │   │   ├── auth.ts (73 lines)
 │   │   │   ├── balanceService.ts (118 lines)
-│   │   │   ├── canisterService.ts (832 lines)
-│   │   │   ├── daopadBackend.ts (1235 lines)
-│   │   │   ├── kongLockerService.ts (233 lines)
-│   │   │   ├── OrbitServiceBase.ts (306 lines)
-│   │   │   ├── orbitStation.did.ts (2164 lines)
-│   │   │   ├── orbitStation.ts (441 lines)
-│   │   │   └── orbitStationService.ts (91 lines)
+│   │   │   ├── index.ts (29 lines)
+│   │   │   └── orbitStation.did.ts (2164 lines)
 │   │   ├── state/
 │   │   │   └── balance/
 │   │   │       ├── balanceSlice.ts (37 lines)
@@ -301,9 +298,18 @@
 │   │   ├── tests/
 │   │   │   └── App.test.tsx (17 lines)
 │   │   ├── types/
+│   │   │   ├── account.types.ts (24 lines)
 │   │   │   ├── balance.ts (41 lines)
+│   │   │   ├── balance.types.ts (52 lines)
+│   │   │   ├── canister.types.ts (47 lines)
+│   │   │   ├── common.types.ts (80 lines)
 │   │   │   ├── global.d.ts (33 lines)
-│   │   │   └── index.ts (443 lines)
+│   │   │   ├── index.ts (14 lines)
+│   │   │   ├── orbit.types.ts (13 lines)
+│   │   │   ├── proposal.types.ts (41 lines)
+│   │   │   ├── request.types.ts (160 lines)
+│   │   │   ├── token.types.ts (22 lines)
+│   │   │   └── user.types.ts (74 lines)
 │   │   ├── utils/
 │   │   │   ├── addressValidation.ts (152 lines)
 │   │   │   ├── agreementExport.ts (245 lines)
@@ -329,5 +335,5 @@
 │   └── vite.config.ts (81 lines)
 ├── scripts/
 ├── .mcp.json (12 lines)
-├── CLAUDE.md (426 lines)
+├── CLAUDE.md (450 lines)
 ├── deploy.sh (399 lines)
