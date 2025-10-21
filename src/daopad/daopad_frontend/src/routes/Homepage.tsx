@@ -52,116 +52,87 @@ function Homepage() {
         </div>
       </section>
 
-      {/* Great Inventions Animation - The Missing Convergence */}
+      {/* The Convergence - Circular Diagram */}
       <section className="py-16 bg-executive-darkGray/20">
         <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto">
-            {/* Animated Timeline */}
-            <div className="relative">
-              {/* Connection Line */}
-              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-executive-gold/20"></div>
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-serif text-executive-gold mb-2">
+                Three Things Become One
+              </h2>
+            </div>
 
-              {/* Fair Launch */}
-              <div className="relative flex items-center mb-12 animate-fade-in-1">
-                <div className="w-1/2 text-right pr-8">
-                  <h3 className="text-2xl font-serif text-executive-ivory mb-2">Fair Launch</h3>
-                  <p className="text-executive-lightGray/60 mt-2 text-sm">Community funded</p>
-                </div>
-                <div className="absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-executive-gold border-4 border-executive-charcoal"></div>
-                <div className="w-1/2 pl-8">
-                  <div className="text-4xl animate-pulse-slow">👥</div>
-                </div>
-              </div>
-
-              {/* Smart Contract */}
-              <div className="relative flex items-center mb-12 animate-fade-in-2">
-                <div className="w-1/2 text-right pr-8">
-                  <div className="text-4xl animate-pulse-slow">⚙️</div>
-                </div>
-                <div className="absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-executive-gold border-4 border-executive-charcoal"></div>
-                <div className="w-1/2 pl-8">
-                  <h3 className="text-2xl font-serif text-executive-ivory mb-2">Smart Contract</h3>
-                  <p className="text-executive-lightGray/60 mt-2 text-sm">Automated trust</p>
-                </div>
-              </div>
-
-              {/* LLC */}
-              <div className="relative flex items-center mb-12 animate-fade-in-3">
-                <div className="w-1/2 text-right pr-8">
-                  <h3 className="text-2xl font-serif text-executive-ivory mb-2">LLC</h3>
-                  <p className="text-executive-lightGray/60 mt-2 text-sm">Legal protection</p>
-                </div>
-                <div className="absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-executive-gold border-4 border-executive-charcoal"></div>
-                <div className="w-1/2 pl-8">
-                  <div className="text-4xl animate-pulse-slow">🏢</div>
-                </div>
-              </div>
-
-              {/* DAO - Unfulfilled */}
-              <div className="relative flex items-center animate-fade-in-4">
-                <div className="w-full text-center">
-                  <div className="inline-block relative">
-                    <div className="absolute inset-0 bg-executive-gold/20 blur-xl animate-pulse"></div>
-                    <div className="relative bg-executive-charcoal border-2 border-executive-gold px-8 py-6 rounded-lg">
-                      <h3 className="text-3xl font-serif text-executive-gold mb-2">DAOs</h3>
-                      <p className="text-sm text-executive-lightGray/60">The Great Convergence</p>
-                      <div className="mt-4 flex justify-center items-center gap-2">
-                        <span className="text-xl opacity-50">👥</span>
-                        <span className="text-executive-gold">+</span>
-                        <span className="text-xl opacity-50">⚙️</span>
-                        <span className="text-executive-gold">+</span>
-                        <span className="text-xl opacity-50">🏢</span>
-                        <span className="text-executive-gold">=</span>
-                        <span className="text-2xl animate-pulse">❓</span>
-                      </div>
-                      <p className="text-xs text-executive-gold mt-2 font-serif">DAOPad makes it real</p>
+            {/* Circular Diagram */}
+            <div className="relative w-full max-w-lg mx-auto" style={{ aspectRatio: '1/1' }}>
+              {/* Center - One Thing */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-executive-gold/20 blur-xl animate-pulse"></div>
+                  <div className="relative bg-executive-charcoal border-2 border-executive-gold rounded-full w-32 h-32 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="text-3xl mb-1">⚡</div>
+                      <div className="text-xs text-executive-gold font-semibold">One Thing</div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Arrow pointing down */}
-              <div className="mt-12 text-center animate-bounce">
-                <div className="inline-block">
-                  <div className="text-executive-gold text-3xl">⬇</div>
-                  <p className="text-executive-gold font-serif mt-2">Until Now</p>
+              {/* Top - Smart Contract */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2">
+                <div className="bg-executive-darkGray/80 border border-executive-gold/30 rounded-lg px-6 py-4 text-center">
+                  <div className="text-2xl mb-1">⚙️</div>
+                  <div className="text-executive-ivory font-semibold text-sm">Smart Contract</div>
+                  <div className="text-executive-lightGray/60 text-xs">Executable code</div>
                 </div>
               </div>
+
+              {/* Bottom Left - Operating Agreement */}
+              <div className="absolute bottom-0 left-0">
+                <div className="bg-executive-darkGray/80 border border-executive-gold/30 rounded-lg px-6 py-4 text-center">
+                  <div className="text-2xl mb-1">📄</div>
+                  <div className="text-executive-ivory font-semibold text-sm">Operating Agreement</div>
+                  <div className="text-executive-lightGray/60 text-xs">Legal contract</div>
+                </div>
+              </div>
+
+              {/* Bottom Right - LLC */}
+              <div className="absolute bottom-0 right-0">
+                <div className="bg-executive-darkGray/80 border border-executive-gold/30 rounded-lg px-6 py-4 text-center">
+                  <div className="text-2xl mb-1">🏢</div>
+                  <div className="text-executive-ivory font-semibold text-sm">LLC Entity</div>
+                  <div className="text-executive-lightGray/60 text-xs">Legal structure</div>
+                </div>
+              </div>
+
+              {/* Connection Lines - SVG for clean arrows */}
+              <svg className="absolute inset-0 w-full h-full" style={{ zIndex: 1 }}>
+                <defs>
+                  <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="rgb(212, 175, 55, 0.5)" />
+                  </marker>
+                </defs>
+
+                {/* Top to Bottom Left */}
+                <path d="M 50% 15% L 25% 75%" stroke="rgb(212, 175, 55, 0.5)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
+                <path d="M 25% 75% L 50% 15%" stroke="rgb(212, 175, 55, 0.5)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
+
+                {/* Bottom Left to Bottom Right */}
+                <path d="M 30% 85% L 70% 85%" stroke="rgb(212, 175, 55, 0.5)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
+                <path d="M 70% 85% L 30% 85%" stroke="rgb(212, 175, 55, 0.5)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
+
+                {/* Bottom Right to Top */}
+                <path d="M 75% 75% L 50% 15%" stroke="rgb(212, 175, 55, 0.5)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
+                <path d="M 50% 15% L 75% 75%" stroke="rgb(212, 175, 55, 0.5)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
+              </svg>
+            </div>
+
+            <div className="text-center mt-12">
+              <p className="text-executive-lightGray/70 text-sm italic">
+                No longer separate — one unified autonomous system
+              </p>
             </div>
           </div>
         </div>
-
-        {/* Custom animations */}
-        <style jsx>{`
-          @keyframes fade-in-1 {
-            0% { opacity: 0; transform: translateY(20px); }
-            100% { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes fade-in-2 {
-            0% { opacity: 0; transform: translateY(20px); }
-            33% { opacity: 0; transform: translateY(20px); }
-            100% { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes fade-in-3 {
-            0% { opacity: 0; transform: translateY(20px); }
-            66% { opacity: 0; transform: translateY(20px); }
-            100% { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes fade-in-4 {
-            0% { opacity: 0; transform: scale(0.8); }
-            75% { opacity: 0; transform: scale(0.8); }
-            100% { opacity: 1; transform: scale(1); }
-          }
-          @keyframes pulse-slow {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.8; }
-          }
-          .animate-fade-in-1 { animation: fade-in-1 2s ease-out; }
-          .animate-fade-in-2 { animation: fade-in-2 2s ease-out; }
-          .animate-fade-in-3 { animation: fade-in-3 2s ease-out; }
-          .animate-fade-in-4 { animation: fade-in-4 2s ease-out; }
-          .animate-pulse-slow { animation: pulse-slow 3s ease-in-out infinite; }
-        `}</style>
       </section>
 
       {/* What This Means - Value Propositions */}
@@ -622,99 +593,29 @@ function Homepage() {
         </div>
       </section>
 
-      {/* Why Now - Technical Explanation */}
-      <section className="py-16 border-t border-executive-gold/20">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-10">
-              <h2 className="text-3xl font-display text-executive-gold mb-4">
-                Why Now?
-              </h2>
-            </div>
-
-            <div className="space-y-6">
-              <p className="text-executive-lightGray/80 text-lg">
-                Most of the 2014-2017 rhetoric around 'Smart Contracts' was about moving legal contracts into tamper-proof code. It was coined as such because that's how it was understood.
-              </p>
-
-              <p className="text-executive-lightGray/80 text-lg">
-                <span className="text-executive-gold">So why has it never succeeded on a meaningful scale?</span>
-              </p>
-
-              <div className="bg-executive-darkGray/50 border border-executive-gold/30 rounded-lg p-6">
-                <p className="text-executive-lightGray/70 mb-4">
-                  The answer lies in the limitations of non actor-model blockchains, which are not sophisticated enough to fulfill the terms of most contracts:
-                </p>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-2">
-                    <span className="text-executive-gold mt-1">✗</span>
-                    <span className="text-executive-lightGray">Cannot provide their own event triggers</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-executive-gold mt-1">✗</span>
-                    <span className="text-executive-lightGray">Don't support code execution through liquid democracy</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-executive-gold mt-1">✗</span>
-                    <span className="text-executive-lightGray">Cannot mutate themselves to meet elastic clauses</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-executive-gold/10 to-executive-darkGray/50 border-2 border-executive-gold/50 rounded-lg p-6">
-                <p className="text-executive-ivory font-semibold mb-3">
-                  The Internet Computer's actor-model changes everything:
-                </p>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-400 mt-1">✓</span>
-                    <span className="text-executive-lightGray">Autonomous event triggers (timers, HTTP outcalls)</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-400 mt-1">✓</span>
-                    <span className="text-executive-lightGray">Liquid democracy with weighted voting power</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-400 mt-1">✓</span>
-                    <span className="text-executive-lightGray">Self-modifying code that adapts to governance decisions</span>
-                  </div>
-                </div>
-              </div>
-
-              <p className="text-executive-lightGray/70 text-center italic text-sm pt-4">
-                For the first time, smart contracts can actually fulfill the promise of self-executing legal agreements.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works - Gradual Transition */}
+      {/* Two Paths to Decentralization */}
       <section className="py-20 border-t border-executive-gold/20">
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-display text-executive-gold mb-4">
-                Start Your DAO Journey Today
+                Two Paths to Decentralization
               </h2>
-              <p className="text-executive-lightGray/70 mb-2">
-                Anyone can start - just lock liquidity and begin the transition
-              </p>
-              <p className="text-executive-lightGray/50 text-sm">
-                No founders needed. No permission required. Just participation.
+              <p className="text-executive-lightGray/70">
+                DAOPad serves both crypto-native projects and traditional businesses
               </p>
             </div>
 
             {/* Tiered Services */}
             <div className="grid md:grid-cols-2 gap-8">
-              {/* Community DAO */}
+              {/* Liquid Token DAOs */}
               <div className="bg-executive-darkGray/50 rounded-lg p-8 border border-executive-gold/30">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-serif text-executive-ivory">Community DAO</h3>
-                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">Start Today</Badge>
+                  <h3 className="text-xl font-serif text-executive-ivory">Liquid Token DAOs</h3>
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">Free & Open</Badge>
                 </div>
                 <p className="text-sm text-executive-lightGray/60 mb-6">
-                  Anyone can initiate by locking liquidity
+                  For crypto projects with liquid, decentralized tokens
                 </p>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
@@ -762,17 +663,16 @@ function Homepage() {
                 </div>
               </div>
 
-              {/* Official DAO */}
+              {/* Traditional LLCs */}
               <div className="bg-gradient-to-br from-executive-gold/10 to-executive-darkGray/50 rounded-lg p-8 border-2 border-executive-gold/50">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-serif text-executive-gold">Official DAO</h3>
-                  <Badge className="bg-executive-gold/20 text-executive-goldLight border-executive-gold/30 text-xs">100% Mature</Badge>
+                  <h3 className="text-xl font-serif text-executive-gold">Traditional LLCs</h3>
+                  <Badge className="bg-executive-gold/20 text-executive-goldLight border-executive-gold/30 text-xs">1% Revenue</Badge>
                 </div>
                 <p className="text-sm text-executive-lightGray/60 mb-6">
-                  Achieved through community participation
+                  For established businesses with real legal contracts and illiquid equity
                 </p>
                 <div className="space-y-3">
-                  <div className="text-xs text-executive-gold/70 uppercase tracking-wider mb-2">Everything in Community DAO plus:</div>
                   <div className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 text-executive-gold mt-0.5 flex-shrink-0" />
                     <div>
