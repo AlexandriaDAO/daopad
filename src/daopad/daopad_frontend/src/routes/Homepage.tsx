@@ -37,13 +37,20 @@ function Homepage() {
               DAOPad
             </h1>
 
-            {/* The truth about DAOs */}
-            <p className="text-2xl text-executive-goldLight font-serif mb-2">
-              DAOs Don't Actually Exist
+            {/* Core function statement */}
+            <p className="text-3xl text-executive-goldLight font-serif mb-4">
+              Turns LLCs into Smart Contracts
             </p>
-            <p className="text-lg text-executive-lightGray/70 mb-8">
-              We have D. A. O. in isolation, but never together
-            </p>
+
+            {/* The convergence explanation */}
+            <div className="max-w-3xl mx-auto mb-8">
+              <p className="text-lg text-executive-lightGray/80 mb-3">
+                Your company, its legal contracts, and its operations are no longer three things—but <span className="text-executive-gold">one thing</span>.
+              </p>
+              <p className="text-sm text-executive-lightGray/60">
+                The same autonomous software that executes your operations also generates your legally binding operating agreement.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -160,6 +167,79 @@ function Homepage() {
         `}</style>
       </section>
 
+      {/* What This Means - Value Propositions */}
+      <section className="py-16 border-t border-executive-gold/20">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-display text-executive-gold mb-4">
+                What This Means
+              </h2>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* For Crypto-Natives */}
+              <div className="bg-executive-darkGray/50 border border-executive-gold/30 rounded-lg p-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-3xl">🔐</span>
+                  <h3 className="text-xl font-serif text-executive-ivory">For Crypto-Natives</h3>
+                </div>
+                <p className="text-executive-lightGray/70 mb-6 text-sm">
+                  Your project has a white-glove framework for migrating to a legally recognized DAO LLC:
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">•</span>
+                    <span className="text-executive-lightGray">Business bank account with fiat off-ramp</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">•</span>
+                    <span className="text-executive-lightGray">Ability to own property & sign contracts</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">•</span>
+                    <span className="text-executive-lightGray">Legal liability protection for members</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">•</span>
+                    <span className="text-executive-lightGray">IRS compliant payroll and accounting</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* For Business Owners */}
+              <div className="bg-executive-darkGray/50 border border-executive-gold/30 rounded-lg p-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-3xl">🏢</span>
+                  <h3 className="text-xl font-serif text-executive-ivory">For Business Owners</h3>
+                </div>
+                <p className="text-executive-lightGray/70 mb-6 text-sm">
+                  Handle critical business operations internally without intermediaries:
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">•</span>
+                    <span className="text-executive-lightGray">Take on investment partners seamlessly</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">•</span>
+                    <span className="text-executive-lightGray">Automated payroll & equity allocations</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">•</span>
+                    <span className="text-executive-lightGray">Self-custody with full auditability</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">•</span>
+                    <span className="text-executive-lightGray">No more lawyers, notaries, accountants for routine ops</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* The Current State - Three Approaches */}
       <section className="py-16 border-t border-executive-gold/20">
         <div className="container mx-auto px-4">
@@ -208,11 +288,15 @@ function Homepage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray/70">6+ months launch</span>
+                    <span className="text-executive-lightGray/70">6+ months launch time</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray/70">Too complex</span>
+                    <span className="text-executive-lightGray/70">No fiat operations</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <span className="text-executive-lightGray/70">Can't sign legal contracts</span>
                   </div>
                 </div>
                 <div className="mt-4 pt-4 border-t border-executive-gold/10">
@@ -479,6 +563,135 @@ function Homepage() {
         </div>
       </section>
 
+      {/* How to Use This NOW - Practical Steps */}
+      <section className="py-16 border-t border-executive-gold/20 bg-executive-darkGray/20">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-display text-executive-gold mb-4">
+                How to Use This NOW
+              </h2>
+              <p className="text-executive-lightGray/70">
+                If you're an LLC owner, you can start today
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-executive-gold/10 to-executive-darkGray/50 border-2 border-executive-gold/50 rounded-lg p-8">
+              <div className="space-y-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-executive-gold/20 border border-executive-gold flex items-center justify-center text-executive-gold font-bold">
+                    1
+                  </div>
+                  <div>
+                    <h4 className="text-executive-ivory font-semibold mb-2">Open an Orbit Station</h4>
+                    <p className="text-executive-lightGray/70 text-sm">
+                      Link it to DAOPad.org and move some company assets there. 5 minute setup.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-executive-gold/20 border border-executive-gold flex items-center justify-center text-executive-gold font-bold">
+                    2
+                  </div>
+                  <div>
+                    <h4 className="text-executive-ivory font-semibold mb-2">Update Operating Agreement</h4>
+                    <p className="text-executive-lightGray/70 text-sm">
+                      Reference the autonomously generated equivalent as binding. The smart contract <span className="italic">is</span> the agreement.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-executive-gold/20 border border-executive-gold flex items-center justify-center text-executive-gold font-bold">
+                    3
+                  </div>
+                  <div>
+                    <h4 className="text-executive-ivory font-semibold mb-2">Start Operating</h4>
+                    <p className="text-executive-lightGray/70 text-sm">
+                      Pay employees without intermediaries, interchange between fiat/stablecoins from your business bank, and self-custody your assets while keeping full auditability for tax time.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-executive-gold/30 text-center">
+                  <p className="text-executive-gold/80 text-sm italic">
+                    Congratulations! You're now among the first companies that can self-custody and operate peer-to-peer.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Why Now - Technical Explanation */}
+      <section className="py-16 border-t border-executive-gold/20">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-display text-executive-gold mb-4">
+                Why Now?
+              </h2>
+            </div>
+
+            <div className="space-y-6">
+              <p className="text-executive-lightGray/80 text-lg">
+                Most of the 2014-2017 rhetoric around 'Smart Contracts' was about moving legal contracts into tamper-proof code. It was coined as such because that's how it was understood.
+              </p>
+
+              <p className="text-executive-lightGray/80 text-lg">
+                <span className="text-executive-gold">So why has it never succeeded on a meaningful scale?</span>
+              </p>
+
+              <div className="bg-executive-darkGray/50 border border-executive-gold/30 rounded-lg p-6">
+                <p className="text-executive-lightGray/70 mb-4">
+                  The answer lies in the limitations of non actor-model blockchains, which are not sophisticated enough to fulfill the terms of most contracts:
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">✗</span>
+                    <span className="text-executive-lightGray">Cannot provide their own event triggers</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">✗</span>
+                    <span className="text-executive-lightGray">Don't support code execution through liquid democracy</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">✗</span>
+                    <span className="text-executive-lightGray">Cannot mutate themselves to meet elastic clauses</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-executive-gold/10 to-executive-darkGray/50 border-2 border-executive-gold/50 rounded-lg p-6">
+                <p className="text-executive-ivory font-semibold mb-3">
+                  The Internet Computer's actor-model changes everything:
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-400 mt-1">✓</span>
+                    <span className="text-executive-lightGray">Autonomous event triggers (timers, HTTP outcalls)</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-400 mt-1">✓</span>
+                    <span className="text-executive-lightGray">Liquid democracy with weighted voting power</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-400 mt-1">✓</span>
+                    <span className="text-executive-lightGray">Self-modifying code that adapts to governance decisions</span>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-executive-lightGray/70 text-center italic text-sm pt-4">
+                For the first time, smart contracts can actually fulfill the promise of self-executing legal agreements.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* How It Works - Gradual Transition */}
       <section className="py-20 border-t border-executive-gold/20">
         <div className="container mx-auto px-4">
@@ -633,6 +846,64 @@ function Homepage() {
         </div>
       </section>
 
+      {/* Revenue Model & Legal Clarity */}
+      <section className="py-16 border-t border-executive-gold/20 bg-executive-darkGray/20">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto">
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Revenue Model */}
+              <div className="bg-executive-darkGray/50 border border-executive-gold/30 rounded-lg p-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <TrendingUp className="w-8 h-8 text-executive-gold" />
+                  <h3 className="text-xl font-serif text-executive-ivory">Revenue Model</h3>
+                </div>
+                <p className="text-executive-lightGray/70 mb-4">
+                  <span className="text-executive-gold text-2xl font-bold">1%</span> of traditional LLC dealflow is autonomously distributed to $ALEX stakers (the parent DAO).
+                </p>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
+                    <span className="text-executive-lightGray">Existing liquid tokens: <span className="font-semibold">FREE</span> (no fee, no legal help)</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
+                    <span className="text-executive-lightGray">Traditional LLCs: 1% of equity transfers only</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
+                    <span className="text-executive-lightGray">No recurring fees, no hidden costs</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Are These Securities? */}
+              <div className="bg-executive-darkGray/50 border border-executive-gold/30 rounded-lg p-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <Shield className="w-8 h-8 text-executive-gold" />
+                  <h3 className="text-xl font-serif text-executive-ivory">Are These Unregistered Securities?</h3>
+                </div>
+                <div className="space-y-4 text-sm">
+                  <div>
+                    <p className="text-executive-lightGray/70 mb-2">
+                      <span className="font-semibold text-executive-gold">Existing liquid tokens:</span> Can use our software freely. We take no fee and provide no legal help to disassociate from security risk.
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-executive-lightGray/70 mb-2">
+                      <span className="font-semibold text-executive-gold">Target customer - Traditional LLCs:</span> Ownership enforced with smart contracts as a digital mirror of traditional equity transfers.
+                    </p>
+                  </div>
+                  <div className="bg-executive-gold/10 border border-executive-gold/30 rounded p-3">
+                    <p className="text-executive-lightGray text-xs">
+                      These LLCs do not have liquid tokens and follow traditional investment processes (set valuation, participating member status). <span className="font-semibold">Not a security risk.</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Final CTA */}
       <section className="py-20 border-t border-executive-gold/20">
