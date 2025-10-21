@@ -26,7 +26,7 @@ const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure
       setLoading(true);
       try {
         // Use Principal for IC management canister calls
-        const result = await getOrbitCanisterService(null).getCanisterStatus(
+        const result = await getOrbitCanisterService(identity).getCanisterStatus(
           canister.canister_id  // This is the Principal
         );
         // Only update state if component is still mounted and this is the latest request

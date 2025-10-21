@@ -102,7 +102,7 @@ export default function CreateCanisterWizard({ token, onSuccess, onClose }) {
 
       if (mode === 'create') {
         // Create new canister
-        result = await getOrbitCanisterService(null).createCanister(token.canister_id, {
+        result = await getOrbitCanisterService(identity).createCanister(token.canister_id, {
           kind: {
             CreateNew: {
               initial_cycles: formData.initial_cycles ?
@@ -130,7 +130,7 @@ export default function CreateCanisterWizard({ token, onSuccess, onClose }) {
         });
       } else {
         // Import existing canister
-        result = await getOrbitCanisterService(null).importCanister(
+        result = await getOrbitCanisterService(identity).importCanister(
           token.canister_id,
           formData.canister_id,
           {

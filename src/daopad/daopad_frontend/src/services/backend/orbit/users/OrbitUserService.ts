@@ -108,3 +108,9 @@ export class OrbitUserService extends BackendServiceBase {
     );
   }
 }
+
+export const getOrbitUserService = (identity) => {
+  return new OrbitUserService(identity);
+};
+
+export default OrbitUserService;

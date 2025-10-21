@@ -39,7 +39,7 @@ export default function CanisterSnapshots({ canister, privileges, orbitStationId
     setError(null);
 
     try {
-      const result = await getOrbitCanisterService(null).listSnapshots(
+      const result = await getOrbitCanisterService(identity).listSnapshots(
         orbitStationId,
         canister.canister_id
       );
@@ -77,7 +77,7 @@ export default function CanisterSnapshots({ canister, privileges, orbitStationId
     setSuccess(null);
 
     try {
-      const result = await getOrbitCanisterService(null).takeSnapshot(
+      const result = await getOrbitCanisterService(identity).takeSnapshot(
         orbitStationId,
         canister.id
       );
@@ -106,7 +106,7 @@ export default function CanisterSnapshots({ canister, privileges, orbitStationId
     setSuccess(null);
 
     try {
-      const result = await getOrbitCanisterService(null).restoreSnapshot(
+      const result = await getOrbitCanisterService(identity).restoreSnapshot(
         orbitStationId,
         canister.id,
         snapshot.id
@@ -136,7 +136,7 @@ export default function CanisterSnapshots({ canister, privileges, orbitStationId
     setSuccess(null);
 
     try {
-      const result = await getOrbitCanisterService(null).deleteSnapshot(
+      const result = await getOrbitCanisterService(identity).deleteSnapshot(
         orbitStationId,
         canister.id,
         snapshot.id

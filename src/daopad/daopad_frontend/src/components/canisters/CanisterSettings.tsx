@@ -53,7 +53,7 @@ export default function CanisterSettings({ canister, privileges, orbitStationId,
         .map(l => l.trim())
         .filter(l => l);
 
-      const result = await getOrbitCanisterService(null).updateCanisterMetadata(
+      const result = await getOrbitCanisterService(identity).updateCanisterMetadata(
         orbitStationId,
         canister.id,
         {
@@ -101,7 +101,7 @@ export default function CanisterSettings({ canister, privileges, orbitStationId,
         settings.wasm_memory_limit = [BigInt(formData.wasm_memory_limit)];
       }
 
-      const result = await getOrbitCanisterService(null).updateCanisterSettings(
+      const result = await getOrbitCanisterService(identity).updateCanisterSettings(
         orbitStationId,
         canister.id,
         settings
@@ -127,7 +127,7 @@ export default function CanisterSettings({ canister, privileges, orbitStationId,
     }
 
     try {
-      const result = await getOrbitCanisterService(null).archiveCanister(
+      const result = await getOrbitCanisterService(identity).archiveCanister(
         orbitStationId,
         canister.id,
         !(canister.state && 'Active' in canister.state)
@@ -157,7 +157,7 @@ export default function CanisterSettings({ canister, privileges, orbitStationId,
     }
 
     try {
-      const result = await getOrbitCanisterService(null).deleteCanister(
+      const result = await getOrbitCanisterService(identity).deleteCanister(
         orbitStationId,
         canister.id
       );

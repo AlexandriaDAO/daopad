@@ -85,7 +85,7 @@ export default function MethodCallDialog({
 
       // Call validation method
       const args = inputMode === 'json' ? JSON.parse(jsonInput) : formData;
-      const result = await getOrbitCanisterService(null).validateMethodCall(
+      const result = await getOrbitCanisterService(identity).validateMethodCall(
         orbitStationId,
         canister.id,
         method.validation_method,
@@ -131,7 +131,7 @@ export default function MethodCallDialog({
       const attachCycles = cycles ? BigInt(parseFloat(cycles) * 1e12) : undefined;
 
       // Submit method call request
-      const result = await getOrbitCanisterService(null).callCanisterMethod(
+      const result = await getOrbitCanisterService(identity).callCanisterMethod(
         orbitStationId,
         canister.id,
         method.name,

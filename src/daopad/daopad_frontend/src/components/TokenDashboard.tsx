@@ -1,8 +1,7 @@
 import React, { useState, useEffect, memo, useMemo } from 'react';
 import { Principal } from '@dfinity/principal';
 import { useDispatch } from 'react-redux';
-import { getProposalService } from '../services/backend';
-import { OrbitStationService } from '../services/backend';
+import { getProposalService, getKongLockerService, getOrbitUserService } from '../services/backend';
 import AccountsTable from './tables/AccountsTable';
 import UnifiedRequests from './orbit/UnifiedRequests';
 import AddressBookPage from '../pages/AddressBookPage';
@@ -186,8 +185,8 @@ const TokenDashboard = memo(function TokenDashboard({
     if (!orbitStation?.station_id) return;
 
     try {
-      const orbitService = new OrbitStationService(identity, orbitStation.station_id);
-      const result = await orbitService.getAllMembersWithRoles();
+      const userService = getOrbitUserService(identity);
+      const result = await userService.listUsers(orbitStation.station_id, {});
 
       if (result.success) {
         const membersList = result.data.members;

@@ -94,7 +94,7 @@ export default function CanisterUpgrades({ canister, privileges, orbitStationId,
     try {
       // Take snapshot if requested
       if (takeSnapshot) {
-        const snapshotResult = await getOrbitCanisterService(null).takeSnapshot(
+        const snapshotResult = await getOrbitCanisterService(identity).takeSnapshot(
           orbitStationId,
           canister.id
         );
@@ -108,7 +108,7 @@ export default function CanisterUpgrades({ canister, privileges, orbitStationId,
       }
 
       // Submit upgrade request
-      const result = await getOrbitCanisterService(null).upgradeCanister(
+      const result = await getOrbitCanisterService(identity).upgradeCanister(
         orbitStationId,
         canister.id,
         wasmModule,
@@ -142,7 +142,7 @@ export default function CanisterUpgrades({ canister, privileges, orbitStationId,
     }
 
     try {
-      const result = await getOrbitCanisterService(null).rollbackCanister(
+      const result = await getOrbitCanisterService(identity).rollbackCanister(
         orbitStationId,
         canister.id,
         historyItem.moduleHash

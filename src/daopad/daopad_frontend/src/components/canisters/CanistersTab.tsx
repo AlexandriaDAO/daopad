@@ -41,7 +41,7 @@ export default function CanistersTab({ token, stationId }) {
       console.log('Token canister ID:', token.canister_id);
       console.log('Filters:', JSON.stringify(filters, null, 2));
 
-      const result = await getOrbitCanisterService(null).listCanisters(
+      const result = await getOrbitCanisterService(identity).listCanisters(
         token.canister_id,
         filters
       );

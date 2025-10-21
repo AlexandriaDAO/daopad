@@ -30,7 +30,7 @@ export default function CanisterDetails({ orbitStationId, canisterId, onBack }) 
 
     try {
       // Fetch canister details from Orbit Station
-      const result = await getOrbitCanisterService(null).getCanisterDetails(
+      const result = await getOrbitCanisterService(identity).getCanisterDetails(
         orbitStationId,
         canisterId
       );

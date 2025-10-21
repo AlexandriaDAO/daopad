@@ -33,7 +33,7 @@ export default function CanisterOverview({ canister, privileges, orbitStationId,
     setError(null);
 
     try {
-      const result = await getOrbitCanisterService(null).getCanisterStatus(canister.canister_id);
+      const result = await getOrbitCanisterService(identity).getCanisterStatus(canister.canister_id);
       if (result.Ok) {
         setStatus(result.Ok);
       } else {
@@ -132,7 +132,7 @@ export default function CanisterOverview({ canister, privileges, orbitStationId,
       }
 
       const cycles = BigInt(Math.floor(parsed * 1e12));
-      const result = await getOrbitCanisterService(null).fundCanister(
+      const result = await getOrbitCanisterService(identity).fundCanister(
         orbitStationId,
         canister.id,
         cycles

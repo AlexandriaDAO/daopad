@@ -90,7 +90,7 @@ export default function CyclesManagement({ canisters, orbitStationId, onRefresh 
 
     try {
       const cycles = BigInt(parseFloat(fundAmount) * 1e12);
-      const result = await getOrbitCanisterService(null).fundCanister(
+      const result = await getOrbitCanisterService(identity).fundCanister(
         orbitStationId,
         selectedCanister.id,
         cycles
@@ -132,7 +132,7 @@ export default function CyclesManagement({ canisters, orbitStationId, onRefresh 
     try {
       const fundAmount = BigInt(5e12); // 5T cycles each
       const promises = lowBalanceCanisters.map(canister =>
-        getOrbitCanisterService(null).fundCanister(orbitStationId, canister.id, fundAmount)
+        getOrbitCanisterService(identity).fundCanister(orbitStationId, canister.id, fundAmount)
       );
 
       const results = await Promise.allSettled(promises);
