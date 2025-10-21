@@ -4,7 +4,7 @@ import { useStationService } from '@/hooks/useStationService';
 import { useActiveStation } from '@/hooks/useActiveStation';
 import { getProposalService } from '@/services';
 import { Principal } from '@dfinity/principal';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { DialogLayout } from '@/components/shared/DialogLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,13 +24,8 @@ import {
   Clock,
   User,
   Calendar,
-  Hash,
-  FileText,
-  Shield,
   ThumbsUp,
   ThumbsDown,
-  Play,
-  Ban
 } from 'lucide-react';
 import { formatDateTime, formatPrincipalShort } from '@/utils/format';
 import { cn } from '@/lib/utils';
@@ -44,7 +39,7 @@ export function RequestDialog({ open, requestId, tokenId, onClose, onApproved })
   const [approvalComment, setApprovalComment] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
 
-  // Local state for request data (replacing React Query)
+  // Local state for request data
   const [request, setRequest] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -252,57 +247,19 @@ export function RequestDialog({ open, requestId, tokenId, onClose, onApproved })
     const typeName = getOperationTypeName(requestType);
 
     const thresholds = {
-      // Critical - 90%
-      'SystemUpgrade': 90,
-      'SystemRestore': 90,
-      'SetDisasterRecovery': 90,
-      'ManageSystemInfo': 90,
-
-      // Treasury - 75%
-      'Transfer': 75,
-      'AddAccount': 75,
-      'EditAccount': 75,
-
-      // Governance - 70%
-      'EditPermission': 70,
-      'AddRequestPolicy': 70,
-      'EditRequestPolicy': 70,
-      'RemoveRequestPolicy': 70,
-
-      // Canister & Rules - 60%
-      'CreateExternalCanister': 60,
-      'ConfigureExternalCanister': 60,
-      'ChangeExternalCanister': 60,
-      'CallExternalCanister': 60,
-      'FundExternalCanister': 60,
-      'MonitorExternalCanister': 60,
-      'SnapshotExternalCanister': 60,
-      'RestoreExternalCanister': 60,
-      'PruneExternalCanister': 60,
-      'AddNamedRule': 60,
-      'EditNamedRule': 60,
-      'RemoveNamedRule': 60,
-
-      // User/Group - 50%
-      'AddUser': 50,
-      'EditUser': 50,
-      'RemoveUser': 50,
-      'AddUserGroup': 50,
-      'EditUserGroup': 50,
-      'RemoveUserGroup': 50,
-
-      // Assets - 40%
-      'AddAsset': 40,
-      'EditAsset': 40,
-      'RemoveAsset': 40,
-
-      // Address Book - 30%
-      'AddAddressBookEntry': 30,
-      'EditAddressBookEntry': 30,
-      'RemoveAddressBookEntry': 30,
+      'SystemUpgrade': 90, 'SystemRestore': 90, 'SetDisasterRecovery': 90, 'ManageSystemInfo': 90,
+      'Transfer': 75, 'AddAccount': 75, 'EditAccount': 75,
+      'EditPermission': 70, 'AddRequestPolicy': 70, 'EditRequestPolicy': 70, 'RemoveRequestPolicy': 70,
+      'CreateExternalCanister': 60, 'ConfigureExternalCanister': 60, 'ChangeExternalCanister': 60,
+      'CallExternalCanister': 60, 'FundExternalCanister': 60, 'MonitorExternalCanister': 60,
+      'SnapshotExternalCanister': 60, 'RestoreExternalCanister': 60, 'PruneExternalCanister': 60,
+      'AddNamedRule': 60, 'EditNamedRule': 60, 'RemoveNamedRule': 60,
+      'AddUser': 50, 'EditUser': 50, 'RemoveUser': 50, 'AddUserGroup': 50, 'EditUserGroup': 50, 'RemoveUserGroup': 50,
+      'AddAsset': 40, 'EditAsset': 40, 'RemoveAsset': 40,
+      'AddAddressBookEntry': 30, 'EditAddressBookEntry': 30, 'RemoveAddressBookEntry': 30,
     };
 
-    return thresholds[typeName] || 75; // Default to 75% for unknown
+    return thresholds[typeName] || 75;
   };
 
   const getRiskLevel = (requestType) => {
@@ -350,347 +307,350 @@ export function RequestDialog({ open, requestId, tokenId, onClose, onApproved })
     const remaining = Math.max(0, requiredVotes - yesVotes);
 
     if (remaining === 0) {
-      return '✓ Threshold reached! Awaiting execution.';
+      return 'Threshold reached! Awaiting execution.';
     }
 
     return `${remaining.toLocaleString()} more votes needed to reach ${threshold}% threshold`;
   };
 
+  const footer = (
+    <Button variant="outline" onClick={onClose}>
+      Close
+    </Button>
+  );
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>Request Details</span>
-            {request && getStatusBadge(request.status)}
-          </DialogTitle>
-        </DialogHeader>
+    <DialogLayout
+      open={open}
+      onOpenChange={onClose}
+      title={
+        <div className="flex items-center justify-between w-full">
+          <span>Request Details</span>
+          {request && getStatusBadge(request.status)}
+        </div>
+      }
+      footer={footer}
+      maxWidth="max-w-3xl"
+      maxHeight="max-h-[90vh]"
+    >
+      {isLoading && !request ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : error ? (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : request ? (
+        <ScrollArea className="max-h-[60vh]">
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="approvals">Approvals</TabsTrigger>
+              <TabsTrigger value="history">History</TabsTrigger>
+            </TabsList>
 
-        {isLoading && !request ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : error ? (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        ) : request ? (
-          <ScrollArea className="max-h-[60vh]">
-            <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="approvals">Approvals</TabsTrigger>
-                <TabsTrigger value="history">History</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="overview" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Request Information</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Request ID</Label>
-                        <p className="font-mono text-sm">{formatPrincipalShort(requestId)}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Created</Label>
-                        <p className="text-sm">{formatDateTime(request.created_at)}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Requester</Label>
-                        <p className="font-mono text-sm">{formatPrincipalShort(request.requester)}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Expiration</Label>
-                        <p className="text-sm">{formatDateTime(request.expiration_dt)}</p>
-                      </div>
-                    </div>
-
-                    <Separator />
-
+            <TabsContent value="overview" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Request Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-xs text-muted-foreground">Title</Label>
-                      <p className="text-sm font-medium">{request.title || 'No title'}</p>
+                      <Label className="text-xs text-muted-foreground">Request ID</Label>
+                      <p className="font-mono text-sm">{formatPrincipalShort(requestId)}</p>
                     </div>
-
-                    {request.summary && (
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Summary</Label>
-                        <p className="text-sm">{request.summary}</p>
-                      </div>
-                    )}
-
-                    <Separator />
-
                     <div>
-                      <Label className="text-xs text-muted-foreground mb-2 block">Approval Progress</Label>
-                      <div className="space-y-2">
-                        <Progress value={getApprovalProgress()} className="h-2" />
-                        <p className="text-xs text-muted-foreground">
-                          {request.approvals_count || 0} of {request.approvals_required} approvals
-                        </p>
-                      </div>
+                      <Label className="text-xs text-muted-foreground">Created</Label>
+                      <p className="text-sm">{formatDateTime(request.created_at)}</p>
                     </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Requester</Label>
+                      <p className="font-mono text-sm">{formatPrincipalShort(request.requester)}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Expiration</Label>
+                      <p className="text-sm">{formatDateTime(request.expiration_dt)}</p>
+                    </div>
+                  </div>
 
-                    {proposal && (
-                      <>
-                        <Separator />
+                  <Separator />
 
-                        <div>
-                          <Label className="text-xs text-muted-foreground mb-2 block">
-                            Community Voting (DAOPad Governance)
-                          </Label>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Title</Label>
+                    <p className="text-sm font-medium">{request.title || 'No title'}</p>
+                  </div>
 
-                          <div className="space-y-2 p-3 bg-muted/50 rounded-md">
-                            <div className="flex justify-between text-sm">
-                              <span className="font-medium">Operation Type:</span>
-                              <Badge variant="outline">
-                                {getOperationTypeName(proposal.request_type)}
-                              </Badge>
-                            </div>
+                  {request.summary && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Summary</Label>
+                      <p className="text-sm">{request.summary}</p>
+                    </div>
+                  )}
 
-                            <div className="flex justify-between text-sm">
-                              <span className="font-medium">Required Threshold:</span>
-                              <span className="font-mono">
-                                {getThresholdPercentage(proposal.request_type)}%
-                              </span>
-                            </div>
+                  <Separator />
 
-                            <div className="flex justify-between text-sm">
-                              <span className="font-medium">Risk Level:</span>
-                              <Badge className={getRiskLevelColor(proposal.request_type)}>
-                                {getRiskLevel(proposal.request_type)}
-                              </Badge>
-                            </div>
-
-                            <Separator className="my-2" />
-
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                              <div className="text-center p-2 bg-green-50 rounded">
-                                <div className="font-bold text-green-700">
-                                  {Number(proposal.yes_votes).toLocaleString()}
-                                </div>
-                                <div className="text-xs text-muted-foreground">Yes Votes</div>
-                              </div>
-
-                              <div className="text-center p-2 bg-red-50 rounded">
-                                <div className="font-bold text-red-700">
-                                  {Number(proposal.no_votes).toLocaleString()}
-                                </div>
-                                <div className="text-xs text-muted-foreground">No Votes</div>
-                              </div>
-                            </div>
-
-                            <div className="space-y-1">
-                              <Progress
-                                value={getVotingProgress(proposal)}
-                                className="h-2"
-                              />
-                              <p className="text-xs text-muted-foreground text-center">
-                                {getVotingProgressText(proposal)}
-                              </p>
-                            </div>
-
-                            <div className="flex justify-between text-xs text-muted-foreground">
-                              <span>Expires:</span>
-                              <span>{formatDateTime(proposal.expires_at)}</span>
-                            </div>
-                          </div>
-
-                          {proposal.status && Object.keys(proposal.status)[0] === 'Active' && userVotingPower && userVotingPower > 0 && (
-                            <div className="mt-3 space-y-2">
-                              <div className="text-xs text-center text-muted-foreground">
-                                Your voting power: <strong>{Number(userVotingPower).toLocaleString()} VP</strong>
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-2">
-                                <Button
-                                  onClick={() => handleVote(true)}
-                                  disabled={isApproving || isRejecting}
-                                  variant="default"
-                                  size="sm"
-                                >
-                                  {isApproving && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                                  <ThumbsUp className="mr-2 h-3 w-3" />
-                                  Vote Yes
-                                </Button>
-
-                                <Button
-                                  onClick={() => handleVote(false)}
-                                  disabled={isApproving || isRejecting}
-                                  variant="destructive"
-                                  size="sm"
-                                >
-                                  {isRejecting && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                                  <ThumbsDown className="mr-2 h-3 w-3" />
-                                  Vote No
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-
-                          {proposal.status && Object.keys(proposal.status)[0] === 'Active' && (!userVotingPower || userVotingPower === 0) && (
-                            <Alert variant="default" className="mt-3">
-                              <AlertDescription className="text-xs">
-                                You need voting power to vote. Lock LP tokens in Kong Locker to participate.
-                              </AlertDescription>
-                            </Alert>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {request.operation && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Operation</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <RequestOperationView operation={request.operation} />
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-
-              <TabsContent value="approvals" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Approvals</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {request.approvals && request.approvals.length > 0 ? (
-                      <div className="space-y-2">
-                        {request.approvals.map((approval, idx) => (
-                          <div key={idx} className="flex items-center justify-between p-2 border rounded">
-                            <div className="flex items-center gap-2">
-                              <User className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-mono text-sm">{formatPrincipalShort(approval.approver)}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                              <span className="text-xs text-muted-foreground">
-                                {formatDateTime(approval.decided_at)}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        No approvals yet
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-2 block">Approval Progress</Label>
+                    <div className="space-y-2">
+                      <Progress value={getApprovalProgress()} className="h-2" />
+                      <p className="text-xs text-muted-foreground">
+                        {request.approvals_count || 0} of {request.approvals_required} approvals
                       </p>
-                    )}
-                  </CardContent>
-                </Card>
+                    </div>
+                  </div>
 
-                {request.status === 'Created' && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Your Action</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div>
-                        <Label htmlFor="approval-comment">Comment (Optional)</Label>
-                        <Textarea
-                          id="approval-comment"
-                          placeholder="Add a comment with your approval..."
-                          value={approvalComment}
-                          onChange={(e) => setApprovalComment(e.target.value)}
-                          className="mt-2"
-                        />
-                      </div>
-                      <Button
-                        onClick={() => handleVote(true)}
-                        disabled={isApproving}
-                        className="w-full"
-                      >
-                        {isApproving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        <ThumbsUp className="mr-2 h-4 w-4" />
-                        Vote Yes
-                      </Button>
-
+                  {proposal && (
+                    <>
                       <Separator />
 
                       <div>
-                        <Label htmlFor="rejection-reason">Vote No Comment (Optional)</Label>
-                        <Textarea
-                          id="rejection-reason"
-                          placeholder="Add a comment with your No vote..."
-                          value={rejectionReason}
-                          onChange={(e) => setRejectionReason(e.target.value)}
-                          className="mt-2"
-                        />
-                      </div>
-                      <Button
-                        onClick={() => handleVote(false)}
-                        disabled={isRejecting}
-                        variant="destructive"
-                        className="w-full"
-                      >
-                        {isRejecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        <ThumbsDown className="mr-2 h-4 w-4" />
-                        Vote No
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
+                        <Label className="text-xs text-muted-foreground mb-2 block">
+                          Community Voting (DAOPad Governance)
+                        </Label>
 
-              <TabsContent value="history" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Activity History</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {request.history && request.history.length > 0 ? (
-                      <div className="space-y-3">
-                        {request.history.map((event, idx) => (
-                          <div key={idx} className="flex gap-3">
-                            <div className="flex flex-col items-center">
-                              <div className="rounded-full bg-muted p-1">
-                                <Calendar className="h-3 w-3" />
+                        <div className="space-y-2 p-3 bg-muted/50 rounded-md">
+                          <div className="flex justify-between text-sm">
+                            <span className="font-medium">Operation Type:</span>
+                            <Badge variant="outline">
+                              {getOperationTypeName(proposal.request_type)}
+                            </Badge>
+                          </div>
+
+                          <div className="flex justify-between text-sm">
+                            <span className="font-medium">Required Threshold:</span>
+                            <span className="font-mono">
+                              {getThresholdPercentage(proposal.request_type)}%
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between text-sm">
+                            <span className="font-medium">Risk Level:</span>
+                            <Badge className={getRiskLevelColor(proposal.request_type)}>
+                              {getRiskLevel(proposal.request_type)}
+                            </Badge>
+                          </div>
+
+                          <Separator className="my-2" />
+
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div className="text-center p-2 bg-green-50 rounded">
+                              <div className="font-bold text-green-700">
+                                {Number(proposal.yes_votes).toLocaleString()}
                               </div>
-                              {idx < request.history.length - 1 && (
-                                <div className="w-px h-full bg-border" />
-                              )}
+                              <div className="text-xs text-muted-foreground">Yes Votes</div>
                             </div>
-                            <div className="flex-1 pb-3">
-                              <p className="text-sm font-medium">{event.action}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {formatDateTime(event.timestamp)}
-                              </p>
-                              {event.details && (
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {event.details}
-                                </p>
-                              )}
+
+                            <div className="text-center p-2 bg-red-50 rounded">
+                              <div className="font-bold text-red-700">
+                                {Number(proposal.no_votes).toLocaleString()}
+                              </div>
+                              <div className="text-xs text-muted-foreground">No Votes</div>
                             </div>
                           </div>
-                        ))}
+
+                          <div className="space-y-1">
+                            <Progress
+                              value={getVotingProgress(proposal)}
+                              className="h-2"
+                            />
+                            <p className="text-xs text-muted-foreground text-center">
+                              {getVotingProgressText(proposal)}
+                            </p>
+                          </div>
+
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Expires:</span>
+                            <span>{formatDateTime(proposal.expires_at)}</span>
+                          </div>
+                        </div>
+
+                        {proposal.status && Object.keys(proposal.status)[0] === 'Active' && userVotingPower && userVotingPower > 0 && (
+                          <div className="mt-3 space-y-2">
+                            <div className="text-xs text-center text-muted-foreground">
+                              Your voting power: <strong>{Number(userVotingPower).toLocaleString()} VP</strong>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button
+                                onClick={() => handleVote(true)}
+                                disabled={isApproving || isRejecting}
+                                variant="default"
+                                size="sm"
+                              >
+                                {isApproving && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                                <ThumbsUp className="mr-2 h-3 w-3" />
+                                Vote Yes
+                              </Button>
+
+                              <Button
+                                onClick={() => handleVote(false)}
+                                disabled={isApproving || isRejecting}
+                                variant="destructive"
+                                size="sm"
+                              >
+                                {isRejecting && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                                <ThumbsDown className="mr-2 h-3 w-3" />
+                                Vote No
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {proposal.status && Object.keys(proposal.status)[0] === 'Active' && (!userVotingPower || userVotingPower === 0) && (
+                          <Alert variant="default" className="mt-3">
+                            <AlertDescription className="text-xs">
+                              You need voting power to vote. Lock LP tokens in Kong Locker to participate.
+                            </AlertDescription>
+                          </Alert>
+                        )}
                       </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        No history available
-                      </p>
-                    )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {request.operation && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Operation</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <RequestOperationView operation={request.operation} />
                   </CardContent>
                 </Card>
-              </TabsContent>
-            </Tabs>
-          </ScrollArea>
-        ) : null}
+              )}
+            </TabsContent>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            <TabsContent value="approvals" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Approvals</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {request.approvals && request.approvals.length > 0 ? (
+                    <div className="space-y-2">
+                      {request.approvals.map((approval, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-2 border rounded">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-mono text-sm">{formatPrincipalShort(approval.approver)}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <span className="text-xs text-muted-foreground">
+                              {formatDateTime(approval.decided_at)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No approvals yet
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {request.status === 'Created' && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Your Action</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="approval-comment">Comment (Optional)</Label>
+                      <Textarea
+                        id="approval-comment"
+                        placeholder="Add a comment with your approval..."
+                        value={approvalComment}
+                        onChange={(e) => setApprovalComment(e.target.value)}
+                        className="mt-2"
+                      />
+                    </div>
+                    <Button
+                      onClick={() => handleVote(true)}
+                      disabled={isApproving}
+                      className="w-full"
+                    >
+                      {isApproving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <ThumbsUp className="mr-2 h-4 w-4" />
+                      Vote Yes
+                    </Button>
+
+                    <Separator />
+
+                    <div>
+                      <Label htmlFor="rejection-reason">Vote No Comment (Optional)</Label>
+                      <Textarea
+                        id="rejection-reason"
+                        placeholder="Add a comment with your No vote..."
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        className="mt-2"
+                      />
+                    </div>
+                    <Button
+                      onClick={() => handleVote(false)}
+                      disabled={isRejecting}
+                      variant="destructive"
+                      className="w-full"
+                    >
+                      {isRejecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <ThumbsDown className="mr-2 h-4 w-4" />
+                      Vote No
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="history" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Activity History</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {request.history && request.history.length > 0 ? (
+                    <div className="space-y-3">
+                      {request.history.map((event, idx) => (
+                        <div key={idx} className="flex gap-3">
+                          <div className="flex flex-col items-center">
+                            <div className="rounded-full bg-muted p-1">
+                              <Calendar className="h-3 w-3" />
+                            </div>
+                            {idx < request.history.length - 1 && (
+                              <div className="w-px h-full bg-border" />
+                            )}
+                          </div>
+                          <div className="flex-1 pb-3">
+                            <p className="text-sm font-medium">{event.action}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatDateTime(event.timestamp)}
+                            </p>
+                            {event.details && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {event.details}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No history available
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </ScrollArea>
+      ) : null}
+    </DialogLayout>
   );
 }
