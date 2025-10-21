@@ -226,8 +226,8 @@ pub async fn create_transfer_request(
     from_asset_id: String,
     to_address: String,
     amount: Nat,
-    title: String,
-    description: String,
+    _title: String,
+    _description: String,
     memo: Option<String>,
     token_id: Principal,
 ) -> Result<String, String> {
@@ -480,7 +480,6 @@ fn format_policy(policy: &Option<RequestPolicyRule>) -> String {
 }
 
 fn nat_to_u64(nat: &candid::Nat) -> u64 {
-    use std::convert::TryInto;
     let bytes = nat.0.to_bytes_le();
     if bytes.len() <= 8 {
         let mut array = [0u8; 8];

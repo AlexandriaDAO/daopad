@@ -3,18 +3,18 @@
 // the proposal voting system to prevent admin bypass of community governance.
 // Required voting power: 25,000 VP minimum for canister operations (higher due to risk).
 
-use candid::{Nat, Principal};
+use candid::Principal;
 use ic_cdk::{api::call::CallResult, call};
 
 use crate::api::orbit::get_orbit_station_for_token;
 use crate::types::orbit::{
     ChangeExternalCanisterOperationInput, ConfigureExternalCanisterOperationInput,
-    CreateExternalCanisterOperationInput, ExternalCanister, ExternalCanisterCallerMethodCallInput,
-    ExternalCanisterIdInput, FundExternalCanisterOperationInput, GetExternalCanisterInput,
-    GetExternalCanisterResult, ListExternalCanistersInput, ListExternalCanistersResult,
-    MonitorExternalCanisterOperationInput, PruneExternalCanisterOperationInput, RequestOperation,
+    CreateExternalCanisterOperationInput, ExternalCanisterCallerMethodCallInput,
+    FundExternalCanisterOperationInput, GetExternalCanisterResult,
+    ListExternalCanistersInput, ListExternalCanistersResult,
+    MonitorExternalCanisterOperationInput, PruneExternalCanisterOperationInput,
     RestoreExternalCanisterOperationInput, SnapshotExternalCanisterOperationInput,
-    SubmitRequestInput, SubmitRequestResult,
+    SubmitRequestResult,
 };
 
 // ===== LIST CANISTERS =====
