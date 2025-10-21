@@ -44,11 +44,8 @@ function Homepage() {
 
             {/* The convergence explanation */}
             <div className="max-w-3xl mx-auto mb-8">
-              <p className="text-lg text-executive-lightGray/80 mb-3">
-                Your company, its legal contracts, and its operations are no longer three things—but <span className="text-executive-gold">one thing</span>.
-              </p>
-              <p className="text-sm text-executive-lightGray/60">
-                The same autonomous software that executes your operations also generates your legally binding operating agreement.
+              <p className="text-lg text-executive-lightGray/80">
+                Your company, contracts, and operations become <span className="text-executive-gold">one autonomous system</span>.
               </p>
             </div>
           </div>
