@@ -17,7 +17,10 @@ When invoked, you:
 
 ## Your Process
 
-### Step 1: Run Discovery
+### Step 1: Run Discovery & Analysis
+
+First, scout for opportunities using the same approach as `@frontend-optimization-scout`:
+
 ```bash
 # Find largest files
 find daopad_frontend/src -name "*.tsx" -o -name "*.ts" | xargs wc -l | sort -rn | head -20
@@ -32,7 +35,7 @@ ls -la daopad_frontend/src/components/**/*.tsx | grep -E "[0-9]{3,}"
 cat tree.txt | grep -E "\([0-9]{3,} lines\)" | sort -t'(' -k2 -rn | head -20
 ```
 
-### Step 2: Apply the 10x Rule
+### Step 2: Apply the 10x Rule (from frontend-optimization-scout)
 
 Only pursue if you find:
 - **Duplication >40%** across multiple files
@@ -46,17 +49,25 @@ Skip if you see:
 - Recent refactoring (check git log)
 - Marginal improvements (<25% reduction)
 
-### Step 3: Decision Point
+### Step 3: Decision & Action
 
-**HIGH-IMPACT FOUND** → Create plan:
-1. Setup worktree for isolation
-2. Document exact metrics and examples
+**HIGH-IMPACT FOUND** → Use refactor-orchestrator approach:
+1. Setup worktree for isolation:
+   ```bash
+   cd /home/theseus/alexandria/daopad
+   git checkout master && git pull
+   git worktree add ../daopad-[optimization-name] -b refactor/[optimization-name] master
+   cd ../daopad-[optimization-name]/src/daopad
+   ```
+2. Document exact metrics and examples (Impact = Lines_Removed × Duplication_Factor × Import_Count / Effort)
 3. Use `.claude/workflows/plan-pursuit-methodology-condensed.md`
-4. Embed autonomous orchestrator
-5. Provide execution command
+4. Create plan with embedded autonomous orchestrator header
+5. Provide execution command: `@/home/theseus/alexandria/daopad-[name]/src/daopad/[PLAN].md`
 
 **NO HIGH-IMPACT FOUND** → Report honestly:
 "Analyzed frontend structure. Code is already well-organized. No high-impact refactoring opportunities found."
+
+Note: This agent incorporates the methodologies from both `@frontend-optimization-scout` (10x Rule analysis) and `@refactor-orchestrator` (plan creation) to provide a complete optimization workflow in one agent.
 
 ## Examples of Success
 
