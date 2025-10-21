@@ -114,6 +114,30 @@ Orbit Station Executes (AutoApproved policy)
 
 **Result**: Liquid democracy based on locked liquidity, not infinite static user roles. Voting power changes with LP token value - real skin in the game.
 
+#### How to Transition an Orbit Station to DAOPad Control
+
+**The Critical Nuance**: Orbit's separation of duties prevents request creators from approving their own requests. Since DAOPad backend creates requests (transfers, canister calls, etc.), it cannot approve them UNLESS the account has an `AutoApproved` policy.
+
+**Required Setup** (done via Settings > Security tab):
+1. **Remove all human admins/operators** - Backend must be the ONLY user in Admin group
+2. **Enable AutoApproved policies** - Each treasury account needs `AutoApproved` policy
+   - Without this: Backend creates requests but they sit "Pending" forever (separation of duties)
+   - With AutoApproved: Requests execute immediately after community vote passes
+3. **Restrict permissions** - Only Admin group should have Account.Transfer, User.Create, etc.
+
+**Why AutoApproved is Safe**:
+- Real governance = Community vote in DAOPad (50%+ voting power required)
+- Orbit's AutoApproved just executes AFTER the vote passes
+- Without human admins, only backend (controlled by code) can create requests
+- Backend only creates requests when community votes succeed
+
+**Expected Security Dashboard Results**:
+- 🔴 Before setup: "NOT A DAO - 8 critical issues"
+- 🟢 After setup: "100% Decentralized - Ready for community governance"
+- Security checks verify: backend is sole admin, AutoApproved enabled, permissions locked down
+
+**What Users See**: Settings > Security tab shows blue "AutoApproved Setup Required" card → Click "Configure AutoApproved" → Requests created → Approve in Orbit UI (one-time) → Future operations execute automatically after community votes.
+
 ### LLC Operating Agreement Tab
 The 1st tab in Token Dashboard generates a Wyoming DAO LLC-compliant Operating Agreement from on-chain data. The smart contracts ARE the agreement - they execute the rules deterministically, and the document just describes the current state. This allows DAOs to become legal LLCs while maintaining that code is law.
 

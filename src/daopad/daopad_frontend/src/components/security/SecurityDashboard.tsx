@@ -7,6 +7,7 @@ import { OrbitSecurityService } from '../../services/backend/orbit/security/Orbi
 import DAOTransitionChecklist from './DAOTransitionChecklist';
 import RequestPoliciesView from './RequestPoliciesView';
 import AdminRemovalActions from './AdminRemovalActions';
+import AutoApprovedSetupWizard from './AutoApprovedSetupWizard';
 import { generateMarkdownReport, generateJSONReport, downloadReport } from '../../utils/reportGenerator';
 
 const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
@@ -100,7 +101,7 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
                         <div className="flex items-center justify-center gap-2">
                             <RefreshCw className="w-5 h-5 animate-spin text-blue-500" />
                             <span className="text-gray-600">
-                                Analyzing DAO security... ({completedCount}/16 checks complete)
+                                Analyzing DAO security... ({completedCount}/17 checks complete)
                             </span>
                         </div>
 
@@ -174,6 +175,19 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
             {showPolicies && (
                 <RequestPoliciesView
                     stationId={stationId}
+                />
+            )}
+
+            {/* AutoApproved Setup Wizard - Show if accounts need AutoApproved policies */}
+            {securityData && securityData.checks.some(check =>
+                check.category === 'Treasury Setup' &&
+                check.name === 'Account AutoApproved Status' &&
+                check.status === 'Fail'
+            ) && (
+                <AutoApprovedSetupWizard
+                    tokenId={tokenId}
+                    stationId={stationId}
+                    onComplete={fetchSecurityStatus}
                 />
             )}
 

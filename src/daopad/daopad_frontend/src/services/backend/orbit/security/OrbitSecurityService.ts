@@ -230,6 +230,9 @@ export class OrbitSecurityService extends BackendServiceBase {
       { name: 'snapshot_operations', method: 'check_snapshot_operations', priority: 3 },
       { name: 'named_rule_bypass', method: 'check_named_rule_bypass', priority: 3 },
       { name: 'remove_operations', method: 'check_remove_operations', priority: 3 },
+
+      // NEW: Treasury setup check (account AutoApproved status)
+      { name: 'account_autoapproved_status', method: 'check_account_autoapproved_status', priority: 1 },
     ];
 
     try {
