@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { DAOPadBackendService } from '@/services/daopadBackend';
+import { DAOPadBackendService } from '@/services';
 import {
   Table,
   TableBody,

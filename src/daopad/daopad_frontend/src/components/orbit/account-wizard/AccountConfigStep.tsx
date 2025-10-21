@@ -10,7 +10,7 @@ import {
 } from '../../ui/select';
 import { Checkbox } from '../../ui/checkbox';
 import { AlertCircle } from 'lucide-react';
-import { DAOPadBackendService } from '../../../services/daopadBackend';
+import { DAOPadBackendService } from '../../../services/backend';
 
 export const AccountConfigStep = ({
   accountConfig,

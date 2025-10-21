@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { DAOPadBackendService } from '@/services/daopadBackend';
+import { DAOPadBackendService } from '@/services';
 import { Principal } from '@dfinity/principal';
 import AddressInput from '@/components/inputs/AddressInput';
 import { validateAddress, BlockchainType } from '@/utils/addressValidation';
