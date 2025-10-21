@@ -6,7 +6,7 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Copy, AlertCircle, Shield, Lock } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
-import { DAOPadBackendService } from '../services/daopadBackend';
+import { DAOPadBackendService } from '../services/backend';
 import PermissionsPage from '../pages/PermissionsPage';
 import SecurityDashboard from './security/SecurityDashboard';
 

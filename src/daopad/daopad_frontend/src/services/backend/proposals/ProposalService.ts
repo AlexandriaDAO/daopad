@@ -131,6 +131,36 @@ export class ProposalService extends BackendServiceBase {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Get Orbit request proposal
+   */
+  async getOrbitRequestProposal(tokenId, requestId) {
+    try {
+      const actor = await this.getActor();
+      const tokenPrincipal = this.toPrincipal(tokenId);
+      const result = await actor.get_orbit_request_proposal(tokenPrincipal, requestId);
+      return this.wrapOption(result);
+    } catch (error) {
+      console.error('Failed to get orbit request proposal:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * List Orbit request proposals for a token
+   */
+  async listOrbitRequestProposals(tokenId) {
+    try {
+      const actor = await this.getActor();
+      const tokenPrincipal = this.toPrincipal(tokenId);
+      const result = await actor.list_orbit_request_proposals(tokenPrincipal);
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Failed to list orbit request proposals:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 export const getProposalService = (identity) => {

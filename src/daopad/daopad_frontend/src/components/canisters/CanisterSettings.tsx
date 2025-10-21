@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { canisterService } from '../../services/canisterService';
+import { canisterService } from '../../services/backend';
 import { canisterCapabilities } from '../../utils/canisterCapabilities';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, memo, useMemo } from 'react';
 import { Principal } from '@dfinity/principal';
 import { useDispatch } from 'react-redux';
-import { DAOPadBackendService } from '../services/daopadBackend';
-import { OrbitStationService } from '../services/orbitStation';
+import { DAOPadBackendService } from '../services/backend';
+import { OrbitStationService } from '../services/backend';
 import AccountsTable from './tables/AccountsTable';
 import UnifiedRequests from './orbit/UnifiedRequests';
 import AddressBookPage from '../pages/AddressBookPage';

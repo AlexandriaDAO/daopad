@@ -9,7 +9,7 @@ import {
 import { Button } from '../ui/button';
 import { AccountWizard } from './account-wizard/AccountWizard';
 import { Loader2 } from 'lucide-react';
-import { DAOPadBackendService } from '../../services/daopadBackend';
+import { DAOPadBackendService } from '../../services/backend';
 import OrbitSetupInstructions from './OrbitSetupInstructions';
 
 const CreateAccountDialog = ({ open, onClose, tokenId, tokenSymbol, onSuccess }) => {

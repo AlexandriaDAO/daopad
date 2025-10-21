@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../providers/AuthProvider/IIProvider';
-import { DAOPadBackendService } from '../services/daopadBackend';
+import { DAOPadBackendService } from '../services/backend';
 import { Principal } from '@dfinity/principal';
 
 // Helper: Map operation type string to enum variant

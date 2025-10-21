@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { DAOPadBackendService } from '../../services/daopadBackend';
-import { KongLockerService } from '../../services/kongLockerService';
+import { getProposalService, getTokenService, getKongLockerService } from '../../services/backend';
 
 // Async thunk for fetching public dashboard data
 export const fetchPublicDashboard = createAsyncThunk(
@@ -8,16 +7,17 @@ export const fetchPublicDashboard = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       // Create services with null identity for anonymous access
-      const daopadService = new DAOPadBackendService(null);
-      const kongService = new KongLockerService(null);
+      const proposalService = getProposalService(null);
+      const tokenService = getTokenService(null);
+      const kongService = getKongLockerService(null);
 
       // Use existing methods - no wrappers needed
       const [totalPositions, proposals, stations, registrations] =
         await Promise.all([
           kongService.getSystemStats(),
-          daopadService.listActiveProposals(),
-          daopadService.getAllOrbitStations(),
-          daopadService.listAllKongLockerRegistrations()
+          proposalService.listActive(),
+          tokenService.listAllStations(),
+          kongService.listAllRegistrations()
         ]);
 
       const toPrincipalText = (principal) => {

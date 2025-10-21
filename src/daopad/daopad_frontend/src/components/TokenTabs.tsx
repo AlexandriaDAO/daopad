@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import type { Identity } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
-import { DAOPadBackendService } from '../services/daopadBackend';
-import { KongLockerService } from '../services/kongLockerService';
+import { DAOPadBackendService } from '../services/backend';
+import { KongLockerService } from '../services/backend';
 import TokenDashboard from './TokenDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

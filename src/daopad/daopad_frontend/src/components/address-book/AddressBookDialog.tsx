@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import AddressBookForm from './AddressBookForm';
-import { addressBookService } from '../../services/addressBookService';
+import { addressBookService } from '../../services/backend';
 
 const AddressBookDialog = ({
   trigger,

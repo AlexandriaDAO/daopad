@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DAOPadBackendService } from '../services/daopadBackend';
+import { UtilityService } from '../services/backend';
 
 /**
  * useTokenMetadata Hook
@@ -24,7 +24,7 @@ export const useTokenMetadata = (token) => {
       setLoading(true);
       setError(null);
       try {
-        const result = await DAOPadBackendService.getTokenMetadata(token.canister_id);
+        const result = await UtilityService.getTokenMetadata(token.canister_id);
         if (result.success) {
           setTokenMetadata(result.data);
         } else {

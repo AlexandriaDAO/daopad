@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { canisterService } from '../../services/canisterService';
+import { canisterService } from '../../services/backend';
 import CanisterCard from './CanisterCard';
 import CanisterFilters from './CanisterFilters';
 import CreateCanisterWizard from './CreateCanisterWizard';

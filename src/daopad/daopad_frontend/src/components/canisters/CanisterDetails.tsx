@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { canisterService } from '../../services/canisterService';
+import { canisterService } from '../../services/backend';
 import { Button } from '../ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Alert, AlertDescription } from '../ui/alert';

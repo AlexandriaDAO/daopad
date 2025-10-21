@@ -8,7 +8,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { useToast } from '../../hooks/use-toast';
-import { DAOPadBackendService } from '../../services/daopadBackend';
+import { DAOPadBackendService } from '../../services/backend';
 import { useVoting } from '../../hooks/useVoting';
 import RequestDomainSelector from './RequestDomainSelector';
 import { RequestList } from './requests/RequestList';

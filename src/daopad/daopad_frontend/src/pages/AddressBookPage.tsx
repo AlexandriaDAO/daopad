@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, Plus } from 'lucide-react';
-import { addressBookService } from '../services/addressBookService';
+import { addressBookService } from '../services/backend';
 import AddressBookDialog from '../components/address-book/AddressBookDialog';
 import AddressBookTable from '../components/address-book/AddressBookTable';
 import { Button } from '@/components/ui/button';

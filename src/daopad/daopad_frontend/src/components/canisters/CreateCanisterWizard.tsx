@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Principal } from '@dfinity/principal';
-import { canisterService } from '../../services/canisterService';
+import { canisterService } from '../../services/backend';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';

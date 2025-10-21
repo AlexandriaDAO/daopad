@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { canisterService } from '../../services/canisterService';
+import { canisterService } from '../../services/backend';
 import {
   Dialog,
   DialogContent,

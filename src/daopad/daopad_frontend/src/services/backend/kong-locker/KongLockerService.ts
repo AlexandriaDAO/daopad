@@ -86,6 +86,20 @@ export class KongLockerService extends BackendServiceBase {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Get Kong Locker factory principal
+   */
+  async getFactoryPrincipal() {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.get_kong_locker_factory_principal();
+      return this.wrapResult(result);
+    } catch (error) {
+      console.error('Failed to get factory principal:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 export const getKongLockerService = (identity) => {

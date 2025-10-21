@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
 import { Shield, Info, Users } from 'lucide-react';
 import { PermissionsTable } from '../components/permissions';
-import { DAOPadBackendService } from '../services/daopadBackend';
+import { DAOPadBackendService } from '../services/backend';
 import { Principal } from '@dfinity/principal';
 import { Badge } from '../components/ui/badge';
 
