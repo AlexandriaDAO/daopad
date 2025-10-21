@@ -1,4 +1,5 @@
 import { Principal } from '@dfinity/principal';
+import type { Balance } from './balance.types';
 
 // Orbit Station types
 export interface OrbitStation {
@@ -7,11 +8,5 @@ export interface OrbitStation {
   labels?: string[];
 }
 
-// Balance types
-export interface Balance {
-  token: Principal | string;
-  amount: bigint;
-  decimals: number;
-  symbol: string;
-  name?: string;
-}
+// Re-export Balance from balance.types.ts for convenience
+export type { Balance };
