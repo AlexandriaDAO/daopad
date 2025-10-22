@@ -27,7 +27,7 @@ export function TreasuryOverview({ assets, loading, onTransfer, onViewAccount })
     return (
       <Card>
         <CardContent className="py-8">
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center" data-testid="loading-spinner">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         </CardContent>
@@ -38,7 +38,7 @@ export function TreasuryOverview({ assets, loading, onTransfer, onViewAccount })
   if (!assets || assets.length === 0) {
     return (
       <Card>
-        <CardContent className="py-8">
+        <CardContent className="py-8" data-testid="treasury-empty">
           <div className="flex flex-col items-center justify-center gap-3">
             <Wallet className="w-12 h-12 text-muted-foreground" />
             <p className="text-center text-muted-foreground">
@@ -134,7 +134,7 @@ export function TreasuryOverview({ assets, loading, onTransfer, onViewAccount })
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="treasury-overview">
       {/* Summary Card */}
       <Card>
         <CardHeader>
@@ -190,7 +190,7 @@ export function TreasuryOverview({ assets, loading, onTransfer, onViewAccount })
               const priceChange = asset.priceChange24h || 0;
 
               return (
-                <AccordionItem key={asset.id} value={asset.id}>
+                <AccordionItem key={asset.id} value={asset.id} data-testid="treasury-account">
                   <AccordionTrigger className="hover:no-underline">
                     <div className="flex items-center justify-between w-full pr-4">
                       <div className="flex items-center gap-3">
@@ -212,7 +212,7 @@ export function TreasuryOverview({ assets, loading, onTransfer, onViewAccount })
 
                       <div className="flex items-center gap-6">
                         <div className="text-right">
-                          <p className="font-mono text-sm">
+                          <p className="font-mono text-sm" data-testid="account-balance">
                             {formatBalance(asset.totalBalance, asset.decimals)} {asset.symbol}
                           </p>
                           <p className="text-xs text-muted-foreground">
