@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,131 @@ import {
 
 function Homepage() {
   const [showMaturityImage, setShowMaturityImage] = useState(false);
+
+  // Animation control
+  const [animationPhase, setAnimationPhase] = useState('idle'); // 'idle' | 'playing' | 'complete'
+  const convergenceSectionRef = useRef(null);
+  const canvasRef = useRef(null);
+  const animationFrameRef = useRef(null);
+
+  // Intersection observer to replay on view
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && animationPhase === 'idle') {
+          setAnimationPhase('playing');
+          // Trigger animation sequence
+          setTimeout(() => setAnimationPhase('complete'), 3500);
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    if (convergenceSectionRef.current) {
+      observer.observe(convergenceSectionRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [animationPhase]);
+
+  // Particle system
+  useEffect(() => {
+    if (animationPhase !== 'playing' || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const particles = [];
+
+    // Set canvas size
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    // Create particles
+    class Particle {
+      constructor(startX, startY, targetX, targetY) {
+        this.x = startX;
+        this.y = startY;
+        this.targetX = targetX;
+        this.targetY = targetY;
+        this.progress = 0;
+        this.speed = 0.02 + Math.random() * 0.02;
+        this.size = 2 + Math.random() * 3;
+        this.alpha = 0.8;
+      }
+
+      update() {
+        this.progress += this.speed;
+        // Bezier curve for natural flow
+        const t = this.progress;
+        this.x = this.x + (this.targetX - this.x) * t;
+        this.y = this.y + (this.targetY - this.y) * t;
+        this.alpha = 1 - t; // Fade as approaching center
+      }
+
+      draw(ctx) {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(212, 175, 55, ${this.alpha})`;
+        ctx.fill();
+      }
+    }
+
+    // Spawn particles from each box position
+    const spawnParticles = () => {
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+
+      // Top box (Smart Contract)
+      particles.push(new Particle(centerX, centerY * 0.18, centerX, centerY));
+
+      // Bottom left (Operating Agreement)
+      particles.push(new Particle(centerX * 0.28, centerY * 1.72, centerX, centerY));
+
+      // Bottom right (LLC)
+      particles.push(new Particle(centerX * 1.72, centerY * 1.72, centerX, centerY));
+    };
+
+    // Animation loop
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Spawn new particles periodically during convergence phase
+      if (Math.random() < 0.3) spawnParticles();
+
+      // Update and draw particles
+      particles.forEach((particle, index) => {
+        particle.update();
+        particle.draw(ctx);
+
+        // Remove completed particles
+        if (particle.progress >= 1) {
+          particles.splice(index, 1);
+        }
+      });
+
+      animationFrameRef.current = requestAnimationFrame(animate);
+    };
+
+    // Start animation loop at 0.8s (phase 2 start)
+    const startTimeout = setTimeout(() => {
+      animate();
+    }, 800);
+
+    // Stop at 3s (phase 3 end)
+    const stopTimeout = setTimeout(() => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    }, 3000);
+
+    return () => {
+      clearTimeout(startTimeout);
+      clearTimeout(stopTimeout);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [animationPhase]);
 
   return (
     <TooltipProvider>
@@ -53,15 +178,38 @@ function Homepage() {
       </section>
 
       {/* The Convergence - Circular Diagram */}
-      <section className="py-16 bg-executive-darkGray/20">
+      <section
+        ref={convergenceSectionRef}
+        className="py-16 bg-executive-darkGray/20"
+      >
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            {/* Circular Diagram */}
+            {/* Circular Diagram with Canvas Overlay */}
             <div className="relative w-full max-w-2xl mx-auto" style={{ aspectRatio: '1/1' }}>
+
+              {/* Particle Canvas */}
+              <canvas
+                ref={canvasRef}
+                className="absolute inset-0 w-full h-full pointer-events-none"
+                style={{ zIndex: 5 }}
+              />
+
               {/* Center - One Thing */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 convergence-center">
+              <div className={`
+                absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10
+                ${animationPhase === 'playing' ? 'animate-convergence-center' : ''}
+                ${animationPhase === 'complete' ? 'animate-float-subtle' : ''}
+              `}>
                 <div className="relative">
-                  <div className="absolute inset-0 bg-executive-gold/20 blur-xl animate-pulse"></div>
+                  {/* Dynamic glow that intensifies during phase 3-4 */}
+                  <div className={`
+                    absolute inset-0 blur-xl
+                    ${animationPhase === 'complete'
+                      ? 'bg-executive-gold/30 animate-pulse-slow'
+                      : 'bg-executive-gold/20 animate-pulse'
+                    }
+                  `}></div>
+
                   <div className="relative bg-executive-charcoal border-2 border-executive-gold rounded-full w-32 h-32 flex items-center justify-center">
                     <div className="text-center">
                       <div className="text-3xl mb-1">⚡</div>
@@ -72,8 +220,19 @@ function Homepage() {
               </div>
 
               {/* Top - Smart Contract */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 convergence-box-1">
-                <div className="bg-executive-darkGray/80 border border-executive-gold/30 rounded-lg p-6 text-center w-40">
+              <div className={`
+                absolute left-1/2 -translate-x-1/2
+                ${animationPhase === 'idle' ? 'top-[-20%] opacity-0' : ''}
+                ${animationPhase === 'playing' ? 'animate-converge-from-top' : ''}
+                ${animationPhase === 'complete' ? 'top-0 opacity-100 animate-float-subtle-1' : ''}
+              `}>
+                <div className="bg-executive-darkGray/80 border border-executive-gold/30 rounded-lg p-6 text-center w-40 relative">
+                  {/* Glow trail effect during convergence */}
+                  <div className={`
+                    absolute inset-0 blur-md opacity-0
+                    ${animationPhase === 'playing' ? 'animate-glow-trail' : ''}
+                  `}></div>
+
                   <div className="text-2xl mb-2">⚙️</div>
                   <div className="text-executive-ivory font-semibold text-sm mb-1">Smart Contract</div>
                   <div className="text-executive-lightGray/60 text-xs">Executable code</div>
@@ -81,8 +240,18 @@ function Homepage() {
               </div>
 
               {/* Bottom Left - Operating Agreement */}
-              <div className="absolute bottom-0 left-0 convergence-box-2">
-                <div className="bg-executive-darkGray/80 border border-executive-gold/30 rounded-lg p-6 text-center w-40">
+              <div className={`
+                absolute bottom-0 left-0
+                ${animationPhase === 'idle' ? 'translate-x-[-30%] translate-y-[20%] opacity-0' : ''}
+                ${animationPhase === 'playing' ? 'animate-converge-from-bottom-left' : ''}
+                ${animationPhase === 'complete' ? 'opacity-100 animate-float-subtle-2' : ''}
+              `}>
+                <div className="bg-executive-darkGray/80 border border-executive-gold/30 rounded-lg p-6 text-center w-40 relative">
+                  <div className={`
+                    absolute inset-0 blur-md opacity-0
+                    ${animationPhase === 'playing' ? 'animate-glow-trail' : ''}
+                  `}></div>
+
                   <div className="text-2xl mb-2">📄</div>
                   <div className="text-executive-ivory font-semibold text-sm mb-1">Operating Agreement</div>
                   <div className="text-executive-lightGray/60 text-xs">Legal contract</div>
@@ -90,92 +259,332 @@ function Homepage() {
               </div>
 
               {/* Bottom Right - LLC */}
-              <div className="absolute bottom-0 right-0 convergence-box-3">
-                <div className="bg-executive-darkGray/80 border border-executive-gold/30 rounded-lg p-6 text-center w-40">
+              <div className={`
+                absolute bottom-0 right-0
+                ${animationPhase === 'idle' ? 'translate-x-[30%] translate-y-[20%] opacity-0' : ''}
+                ${animationPhase === 'playing' ? 'animate-converge-from-bottom-right' : ''}
+                ${animationPhase === 'complete' ? 'opacity-100 animate-float-subtle-3' : ''}
+              `}>
+                <div className="bg-executive-darkGray/80 border border-executive-gold/30 rounded-lg p-6 text-center w-40 relative">
+                  <div className={`
+                    absolute inset-0 blur-md opacity-0
+                    ${animationPhase === 'playing' ? 'animate-glow-trail' : ''}
+                  `}></div>
+
                   <div className="text-2xl mb-2">🏢</div>
                   <div className="text-executive-ivory font-semibold text-sm mb-1">LLC Entity</div>
                   <div className="text-executive-lightGray/60 text-xs">Legal structure</div>
                 </div>
               </div>
 
-              {/* Connection Lines - SVG for clean arrows */}
-              <svg className="absolute inset-0 w-full h-full convergence-arrows" style={{ zIndex: 1 }}>
+              {/* Connection Lines - Enhanced SVG */}
+              <svg
+                className={`
+                  absolute inset-0 w-full h-full
+                  ${animationPhase === 'complete' ? 'opacity-100' : 'opacity-0'}
+                `}
+                style={{ zIndex: 1, transition: 'opacity 0.5s ease-in 2.8s' }}
+              >
                 <defs>
-                  <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                    <polygon points="0 0, 10 3.5, 0 7" fill="rgb(212, 175, 55, 0.6)" />
+                  <marker id="arrowhead-enhanced" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="rgb(212, 175, 55, 0.8)" />
                   </marker>
+
+                  {/* Gradient for glowing effect */}
+                  <linearGradient id="arrow-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style={{ stopColor: 'rgb(212, 175, 55)', stopOpacity: 0.3 }} />
+                    <stop offset="50%" style={{ stopColor: 'rgb(212, 175, 55)', stopOpacity: 0.8 }} />
+                    <stop offset="100%" style={{ stopColor: 'rgb(212, 175, 55)', stopOpacity: 0.3 }} />
+                  </linearGradient>
                 </defs>
 
-                {/* Top to Bottom Left */}
-                <path className="arrow-path" d="M 50% 18% L 28% 72%" stroke="rgb(212, 175, 55, 0.6)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" strokeDasharray="300" strokeDashoffset="300" />
-                <path className="arrow-path" d="M 28% 72% L 50% 18%" stroke="rgb(212, 175, 55, 0.6)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" strokeDasharray="300" strokeDashoffset="300" />
+                {/* Bidirectional arrows with glow */}
+                <g className="animate-arrow-glow">
+                  {/* Top to Bottom Left */}
+                  <path d="M 50% 18% L 28% 72%"
+                    stroke="url(#arrow-gradient)"
+                    strokeWidth="2"
+                    fill="none"
+                    markerEnd="url(#arrowhead-enhanced)"
+                  />
+                  <path d="M 28% 72% L 50% 18%"
+                    stroke="url(#arrow-gradient)"
+                    strokeWidth="2"
+                    fill="none"
+                    markerEnd="url(#arrowhead-enhanced)"
+                  />
 
-                {/* Bottom Left to Bottom Right */}
-                <path className="arrow-path" d="M 32% 82% L 68% 82%" stroke="rgb(212, 175, 55, 0.6)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" strokeDasharray="300" strokeDashoffset="300" />
-                <path className="arrow-path" d="M 68% 82% L 32% 82%" stroke="rgb(212, 175, 55, 0.6)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" strokeDasharray="300" strokeDashoffset="300" />
+                  {/* Bottom Left to Bottom Right */}
+                  <path d="M 32% 82% L 68% 82%"
+                    stroke="url(#arrow-gradient)"
+                    strokeWidth="2"
+                    fill="none"
+                    markerEnd="url(#arrowhead-enhanced)"
+                  />
+                  <path d="M 68% 82% L 32% 82%"
+                    stroke="url(#arrow-gradient)"
+                    strokeWidth="2"
+                    fill="none"
+                    markerEnd="url(#arrowhead-enhanced)"
+                  />
 
-                {/* Bottom Right to Top */}
-                <path className="arrow-path" d="M 72% 72% L 50% 18%" stroke="rgb(212, 175, 55, 0.6)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" strokeDasharray="300" strokeDashoffset="300" />
-                <path className="arrow-path" d="M 50% 18% L 72% 72%" stroke="rgb(212, 175, 55, 0.6)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" strokeDasharray="300" strokeDashoffset="300" />
+                  {/* Bottom Right to Top */}
+                  <path d="M 72% 72% L 50% 18%"
+                    stroke="url(#arrow-gradient)"
+                    strokeWidth="2"
+                    fill="none"
+                    markerEnd="url(#arrowhead-enhanced)"
+                  />
+                  <path d="M 50% 18% L 72% 72%"
+                    stroke="url(#arrow-gradient)"
+                    strokeWidth="2"
+                    fill="none"
+                    markerEnd="url(#arrowhead-enhanced)"
+                  />
+                </g>
               </svg>
             </div>
 
             <div className="text-center mt-12">
-              <p className="text-executive-lightGray/70 text-sm italic">
+              <p className={`
+                text-executive-lightGray/70 text-sm italic
+                ${animationPhase === 'complete' ? 'animate-fade-in' : 'opacity-0'}
+              `}
+                style={{ animationDelay: '3.2s' }}
+              >
                 No longer separate — one unified autonomous system
               </p>
             </div>
           </div>
         </div>
 
-        {/* Convergence Animations */}
+        {/* Enhanced Convergence Animations */}
         <style jsx>{`
-          @keyframes fadeInScale {
-            from {
-              opacity: 0;
-              transform: translate(-50%, -50%) scale(0.8);
+          /* Phase 1-2: Convergence from far positions */
+          @keyframes converge-from-top {
+            0% {
+              top: -20%;
+              opacity: 0.4;
+              filter: saturate(0.7);
             }
-            to {
+            40% {
+              opacity: 0.6;
+            }
+            100% {
+              top: 0;
               opacity: 1;
+              filter: saturate(1);
+            }
+          }
+
+          @keyframes converge-from-bottom-left {
+            0% {
+              transform: translate(-30%, 20%);
+              opacity: 0.4;
+              filter: saturate(0.7);
+            }
+            40% {
+              opacity: 0.6;
+            }
+            100% {
+              transform: translate(0, 0);
+              opacity: 1;
+              filter: saturate(1);
+            }
+          }
+
+          @keyframes converge-from-bottom-right {
+            0% {
+              transform: translate(30%, 20%);
+              opacity: 0.4;
+              filter: saturate(0.7);
+            }
+            40% {
+              opacity: 0.6;
+            }
+            100% {
+              transform: translate(0, 0);
+              opacity: 1;
+              filter: saturate(1);
+            }
+          }
+
+          /* Phase 3-4: Center unification */
+          @keyframes convergence-center {
+            0% {
+              transform: translate(-50%, -50%) scale(0.9);
+              opacity: 0.8;
+            }
+            50% {
               transform: translate(-50%, -50%) scale(1);
             }
+            70% {
+              transform: translate(-50%, -50%) scale(1.1);
+              opacity: 1;
+            }
+            100% {
+              transform: translate(-50%, -50%) scale(1);
+              opacity: 1;
+            }
           }
 
-          @keyframes fadeInBox {
+          /* Phase 5: Sustain animations */
+          @keyframes float-subtle {
+            0%, 100% {
+              transform: translate(-50%, -50%) translateY(0);
+            }
+            50% {
+              transform: translate(-50%, -50%) translateY(-5px);
+            }
+          }
+
+          @keyframes float-subtle-1 {
+            0%, 100% {
+              transform: translateY(0);
+            }
+            50% {
+              transform: translateY(-3px);
+            }
+          }
+
+          @keyframes float-subtle-2 {
+            0%, 100% {
+              transform: translateY(0) translateX(0);
+            }
+            33% {
+              transform: translateY(-2px) translateX(1px);
+            }
+            66% {
+              transform: translateY(1px) translateX(-1px);
+            }
+          }
+
+          @keyframes float-subtle-3 {
+            0%, 100% {
+              transform: translateY(0) translateX(0);
+            }
+            33% {
+              transform: translateY(2px) translateX(-1px);
+            }
+            66% {
+              transform: translateY(-1px) translateX(1px);
+            }
+          }
+
+          @keyframes pulse-slow {
+            0%, 100% {
+              opacity: 0.3;
+            }
+            50% {
+              opacity: 0.5;
+            }
+          }
+
+          /* Glow trail effect during convergence */
+          @keyframes glow-trail {
+            0% {
+              opacity: 0;
+            }
+            50% {
+              opacity: 0.6;
+              background: radial-gradient(circle, rgba(212, 175, 55, 0.4) 0%, transparent 70%);
+            }
+            100% {
+              opacity: 0;
+            }
+          }
+
+          /* Arrow glow effect */
+          @keyframes arrow-glow {
+            0%, 100% {
+              filter: drop-shadow(0 0 2px rgba(212, 175, 55, 0.4));
+            }
+            50% {
+              filter: drop-shadow(0 0 6px rgba(212, 175, 55, 0.8));
+            }
+          }
+
+          /* Fade in effect */
+          @keyframes fade-in {
             from {
               opacity: 0;
-              transform: translateY(20px);
             }
             to {
               opacity: 1;
-              transform: translateY(0);
             }
           }
 
-          @keyframes drawArrow {
-            to {
-              stroke-dashoffset: 0;
+          /* Apply animations with proper timing */
+          .animate-converge-from-top {
+            animation: converge-from-top 2s cubic-bezier(0.4, 0, 0.2, 1) 0s both;
+          }
+
+          .animate-converge-from-bottom-left {
+            animation: converge-from-bottom-left 2s cubic-bezier(0.4, 0, 0.2, 1) 0.1s both;
+          }
+
+          .animate-converge-from-bottom-right {
+            animation: converge-from-bottom-right 2s cubic-bezier(0.4, 0, 0.2, 1) 0.2s both;
+          }
+
+          .animate-convergence-center {
+            animation: convergence-center 1.5s cubic-bezier(0.4, 0, 0.2, 1) 2s both;
+          }
+
+          .animate-float-subtle {
+            animation: float-subtle 4s ease-in-out 3.5s infinite;
+          }
+
+          .animate-float-subtle-1 {
+            animation: float-subtle-1 5s ease-in-out infinite;
+          }
+
+          .animate-float-subtle-2 {
+            animation: float-subtle-2 6s ease-in-out 0.5s infinite;
+          }
+
+          .animate-float-subtle-3 {
+            animation: float-subtle-3 5.5s ease-in-out 1s infinite;
+          }
+
+          .animate-pulse-slow {
+            animation: pulse-slow 2s ease-in-out infinite;
+          }
+
+          .animate-glow-trail {
+            animation: glow-trail 1.5s ease-out 0.8s both;
+          }
+
+          .animate-arrow-glow {
+            animation: arrow-glow 2s ease-in-out 2.8s infinite;
+          }
+
+          .animate-fade-in {
+            animation: fade-in 0.5s ease-out both;
+          }
+
+          /* Reduced motion support */
+          @media (prefers-reduced-motion: reduce) {
+            .animate-converge-from-top,
+            .animate-converge-from-bottom-left,
+            .animate-converge-from-bottom-right,
+            .animate-convergence-center,
+            .animate-float-subtle,
+            .animate-float-subtle-1,
+            .animate-float-subtle-2,
+            .animate-float-subtle-3,
+            .animate-glow-trail,
+            .animate-arrow-glow,
+            .animate-pulse-slow,
+            .animate-fade-in {
+              animation: none !important;
             }
-          }
 
-          .convergence-center {
-            animation: fadeInScale 0.8s ease-out 0.2s both;
-          }
-
-          .convergence-box-1 {
-            animation: fadeInBox 0.6s ease-out 0.4s both;
-          }
-
-          .convergence-box-2 {
-            animation: fadeInBox 0.6s ease-out 0.6s both;
-          }
-
-          .convergence-box-3 {
-            animation: fadeInBox 0.6s ease-out 0.8s both;
-          }
-
-          .convergence-arrows .arrow-path {
-            animation: drawArrow 1.2s ease-out 1s both;
+            /* Show final state immediately */
+            div[class*="converge"] {
+              opacity: 1 !important;
+              transform: none !important;
+            }
           }
         `}</style>
       </section>
