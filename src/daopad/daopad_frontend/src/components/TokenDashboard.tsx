@@ -238,11 +238,11 @@ const TokenDashboard = memo(function TokenDashboard({
     setError('');
 
     try {
-      const daopadService = getProposalService(identity);
+      const proposalService = getProposalService(identity);
       const tokenPrincipal = Principal.fromText(token.canister_id);
       const stationPrincipal = Principal.fromText(stationId.trim());
 
-      const result = await daopadService.proposeOrbitStationLink(tokenPrincipal, stationPrincipal);
+      const result = await proposalService.proposeOrbitStationLink(tokenPrincipal, stationPrincipal);
 
       if (result.success) {
         await loadTokenStatus();
@@ -269,8 +269,8 @@ const TokenDashboard = memo(function TokenDashboard({
     setError('');
 
     try {
-      const daopadService = getProposalService(identity);
-      const result = await daopadService.voteOnOrbitProposal(activeProposal.id, vote);
+      const proposalService = getProposalService(identity);
+      const result = await proposalService.voteOnOrbitProposal(activeProposal.id, vote);
 
       if (result.success) {
         await loadTokenStatus();
@@ -435,7 +435,7 @@ const TokenDashboard = memo(function TokenDashboard({
 
             <TabsContent value="canisters" className="mt-4">
               {activeTab === 'canisters' && (
-                <CanistersTab token={token} stationId={orbitStation?.station_id} />
+                <CanistersTab token={token} stationId={orbitStation?.station_id} identity={identity} />
               )}
             </TabsContent>
 

@@ -6,7 +6,7 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Copy, AlertCircle, Shield, Lock } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
-import { getProposalService } from '../services/backend';
+import { getOrbitGovernanceService } from '../services/backend';
 import PermissionsPage from '../pages/PermissionsPage';
 import SecurityDashboard from './security/SecurityDashboard';
 
@@ -51,7 +51,8 @@ const DAOSettings: React.FC<DAOSettingsProps> = ({ tokenCanisterId, identity, st
                 setLoading(true);
                 setError(null);
 
-                const result = await getProposalService.getOrbitSystemInfo(tokenCanisterId);
+                const governanceService = getOrbitGovernanceService(identity);
+                const result = await governanceService.getSystemInfo(stationId);
 
                 // Handle service response
                 if (result.success) {
