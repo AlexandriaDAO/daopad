@@ -8,7 +8,8 @@ const AddressBookDialog = ({
   entry = null,
   mode = 'create', // 'create', 'edit', 'view'
   onOpenChange,
-  onSuccess
+  onSuccess,
+  identity
 }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -27,10 +28,11 @@ const AddressBookDialog = ({
 
     try {
       let result;
+      const service = getOrbitAddressBookService(identity);
 
       if (mode === 'create') {
         // Create new entry
-        result = await getOrbitAddressBookService.createAddressBookEntry(formData);
+        result = await service.createEntry(formData);
       } else if (mode === 'edit' && entry) {
         // Edit existing entry
         const editData = {
@@ -41,18 +43,18 @@ const AddressBookDialog = ({
             ReplaceAllBy: formData.metadata
           } : undefined
         };
-        result = await getOrbitAddressBookService.editAddressBookEntry(editData);
+        result = await service.editEntry(editData);
       }
 
-      if (result?.Ok) {
+      if (result?.success) {
         // Success
         setOpen(false);
         if (onSuccess) {
-          onSuccess(result.Ok);
+          onSuccess(result.data);
         }
       } else {
         // Error
-        setError(result?.Err?.message || 'An error occurred');
+        setError(result?.error || 'An error occurred');
       }
     } catch (err) {
       console.error('Error submitting address book entry:', err);

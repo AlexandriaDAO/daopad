@@ -152,12 +152,12 @@ const AddressBookPage = ({ identity }) => {
 
     if (window.confirm(`Are you sure you want to delete the address book entry for ${entry.address_owner}?`)) {
       try {
-        const result = await addressBookService.removeAddressBookEntry(entry.id);
-        if (result.Ok) {
+        const result = await addressBookService.removeEntry(entry.id);
+        if (result.success) {
           // Refresh the list
           setForceReload(prev => prev + 1);
         } else {
-          setError(result.Err?.message || 'Failed to delete entry');
+          setError(result.error || 'Failed to delete entry');
         }
       } catch (error) {
         console.error('Error deleting entry:', error);
@@ -205,6 +205,7 @@ const AddressBookPage = ({ identity }) => {
                 New Address
               </Button>
             }
+            identity={identity}
             onOpenChange={setDisableRefresh}
             onSuccess={() => setForceReload(prev => prev + 1)}
           />
