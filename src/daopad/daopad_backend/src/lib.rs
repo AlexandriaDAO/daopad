@@ -35,7 +35,7 @@ pub use types::orbit::{
     // Treasury management types
     TreasuryManagementData, TreasuryAccountDetails, TreasuryAddressBookEntry, AssetBalanceInfo,
 };
-pub use types::{TokenInfo, VotingThresholds};
+pub use types::{AgreementSnapshot, TokenInfo, VotingThresholds};
 
 #[init]
 fn init() {

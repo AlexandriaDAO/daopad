@@ -1,4 +1,5 @@
 mod address_book;
+mod agreement_snapshot;
 mod governance_config;
 mod kong_locker;
 mod orbit;
@@ -14,6 +15,11 @@ mod proposals;
 mod utils;
 
 pub use address_book::*;
+pub use agreement_snapshot::{
+    get_agreement_snapshot,
+    regenerate_agreement_snapshot,
+    get_agreement_by_station,
+};
 pub use governance_config::*;
 pub use kong_locker::*;
 pub use orbit::*;

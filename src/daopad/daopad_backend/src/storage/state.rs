@@ -1,10 +1,10 @@
 use crate::proposals::orbit_link::OrbitLinkProposal;
 use crate::proposals::types::{ProposalId, TreasuryProposal, VoteChoice};
 use crate::storage::memory::{
-    Memory, KONG_LOCKER_PRINCIPALS_MEM_ID, MEMORY_MANAGER, ORBIT_STATIONS_MEM_ID,
-    STATION_TO_TOKEN_MEM_ID,
+    Memory, AGREEMENT_SNAPSHOTS_MEM_ID, KONG_LOCKER_PRINCIPALS_MEM_ID, MEMORY_MANAGER,
+    ORBIT_STATIONS_MEM_ID, STATION_TO_TOKEN_MEM_ID,
 };
-use crate::types::{StorablePrincipal, VotingThresholds};
+use crate::types::{AgreementSnapshot, StorablePrincipal, VotingThresholds};
 use ic_stable_structures::StableBTreeMap;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -29,6 +29,14 @@ thread_local! {
     pub static STATION_TO_TOKEN: RefCell<StableBTreeMap<StorablePrincipal, StorablePrincipal, Memory>> = RefCell::new(
         StableBTreeMap::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(STATION_TO_TOKEN_MEM_ID))
+        )
+    );
+
+    // Agreement snapshot storage
+    // Store agreement snapshots by token_id for persistent legal documentation
+    pub static AGREEMENT_SNAPSHOTS: RefCell<StableBTreeMap<StorablePrincipal, AgreementSnapshot, Memory>> = RefCell::new(
+        StableBTreeMap::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(AGREEMENT_SNAPSHOTS_MEM_ID))
         )
     );
 
