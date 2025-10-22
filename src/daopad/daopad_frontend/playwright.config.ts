@@ -26,7 +26,7 @@ export default defineConfig({
   ],
 
   use: {
-    baseURL: process.env.TEST_BASE_URL || 'https://l7rlj-6aaaa-aaaaa-qaffq-cai.icp0.io',
+    baseURL: process.env.TEST_BASE_URL || 'https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io',
     // This auto-loads auth for all tests (path relative to this config file)
     storageState: fs.existsSync(authFile) ? authFile : undefined,
     trace: 'retain-on-failure',
