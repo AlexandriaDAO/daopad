@@ -83,6 +83,9 @@
     "start": "vite --port 3000",
     "dev": "vite --port 3000",
     "test": "vitest run",
+    "test:unit": "vitest run src/__tests__/unit src/services/__tests__ src/features src/utils",
+    "test:integration": "vitest run src/__tests__/integration --reporter=verbose",
+    "test:mainnet": "npm run test:integration",
     "test:toast": "node test-toast-integration.mjs",
     "verify:deployment": "node verify-deployment.mjs"
   },

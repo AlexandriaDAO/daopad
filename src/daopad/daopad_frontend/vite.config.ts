@@ -60,6 +60,11 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: 'src/setupTests.ts',
+    testTimeout: 60000, // 60s timeout for integration tests with mainnet calls
+    include: [
+      'src/**/*.test.{ts,tsx}',
+      'src/__tests__/**/*.test.{ts,tsx}'
+    ]
   },
   resolve: {
     alias: [
