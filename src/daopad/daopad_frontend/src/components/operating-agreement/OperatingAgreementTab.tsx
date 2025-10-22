@@ -35,12 +35,16 @@ const OperatingAgreementTab = ({ tokenId, stationId, tokenSymbol, identity }) =>
           created: new Date(Number(result.ok.created_at) / 1000000),
           version: result.ok.version
         });
+      } else if ('err' in result) {
+        console.log('No snapshot found:', result.err);
+        setError('No snapshot available. Click regenerate to create one.');
       } else {
         setError('No snapshot available. Click regenerate to create one.');
       }
     } catch (e) {
       console.error('Error fetching snapshot:', e);
-      setError('No snapshot available. Click regenerate to create one.');
+      const errorMsg = e?.message || 'Failed to load snapshot';
+      setError(errorMsg + '. Click regenerate to create one.');
     } finally {
       setLoading(false);
     }
@@ -69,12 +73,24 @@ const OperatingAgreementTab = ({ tokenId, stationId, tokenSymbol, identity }) =>
         toast.success('Agreement regenerated successfully', {
           description: `Version ${result.ok.version} has been created.`
         });
+      } else if ('err' in result) {
+        const errorMsg = result.err || 'Unknown error occurred';
+        console.error('Backend error:', errorMsg);
+        setError('Failed to regenerate: ' + errorMsg);
+        toast.error('Failed to regenerate', {
+          description: errorMsg
+        });
       } else {
-        setError('Failed to regenerate: ' + result.err);
+        console.error('Unexpected result format:', result);
+        setError('Failed to regenerate: Unexpected response format');
       }
     } catch (e) {
       console.error('Error regenerating agreement:', e);
-      setError('Failed to regenerate: ' + e.message);
+      const errorMsg = e?.message || e?.toString() || 'Network error or timeout - please try again';
+      setError('Failed to regenerate: ' + errorMsg);
+      toast.error('Failed to regenerate', {
+        description: errorMsg
+      });
     } finally {
       setLoading(false);
     }

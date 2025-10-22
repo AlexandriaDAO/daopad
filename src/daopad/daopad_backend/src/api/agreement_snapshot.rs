@@ -25,23 +25,7 @@ pub async fn regenerate_agreement_snapshot(
     token_id: Principal,
     station_id: Principal,
 ) -> Result<AgreementSnapshot, String> {
-    // 1. Call all the existing methods to gather data
-    let security_result = match perform_security_check(station_id).await {
-        Ok(data) => json!(data),
-        Err(e) => json!({ "error": e }),
-    };
-
-    let policies_result = match get_request_policies_details(token_id).await {
-        Ok(data) => json!(data),
-        Err(e) => json!({ "error": e }),
-    };
-
-    let users_result = match list_orbit_users(token_id).await {
-        Ok(data) => json!(data),
-        Err(e) => json!({ "error": e }),
-    };
-
-    // Call Orbit Station directly for canister list
+    // 1. Call all methods in parallel for better performance
     let canisters_input = ListExternalCanistersInput {
         canister_ids: None,
         labels: None,
@@ -50,34 +34,60 @@ pub async fn regenerate_agreement_snapshot(
         sort_by: None,
     };
 
-    let canisters_result = match ic_cdk::call::<_, (crate::types::orbit::ListExternalCanistersResult,)>(
-        station_id,
-        "list_external_canisters",
-        (canisters_input,),
-    )
-    .await {
-        Ok((data,)) => json!(data),
-        Err((code, msg)) => json!({ "error": format!("Failed to list canisters: {:?} - {}", code, msg) }),
-    };
+    // Run all calls in parallel using futures::join!
+    let (security_result, policies_result, users_result, canisters_result, voting_powers_result, treasury_result) =
+        futures::join!(
+            perform_security_check(station_id),
+            get_request_policies_details(token_id),
+            list_orbit_users(token_id),
+            ic_cdk::call::<_, (crate::types::orbit::ListExternalCanistersResult,)>(
+                station_id,
+                "list_external_canisters",
+                (canisters_input,)
+            ),
+            get_all_voting_powers_for_token(token_id),
+            get_treasury_management_data(station_id)
+        );
 
-    let voting_powers_result = match get_all_voting_powers_for_token(token_id).await {
+    // Convert results to JSON
+    let security_json = match security_result {
         Ok(data) => json!(data),
         Err(e) => json!({ "error": e }),
     };
 
-    let treasury_result = match get_treasury_management_data(station_id).await {
+    let policies_json = match policies_result {
+        Ok(data) => json!(data),
+        Err(e) => json!({ "error": e }),
+    };
+
+    let users_json = match users_result {
+        Ok(data) => json!(data),
+        Err(e) => json!({ "error": e }),
+    };
+
+    let canisters_json = match canisters_result {
+        Ok((data,)) => json!(data),
+        Err((code, msg)) => json!({ "error": format!("Failed to list canisters: {:?} - {}", code, msg) }),
+    };
+
+    let voting_powers_json = match voting_powers_result {
+        Ok(data) => json!(data),
+        Err(e) => json!({ "error": e }),
+    };
+
+    let treasury_json = match treasury_result {
         Ok(data) => json!(data),
         Err(e) => json!({ "error": e }),
     };
 
     // 2. Combine all data into JSON string
     let agreement_data = json!({
-        "security": security_result,
-        "policies": policies_result,
-        "users": users_result,
-        "canisters": canisters_result,
-        "votingPowers": voting_powers_result,
-        "treasury": treasury_result,
+        "security": security_json,
+        "policies": policies_json,
+        "users": users_json,
+        "canisters": canisters_json,
+        "votingPowers": voting_powers_json,
+        "treasury": treasury_json,
         "timestamp": ic_cdk::api::time(),
     })
     .to_string();
