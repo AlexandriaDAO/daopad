@@ -12,9 +12,8 @@ export const fetchPublicDashboard = createAsyncThunk(
       const kongService = getKongLockerService(null);
 
       // Use existing methods - no wrappers needed
-      const [totalPositions, proposals, stations, registrations] =
+      const [proposals, stations, registrations] =
         await Promise.all([
-          kongService.getSystemStats(),
           proposalService.listActive(),
           tokenService.listAllStations(),
           kongService.listAllRegistrations()
@@ -49,8 +48,7 @@ export const fetchPublicDashboard = createAsyncThunk(
 
       return {
         stats: {
-          participants: totalPositions.success ?
-            totalPositions.data.totalLockCanisters : 0,
+          participants: registrations.success ? registrations.data.length : 0,
           activeProposals: proposals.success ?
             proposals.data.filter(p => p.status?.Active !== undefined).length : 0,
           treasuries: treasuryPairs.length,
@@ -60,8 +58,7 @@ export const fetchPublicDashboard = createAsyncThunk(
         proposals: proposals.success ? proposals.data : [],
         treasuries: treasuryPairs,
         stationMappings,
-        hasErrors: !totalPositions.success || !proposals.success ||
-                  !stations.success || !registrations.success
+        hasErrors: !proposals.success || !stations.success || !registrations.success
       };
     } catch (error) {
       return rejectWithValue(error.message);
