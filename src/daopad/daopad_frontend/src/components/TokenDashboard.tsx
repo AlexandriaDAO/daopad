@@ -129,6 +129,7 @@ const TokenDashboard = memo(function TokenDashboard({
 
     try {
       const tokenService = getTokenService(identity);
+      const proposalService = getProposalService(identity);
       const tokenPrincipal = Principal.fromText(token.canister_id);
 
       const stationResult = await tokenService.getStationForToken(tokenPrincipal);
@@ -147,7 +148,7 @@ const TokenDashboard = memo(function TokenDashboard({
         setActiveProposal(null);
       } else {
         setOrbitStation(null);
-        const proposalResult = await daopadService.getActiveProposalForToken(tokenPrincipal);
+        const proposalResult = await proposalService.getActiveProposalForToken(tokenPrincipal);
         if (proposalResult.success && proposalResult.data) {
           setActiveProposal(proposalResult.data);
           dispatch(upsertStationMapping({
@@ -294,7 +295,16 @@ const TokenDashboard = memo(function TokenDashboard({
 
   // VP to USD conversion helper
   const VP_TO_USD_RATIO = 100;
-  const vpToUsd = (vp) => formatUsdValue((vp || 0) / VP_TO_USD_RATIO);
+  const vpToUsd = (vp) => {
+    // Handle BigInt and regular numbers
+    let vpValue = 0;
+    if (typeof vp === 'bigint') {
+      vpValue = Number(vp);  // Convert BigInt to number
+    } else if (typeof vp === 'number') {
+      vpValue = vp;
+    }
+    return formatUsdValue(vpValue / VP_TO_USD_RATIO);
+  };
 
   const totalUsdValue = (lpPositions || []).reduce((sum, pos) => {
     return sum + (pos.usd_balance || 0);
