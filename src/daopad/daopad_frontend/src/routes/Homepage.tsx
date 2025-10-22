@@ -56,16 +56,10 @@ function Homepage() {
       <section className="py-16 bg-executive-darkGray/20">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-serif text-executive-gold mb-2">
-                Three Things Become One
-              </h2>
-            </div>
-
             {/* Circular Diagram */}
-            <div className="relative w-full max-w-lg mx-auto" style={{ aspectRatio: '1/1' }}>
+            <div className="relative w-full max-w-2xl mx-auto" style={{ aspectRatio: '1/1' }}>
               {/* Center - One Thing */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 convergence-center">
                 <div className="relative">
                   <div className="absolute inset-0 bg-executive-gold/20 blur-xl animate-pulse"></div>
                   <div className="relative bg-executive-charcoal border-2 border-executive-gold rounded-full w-32 h-32 flex items-center justify-center">
@@ -78,51 +72,51 @@ function Homepage() {
               </div>
 
               {/* Top - Smart Contract */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2">
-                <div className="bg-executive-darkGray/80 border border-executive-gold/30 rounded-lg px-6 py-4 text-center">
-                  <div className="text-2xl mb-1">⚙️</div>
-                  <div className="text-executive-ivory font-semibold text-sm">Smart Contract</div>
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 convergence-box-1">
+                <div className="bg-executive-darkGray/80 border border-executive-gold/30 rounded-lg p-6 text-center w-40">
+                  <div className="text-2xl mb-2">⚙️</div>
+                  <div className="text-executive-ivory font-semibold text-sm mb-1">Smart Contract</div>
                   <div className="text-executive-lightGray/60 text-xs">Executable code</div>
                 </div>
               </div>
 
               {/* Bottom Left - Operating Agreement */}
-              <div className="absolute bottom-0 left-0">
-                <div className="bg-executive-darkGray/80 border border-executive-gold/30 rounded-lg px-6 py-4 text-center">
-                  <div className="text-2xl mb-1">📄</div>
-                  <div className="text-executive-ivory font-semibold text-sm">Operating Agreement</div>
+              <div className="absolute bottom-0 left-0 convergence-box-2">
+                <div className="bg-executive-darkGray/80 border border-executive-gold/30 rounded-lg p-6 text-center w-40">
+                  <div className="text-2xl mb-2">📄</div>
+                  <div className="text-executive-ivory font-semibold text-sm mb-1">Operating Agreement</div>
                   <div className="text-executive-lightGray/60 text-xs">Legal contract</div>
                 </div>
               </div>
 
               {/* Bottom Right - LLC */}
-              <div className="absolute bottom-0 right-0">
-                <div className="bg-executive-darkGray/80 border border-executive-gold/30 rounded-lg px-6 py-4 text-center">
-                  <div className="text-2xl mb-1">🏢</div>
-                  <div className="text-executive-ivory font-semibold text-sm">LLC Entity</div>
+              <div className="absolute bottom-0 right-0 convergence-box-3">
+                <div className="bg-executive-darkGray/80 border border-executive-gold/30 rounded-lg p-6 text-center w-40">
+                  <div className="text-2xl mb-2">🏢</div>
+                  <div className="text-executive-ivory font-semibold text-sm mb-1">LLC Entity</div>
                   <div className="text-executive-lightGray/60 text-xs">Legal structure</div>
                 </div>
               </div>
 
               {/* Connection Lines - SVG for clean arrows */}
-              <svg className="absolute inset-0 w-full h-full" style={{ zIndex: 1 }}>
+              <svg className="absolute inset-0 w-full h-full convergence-arrows" style={{ zIndex: 1 }}>
                 <defs>
                   <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                    <polygon points="0 0, 10 3.5, 0 7" fill="rgb(212, 175, 55, 0.5)" />
+                    <polygon points="0 0, 10 3.5, 0 7" fill="rgb(212, 175, 55, 0.6)" />
                   </marker>
                 </defs>
 
                 {/* Top to Bottom Left */}
-                <path d="M 50% 15% L 25% 75%" stroke="rgb(212, 175, 55, 0.5)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
-                <path d="M 25% 75% L 50% 15%" stroke="rgb(212, 175, 55, 0.5)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
+                <path className="arrow-path" d="M 50% 18% L 28% 72%" stroke="rgb(212, 175, 55, 0.6)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" strokeDasharray="300" strokeDashoffset="300" />
+                <path className="arrow-path" d="M 28% 72% L 50% 18%" stroke="rgb(212, 175, 55, 0.6)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" strokeDasharray="300" strokeDashoffset="300" />
 
                 {/* Bottom Left to Bottom Right */}
-                <path d="M 30% 85% L 70% 85%" stroke="rgb(212, 175, 55, 0.5)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
-                <path d="M 70% 85% L 30% 85%" stroke="rgb(212, 175, 55, 0.5)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
+                <path className="arrow-path" d="M 32% 82% L 68% 82%" stroke="rgb(212, 175, 55, 0.6)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" strokeDasharray="300" strokeDashoffset="300" />
+                <path className="arrow-path" d="M 68% 82% L 32% 82%" stroke="rgb(212, 175, 55, 0.6)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" strokeDasharray="300" strokeDashoffset="300" />
 
                 {/* Bottom Right to Top */}
-                <path d="M 75% 75% L 50% 15%" stroke="rgb(212, 175, 55, 0.5)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
-                <path d="M 50% 15% L 75% 75%" stroke="rgb(212, 175, 55, 0.5)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
+                <path className="arrow-path" d="M 72% 72% L 50% 18%" stroke="rgb(212, 175, 55, 0.6)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" strokeDasharray="300" strokeDashoffset="300" />
+                <path className="arrow-path" d="M 50% 18% L 72% 72%" stroke="rgb(212, 175, 55, 0.6)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" strokeDasharray="300" strokeDashoffset="300" />
               </svg>
             </div>
 
@@ -133,6 +127,57 @@ function Homepage() {
             </div>
           </div>
         </div>
+
+        {/* Convergence Animations */}
+        <style jsx>{`
+          @keyframes fadeInScale {
+            from {
+              opacity: 0;
+              transform: translate(-50%, -50%) scale(0.8);
+            }
+            to {
+              opacity: 1;
+              transform: translate(-50%, -50%) scale(1);
+            }
+          }
+
+          @keyframes fadeInBox {
+            from {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          @keyframes drawArrow {
+            to {
+              stroke-dashoffset: 0;
+            }
+          }
+
+          .convergence-center {
+            animation: fadeInScale 0.8s ease-out 0.2s both;
+          }
+
+          .convergence-box-1 {
+            animation: fadeInBox 0.6s ease-out 0.4s both;
+          }
+
+          .convergence-box-2 {
+            animation: fadeInBox 0.6s ease-out 0.6s both;
+          }
+
+          .convergence-box-3 {
+            animation: fadeInBox 0.6s ease-out 0.8s both;
+          }
+
+          .convergence-arrows .arrow-path {
+            animation: drawArrow 1.2s ease-out 1s both;
+          }
+        `}</style>
       </section>
 
       {/* What This Means - Value Propositions */}
