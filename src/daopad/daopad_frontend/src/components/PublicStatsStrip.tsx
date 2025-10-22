@@ -27,14 +27,14 @@ const PublicStatsStrip: React.FC = () => {
   const hasPartialData = useSelector((state: RootState) => state.dao.publicDashboard.hasPartialData);
 
   const StatCard: React.FC<StatCardProps> = ({ label, value, loading }) => (
-    <Card className="bg-executive-darkGray/50 border-executive-gold/20 p-4">
+    <Card className="bg-executive-darkGray/50 border-executive-gold/20 p-4" data-testid="stat-card">
       <p className="text-xs text-executive-lightGray/60 uppercase tracking-wider mb-1">
         {label}
       </p>
       {loading ? (
-        <Skeleton className="h-8 w-20 bg-executive-mediumGray" />
+        <Skeleton className="h-8 w-20 bg-executive-mediumGray" data-testid="stats-loading" />
       ) : (
-        <p className="text-2xl font-display text-executive-gold">
+        <p className="text-2xl font-display text-executive-gold" data-testid="stat-value">
           {value.toLocaleString()}
         </p>
       )}

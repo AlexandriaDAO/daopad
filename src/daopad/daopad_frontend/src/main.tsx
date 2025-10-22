@@ -10,6 +10,11 @@ import './globals.css';
 // Import testing utilities (exposes window.testTransferFlow)
 import './utils/mainnetTesting';
 
+// For Playwright testing - expose store to window
+if (import.meta.env.DEV || window.location.hostname.includes('icp0.io')) {
+  window.store = store;
+}
+
 // Only expose in development or with explicit debug flag
 if (import.meta.env.DEV || localStorage.getItem('DEBUG_MODE') === 'true') {
   // Make store read-only to prevent manipulation

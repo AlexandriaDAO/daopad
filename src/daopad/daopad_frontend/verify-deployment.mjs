@@ -12,7 +12,7 @@ async function fetchUrl(url) {
 }
 
 async function verifyDeployment() {
-  const url = 'https://l7rlj-6aaaa-aaaaa-qaffq-cai.icp0.io';
+  const url = 'https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io';
 
   console.log('Fetching deployed HTML...');
   // Fetch index.html

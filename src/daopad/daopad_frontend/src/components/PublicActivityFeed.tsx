@@ -50,7 +50,7 @@ const PublicActivityFeed: React.FC = () => {
                        'bg-gray-800/20 text-gray-400';
 
     return (
-      <div className="p-3 bg-executive-darkGray/30 rounded border border-executive-gold/10">
+      <div className="p-3 bg-executive-darkGray/30 rounded border border-executive-gold/10" data-testid="proposal-item">
         <div className="flex justify-between items-start mb-2">
           <span className="text-sm font-mono text-executive-lightGray">
             Token: {proposal.token_canister_id.toString().slice(0, 10)}...
@@ -107,8 +107,8 @@ const PublicActivityFeed: React.FC = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {proposals.slice(0, 5).map(proposal => (
-          <ProposalItem key={proposal.id.toString()} proposal={proposal} />
+        {proposals.slice(0, 5).map((proposal, index) => (
+          <ProposalItem key={`${proposal.token_canister_id.toString()}-${index}`} proposal={proposal} />
         ))}
         {proposals.length > 5 && (
           <p className="text-sm text-executive-lightGray/60 text-center mt-4">
