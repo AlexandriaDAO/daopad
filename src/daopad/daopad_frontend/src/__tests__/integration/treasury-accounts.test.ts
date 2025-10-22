@@ -86,12 +86,18 @@ describe('Treasury Accounts - Mainnet Integration', () => {
           expect(Array.isArray(result.Ok.accounts)).toBe(true);
         } else if ('Err' in result) {
           console.log('❌ Error response');
-          console.log('Error code:', result.Err.code);
-          console.log('Error message:', result.Err.message);
-          console.log('Error details:', result.Err.details);
 
-          // Test still passes - we just want to see the error
-          expect(result.Err).toHaveProperty('code');
+          // Error can be either a string or a structured object
+          if (typeof result.Err === 'string') {
+            console.log('Error (string):', result.Err);
+          } else {
+            console.log('Error code:', result.Err.code);
+            console.log('Error message:', result.Err.message);
+            console.log('Error details:', result.Err.details);
+          }
+
+          // Test passes - we just want to see the error structure
+          expect(result.Err).toBeDefined();
         }
       } catch (error: any) {
         console.error('=== EXCEPTION THROWN ===');
@@ -119,8 +125,12 @@ describe('Treasury Accounts - Mainnet Integration', () => {
         // Should get error response
         expect(result).toBeDefined();
         if ('Err' in result) {
-          expect(result.Err.code).toBeTruthy();
-          console.log('✅ Got expected error:', result.Err.code);
+          expect(result.Err).toBeTruthy();
+          if (typeof result.Err === 'string') {
+            console.log('✅ Got expected error (string):', result.Err.substring(0, 100));
+          } else {
+            console.log('✅ Got expected error:', result.Err.code);
+          }
         } else {
           console.log('⚠️  Got success for invalid token (unexpected)');
         }
