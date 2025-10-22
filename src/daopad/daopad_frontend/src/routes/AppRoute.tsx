@@ -235,93 +235,17 @@ function AppRoute() {
       </header>
 
     <main className="container mx-auto px-4 py-8">
-      {isAuthenticated ? (
-        shouldShowKongLockerSetup ? (
-          <div className="max-w-2xl mx-auto">
-            <KongLockerSetup
-              identity={identity}
-              onComplete={handleKongLockerComplete}
-            />
-          </div>
-        ) : (
-          <TokenTabs
+      {isAuthenticated && shouldShowKongLockerSetup ? (
+        <div className="max-w-2xl mx-auto">
+          <KongLockerSetup
             identity={identity}
+            onComplete={handleKongLockerComplete}
           />
-        )
-      ) : (
-        <div className="max-w-4xl mx-auto text-center space-y-12">
-          {/* Executive seal watermark effect */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center justify-center opacity-5">
-              <div className="w-64 h-64 border-8 border-executive-gold rounded-full flex items-center justify-center">
-                <span className="text-6xl font-display">DAO</span>
-              </div>
-            </div>
-            <div className="relative space-y-4">
-              <h2 className="text-5xl font-display text-executive-ivory tracking-wider">Welcome to DAOPad</h2>
-              <div className="flex items-center justify-center gap-4">
-                <div className="h-px bg-executive-gold/50 w-24"></div>
-                <span className="text-executive-gold text-lg">◆</span>
-                <div className="h-px bg-executive-gold/50 w-24"></div>
-              </div>
-              <p className="text-xl text-executive-lightGray/90 max-w-2xl mx-auto font-serif leading-relaxed">
-                Create and manage token treasuries using your locked liquidity as voting power.
-              </p>
-            </div>
-          </div>
-
-          {/* Live stats strip */}
-          <PublicStatsStrip />
-
-          {/* Activity sections */}
-          <div className="grid md:grid-cols-2 gap-8 text-left">
-            <PublicActivityFeed />
-            <TreasuryShowcase />
-          </div>
-
-          {/* Update existing cards with live counts */}
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-executive-darkGray/50 border border-executive-gold/20 p-6 rounded space-y-4">
-              <div className="text-5xl text-executive-gold">🔒</div>
-              <h3 className="text-xl font-serif text-executive-ivory">Lock LP Tokens</h3>
-              <p className="text-executive-lightGray/70 text-sm leading-relaxed">
-                Permanently lock your LP tokens in Kong Locker to gain voting power
-              </p>
-              {publicStats && (
-                <Badge className="bg-executive-gold/20 text-executive-goldLight border-executive-gold/30">
-                  {publicStats.participants} participants
-                </Badge>
-              )}
-            </div>
-            <div className="bg-executive-darkGray/50 border border-executive-gold/20 p-6 rounded space-y-4">
-              <div className="text-5xl text-executive-gold">🏛️</div>
-              <h3 className="text-xl font-serif text-executive-ivory">Create Treasuries</h3>
-              <p className="text-executive-lightGray/70 text-sm leading-relaxed">
-                Deploy Orbit Station treasuries for your tokens with governance controls
-              </p>
-              {publicStats && (
-                <Badge className="bg-executive-gold/20 text-executive-goldLight border-executive-gold/30">
-                  {publicStats.treasuries} treasuries
-                </Badge>
-              )}
-            </div>
-            <div className="bg-executive-darkGray/50 border border-executive-gold/20 p-6 rounded space-y-4">
-              <div className="text-5xl text-executive-gold">🗳️</div>
-              <h3 className="text-xl font-serif text-executive-ivory">Vote & Govern</h3>
-              <p className="text-executive-lightGray/70 text-sm leading-relaxed">
-                Use your locked value as voting power to control treasury operations
-              </p>
-              {publicStats && (
-                <Badge className="bg-executive-gold/20 text-executive-goldLight border-executive-gold/30">
-                  {publicStats.activeProposals} active votes
-                </Badge>
-              )}
-            </div>
-          </div>
-          <Button size="lg" className="bg-executive-gold text-executive-charcoal hover:bg-executive-goldLight font-serif px-8 py-6 text-lg" onClick={handleLogin}>
-            Get Started
-          </Button>
         </div>
+      ) : (
+        <TokenTabs
+          identity={identity}
+        />
       )}
     </main>
 

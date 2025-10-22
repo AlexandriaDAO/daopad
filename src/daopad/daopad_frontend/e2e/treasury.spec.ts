@@ -1,5 +1,4 @@
 import { test, expect, Page } from '@playwright/test';
-import { authenticateForTests } from './helpers/auth';
 
 const BACKEND_CANISTER = process.env.VITE_BACKEND_CANISTER_ID || 'lwsav-iiaaa-aaaap-qp2qq-cai';
 
@@ -50,7 +49,7 @@ test.describe('Treasury Tab - E2E', () => {
       }
     });
 
-    await authenticateForTests(page);
+    // No auth needed - site is now public for read-only access
   });
 
   test.afterEach(async () => {

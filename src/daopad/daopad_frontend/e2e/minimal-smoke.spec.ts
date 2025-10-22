@@ -21,24 +21,21 @@ test.describe('Smoke Tests - Verify Basics', () => {
     expect(html.length).toBeGreaterThan(100);
   });
 
-  test('auth state is loaded', async ({ page, context }) => {
-    // Check context has cookies/storage from auth file
-    const cookies = await context.cookies();
-
+  test('app loads without requiring auth', async ({ page }) => {
     await page.goto('/app');
-    const storage = await page.evaluate(() => ({
-      localStorage: Object.keys(localStorage),
-      sessionStorage: Object.keys(sessionStorage)
-    }));
+    await page.waitForLoadState('networkidle');
 
-    console.log('Auth state:', {
-      cookies: cookies.length,
-      localStorageKeys: storage.localStorage.length
+    // App should load even without auth (public read-only access)
+    const html = await page.content();
+    const title = await page.title();
+
+    console.log('App loaded without auth:', {
+      htmlLength: html.length,
+      title: title
     });
 
-    // Should have SOME auth data
-    const hasAuth = cookies.length > 0 || storage.localStorage.length > 0;
-    expect(hasAuth).toBe(true);
+    // Should have substantive content (not just login page)
+    expect(html.length).toBeGreaterThan(1000);
   });
 
   test('can navigate to DAO page', async ({ page }) => {
