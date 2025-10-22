@@ -1,6 +1,8 @@
 import { test, expect, Page } from '@playwright/test';
 import { authenticateForTests } from './helpers/auth';
 
+const BACKEND_CANISTER = process.env.VITE_BACKEND_CANISTER_ID || 'lwsav-iiaaa-aaaap-qp2qq-cai';
+
 const consoleMessages: Array<{type: string, text: string}> = [];
 const consoleErrors: Array<string> = [];
 const networkRequests: Array<{url: string, status: number, response: any}> = [];
@@ -27,7 +29,7 @@ test.describe('Treasury Tab - E2E', () => {
     page.on('response', async (response) => {
       const url = response.url();
 
-      if (url.includes('lwsav-iiaaa-aaaap-qp2qq-cai') ||
+      if (url.includes(BACKEND_CANISTER) ||
           url.includes('ic0.app/api')) {
         try {
           const responseData = await response.text();

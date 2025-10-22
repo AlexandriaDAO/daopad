@@ -13,7 +13,7 @@ export default defineConfig({
   ],
 
   use: {
-    baseURL: 'https://l7rlj-6aaaa-aaaaa-qaffq-cai.icp0.io',
+    baseURL: process.env.TEST_BASE_URL || 'https://l7rlj-6aaaa-aaaaa-qaffq-cai.icp0.io',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
