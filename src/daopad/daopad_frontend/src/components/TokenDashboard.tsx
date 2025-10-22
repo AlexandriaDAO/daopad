@@ -133,7 +133,7 @@ const TokenDashboard = memo(function TokenDashboard({
 
     try {
       const tokenService = getTokenService(identity);
-      const proposalService = getProposalService(identity);
+      const daopadService = getProposalService(identity);
       const tokenPrincipal = Principal.fromText(token.canister_id);
 
       const stationResult = await tokenService.getStationForToken(tokenPrincipal);
@@ -301,24 +301,9 @@ const TokenDashboard = memo(function TokenDashboard({
   // VP to USD conversion helper
   const VP_TO_USD_RATIO = 100;
   const vpToUsd = (vp) => {
-    // Handle BigInt and regular numbers
-    let vpValue = 0;
-    if (typeof vp === 'bigint') {
-      vpValue = Number(vp);  // Convert BigInt to number
-    } else if (typeof vp === 'number') {
-      vpValue = vp;
-    }
-    return formatUsdValue(vpValue / VP_TO_USD_RATIO);
+    const numericVp = typeof vp === 'bigint' ? Number(vp) : (vp || 0);
+    return formatUsdValue(numericVp / VP_TO_USD_RATIO);
   };
-
-  // Calculate USD value from voting power (VP = USD * 100, so USD = VP / 100)
-  // Fall back to positions if available
-  const totalUsdValue = useMemo(() => {
-    // If we have voting power, calculate USD from it
-    const vpNum = typeof votingPower === 'bigint' ? Number(votingPower) : (votingPower || 0);
-    if (vpNum > 0) {
-      return vpNum / VP_TO_USD_RATIO;
-    }
 
     // Otherwise fall back to positions
     return (lpPositions || []).reduce((sum, pos) => {
@@ -327,14 +312,13 @@ const TokenDashboard = memo(function TokenDashboard({
   }, [votingPower, lpPositions]);
 
   const vpPercentage = useMemo(() => {
-    // Convert BigInts to numbers for calculation
-    const vpNum = typeof votingPower === 'bigint' ? Number(votingPower) : (votingPower || 0);
-    const totalVpNum = typeof totalVotingPower === 'bigint' ? Number(totalVotingPower) : (totalVotingPower || 0);
+    const numericVP = typeof votingPower === 'bigint' ? Number(votingPower) : votingPower;
+    const numericTotal = typeof totalVotingPower === 'bigint' ? Number(totalVotingPower) : totalVotingPower;
 
-    if (!vpNum || !totalVpNum || totalVpNum === 0) {
+    if (!numericVP || !numericTotal || numericTotal === 0) {
       return null;
     }
-    return ((vpNum / totalVpNum) * 100).toFixed(2);
+    return ((numericVP / numericTotal) * 100).toFixed(2);
   }, [votingPower, totalVotingPower]);
 
   // Memoize token USD calculations for performance

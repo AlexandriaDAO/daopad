@@ -207,7 +207,7 @@ pub async fn get_total_voting_power_for_token(
     Ok(total_power)
 }
 
-#[derive(CandidType, Deserialize, Clone)]
+#[derive(CandidType, Deserialize, Clone, serde::Serialize)]
 pub struct VotingPowerEntry {
     pub user_principal: Principal,
     pub kong_locker_principal: Principal,
@@ -215,7 +215,7 @@ pub struct VotingPowerEntry {
     pub equity_percentage: f64,  // Percentage of total (0-100)
 }
 
-#[derive(CandidType, Deserialize, Clone)]
+#[derive(CandidType, Deserialize, Clone, serde::Serialize)]
 pub struct AllVotingPowersResponse {
     pub entries: Vec<VotingPowerEntry>,
     pub total_voting_power: u64,

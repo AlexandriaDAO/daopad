@@ -2,47 +2,119 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Alert, AlertDescription } from '../ui/alert';
-import { Download, FileText, RefreshCw, AlertCircle } from 'lucide-react';
-import { OrbitAgreementService } from '../../services/backend/OrbitAgreementService';
+import { Download, FileText, RefreshCw, AlertCircle, Copy, ExternalLink } from 'lucide-react';
+import { BackendServiceBase } from '../../services/backend';
 import AgreementDocument from './AgreementDocument';
 import { generateMarkdown, downloadFile } from '../../utils/agreementExport';
+import { Principal } from '@dfinity/principal';
+import { useToast } from '@/hooks/use-toast';
 
 const OperatingAgreementTab = ({ tokenId, stationId, tokenSymbol, identity }) => {
+  const { toast } = useToast();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [snapshotInfo, setSnapshotInfo] = useState(null);
 
-  const fetchAgreementData = async () => {
-    if (!stationId || !identity) {
-      setError('Station ID and identity are required');
-      return;
-    }
-
+  // Fetch cached snapshot on load
+  const fetchSnapshot = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const service = new OrbitAgreementService(identity);
-      const result = await service.getAgreementData(tokenId, stationId);
+      const service = new BackendServiceBase(identity);
+      const actor = await service.getActor();
+      const result = await actor.get_agreement_snapshot(
+        Principal.fromText(tokenId)
+      );
 
-      if (result.success) {
-        setData(result.data);
+      if ('ok' in result) {
+        const data = JSON.parse(result.ok.data);
+        setData(data);
+        setSnapshotInfo({
+          created: new Date(Number(result.ok.created_at) / 1000000),
+          version: result.ok.version
+        });
+      } else if ('err' in result) {
+        console.log('No snapshot found:', result.err);
+        setError('No snapshot available. Click regenerate to create one.');
       } else {
-        setError(result.error || 'Failed to load agreement data');
+        setError('No snapshot available. Click regenerate to create one.');
       }
-    } catch (err) {
-      console.error('Error fetching agreement data:', err);
-      setError('Failed to fetch agreement data: ' + err.message);
+    } catch (e) {
+      console.error('Error fetching snapshot:', e);
+      const errorMsg = e?.message || 'Failed to load snapshot';
+      setError(errorMsg + '. Click regenerate to create one.');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (stationId && identity) {
-      fetchAgreementData();
+  // Regenerate snapshot
+  const regenerateAgreement = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const service = new BackendServiceBase(identity);
+      const actor = await service.getActor();
+      const result = await actor.regenerate_agreement_snapshot(
+        Principal.fromText(tokenId),
+        Principal.fromText(stationId)
+      );
+
+      if ('ok' in result) {
+        const data = JSON.parse(result.ok.data);
+        setData(data);
+        setSnapshotInfo({
+          created: new Date(Number(result.ok.created_at) / 1000000),
+          version: result.ok.version
+        });
+        toast.success('Agreement regenerated successfully', {
+          description: `Version ${result.ok.version} has been created.`
+        });
+      } else if ('err' in result) {
+        const errorMsg = result.err || 'Unknown error occurred';
+        console.error('Backend error:', errorMsg);
+        setError('Failed to regenerate: ' + errorMsg);
+        toast.error('Failed to regenerate', {
+          description: errorMsg
+        });
+      } else {
+        console.error('Unexpected result format:', result);
+        setError('Failed to regenerate: Unexpected response format');
+      }
+    } catch (e) {
+      console.error('Error regenerating agreement:', e);
+      const errorMsg = e?.message || e?.toString() || 'Network error or timeout - please try again';
+      setError('Failed to regenerate: ' + errorMsg);
+      toast.error('Failed to regenerate', {
+        description: errorMsg
+      });
+    } finally {
+      setLoading(false);
     }
-  }, [stationId, identity, tokenId]);
+  };
+
+  // Get permanent link
+  const permanentLink = `${window.location.origin}/agreement/${stationId}?token=${tokenSymbol}`;
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(permanentLink);
+    toast.success('Link copied to clipboard', {
+      description: 'The permanent agreement link has been copied.'
+    });
+  };
+
+  const openStandalone = () => {
+    window.open(permanentLink, '_blank');
+  };
+
+  useEffect(() => {
+    if (stationId && tokenId) {
+      fetchSnapshot();
+    }
+  }, [stationId, tokenId]);
 
   const handleExport = (format) => {
     if (!data) return;
@@ -61,37 +133,44 @@ const OperatingAgreementTab = ({ tokenId, stationId, tokenSymbol, identity }) =>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              LLC Operating Agreement
-            </span>
+            <div>
+              <span className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                LLC Operating Agreement
+              </span>
+              {snapshotInfo && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Version {snapshotInfo.version} • Generated: {snapshotInfo.created.toLocaleString()}
+                </p>
+              )}
+            </div>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={fetchAgreementData}
-                disabled={loading || !stationId || !identity}
+                onClick={regenerateAgreement}
+                disabled={loading || !stationId || !tokenId}
               >
                 <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
+                Regenerate
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleExport('markdown')}
-                disabled={!data}
+                onClick={copyLink}
+                disabled={!stationId}
               >
-                <Download className="mr-2 h-4 w-4" />
-                Export MD
+                <Copy className="mr-2 h-4 w-4" />
+                Copy Link
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleExport('print')}
-                disabled={!data}
+                onClick={openStandalone}
+                disabled={!stationId}
               >
-                <FileText className="mr-2 h-4 w-4" />
-                Print/PDF
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Open Standalone
               </Button>
             </div>
           </CardTitle>
@@ -100,13 +179,64 @@ const OperatingAgreementTab = ({ tokenId, stationId, tokenSymbol, identity }) =>
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              This legally-binding operating agreement is generated from your DAO's
-              on-chain configuration. The smart contracts ARE the agreement - this
-              document describes their current state for traditional legal compliance.
+              <div className="space-y-2">
+                <p>
+                  This Operating Agreement is generated from on-chain data and smart contract configuration.
+                  It establishes your DAO as a Wyoming LLC with legally compliant governance structure.
+                </p>
+                {!data && (
+                  <p className="font-medium">
+                    Click "Regenerate" to create or update your agreement snapshot.
+                  </p>
+                )}
+                {data && (
+                  <p>
+                    <span className="font-medium">Permanent Link:</span>{' '}
+                    <a href={permanentLink} className="text-blue-600 underline" target="_blank" rel="noopener noreferrer">
+                      {permanentLink}
+                    </a>
+                  </p>
+                )}
+              </div>
             </AlertDescription>
           </Alert>
         </CardContent>
       </Card>
+
+      {/* Export Actions */}
+      {data && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Export Options</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => handleExport('markdown')}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export as Markdown
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleExport('print')}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Print / Save as PDF
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Error Display */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Loading State */}
       {loading && (
@@ -114,48 +244,15 @@ const OperatingAgreementTab = ({ tokenId, stationId, tokenSymbol, identity }) =>
           <CardContent className="py-8">
             <div className="flex items-center justify-center">
               <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
-              <span className="ml-2 text-gray-600">Loading agreement data...</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Error State */}
-      {error && !loading && (
-        <Alert className="border-red-200 bg-red-50">
-          <AlertCircle className="h-4 w-4 text-red-600" />
-          <AlertDescription className="text-red-600">
-            {error}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* No Station State */}
-      {!stationId && !loading && (
-        <Card>
-          <CardContent className="py-8">
-            <div className="text-center">
-              <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Orbit Station Linked</h3>
-              <p className="text-gray-600">
-                This token needs to be linked to an Orbit Station before the operating agreement can be generated.
-              </p>
+              <span className="ml-3 text-gray-600">Loading agreement data...</span>
             </div>
           </CardContent>
         </Card>
       )}
 
       {/* Agreement Document */}
-      {data && !loading && stationId && (
-        <Card className="print:border-0 print:shadow-none">
-          <CardContent className="p-8 print:p-0">
-            <AgreementDocument
-              data={data}
-              tokenSymbol={tokenSymbol}
-              stationId={stationId}
-            />
-          </CardContent>
-        </Card>
+      {data && !loading && (
+        <AgreementDocument data={data} tokenSymbol={tokenSymbol} stationId={stationId} />
       )}
     </div>
   );

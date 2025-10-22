@@ -6,6 +6,7 @@ import LazyLoadErrorBoundary from './components/errors/LazyLoadErrorBoundary';
 // Code splitting: Lazy load routes for better initial bundle size
 const Homepage = lazy(() => import('./routes/Homepage'));
 const AppRoute = lazy(() => import('./routes/AppRoute'));
+const OperatingAgreement = lazy(() => import('./routes/OperatingAgreement'));
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Homepage />} />
             <Route path="/app" element={<AppRoute />} />
+            <Route path="/agreement/:stationId" element={<OperatingAgreement />} />
           </Routes>
         </Suspense>
       </LazyLoadErrorBoundary>
