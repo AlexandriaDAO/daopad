@@ -14,6 +14,7 @@ export default defineConfig({
 
   use: {
     baseURL: process.env.TEST_BASE_URL || 'https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io',
+    // No auth needed - site is public for read-only access
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
