@@ -51,7 +51,8 @@ const DAOSettings: React.FC<DAOSettingsProps> = ({ tokenCanisterId, identity, st
                 setLoading(true);
                 setError(null);
 
-                const result = await getProposalService.getOrbitSystemInfo(tokenCanisterId);
+                const proposalService = getProposalService(identity);
+                const result = await proposalService.getOrbitSystemInfo(tokenCanisterId);
 
                 // Handle service response
                 if (result.success) {

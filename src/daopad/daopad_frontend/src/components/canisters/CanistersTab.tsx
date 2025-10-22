@@ -9,7 +9,7 @@ import { Button } from '../ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { Loader2, Plus, Server } from 'lucide-react';
 
-export default function CanistersTab({ token, stationId }) {
+export default function CanistersTab({ token, stationId, identity }) {
   // Filter out backend canister from management UI
   const BACKEND_CANISTER = 'lwsav-iiaaa-aaaap-qp2qq-cai';
 
