@@ -86,11 +86,22 @@ pub async fn get_orbit_system_info(token_canister_id: Principal) -> Result<Syste
 
 #[update]
 pub async fn list_orbit_accounts(
-    station_id: Principal,
+    token_canister_id: Principal,
     search_term: Option<String>,
     limit: Option<u64>,
     offset: Option<u64>,
 ) -> Result<ListAccountsResult, String> {
+    // Lookup station_id from token_id
+    let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
+        stations
+            .borrow()
+            .get(&StorablePrincipal(token_canister_id))
+            .map(|s| s.0)
+    }).ok_or_else(|| format!(
+        "No Orbit Station found for token {}",
+        token_canister_id
+    ))?;
+
     // Build the input for list_accounts
     let input = ListAccountsInput {
         search_term,

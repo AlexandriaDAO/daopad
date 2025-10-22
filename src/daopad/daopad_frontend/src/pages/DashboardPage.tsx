@@ -188,6 +188,7 @@ export function DashboardPage() {
           <TabsTrigger
             value="treasury"
             className="data-[state=active]:bg-executive-gold/20 data-[state=active]:text-executive-goldLight transition-all duration-200"
+            data-testid="treasury-tab"
           >
             Treasury
           </TabsTrigger>
