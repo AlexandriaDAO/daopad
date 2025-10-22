@@ -94,7 +94,9 @@ const TokenDashboard = memo(function TokenDashboard({
       const tokenPrincipal = Principal.fromText(token.canister_id);
       const result = await tokenService.getMyVotingPowerForToken(tokenPrincipal);
       if (result.success) {
-        setUserVotingPower(result.data);
+        // Convert BigInt to number for voting power
+        const vp = typeof result.data === 'bigint' ? Number(result.data) : result.data;
+        setUserVotingPower(vp);
       }
     } catch (err) {
       console.error('Failed to load voting power:', err);
@@ -112,7 +114,9 @@ const TokenDashboard = memo(function TokenDashboard({
       const tokenPrincipal = Principal.fromText(token.canister_id);
       const result = await tokenService.getTotalVotingPowerForToken(tokenPrincipal);
       if (result.success) {
-        setTotalVotingPower(result.data);
+        // Convert BigInt to number for voting power
+        const totalVp = typeof result.data === 'bigint' ? Number(result.data) : result.data;
+        setTotalVotingPower(totalVp);
       }
     } catch (err) {
       console.error('Failed to load total voting power:', err);
@@ -312,10 +316,14 @@ const TokenDashboard = memo(function TokenDashboard({
   }, 0);
 
   const vpPercentage = useMemo(() => {
-    if (!votingPower || !totalVotingPower || totalVotingPower === 0) {
+    // Convert BigInts to numbers for calculation
+    const vpNum = typeof votingPower === 'bigint' ? Number(votingPower) : (votingPower || 0);
+    const totalVpNum = typeof totalVotingPower === 'bigint' ? Number(totalVotingPower) : (totalVotingPower || 0);
+
+    if (!vpNum || !totalVpNum || totalVpNum === 0) {
       return null;
     }
-    return ((votingPower / totalVotingPower) * 100).toFixed(2);
+    return ((vpNum / totalVpNum) * 100).toFixed(2);
   }, [votingPower, totalVotingPower]);
 
   // Memoize token USD calculations for performance
