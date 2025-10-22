@@ -160,12 +160,13 @@ export default function CanistersTab({ token, stationId, identity }) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {canisters.map(canister => (
-            <CanisterCard
-              key={canister.id}
-              canister={canister}
-              onTopUp={() => handleTopUp(canister.canister_id)}
-              onConfigure={() => handleConfigure(canister.canister_id)}
-            />
+            <div key={canister.id} data-testid="canister-card">
+              <CanisterCard
+                canister={canister}
+                onTopUp={() => handleTopUp(canister.canister_id)}
+                onConfigure={() => handleConfigure(canister.canister_id)}
+              />
+            </div>
           ))}
         </div>
       )}

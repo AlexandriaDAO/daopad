@@ -383,7 +383,7 @@ const TokenDashboard = memo(function TokenDashboard({
                 <TabsTrigger variant="executive" value="agreement">Agreement</TabsTrigger>
                 <TabsTrigger variant="executive" value="accounts">Treasury</TabsTrigger>
                 <TabsTrigger variant="executive" value="activity">Activity</TabsTrigger>
-                <TabsTrigger variant="executive" value="canisters">Canisters</TabsTrigger>
+                <TabsTrigger variant="executive" value="canisters" data-testid="canisters-tab">Canisters</TabsTrigger>
                 <TabsTrigger variant="executive" value="settings">Settings</TabsTrigger>
               </TabsList>
 
