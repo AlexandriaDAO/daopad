@@ -161,6 +161,21 @@ export class ProposalService extends BackendServiceBase {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Get treasury transfer proposal for a token
+   */
+  async getTreasuryProposal(tokenId) {
+    try {
+      const actor = await this.getActor();
+      const tokenPrincipal = this.toPrincipal(tokenId);
+      const result = await actor.get_treasury_proposal(tokenPrincipal);
+      return this.wrapOption(result);
+    } catch (error) {
+      console.error('Failed to get treasury proposal:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 export const getProposalService = (identity) => {

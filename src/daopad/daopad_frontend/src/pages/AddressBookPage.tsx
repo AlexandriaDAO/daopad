@@ -65,23 +65,23 @@ const AddressBookPage = ({ identity }) => {
         }
       };
 
-      const result = await addressBookService.listAddressBookEntries(input);
-      if (result.Ok) {
-        setEntries(result.Ok.address_book_entries);
+      const result = await addressBookService.listEntries(input);
+      if (result.success) {
+        setEntries(result.data.address_book_entries);
         setPrivileges(
-          result.Ok.privileges.reduce((acc, priv) => {
+          result.data.privileges.reduce((acc, priv) => {
             acc[priv.id] = priv;
             return acc;
           }, {})
         );
         setPagination(prev => ({
           ...prev,
-          total: result.Ok.total,
-          totalPages: Math.ceil(result.Ok.total / prev.limit),
-          next_offset: result.Ok.next_offset
+          total: result.data.total,
+          totalPages: Math.ceil(result.data.total / prev.limit),
+          next_offset: result.data.next_offset
         }));
       } else {
-        setError(result.Err?.message || 'Failed to load address book entries');
+        setError(result.error || 'Failed to load address book entries');
       }
     } catch (error) {
       console.error('Error loading address book:', error);

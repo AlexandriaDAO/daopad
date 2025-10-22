@@ -79,12 +79,12 @@ export const fetchOrbitAccounts = createAsyncThunk(
         const accounts = response.data.accounts || [];
 
         // NEW: Fetch asset details with correct symbols for each account
-        if (accounts.length > 0 && tokenPrincipal) {
+        if (accounts.length > 0 && tokenId) {
           const enrichedAccounts = await Promise.all(
             accounts.map(async (account) => {
               try {
-                const assetsResult = await accountsService.getAccountWithAssets(
-                  tokenPrincipal,
+                const assetsResult = await service.getAccountWithAssets(
+                  tokenId,
                   account.id
                 );
 
