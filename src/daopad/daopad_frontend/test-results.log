@@ -1,0 +1,66 @@
+
+Running 16 tests using 1 worker
+
+⚠️  Warning: No IC identity found in localStorage
+
+=== CONSOLE ERRORS ===
+No console errors
+
+=== SYSTEM INFO API CALLS ===
+No system info API calls captured
+  ✘   1 [chromium] › e2e/settings.spec.ts:112:3 › Settings Tab - System Information › should load Settings tab without console errors (18.0s)
+⚠️  Warning: No IC identity found in localStorage
+
+=== CONSOLE ERRORS ===
+No console errors
+
+=== SYSTEM INFO API CALLS ===
+No system info API calls captured
+  ✘   2 [chromium] › e2e/settings.spec.ts:136:3 › Settings Tab - System Information › should successfully call get_orbit_system_info (2.0m)
+⚠️  Warning: No IC identity found in localStorage
+
+=== CONSOLE ERRORS ===
+No console errors
+
+=== SYSTEM INFO API CALLS ===
+No system info API calls captured
+  ✘   3 [chromium] › e2e/settings.spec.ts:159:3 › Settings Tab - System Information › should display station name and version (2.1m)
+⚠️  Warning: No IC identity found in localStorage
+
+=== CONSOLE ERRORS ===
+No console errors
+
+=== SYSTEM INFO API CALLS ===
+No system info API calls captured
+  ✘   4 [chromium] › e2e/settings.spec.ts:186:3 › Settings Tab - System Information › should display station ID with copy button (2.0m)
+⚠️  Warning: No IC identity found in localStorage
+
+=== CONSOLE ERRORS ===
+No console errors
+
+=== SYSTEM INFO API CALLS ===
+No system info API calls captured
+  ✘   5 [chromium] › e2e/settings.spec.ts:207:3 › Settings Tab - System Information › should display cycle information (2.0m)
+⚠️  Warning: No IC identity found in localStorage
+
+=== CONSOLE ERRORS ===
+No console errors
+
+=== SYSTEM INFO API CALLS ===
+No system info API calls captured
+  ✘   6 [chromium] › e2e/settings.spec.ts:232:3 › Settings Tab - System Information › should display upgrader ID (2.0m)
+⚠️  Warning: No IC identity found in localStorage
+
+=== CONSOLE ERRORS ===
+No console errors
+
+=== SYSTEM INFO API CALLS ===
+No system info API calls captured
+  ✘   7 [chromium] › e2e/settings.spec.ts:250:3 › Settings Tab - System Information › should display last upgrade timestamp (2.0m)
+⚠️  Warning: No IC identity found in localStorage
+
+=== CONSOLE ERRORS ===
+No console errors
+
+=== SYSTEM INFO API CALLS ===
+No system info API calls captured

@@ -1,0 +1,184 @@
+================================================
+DAOPad Deployment
+================================================
+Network: ic
+Target: frontend
+Fresh deploy: false
+Working from: /home/theseus/alexandria/daopad-settings-e2e-tests
+
+Mainnet Canister IDs:
+  Backend:  lwsav-iiaaa-aaaap-qp2qq-cai
+  Frontend: l7rlj-6aaaa-aaaaa-qaffq-cai
+  Alexandria Station: fec7w-zyaaa-aaaaa-qaffq-cai
+================================================
+
+Switching to daopad identity for mainnet deployment...
+Using identity: "daopad".
+Using identity: daopad
+
+
+Building DAOPad frontend...
+
+added 57 packages, and audited 808 packages in 1s
+
+225 packages are looking for funding
+  run `npm fund` for details
+
+1 moderate severity vulnerability
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+Generating backend declarations...
+Generated type declarations for canister 'daopad_backend' to '/home/theseus/alexandria/daopad-settings-e2e-tests/src/declarations/daopad_backend'
+🔄 Syncing declarations to frontend...
+✅ Declarations synced successfully
+✅ Declaration sync verified
+
+> daopad_frontend@0.0.0 prebuild
+> node -e "console.log('Skipping dfx generate: declarations vendored locally')"
+
+Skipping dfx generate: declarations vendored locally
+
+> daopad_frontend@0.0.0 build
+> npm run test:toast && vite build
+
+
+> daopad_frontend@0.0.0 test:toast
+> node test-toast-integration.mjs
+
+✅ All toast API calls use correct sonner syntax
+vite v6.3.5 building for production...
+transforming...
+✓ 2541 modules transformed.
+rendering chunks...
+[plugin vite:reporter] 
+(!) /home/theseus/alexandria/daopad-settings-e2e-tests/src/daopad/daopad_frontend/src/utils/mainnetTesting.ts is dynamically imported by /home/theseus/alexandria/daopad-settings-e2e-tests/src/daopad/daopad_frontend/src/main.tsx but also statically imported by /home/theseus/alexandria/daopad-settings-e2e-tests/src/daopad/daopad_frontend/src/main.tsx, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/index.html                                             1.14 kB │ gzip:   0.51 kB
+dist/assets/index-CCCa3Zur-1761162746902.css               70.66 kB │ gzip:  12.49 kB
+dist/assets/OperatingAgreement-BbNDzzDM-1761162746902.js    1.60 kB │ gzip:   0.77 kB │ map:     4.57 kB
+dist/assets/tooltip-Ca75c2Qi-1761162746902.js              10.37 kB │ gzip:   3.93 kB │ map:    41.41 kB
+dist/assets/vendor-redux-BS0CHPDm-1761162746902.js         26.90 kB │ gzip:  10.30 kB │ map:   249.16 kB
+dist/assets/Homepage-B78G7hS--1761162746902.js             33.49 kB │ gzip:   4.87 kB │ map:    64.68 kB
+dist/assets/AgreementDocument-Ctj3ub0U-1761162746902.js    50.46 kB │ gzip:  11.91 kB │ map:    98.05 kB
+dist/assets/vendor-ui-BE8OnoHI-1761162746902.js            83.35 kB │ gzip:  28.16 kB │ map:   438.48 kB
+dist/assets/index-CpsUDDFc-1761162746902.js               138.64 kB │ gzip:  36.13 kB │ map:   544.71 kB
+dist/assets/vendor-react-CFAf9eSH-1761162746902.js        175.83 kB │ gzip:  58.11 kB │ map:   741.90 kB
+dist/assets/vendor-dfinity-1QeIgPbe-1761162746902.js      297.80 kB │ gzip:  97.78 kB │ map: 1,391.16 kB
+dist/assets/AppRoute-Dqtk1XJp-1761162746902.js            571.77 kB │ gzip: 166.99 kB │ map: 3,215.77 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 6.82s
+Deploying DAOPad frontend...
+Deploying frontend to mainnet...
+Deploying: daopad_backend daopad_frontend
+All canisters have already been created.
+WARN: .did file for canister 'kong_locker_frontend' does not exist.
+WARN: .did file for canister 'kong_locker' does not exist.
+Checking for vulnerabilities in rust canisters.
+[0m[0m[1m[32m    Fetching[0m advisory database from `https://github.com/RustSec/advisory-db.git`
+[0m[0m[1m[32m      Loaded[0m 858 security advisories (from /home/theseus/.cargo/advisory-db)
+[0m[0m[1m[32m    Updating[0m crates.io index
+[0m[0m[1m[32m    Scanning[0m Cargo.lock for vulnerabilities (80 crate dependencies)
+[0m[0m[1m[33mCrate:    [0m paste
+[0m[0m[1m[33mVersion:  [0m 1.0.15
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m paste - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-10-07
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0436
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0436
+[0m[0m[1m[33mDependency tree:
+[0mpaste 1.0.15
+└── candid 0.10.18
+    ├── ic-cdk-macros 0.17.2
+    │   └── ic-cdk 0.17.2
+    │       └── daopad_backend 0.1.0
+    ├── ic-cdk 0.17.2
+    └── daopad_backend 0.1.0
+
+[0m[0m[1m[33mwarning:[0m 1 allowed warning found
+Audit found no vulnerabilities.
+Building canister 'daopad_backend'.
+Executing: cargo build --target wasm32-unknown-unknown --release -p daopad_backend --locked
+    Finished `release` profile [optimized] target(s) in 0.03s
+Building canister 'daopad_frontend'.
+Executing 'cd src/daopad/daopad_frontend && npm run build'
+
+> daopad_frontend@0.0.0 prebuild
+> node -e "console.log('Skipping dfx generate: declarations vendored locally')"
+
+Skipping dfx generate: declarations vendored locally
+
+> daopad_frontend@0.0.0 build
+> npm run test:toast && vite build
+
+
+> daopad_frontend@0.0.0 test:toast
+> node test-toast-integration.mjs
+
+✅ All toast API calls use correct sonner syntax
+vite v6.3.5 building for production...
+transforming...
+✓ 2541 modules transformed.
+rendering chunks...
+[plugin vite:reporter] 
+(!) /home/theseus/alexandria/daopad-settings-e2e-tests/src/daopad/daopad_frontend/src/utils/mainnetTesting.ts is dynamically imported by /home/theseus/alexandria/daopad-settings-e2e-tests/src/daopad/daopad_frontend/src/main.tsx but also statically imported by /home/theseus/alexandria/daopad-settings-e2e-tests/src/daopad/daopad_frontend/src/main.tsx, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/index.html                                             1.14 kB │ gzip:   0.51 kB
+dist/assets/index-CCCa3Zur-1761162756826.css               70.66 kB │ gzip:  12.49 kB
+dist/assets/OperatingAgreement-3RXCo957-1761162756826.js    1.60 kB │ gzip:   0.78 kB │ map:     4.57 kB
+dist/assets/tooltip-DCrUlRiw-1761162756826.js              10.37 kB │ gzip:   3.93 kB │ map:    41.41 kB
+dist/assets/vendor-redux-BibuSivB-1761162756826.js         26.90 kB │ gzip:  10.30 kB │ map:   249.16 kB
+dist/assets/Homepage-C5TkeTQV-1761162756826.js             33.49 kB │ gzip:   4.86 kB │ map:    64.68 kB
+dist/assets/AgreementDocument-B3yvVDA6-1761162756826.js    50.46 kB │ gzip:  11.91 kB │ map:    98.05 kB
+dist/assets/vendor-ui-Br8FdqKW-1761162756826.js            83.35 kB │ gzip:  28.16 kB │ map:   438.48 kB
+dist/assets/index-D-6Xl3VX-1761162756826.js               138.27 kB │ gzip:  35.91 kB │ map:   544.39 kB
+dist/assets/vendor-react-CFAf9eSH-1761162756826.js        175.83 kB │ gzip:  58.11 kB │ map:   741.90 kB
+dist/assets/vendor-dfinity-BPPqa2Sm-1761162756826.js      297.80 kB │ gzip:  97.78 kB │ map: 1,391.16 kB
+dist/assets/AppRoute-BNx8ASoM-1761162756826.js            571.77 kB │ gzip: 166.99 kB │ map: 3,215.77 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 6.75s
+Module hash 0bd1982a3f9763360352eb1fad2f314fc6e321633567b9098d86c4899a711cd6 is already installed.
+Upgraded code for canister daopad_backend, with canister ID lwsav-iiaaa-aaaap-qp2qq-cai
+Module hash 2f73b9e18b992f221a5fbab7fc59d840a9cbc461f7cfe875049f51354d23696c is already installed.
+WARN: This project does not define a security policy for any assets.
+WARN: You should define a security policy in .ic-assets.json5. For example:
+WARN: [
+WARN:   {
+WARN:     "match": "**/*",
+WARN:     "security_policy": "standard"
+WARN:   }
+WARN: ]
+WARN: To disable the policy warning, define "disable_security_policy_warning": true in .ic-assets.json5.
+Upgraded code for canister daopad_frontend, with canister ID l7rlj-6aaaa-aaaap-qp2ra-cai
+Deployed canisters.
+URLs:
+  Frontend canister via browser:
+    daopad_frontend: https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io/
+    kong_locker_frontend: https://c6w56-taaaa-aaaai-atlma-cai.icp0.io/
+  Backend canister via Candid interface:
+    daopad_backend: https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=lwsav-iiaaa-aaaap-qp2qq-cai
+    kong_locker: https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=eazgb-giaaa-aaaap-qqc2q-cai
+✓ Frontend deployed successfully
+   Frontend URL: https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io/
+
+================================================
+DAOPad Deployment Summary
+================================================
+
+Mainnet Status:
+  ✓ Frontend: https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io/
+
+⚠️  Some components failed to deploy. Please check the warnings above.
+================================================
