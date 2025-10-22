@@ -17,7 +17,7 @@ function ErrorFallback({ error, errorInfo, resetError, level = 'component' }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-executive-charcoal p-4">
+    <div className="min-h-screen flex items-center justify-center bg-executive-charcoal p-4" data-testid="error-boundary">
       <Card className="max-w-2xl w-full p-8 bg-executive-darkGray border-executive-gold/20">
         <div className="flex items-start gap-4 mb-6">
           <AlertTriangle className="w-8 h-8 text-red-500 flex-shrink-0" />

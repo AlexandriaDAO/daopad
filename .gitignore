@@ -24,5 +24,10 @@ dist/
 # environment variables
 .env
 
+# E2E test artifacts
+.auth/
+**/test-results/
+**/playwright-report/
+
 # reference repositories (read-only, not part of this project)
 orbit-reference/
