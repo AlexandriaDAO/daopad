@@ -305,12 +305,6 @@ const TokenDashboard = memo(function TokenDashboard({
     return formatUsdValue(numericVp / VP_TO_USD_RATIO);
   };
 
-    // Otherwise fall back to positions
-    return (lpPositions || []).reduce((sum, pos) => {
-      return sum + (pos.usd_balance || 0);
-    }, 0);
-  }, [votingPower, lpPositions]);
-
   const vpPercentage = useMemo(() => {
     const numericVP = typeof votingPower === 'bigint' ? Number(votingPower) : votingPower;
     const numericTotal = typeof totalVotingPower === 'bigint' ? Number(totalVotingPower) : totalVotingPower;
