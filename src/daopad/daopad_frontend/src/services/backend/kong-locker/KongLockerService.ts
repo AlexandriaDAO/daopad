@@ -78,9 +78,14 @@ export class KongLockerService extends BackendServiceBase {
    */
   async getPositions() {
     try {
-      const actor = await this.getActor();
-      const result = await actor.get_my_kong_locker_positions();
-      return this.wrapOption(result);
+      // Backend doesn't have this method - return empty for now
+      // TODO: Implement direct Kong Lock canister query
+      console.warn('getPositions not implemented - returning empty array');
+      return {
+        success: true,
+        data: [],
+        warning: 'Position fetching not yet implemented'
+      };
     } catch (error) {
       console.error('Failed to get positions:', error);
       return { success: false, error: error.message };

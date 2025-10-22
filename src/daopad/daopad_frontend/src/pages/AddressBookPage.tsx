@@ -10,12 +10,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ExecutiveCard } from '@/components/ui/executive-card';
 
 const AddressBookPage = ({ identity }) => {
-  // Initialize service with identity
+  // Initialize service instance with identity
+  const [addressBookService, setAddressBookService] = useState(null);
+
   useEffect(() => {
     if (identity) {
-      getOrbitAddressBookService.setIdentity(identity);
+      const service = getOrbitAddressBookService(identity);
+      setAddressBookService(service);
     }
   }, [identity]);
+
   // State management - Lines 155-170 in Vue component
   const [entries, setEntries] = useState([]);
   const [privileges, setPrivileges] = useState({});
@@ -48,7 +52,7 @@ const AddressBookPage = ({ identity }) => {
 
   // Fetch data function - Lines 177-198 in Vue component
   const fetchList = useCallback(async () => {
-    if (!canList) return;
+    if (!canList || !addressBookService) return;
 
     setLoading(true);
     setError(null);
@@ -61,23 +65,23 @@ const AddressBookPage = ({ identity }) => {
         }
       };
 
-      const result = await getOrbitAddressBookService.listAddressBookEntries(input);
-      if (result.Ok) {
-        setEntries(result.Ok.address_book_entries);
+      const result = await addressBookService.listEntries(input);
+      if (result.success) {
+        setEntries(result.data.address_book_entries);
         setPrivileges(
-          result.Ok.privileges.reduce((acc, priv) => {
+          result.data.privileges.reduce((acc, priv) => {
             acc[priv.id] = priv;
             return acc;
           }, {})
         );
         setPagination(prev => ({
           ...prev,
-          total: result.Ok.total,
-          totalPages: Math.ceil(result.Ok.total / prev.limit),
-          next_offset: result.Ok.next_offset
+          total: result.data.total,
+          totalPages: Math.ceil(result.data.total / prev.limit),
+          next_offset: result.data.next_offset
         }));
       } else {
-        setError(result.Err?.message || 'Failed to load address book entries');
+        setError(result.error || 'Failed to load address book entries');
       }
     } catch (error) {
       console.error('Error loading address book:', error);
@@ -85,7 +89,7 @@ const AddressBookPage = ({ identity }) => {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, pagination.offset, pagination.limit, canList]);
+  }, [searchTerm, pagination.offset, pagination.limit, canList, addressBookService]);
 
   // Effect 1: Initial load only (runs once on mount)
   useEffect(() => {
@@ -144,11 +148,11 @@ const AddressBookPage = ({ identity }) => {
 
   // Handle entry deletion
   const handleDelete = async (entry) => {
-    if (!hasDeletePrivilege(entry.id)) return;
+    if (!hasDeletePrivilege(entry.id) || !addressBookService) return;
 
     if (window.confirm(`Are you sure you want to delete the address book entry for ${entry.address_owner}?`)) {
       try {
-        const result = await getOrbitAddressBookService.removeAddressBookEntry(entry.id);
+        const result = await addressBookService.removeAddressBookEntry(entry.id);
         if (result.Ok) {
           // Refresh the list
           setForceReload(prev => prev + 1);

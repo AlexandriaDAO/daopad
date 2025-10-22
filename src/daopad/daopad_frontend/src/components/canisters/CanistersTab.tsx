@@ -9,7 +9,7 @@ import { Button } from '../ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { Loader2, Plus, Server } from 'lucide-react';
 
-export default function CanistersTab({ token, stationId }) {
+export default function CanistersTab({ token, stationId, identity }) {
   // Filter out backend canister from management UI
   const BACKEND_CANISTER = 'lwsav-iiaaa-aaaap-qp2qq-cai';
 
@@ -19,11 +19,11 @@ export default function CanistersTab({ token, stationId }) {
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [selectedCanisterId, setSelectedCanisterId] = useState(null);
   const [filters, setFilters] = useState({
-    paginate: { offset: 0, limit: 20 },  // Use regular numbers, convert to BigInt in service
-    canister_ids: null,
-    labels: null,
-    states: null,
-    sort_by: null
+    paginate: { offset: [], limit: [20] },
+    canister_ids: [],
+    labels: [],
+    states: [],
+    sort_by: []
   });
 
   useEffect(() => {
