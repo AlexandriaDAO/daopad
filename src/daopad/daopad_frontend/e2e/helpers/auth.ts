@@ -10,7 +10,16 @@ export async function authenticateForTests(page: Page) {
   await page.goto('/');
 
   const authFile = '.auth/user.json';
-  const storageState = require(`../../${authFile}`);
+  let storageState;
+
+  try {
+    storageState = require(`../../${authFile}`);
+  } catch (error) {
+    throw new Error(
+      `Authentication file not found at ${authFile}. ` +
+      `Please run 'npm run test:e2e:setup' to create it first.`
+    );
+  }
 
   await page.context().addCookies(storageState.cookies);
   await page.evaluate((localStorage) => {
