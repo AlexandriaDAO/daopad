@@ -57,6 +57,7 @@ const TreasuryShowcase = () => {
                           bg-executive-darkGray/30 rounded
                           border border-executive-gold/10
                           hover:bg-executive-darkGray/50 transition-colors"
+                data-testid="treasury-item"
               >
                 <div className="flex flex-col">
                   <span className="text-xs font-mono text-executive-lightGray">

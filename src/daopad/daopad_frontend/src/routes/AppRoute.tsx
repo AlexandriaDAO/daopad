@@ -57,12 +57,19 @@ function AppRoute() {
   // Load public data for logged-out users with proper cleanup and visibility handling
   useEffect(() => {
     const startPolling = () => {
-      if (!isAuthenticated && !document.hidden) {
+      if (!isAuthenticated) {
+        // Always dispatch on initial load for anonymous users
         dispatch(fetchPublicDashboard());
 
-        intervalRef.current = setInterval(() => {
-          dispatch(fetchPublicDashboard());
-        }, 30000);
+        // Only start polling interval if document is visible
+        // This prevents unnecessary API calls when tab is in background
+        if (!document.hidden) {
+          intervalRef.current = setInterval(() => {
+            if (!document.hidden) {
+              dispatch(fetchPublicDashboard());
+            }
+          }, 30000);
+        }
       }
     };
 
