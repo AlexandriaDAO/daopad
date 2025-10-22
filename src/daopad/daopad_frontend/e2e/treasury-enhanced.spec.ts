@@ -111,7 +111,10 @@ test.describe('Treasury Enhanced - Data Pipeline', () => {
 
     // STEP 1: Navigate to treasury tab
     await page.goto(`/dao/${TEST_TOKEN_ID}`);
-    await page.waitForSelector('h1', { timeout: 10000 });
+    await page.waitForSelector('h1:has-text("Alexandria")', { timeout: 10000 });
+
+    // CRITICAL: Wait for page to fully load before interacting
+    await page.waitForSelector('h1:has-text("Alexandria")', { timeout: 10000 });
 
     console.log('[Test] Clicking treasury tab');
     await page.click('[data-testid="treasury-tab"]');
@@ -156,6 +159,8 @@ test.describe('Treasury Enhanced - Data Pipeline', () => {
 
   test('should display correct account names and balances', async ({ page }) => {
     await page.goto(`/dao/${TEST_TOKEN_ID}`);
+    await page.waitForSelector('h1:has-text("Alexandria")', { timeout: 10000 });
+    await page.waitForSelector('h1:has-text("Alexandria")', { timeout: 10000 });
     await page.click('[data-testid="treasury-tab"]');
     await page.waitForSelector('[data-testid="treasury-overview"]', { timeout: 30000 });
 
@@ -197,6 +202,7 @@ test.describe('Treasury Enhanced - Data Pipeline', () => {
 
   test('should handle accordion expand/collapse', async ({ page }) => {
     await page.goto(`/dao/${TEST_TOKEN_ID}`);
+    await page.waitForSelector('h1:has-text("Alexandria")', { timeout: 10000 });
     await page.click('[data-testid="treasury-tab"]');
     await page.waitForSelector('[data-testid="treasury-account"]', { timeout: 30000 });
 
@@ -241,6 +247,7 @@ test.describe('Treasury Enhanced - Data Pipeline', () => {
 
   test('should verify Redux state updates', async ({ page }) => {
     await page.goto(`/dao/${TEST_TOKEN_ID}`);
+    await page.waitForSelector('h1:has-text("Alexandria")', { timeout: 10000 });
     await page.click('[data-testid="treasury-tab"]');
     await page.waitForTimeout(10000); // Allow time for all async operations
 
@@ -276,6 +283,7 @@ test.describe('Treasury Enhanced - Data Pipeline', () => {
 
   test('should display portfolio distribution chart', async ({ page }) => {
     await page.goto(`/dao/${TEST_TOKEN_ID}`);
+    await page.waitForSelector('h1:has-text("Alexandria")', { timeout: 10000 });
     await page.click('[data-testid="treasury-tab"]');
     await page.waitForSelector('[data-testid="treasury-overview"]', { timeout: 30000 });
     await page.waitForTimeout(3000);
@@ -301,6 +309,7 @@ test.describe('Treasury Enhanced - Data Pipeline', () => {
 
   test('should handle accounts with multiple assets', async ({ page }) => {
     await page.goto(`/dao/${TEST_TOKEN_ID}`);
+    await page.waitForSelector('h1:has-text("Alexandria")', { timeout: 10000 });
     await page.click('[data-testid="treasury-tab"]');
     await page.waitForTimeout(5000);
 
@@ -345,6 +354,7 @@ test.describe('Treasury Enhanced - Data Pipeline', () => {
 
   test('should show zero balance accounts correctly', async ({ page }) => {
     await page.goto(`/dao/${TEST_TOKEN_ID}`);
+    await page.waitForSelector('h1:has-text("Alexandria")', { timeout: 10000 });
     await page.click('[data-testid="treasury-tab"]');
     await page.waitForTimeout(5000);
 
@@ -392,6 +402,7 @@ test.describe('Treasury Enhanced - Data Pipeline', () => {
       console.log(`[Test] Navigation cycle ${i + 1}/5`);
 
       await page.goto(`/dao/${TEST_TOKEN_ID}`);
+    await page.waitForSelector('h1:has-text("Alexandria")', { timeout: 10000 });
       await page.click('[data-testid="treasury-tab"]');
       await page.waitForSelector('[data-testid="treasury-overview"]', { timeout: 10000 });
       await page.waitForTimeout(2000);
@@ -418,6 +429,7 @@ test.describe('Treasury Enhanced - Data Pipeline', () => {
 
     // Final navigation should still work
     await page.goto(`/dao/${TEST_TOKEN_ID}`);
+    await page.waitForSelector('h1:has-text("Alexandria")', { timeout: 10000 });
     await page.click('[data-testid="treasury-tab"]');
     await page.waitForSelector('[data-testid="treasury-overview"]', { timeout: 10000 });
 
@@ -476,6 +488,7 @@ test.describe('Treasury Enhanced - Error Scenarios', () => {
     console.log('[Test] Testing timeout handling');
 
     await page.goto(`/dao/${TEST_TOKEN_ID}`);
+    await page.waitForSelector('h1:has-text("Alexandria")', { timeout: 10000 });
     await page.click('[data-testid="treasury-tab"]');
 
     // Either loads successfully or shows error - but doesn't hang forever
