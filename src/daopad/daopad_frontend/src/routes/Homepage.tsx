@@ -37,127 +37,220 @@ function Homepage() {
               DAOPad
             </h1>
 
-            {/* The truth about DAOs */}
-            <p className="text-2xl text-executive-goldLight font-serif mb-2">
-              DAOs Don't Actually Exist
+            {/* Core function statement */}
+            <p className="text-3xl text-executive-goldLight font-serif mb-4">
+              Turns LLCs into Smart Contracts
             </p>
-            <p className="text-lg text-executive-lightGray/70 mb-8">
-              We have D. A. O. in isolation, but never together
-            </p>
+
+            {/* The convergence explanation */}
+            <div className="max-w-3xl mx-auto mb-8">
+              <p className="text-lg text-executive-lightGray/80">
+                Your company, contracts, and operations become <span className="text-executive-gold">one autonomous system</span>.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Great Inventions Animation - The Missing Convergence */}
+      {/* The Convergence - Circular Diagram */}
       <section className="py-16 bg-executive-darkGray/20">
         <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto">
-            {/* Animated Timeline */}
-            <div className="relative">
-              {/* Connection Line */}
-              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-executive-gold/20"></div>
-
-              {/* Fair Launch */}
-              <div className="relative flex items-center mb-12 animate-fade-in-1">
-                <div className="w-1/2 text-right pr-8">
-                  <h3 className="text-2xl font-serif text-executive-ivory mb-2">Fair Launch</h3>
-                  <p className="text-executive-lightGray/60 mt-2 text-sm">Community funded</p>
-                </div>
-                <div className="absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-executive-gold border-4 border-executive-charcoal"></div>
-                <div className="w-1/2 pl-8">
-                  <div className="text-4xl animate-pulse-slow">👥</div>
-                </div>
-              </div>
-
-              {/* Smart Contract */}
-              <div className="relative flex items-center mb-12 animate-fade-in-2">
-                <div className="w-1/2 text-right pr-8">
-                  <div className="text-4xl animate-pulse-slow">⚙️</div>
-                </div>
-                <div className="absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-executive-gold border-4 border-executive-charcoal"></div>
-                <div className="w-1/2 pl-8">
-                  <h3 className="text-2xl font-serif text-executive-ivory mb-2">Smart Contract</h3>
-                  <p className="text-executive-lightGray/60 mt-2 text-sm">Automated trust</p>
-                </div>
-              </div>
-
-              {/* LLC */}
-              <div className="relative flex items-center mb-12 animate-fade-in-3">
-                <div className="w-1/2 text-right pr-8">
-                  <h3 className="text-2xl font-serif text-executive-ivory mb-2">LLC</h3>
-                  <p className="text-executive-lightGray/60 mt-2 text-sm">Legal protection</p>
-                </div>
-                <div className="absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-executive-gold border-4 border-executive-charcoal"></div>
-                <div className="w-1/2 pl-8">
-                  <div className="text-4xl animate-pulse-slow">🏢</div>
-                </div>
-              </div>
-
-              {/* DAO - Unfulfilled */}
-              <div className="relative flex items-center animate-fade-in-4">
-                <div className="w-full text-center">
-                  <div className="inline-block relative">
-                    <div className="absolute inset-0 bg-executive-gold/20 blur-xl animate-pulse"></div>
-                    <div className="relative bg-executive-charcoal border-2 border-executive-gold px-8 py-6 rounded-lg">
-                      <h3 className="text-3xl font-serif text-executive-gold mb-2">DAOs</h3>
-                      <p className="text-sm text-executive-lightGray/60">The Great Convergence</p>
-                      <div className="mt-4 flex justify-center items-center gap-2">
-                        <span className="text-xl opacity-50">👥</span>
-                        <span className="text-executive-gold">+</span>
-                        <span className="text-xl opacity-50">⚙️</span>
-                        <span className="text-executive-gold">+</span>
-                        <span className="text-xl opacity-50">🏢</span>
-                        <span className="text-executive-gold">=</span>
-                        <span className="text-2xl animate-pulse">❓</span>
-                      </div>
-                      <p className="text-xs text-executive-gold mt-2 font-serif">DAOPad makes it real</p>
+          <div className="max-w-4xl mx-auto">
+            {/* Circular Diagram */}
+            <div className="relative w-full max-w-2xl mx-auto" style={{ aspectRatio: '1/1' }}>
+              {/* Center - One Thing */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 convergence-center">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-executive-gold/20 blur-xl animate-pulse"></div>
+                  <div className="relative bg-executive-charcoal border-2 border-executive-gold rounded-full w-32 h-32 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="text-3xl mb-1">⚡</div>
+                      <div className="text-xs text-executive-gold font-semibold">One Thing</div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Arrow pointing down */}
-              <div className="mt-12 text-center animate-bounce">
-                <div className="inline-block">
-                  <div className="text-executive-gold text-3xl">⬇</div>
-                  <p className="text-executive-gold font-serif mt-2">Until Now</p>
+              {/* Top - Smart Contract */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 convergence-box-1">
+                <div className="bg-executive-darkGray/80 border border-executive-gold/30 rounded-lg p-6 text-center w-40">
+                  <div className="text-2xl mb-2">⚙️</div>
+                  <div className="text-executive-ivory font-semibold text-sm mb-1">Smart Contract</div>
+                  <div className="text-executive-lightGray/60 text-xs">Executable code</div>
+                </div>
+              </div>
+
+              {/* Bottom Left - Operating Agreement */}
+              <div className="absolute bottom-0 left-0 convergence-box-2">
+                <div className="bg-executive-darkGray/80 border border-executive-gold/30 rounded-lg p-6 text-center w-40">
+                  <div className="text-2xl mb-2">📄</div>
+                  <div className="text-executive-ivory font-semibold text-sm mb-1">Operating Agreement</div>
+                  <div className="text-executive-lightGray/60 text-xs">Legal contract</div>
+                </div>
+              </div>
+
+              {/* Bottom Right - LLC */}
+              <div className="absolute bottom-0 right-0 convergence-box-3">
+                <div className="bg-executive-darkGray/80 border border-executive-gold/30 rounded-lg p-6 text-center w-40">
+                  <div className="text-2xl mb-2">🏢</div>
+                  <div className="text-executive-ivory font-semibold text-sm mb-1">LLC Entity</div>
+                  <div className="text-executive-lightGray/60 text-xs">Legal structure</div>
+                </div>
+              </div>
+
+              {/* Connection Lines - SVG for clean arrows */}
+              <svg className="absolute inset-0 w-full h-full convergence-arrows" style={{ zIndex: 1 }}>
+                <defs>
+                  <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="rgb(212, 175, 55, 0.6)" />
+                  </marker>
+                </defs>
+
+                {/* Top to Bottom Left */}
+                <path className="arrow-path" d="M 50% 18% L 28% 72%" stroke="rgb(212, 175, 55, 0.6)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" strokeDasharray="300" strokeDashoffset="300" />
+                <path className="arrow-path" d="M 28% 72% L 50% 18%" stroke="rgb(212, 175, 55, 0.6)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" strokeDasharray="300" strokeDashoffset="300" />
+
+                {/* Bottom Left to Bottom Right */}
+                <path className="arrow-path" d="M 32% 82% L 68% 82%" stroke="rgb(212, 175, 55, 0.6)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" strokeDasharray="300" strokeDashoffset="300" />
+                <path className="arrow-path" d="M 68% 82% L 32% 82%" stroke="rgb(212, 175, 55, 0.6)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" strokeDasharray="300" strokeDashoffset="300" />
+
+                {/* Bottom Right to Top */}
+                <path className="arrow-path" d="M 72% 72% L 50% 18%" stroke="rgb(212, 175, 55, 0.6)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" strokeDasharray="300" strokeDashoffset="300" />
+                <path className="arrow-path" d="M 50% 18% L 72% 72%" stroke="rgb(212, 175, 55, 0.6)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" strokeDasharray="300" strokeDashoffset="300" />
+              </svg>
+            </div>
+
+            <div className="text-center mt-12">
+              <p className="text-executive-lightGray/70 text-sm italic">
+                No longer separate — one unified autonomous system
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Convergence Animations */}
+        <style jsx>{`
+          @keyframes fadeInScale {
+            from {
+              opacity: 0;
+              transform: translate(-50%, -50%) scale(0.8);
+            }
+            to {
+              opacity: 1;
+              transform: translate(-50%, -50%) scale(1);
+            }
+          }
+
+          @keyframes fadeInBox {
+            from {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          @keyframes drawArrow {
+            to {
+              stroke-dashoffset: 0;
+            }
+          }
+
+          .convergence-center {
+            animation: fadeInScale 0.8s ease-out 0.2s both;
+          }
+
+          .convergence-box-1 {
+            animation: fadeInBox 0.6s ease-out 0.4s both;
+          }
+
+          .convergence-box-2 {
+            animation: fadeInBox 0.6s ease-out 0.6s both;
+          }
+
+          .convergence-box-3 {
+            animation: fadeInBox 0.6s ease-out 0.8s both;
+          }
+
+          .convergence-arrows .arrow-path {
+            animation: drawArrow 1.2s ease-out 1s both;
+          }
+        `}</style>
+      </section>
+
+      {/* What This Means - Value Propositions */}
+      <section className="py-16 border-t border-executive-gold/20">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-display text-executive-gold mb-4">
+                What This Means
+              </h2>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* For Crypto-Natives */}
+              <div className="bg-executive-darkGray/50 border border-executive-gold/30 rounded-lg p-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-3xl">🔐</span>
+                  <h3 className="text-xl font-serif text-executive-ivory">For Crypto-Natives</h3>
+                </div>
+                <p className="text-executive-lightGray/70 mb-6 text-sm">
+                  Your project has a white-glove framework for migrating to a legally recognized DAO LLC:
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">•</span>
+                    <span className="text-executive-lightGray">Business bank account with fiat off-ramp</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">•</span>
+                    <span className="text-executive-lightGray">Ability to own property & sign contracts</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">•</span>
+                    <span className="text-executive-lightGray">Legal liability protection for members</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">•</span>
+                    <span className="text-executive-lightGray">IRS compliant payroll and accounting</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* For Business Owners */}
+              <div className="bg-executive-darkGray/50 border border-executive-gold/30 rounded-lg p-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-3xl">🏢</span>
+                  <h3 className="text-xl font-serif text-executive-ivory">For Business Owners</h3>
+                </div>
+                <p className="text-executive-lightGray/70 mb-6 text-sm">
+                  Handle critical business operations internally without intermediaries:
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">•</span>
+                    <span className="text-executive-lightGray">Take on investment partners seamlessly</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">•</span>
+                    <span className="text-executive-lightGray">Automated payroll & equity allocations</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">•</span>
+                    <span className="text-executive-lightGray">Self-custody with full auditability</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-executive-gold mt-1">•</span>
+                    <span className="text-executive-lightGray">No more lawyers, notaries, accountants for routine ops</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Custom animations */}
-        <style jsx>{`
-          @keyframes fade-in-1 {
-            0% { opacity: 0; transform: translateY(20px); }
-            100% { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes fade-in-2 {
-            0% { opacity: 0; transform: translateY(20px); }
-            33% { opacity: 0; transform: translateY(20px); }
-            100% { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes fade-in-3 {
-            0% { opacity: 0; transform: translateY(20px); }
-            66% { opacity: 0; transform: translateY(20px); }
-            100% { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes fade-in-4 {
-            0% { opacity: 0; transform: scale(0.8); }
-            75% { opacity: 0; transform: scale(0.8); }
-            100% { opacity: 1; transform: scale(1); }
-          }
-          @keyframes pulse-slow {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.8; }
-          }
-          .animate-fade-in-1 { animation: fade-in-1 2s ease-out; }
-          .animate-fade-in-2 { animation: fade-in-2 2s ease-out; }
-          .animate-fade-in-3 { animation: fade-in-3 2s ease-out; }
-          .animate-fade-in-4 { animation: fade-in-4 2s ease-out; }
-          .animate-pulse-slow { animation: pulse-slow 3s ease-in-out infinite; }
-        `}</style>
       </section>
 
       {/* The Current State - Three Approaches */}
@@ -208,11 +301,15 @@ function Homepage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray/70">6+ months launch</span>
+                    <span className="text-executive-lightGray/70">6+ months launch time</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <span className="text-executive-lightGray/70">Too complex</span>
+                    <span className="text-executive-lightGray/70">No fiat operations</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <span className="text-executive-lightGray/70">Can't sign legal contracts</span>
                   </div>
                 </div>
                 <div className="mt-4 pt-4 border-t border-executive-gold/10">
@@ -479,32 +576,91 @@ function Homepage() {
         </div>
       </section>
 
-      {/* How It Works - Gradual Transition */}
+      {/* How to Use This NOW - Practical Steps */}
+      <section className="py-16 border-t border-executive-gold/20 bg-executive-darkGray/20">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-display text-executive-gold mb-4">
+                How to Use This NOW
+              </h2>
+              <p className="text-executive-lightGray/70">
+                If you're an LLC owner, you can start today
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-executive-gold/10 to-executive-darkGray/50 border-2 border-executive-gold/50 rounded-lg p-8">
+              <div className="space-y-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-executive-gold/20 border border-executive-gold flex items-center justify-center text-executive-gold font-bold">
+                    1
+                  </div>
+                  <div>
+                    <h4 className="text-executive-ivory font-semibold mb-2">Open an Orbit Station</h4>
+                    <p className="text-executive-lightGray/70 text-sm">
+                      Link it to DAOPad.org and move some company assets there. 5 minute setup.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-executive-gold/20 border border-executive-gold flex items-center justify-center text-executive-gold font-bold">
+                    2
+                  </div>
+                  <div>
+                    <h4 className="text-executive-ivory font-semibold mb-2">Update Operating Agreement</h4>
+                    <p className="text-executive-lightGray/70 text-sm">
+                      Reference the autonomously generated equivalent as binding. The smart contract <span className="italic">is</span> the agreement.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-executive-gold/20 border border-executive-gold flex items-center justify-center text-executive-gold font-bold">
+                    3
+                  </div>
+                  <div>
+                    <h4 className="text-executive-ivory font-semibold mb-2">Start Operating</h4>
+                    <p className="text-executive-lightGray/70 text-sm">
+                      Pay employees without intermediaries, interchange between fiat/stablecoins from your business bank, and self-custody your assets while keeping full auditability for tax time.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-executive-gold/30 text-center">
+                  <p className="text-executive-gold/80 text-sm italic">
+                    Congratulations! You're now among the first companies that can self-custody and operate peer-to-peer.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Two Paths to Decentralization */}
       <section className="py-20 border-t border-executive-gold/20">
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-display text-executive-gold mb-4">
-                Start Your DAO Journey Today
+                Two Paths to Decentralization
               </h2>
-              <p className="text-executive-lightGray/70 mb-2">
-                Anyone can start - just lock liquidity and begin the transition
-              </p>
-              <p className="text-executive-lightGray/50 text-sm">
-                No founders needed. No permission required. Just participation.
+              <p className="text-executive-lightGray/70">
+                DAOPad serves both crypto-native projects and traditional businesses
               </p>
             </div>
 
             {/* Tiered Services */}
             <div className="grid md:grid-cols-2 gap-8">
-              {/* Community DAO */}
+              {/* Liquid Token DAOs */}
               <div className="bg-executive-darkGray/50 rounded-lg p-8 border border-executive-gold/30">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-serif text-executive-ivory">Community DAO</h3>
-                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">Start Today</Badge>
+                  <h3 className="text-xl font-serif text-executive-ivory">Liquid Token DAOs</h3>
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">Free & Open</Badge>
                 </div>
                 <p className="text-sm text-executive-lightGray/60 mb-6">
-                  Anyone can initiate by locking liquidity
+                  For crypto projects with liquid, decentralized tokens
                 </p>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
@@ -552,17 +708,16 @@ function Homepage() {
                 </div>
               </div>
 
-              {/* Official DAO */}
+              {/* Traditional LLCs */}
               <div className="bg-gradient-to-br from-executive-gold/10 to-executive-darkGray/50 rounded-lg p-8 border-2 border-executive-gold/50">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-serif text-executive-gold">Official DAO</h3>
-                  <Badge className="bg-executive-gold/20 text-executive-goldLight border-executive-gold/30 text-xs">100% Mature</Badge>
+                  <h3 className="text-xl font-serif text-executive-gold">Traditional LLCs</h3>
+                  <Badge className="bg-executive-gold/20 text-executive-goldLight border-executive-gold/30 text-xs">1% Revenue</Badge>
                 </div>
                 <p className="text-sm text-executive-lightGray/60 mb-6">
-                  Achieved through community participation
+                  For established businesses with real legal contracts and illiquid equity
                 </p>
                 <div className="space-y-3">
-                  <div className="text-xs text-executive-gold/70 uppercase tracking-wider mb-2">Everything in Community DAO plus:</div>
                   <div className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 text-executive-gold mt-0.5 flex-shrink-0" />
                     <div>
@@ -633,6 +788,64 @@ function Homepage() {
         </div>
       </section>
 
+      {/* Revenue Model & Legal Clarity */}
+      <section className="py-16 border-t border-executive-gold/20 bg-executive-darkGray/20">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto">
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Revenue Model */}
+              <div className="bg-executive-darkGray/50 border border-executive-gold/30 rounded-lg p-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <TrendingUp className="w-8 h-8 text-executive-gold" />
+                  <h3 className="text-xl font-serif text-executive-ivory">Revenue Model</h3>
+                </div>
+                <p className="text-executive-lightGray/70 mb-4">
+                  <span className="text-executive-gold text-2xl font-bold">1%</span> of traditional LLC dealflow is autonomously distributed to $ALEX stakers (the parent DAO).
+                </p>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
+                    <span className="text-executive-lightGray">Existing liquid tokens: <span className="font-semibold">FREE</span> (no fee, no legal help)</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
+                    <span className="text-executive-lightGray">Traditional LLCs: 1% of equity transfers only</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
+                    <span className="text-executive-lightGray">No recurring fees, no hidden costs</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Are These Securities? */}
+              <div className="bg-executive-darkGray/50 border border-executive-gold/30 rounded-lg p-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <Shield className="w-8 h-8 text-executive-gold" />
+                  <h3 className="text-xl font-serif text-executive-ivory">Are These Unregistered Securities?</h3>
+                </div>
+                <div className="space-y-4 text-sm">
+                  <div>
+                    <p className="text-executive-lightGray/70 mb-2">
+                      <span className="font-semibold text-executive-gold">Existing liquid tokens:</span> Can use our software freely. We take no fee and provide no legal help to disassociate from security risk.
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-executive-lightGray/70 mb-2">
+                      <span className="font-semibold text-executive-gold">Target customer - Traditional LLCs:</span> Ownership enforced with smart contracts as a digital mirror of traditional equity transfers.
+                    </p>
+                  </div>
+                  <div className="bg-executive-gold/10 border border-executive-gold/30 rounded p-3">
+                    <p className="text-executive-lightGray text-xs">
+                      These LLCs do not have liquid tokens and follow traditional investment processes (set valuation, participating member status). <span className="font-semibold">Not a security risk.</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Final CTA */}
       <section className="py-20 border-t border-executive-gold/20">

@@ -1,6 +1,6 @@
 ---
 name: frontend-optimizer
-description: Orchestrates three-agent system for frontend optimization. Enforces worktree isolation, 10x ROI, and plan-pursuit methodology.
+description: Orchestrates three-agent system for frontend optimization. Enforces worktree isolation, 5x ROI, and plan-pursuit methodology.
 model: sonnet
 ---
 
@@ -45,20 +45,20 @@ Use the Task tool to invoke the scout agent for analysis:
 
 ```
 Task: Deploy frontend-optimization-scout agent
-Description: Analyze codebase for 10x ROI opportunities
+Description: Analyze codebase for 5x ROI opportunities
 Agent Type: frontend-optimization-scout
-Prompt: "Analyze the DAOPad frontend in this worktree for HIGH-IMPACT refactoring opportunities. Apply the 10x Rule strictly. Find patterns with >40% duplication, files >800 lines with mixed concerns, or potential to remove >500 lines. Report exact metrics and ROI calculations."
+Prompt: "Analyze the DAOPad frontend in this worktree for HIGH-IMPACT refactoring opportunities. Apply the 5x Rule strictly. Actually READ files to find real duplication. Use Grep to search for patterns. Find patterns with >25% duplication, files >600 lines with mixed concerns, or potential to remove >300 lines. Report exact metrics and ROI calculations based on ACTUAL code analysis, not just line counts."
 ```
 
 The scout will return either:
-- **HIGH-IMPACT TARGETS** with specific metrics and ROI > 1000
-- **NO OPPORTUNITIES** with honest assessment
+- **HIGH-IMPACT TARGETS** with specific metrics and ROI > 500
+- **NO OPPORTUNITIES** with honest assessment (only after thorough file reading)
 
 ### Phase 3: Decision Gate
 
 Based on scout results:
 
-**IF HIGH-IMPACT OPPORTUNITY FOUND (ROI > 1000):**
+**IF HIGH-IMPACT OPPORTUNITY FOUND (ROI > 500):**
 
 1. Create implementation worktree:
 ```bash
@@ -119,7 +119,7 @@ Scout Results:
 - Target: [Component/Service]
 - Current: [X] lines across [Y] files
 - Duplication: [Z]% repeated patterns
-- ROI Score: [Score] (>1000 threshold)
+- ROI Score: [Score] (>500 threshold for 5x ROI)
 
 Plan Created:
 - Location: /home/theseus/alexandria/daopad-[name]/src/daopad/[PLAN].md
@@ -159,7 +159,7 @@ frontend-optimizer (YOU)
 1. **You NEVER touch code directly** - Agents do the work
 2. **You NEVER work in master** - Always create worktrees first
 3. **You ALWAYS use Task tool** - To invoke other agents
-4. **You ENFORCE the 10x Rule** - No marginal improvements
+4. **You ENFORCE the 5x Rule** - No marginal improvements (>300 lines, >25% duplication, ROI > 500)
 5. **You FOLLOW the methodology** - `.claude/workflows/plan-pursuit-methodology-condensed.md`
 
 ## Error Handling

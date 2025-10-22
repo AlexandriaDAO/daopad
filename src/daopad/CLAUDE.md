@@ -227,6 +227,7 @@ async fn execute_orbit_action() -> Result<()> {
 | **"is not a function" error** | **CRITICAL: See Declaration Sync Bug section below** |
 | "Invalid principal argument" | Frontend must convert strings to Principal using `Principal.fromText()` before passing to backend |
 | Actor is null/undefined | DAOPadBackendService requires `await service.getActor()`, not `service.actor` |
+| "can't convert BigInt to number" | Backend returns `nat64` as BigInt - convert at source: `typeof value === 'bigint' ? Number(value) : value` |
 
 ## 🔒 Universal Governance Requirement
 

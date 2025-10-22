@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle
-} from '../ui/dialog';
+import { DialogLayout } from '@/components/shared/DialogLayout';
 import { Button } from '../ui/button';
 import { AccountWizard } from './account-wizard/AccountWizard';
 import { Loader2 } from 'lucide-react';
@@ -259,79 +253,80 @@ const CreateAccountDialog = ({ open, onClose, tokenId, tokenSymbol, onSuccess })
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Create Treasury Account</DialogTitle>
-          <DialogDescription>
-            Create a new treasury account for {tokenSymbol || 'your token'}. This will create a request that needs approval.
-          </DialogDescription>
-        </DialogHeader>
+  const footer = checkingStatus || loadingAssets ? null : backendStatus && !backendStatus.is_member ? null : (
+    <div className="flex justify-between">
+      <Button
+        variant="outline"
+        onClick={currentStep > 0 ? () => setCurrentStep(currentStep - 1) : handleClose}
+      >
+        {currentStep > 0 ? 'Back' : 'Cancel'}
+      </Button>
 
-        {checkingStatus || loadingAssets ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : backendStatus && !backendStatus.is_member ? (
-          <OrbitSetupInstructions
-            backendStatus={backendStatus}
-            onRetryCheck={checkBackendStatus}
-            isChecking={checkingStatus}
-          />
+      <div className="flex gap-2">
+        {currentStep < 2 ? (
+          <Button
+            onClick={() => setCurrentStep(currentStep + 1)}
+            disabled={!canProceed()}
+          >
+            Next
+          </Button>
         ) : (
-          <>
-            <AccountWizard
-              currentStep={currentStep}
-              accountConfig={accountConfig}
-              setAccountConfig={setAccountConfig}
-              assets={assets}
-              tokenId={tokenId}
-            />
-
-            {error && (
-              <div className="rounded-md bg-red-50 p-4 mt-4">
-                <p className="text-sm text-red-800">{error}</p>
-              </div>
+          <Button
+            onClick={handleCreateAccount}
+            disabled={isCreating || !canProceed()}
+          >
+            {isCreating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              'Create Account'
             )}
-
-            <div className="flex justify-between mt-6">
-              <Button
-                variant="outline"
-                onClick={currentStep > 0 ? () => setCurrentStep(currentStep - 1) : handleClose}
-              >
-                {currentStep > 0 ? 'Back' : 'Cancel'}
-              </Button>
-
-              <div className="flex gap-2">
-                {currentStep < 2 ? (
-                  <Button
-                    onClick={() => setCurrentStep(currentStep + 1)}
-                    disabled={!canProceed()}
-                  >
-                    Next
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleCreateAccount}
-                    disabled={isCreating || !canProceed()}
-                  >
-                    {isCreating ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      'Create Account'
-                    )}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </>
+          </Button>
         )}
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
+  );
+
+  return (
+    <DialogLayout
+      open={open}
+      onOpenChange={handleClose}
+      title="Create Treasury Account"
+      description={`Create a new treasury account for ${tokenSymbol || 'your token'}. This will create a request that needs approval.`}
+      footer={footer}
+      maxWidth="max-w-2xl"
+      maxHeight="max-h-[80vh]"
+    >
+      {checkingStatus || loadingAssets ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      ) : backendStatus && !backendStatus.is_member ? (
+        <OrbitSetupInstructions
+          backendStatus={backendStatus}
+          onRetryCheck={checkBackendStatus}
+          isChecking={checkingStatus}
+        />
+      ) : (
+        <>
+          <AccountWizard
+            currentStep={currentStep}
+            accountConfig={accountConfig}
+            setAccountConfig={setAccountConfig}
+            assets={assets}
+            tokenId={tokenId}
+          />
+
+          {error && (
+            <div className="rounded-md bg-red-50 p-4 mt-4">
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          )}
+        </>
+      )}
+    </DialogLayout>
   );
 };
 
