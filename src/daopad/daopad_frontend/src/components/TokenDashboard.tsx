@@ -94,7 +94,9 @@ const TokenDashboard = memo(function TokenDashboard({
       const tokenPrincipal = Principal.fromText(token.canister_id);
       const result = await tokenService.getMyVotingPowerForToken(tokenPrincipal);
       if (result.success) {
-        setUserVotingPower(result.data);
+        // Convert BigInt to number for voting power
+        const vp = typeof result.data === 'bigint' ? Number(result.data) : result.data;
+        setUserVotingPower(vp);
       }
     } catch (err) {
       console.error('Failed to load voting power:', err);
@@ -112,7 +114,9 @@ const TokenDashboard = memo(function TokenDashboard({
       const tokenPrincipal = Principal.fromText(token.canister_id);
       const result = await tokenService.getTotalVotingPowerForToken(tokenPrincipal);
       if (result.success) {
-        setTotalVotingPower(result.data);
+        // Convert BigInt to number for voting power
+        const totalVp = typeof result.data === 'bigint' ? Number(result.data) : result.data;
+        setTotalVotingPower(totalVp);
       }
     } catch (err) {
       console.error('Failed to load total voting power:', err);
@@ -129,6 +133,7 @@ const TokenDashboard = memo(function TokenDashboard({
 
     try {
       const tokenService = getTokenService(identity);
+      const proposalService = getProposalService(identity);
       const tokenPrincipal = Principal.fromText(token.canister_id);
 
       const stationResult = await tokenService.getStationForToken(tokenPrincipal);
@@ -147,7 +152,7 @@ const TokenDashboard = memo(function TokenDashboard({
         setActiveProposal(null);
       } else {
         setOrbitStation(null);
-        const proposalResult = await daopadService.getActiveProposalForToken(tokenPrincipal);
+        const proposalResult = await proposalService.getActiveForToken(tokenPrincipal);
         if (proposalResult.success && proposalResult.data) {
           setActiveProposal(proposalResult.data);
           dispatch(upsertStationMapping({
@@ -223,8 +228,9 @@ const TokenDashboard = memo(function TokenDashboard({
       return;
     }
 
-    if (userVotingPower !== null && userVotingPower < 10000) {
-      setError(`Insufficient voting power. You have ${userVotingPower.toLocaleString()} VP but need at least 10,000 VP.`);
+    const vpValue = typeof userVotingPower === 'bigint' ? Number(userVotingPower) : (userVotingPower || 0);
+    if (userVotingPower !== null && vpValue < 10000) {
+      setError(`Insufficient voting power. You have ${vpValue.toLocaleString()} VP but need at least 10,000 VP.`);
       return;
     }
 
@@ -294,17 +300,41 @@ const TokenDashboard = memo(function TokenDashboard({
 
   // VP to USD conversion helper
   const VP_TO_USD_RATIO = 100;
-  const vpToUsd = (vp) => formatUsdValue((vp || 0) / VP_TO_USD_RATIO);
+  const vpToUsd = (vp) => {
+    // Handle BigInt and regular numbers
+    let vpValue = 0;
+    if (typeof vp === 'bigint') {
+      vpValue = Number(vp);  // Convert BigInt to number
+    } else if (typeof vp === 'number') {
+      vpValue = vp;
+    }
+    return formatUsdValue(vpValue / VP_TO_USD_RATIO);
+  };
 
-  const totalUsdValue = (lpPositions || []).reduce((sum, pos) => {
-    return sum + (pos.usd_balance || 0);
-  }, 0);
+  // Calculate USD value from voting power (VP = USD * 100, so USD = VP / 100)
+  // Fall back to positions if available
+  const totalUsdValue = useMemo(() => {
+    // If we have voting power, calculate USD from it
+    const vpNum = typeof votingPower === 'bigint' ? Number(votingPower) : (votingPower || 0);
+    if (vpNum > 0) {
+      return vpNum / VP_TO_USD_RATIO;
+    }
+
+    // Otherwise fall back to positions
+    return (lpPositions || []).reduce((sum, pos) => {
+      return sum + (pos.usd_balance || 0);
+    }, 0);
+  }, [votingPower, lpPositions]);
 
   const vpPercentage = useMemo(() => {
-    if (!votingPower || !totalVotingPower || totalVotingPower === 0) {
+    // Convert BigInts to numbers for calculation
+    const vpNum = typeof votingPower === 'bigint' ? Number(votingPower) : (votingPower || 0);
+    const totalVpNum = typeof totalVotingPower === 'bigint' ? Number(totalVotingPower) : (totalVotingPower || 0);
+
+    if (!vpNum || !totalVpNum || totalVpNum === 0) {
       return null;
     }
-    return ((votingPower / totalVotingPower) * 100).toFixed(2);
+    return ((vpNum / totalVpNum) * 100).toFixed(2);
   }, [votingPower, totalVotingPower]);
 
   // Memoize token USD calculations for performance
@@ -473,33 +503,36 @@ const TokenDashboard = memo(function TokenDashboard({
             </Alert>
           )}
 
-          {userVotingPower > 0 && !activeProposal.voters.includes(identity?.getPrincipal?.()) && (
-            <div className="flex gap-2">
-              <Button
-                onClick={() => handleVote(true)}
-                disabled={voting}
-                className="flex-1 bg-green-600 hover:bg-green-700"
-              >
-                {voting ? 'Voting...' : (
-                  <span>
-                    Vote Yes ({userVotingPower?.toLocaleString()} VP / {vpToUsd(userVotingPower)})
-                  </span>
-                )}
-              </Button>
-              <Button
-                onClick={() => handleVote(false)}
-                disabled={voting}
-                variant="destructive"
-                className="flex-1"
-              >
-                {voting ? 'Voting...' : (
-                  <span>
-                    Vote No ({userVotingPower?.toLocaleString()} VP / {vpToUsd(userVotingPower)})
-                  </span>
-                )}
-              </Button>
-            </div>
-          )}
+          {(() => {
+            const vpValue = typeof userVotingPower === 'bigint' ? Number(userVotingPower) : (userVotingPower || 0);
+            return vpValue > 0 && !activeProposal.voters.includes(identity?.getPrincipal?.()) && (
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleVote(true)}
+                  disabled={voting}
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
+                  {voting ? 'Voting...' : (
+                    <span>
+                      Vote Yes ({vpValue.toLocaleString()} VP / {vpToUsd(vpValue)})
+                    </span>
+                  )}
+                </Button>
+                <Button
+                  onClick={() => handleVote(false)}
+                  disabled={voting}
+                  variant="destructive"
+                  className="flex-1"
+                >
+                  {voting ? 'Voting...' : (
+                    <span>
+                      Vote No ({vpValue.toLocaleString()} VP / {vpToUsd(vpValue)})
+                    </span>
+                  )}
+                </Button>
+              </div>
+            );
+          })()}
 
           {activeProposal.voters.includes(identity?.getPrincipal?.()) && (
             <Alert>
@@ -523,24 +556,33 @@ const TokenDashboard = memo(function TokenDashboard({
               ) : userVotingPower !== null ? (
                 <div className="space-y-2">
                   {/* Show VP with USD equivalent */}
-                  <div className={userVotingPower >= 10000 ? 'text-green-600' : 'text-red-600'}>
-                    Your voting power: <strong>{userVotingPower.toLocaleString()} VP</strong>
-                    <span className="text-sm ml-2">
-                      ({vpToUsd(userVotingPower)})
-                    </span>
-                  </div>
+                  {(() => {
+                    const vpValue = typeof userVotingPower === 'bigint' ? Number(userVotingPower) : (userVotingPower || 0);
+                    return (
+                      <div className={vpValue >= 10000 ? 'text-green-600' : 'text-red-600'}>
+                        Your voting power: <strong>{vpValue.toLocaleString()} VP</strong>
+                        <span className="text-sm ml-2">
+                          ({vpToUsd(vpValue)})
+                        </span>
+                      </div>
+                    );
+                  })()}
 
                   {/* If insufficient VP, show USD needed too */}
-                  {userVotingPower < 10000 && (
-                    <div className="space-y-1">
-                      <Badge variant="destructive">
-                        Need {(10000 - userVotingPower).toLocaleString()} more VP
-                      </Badge>
-                      <div className="text-xs text-muted-foreground">
-                        That's {vpToUsd(10000 - userVotingPower)} more LP value needed
+                  {(() => {
+                    const vpValue = typeof userVotingPower === 'bigint' ? Number(userVotingPower) : (userVotingPower || 0);
+                    const vpNeeded = 10000 - vpValue;
+                    return vpValue < 10000 && (
+                      <div className="space-y-1">
+                        <Badge variant="destructive">
+                          Need {vpNeeded.toLocaleString()} more VP
+                        </Badge>
+                        <div className="text-xs text-muted-foreground">
+                          That's {vpToUsd(vpNeeded)} more LP value needed
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Explanation text */}
                   <div className="text-xs text-muted-foreground">
@@ -550,7 +592,7 @@ const TokenDashboard = memo(function TokenDashboard({
               ) : null}
               <Button
                 onClick={() => setShowProposeForm(true)}
-                disabled={userVotingPower !== null && userVotingPower < 10000}
+                disabled={userVotingPower !== null && (typeof userVotingPower === 'bigint' ? Number(userVotingPower) : userVotingPower) < 10000}
                 className="mt-4"
                 size="lg"
               >
