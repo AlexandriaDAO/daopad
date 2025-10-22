@@ -61,40 +61,39 @@ const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
 
       const lockCanisterPrincipal = canisterResult.data.toString();
 
-      // Get LP positions (FROM KongLockerService, no params)
+      // Get LP positions (FROM KongLockerService, no params) - for display only
       const positionsResult = await kongLockerService.getPositions();
       if (positionsResult.success) {
         const positions = positionsResult.data || [];
         setUserLPPositions(positions);
-
-        // Calculate voting power per token
-        const votingPowers: Record<string, VotingPower[]> = {};
-        lockedTokens.forEach((token: Token) => {
-          const tokenPositions = positions.filter(pos =>
-            pos.address_0 === token.canister_id || pos.address_1 === token.canister_id
-          );
-
-          const totalUsdValue = tokenPositions.reduce((sum, pos) => {
-            return sum + (pos.usd_balance || 0);
-          }, 0);
-
-          votingPowers[token.canister_id] = Math.floor(totalUsdValue * 100);
-        });
-
-        setTokenVotingPowers(votingPowers);
-
-        // Sort tokens by voting power (highest first)
-        const sortedTokens = [...lockedTokens].sort((a, b) => {
-          const powerA = votingPowers[a.canister_id] || 0;
-          const powerB = votingPowers[b.canister_id] || 0;
-          return powerB - powerA;
-        });
-
-        setTokens(sortedTokens);
-      } else {
-        // If we couldn't get voting powers, just set tokens as is
-        setTokens(lockedTokens);
       }
+
+      // Get voting power per token directly from backend
+      const votingPowers: Record<string, number> = {};
+      for (const token of lockedTokens) {
+        try {
+          const vpResult = await tokenService.getMyVotingPowerForToken(token.canister_id);
+          if (vpResult.success && vpResult.data !== undefined) {
+            votingPowers[token.canister_id] = Number(vpResult.data);
+          } else {
+            votingPowers[token.canister_id] = 0;
+          }
+        } catch (err) {
+          console.error(`Failed to get voting power for ${token.symbol}:`, err);
+          votingPowers[token.canister_id] = 0;
+        }
+      }
+
+      setTokenVotingPowers(votingPowers);
+
+      // Sort tokens by voting power (highest first)
+      const sortedTokens = [...lockedTokens].sort((a, b) => {
+        const powerA = votingPowers[a.canister_id] || 0;
+        const powerB = votingPowers[b.canister_id] || 0;
+        return powerB - powerA;
+      });
+
+      setTokens(sortedTokens);
 
     } catch (err) {
       console.error('Error loading tokens and powers:', err);
