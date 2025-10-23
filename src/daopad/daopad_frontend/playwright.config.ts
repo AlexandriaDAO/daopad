@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const authFile = '.auth/user.json';
+// NOTE: StorageState doesn't work with II auth (uses IndexedDB not localStorage)
+// Treasury tests requiring auth must be run in --headed mode with manual login
 
 export default defineConfig({
   testDir: './e2e',
@@ -22,12 +23,10 @@ export default defineConfig({
   },
 
   projects: [
-    // Tests with authentication loaded from .auth/user.json
     {
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        storageState: authFile,
         launchOptions: {
           args: ['--enable-logging', '--v=1']
         }
