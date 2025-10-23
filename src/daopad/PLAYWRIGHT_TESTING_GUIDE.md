@@ -1,5 +1,58 @@
 # Playwright Testing Guide for DAOPad
 
+## 🚨 CRITICAL: Never Kill Tests Early!
+
+**The #1 mistake**: Killing Playwright tests when they start failing/timing out.
+
+### What Happens When You Kill Tests Early
+
+```bash
+# ❌ BAD - You lose critical error information
+npx playwright test
+# Test starts timing out...
+# You press Ctrl+C or kill the process
+# Result: No console errors, no failure details, no clues
+```
+
+**Real Example from PR #95**:
+- Saw tests timing out → Killed process
+- Lost console errors showing "invalid BigInt syntax"
+- Deployed 5 times fixing bugs one-by-one
+- **Should have**: Let tests complete, seen ALL errors in one run
+
+### ✅ ALWAYS Let Tests Complete
+
+```bash
+npx playwright test e2e/treasury.spec.ts --project=chromium
+# Even if tests timeout (2 minutes+), LET THEM FINISH
+# Wait for: "X passed, Y failed" summary
+```
+
+**Why**:
+1. Console errors appear in `afterEach` hooks (after test completes)
+2. Screenshots saved on failure (need test to finish)
+3. Network capture logged at end (not during timeout)
+4. Multiple issues visible in single test run
+
+### What You Get By Waiting
+
+```
+=== CONSOLE ERRORS ===
+1. SyntaxError: invalid BigInt syntax (orbitSlice.ts:99)
+2. TypeError: can't convert BigInt to number (AccountsTable.tsx:297)
+
+=== REDUX ACTIONS ===
+1. orbit/fetchAccounts/pending
+2. orbit/fetchAccounts/fulfilled  ← Shows data DID load!
+
+=== SCREENSHOTS ===
+test-results/treasury-failure-1234.png  ← Visual proof of issue
+```
+
+**Result**: See ALL bugs at once instead of one-per-deployment iteration.
+
+---
+
 ## ⚠️ CRITICAL LIMITATION: Internet Identity Authentication
 
 **Playwright CANNOT automate Internet Identity authentication in this project.**
@@ -26,6 +79,57 @@ After extensive testing (PR #91), we discovered:
 **URL Pattern**: `https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io/dao/ysy5f-2qaaa-aaaap-qkmmq-cai/treasury`
 
 Always use this station for testing - it's the reference implementation. Ignore other stations until core functionality is stable.
+
+### ⚠️ CRITICAL: Token ID Consistency in Tests
+
+**The #2 mistake**: Using different token IDs across test files, causing failures.
+
+**Problem Example**:
+```typescript
+// ❌ settings.spec.ts uses WRONG token ID
+await page.goto('https://l7rlj-6aaaa-aaaaa-qaffq-cai.icp0.io/dao/2ouva-viaaa-aaaaq-qaamq-cai/settings');
+
+// ❌ canisters.spec.ts uses DIFFERENT wrong token ID
+await page.goto('https://l7rlj-6aaaa-aaaaa-qaffq-cai.icp0.io/dao/7yyrc-6qaaa-aaaap-qhega-cai/canisters');
+
+// ✅ app-route.spec.ts uses CORRECT ALEX token ID
+await page.goto('https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io/dao/ysy5f-2qaaa-aaaap-qkmmq-cai/overview');
+```
+
+**Why This Matters**:
+- Wrong token IDs cause 30s+ timeouts
+- Tests fail even though code is correct
+- Wastes deployment cycles debugging imaginary bugs
+- Frontend canister ID is also wrong in bad examples (qaffq vs qp2ra)
+
+**Fix**: Always use ALEX token for ALL tab tests:
+- ✅ Token ID: `ysy5f-2qaaa-aaaap-qkmmq-cai`
+- ✅ Frontend: `l7rlj-6aaaa-aaaap-qp2ra-cai` (note: qp2ra, not qaffq)
+- ✅ Station: `fec7w-zyaaa-aaaaa-qaffq-cai`
+
+---
+
+## Current Test Status (as of PR #99)
+
+| Tab | Status | Tests Passing | Notes |
+|-----|--------|---------------|-------|
+| **Overview** | ✅ Working | 7/7 (100%) | Fully functional for anonymous users |
+| **Activity** | ✅ Working | 9/10 (90%) | One perf timeout, but functionally correct |
+| **Treasury** | ✅ Working | Unknown | Fixed in PR #95, likely passing |
+| **Canisters** | ❌ Broken | 0/3 (0%) | Wrong token ID in tests |
+| **Settings** | ❌ Broken | 0/2 (0%) | Wrong token ID in tests |
+| **Agreement** | ⚠️ Untested | - | No E2E tests yet |
+
+**Performance Expectations**:
+- ✅ **10-13s load time**: Acceptable (IC queries + Redux + rendering)
+- ⚠️ **30s+ timeout**: Likely wrong token ID or broken data loading
+- ❌ **2m timeout**: Critical failure (security dashboard is exception - takes 60s)
+
+**Next Steps**:
+1. Fix Canisters tab (update token ID in tests)
+2. Fix Settings tab (update token ID in tests)
+3. Add Agreement tab tests
+4. Consider performance optimizations after all tabs work
 
 ---
 
@@ -264,7 +368,98 @@ Test fails → Analyze → Form hypothesis → Deploy → Test fails → New hyp
 
 **Maximum iterations**: 5-7 attempts is reasonable for complex bugs.
 
-### 5️⃣ Insufficient Test Instrumentation
+### 4️⃣b The "One Bug Per Deploy" Anti-Pattern (PR #95)
+
+**Problem**: Fixing one bug per deployment when multiple bugs exist.
+
+**Real Example - What Happened**:
+```
+Deploy 1: Fix identity check → Still broken (missing routes)
+Deploy 2: Merge master routes → Still broken (wrong parameter)
+Deploy 3: Fix stationId→tokenId → Still broken (BigInt syntax)
+Deploy 4: Fix BigInt conversion → Still broken (BigInt in Math.min)
+Deploy 5: Fix Math.min BigInt → WORKS! ✅
+```
+
+**5 deployments to fix 5 bugs that could have been caught in ONE test run!**
+
+**What Should Have Happened**:
+```
+Deploy 1: All code changes
+Run Playwright: Let it complete fully
+See in console capture:
+  - "No routes matched location" (routing issue)
+  - "invalid BigInt syntax" (orbitSlice.ts:99)
+  - "can't convert BigInt to number" (AccountsTable.tsx:297)
+Fix ALL THREE bugs
+Deploy 2: Works! ✅
+```
+
+**Prevention**:
+1. **NEVER kill Playwright tests early** - Wait for full completion
+2. **Read ALL console errors** - Not just the first one
+3. **Check for patterns** - Multiple BigInt errors = systemic issue
+4. **Fix all discovered issues together** - One deployment, not five
+
+### 5️⃣ Console Error Capture Not Working
+
+**Problem**: Tests show `=== CONSOLE ERRORS ===` section but it's empty, even though browser console shows errors.
+
+**Root Cause**: Console event listener might not be set up correctly or errors logged after test teardown.
+
+**Verification**:
+```typescript
+// Add test to verify console capture works
+test('console error capture test', async ({ page }) => {
+  const errors: string[] = [];
+
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      errors.push(msg.text());
+      console.log('[CAPTURED ERROR]:', msg.text());
+    }
+  });
+
+  await page.evaluate(() => {
+    console.error('TEST: This should be captured');
+  });
+
+  await page.waitForTimeout(1000);
+  expect(errors.length).toBeGreaterThan(0); // ← Verifies capture works
+});
+```
+
+**Solution**: If capture isn't working, fall back to manual browser testing and trust those console logs as the source of truth.
+
+### 6️⃣ Manual Browser Logs vs Playwright Output
+
+**When to trust manual browser testing**:
+- Playwright shows empty console errors
+- Tests timeout with no diagnostic info
+- You see errors in browser DevTools that tests don't capture
+
+**Process**:
+1. Open browser (incognito): `https://canister-id.icp0.io/route`
+2. Open DevTools → Console
+3. Copy ALL errors exactly as shown
+4. Fix errors based on browser console (it's more reliable than broken test capture)
+5. Deploy
+6. Verify in browser again
+7. THEN run Playwright to confirm
+
+**Real Example (PR #95)**:
+```
+Browser Console:
+  - "SyntaxError: invalid BigInt syntax (orbitSlice.ts:99)"
+  - "TypeError: can't convert BigInt to number (AccountsTable.tsx:297)"
+
+Playwright Output:
+  - "=== CONSOLE ERRORS ===" (empty)
+
+Decision: Trust browser console, fix both issues, deploy, verify
+```
+
+### 7️⃣ Insufficient Test Instrumentation
 
 **Problem**: Test fails but you have no idea why.
 
