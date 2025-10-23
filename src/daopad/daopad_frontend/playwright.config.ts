@@ -22,12 +22,7 @@ export default defineConfig({
   },
 
   projects: [
-    // Setup project - run once to authenticate
-    {
-      name: 'setup',
-      testMatch: /.*\.setup\.ts/,
-    },
-    // Tests with authentication
+    // Tests with authentication loaded from .auth/user.json
     {
       name: 'chromium',
       use: {
@@ -37,7 +32,6 @@ export default defineConfig({
           args: ['--enable-logging', '--v=1']
         }
       },
-      dependencies: ['setup'],
     },
   ],
 
