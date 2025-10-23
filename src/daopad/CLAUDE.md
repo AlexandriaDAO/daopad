@@ -44,6 +44,46 @@ project_root/
 - Voting power = USD value of locked LP tokens × 100
 - Query with: `dfx canister --network ic call kong_locker get_all_voting_powers`
 
+## 🧪 Testing Guidelines
+
+### Playwright E2E Testing
+
+**CRITICAL**: Read `PLAYWRIGHT_TESTING_GUIDE.md` before writing or modifying E2E tests.
+
+**Key Principles:**
+- ✅ Tests verify **backend-to-frontend data flow** (IC canister → Redux → UI)
+- ✅ Tests run against **deployed mainnet code** (not local changes)
+- ✅ Deploy → Test → Iterate workflow (tests passing = actual success)
+- ❌ DON'T write surface-level tests (element existence gives false confidence)
+
+**Workflow:**
+```bash
+# 1. Make code changes
+vim daopad_frontend/src/routes/AppRoute.tsx
+
+# 2. Deploy to mainnet (MANDATORY before testing)
+./deploy.sh --network ic
+
+# 3. Run tests against deployed code
+cd daopad_frontend
+npx playwright test e2e/feature.spec.ts
+
+# 4. If tests fail: analyze artifacts, form hypothesis, fix, GOTO step 2
+# 5. If tests pass: commit, create PR, SUCCESS ✅
+```
+
+**Test Coverage:**
+- Treasury integration (`e2e/treasury.spec.ts`) - Orbit Station data flow
+- Public dashboard (`e2e/app-route.spec.ts`) - Anonymous user data loading
+- Proposals (TODO) - CRUD + voting workflow
+- Kong Locker integration (TODO) - Voting power queries
+
+See `PLAYWRIGHT_TESTING_GUIDE.md` for comprehensive guidance on:
+- Common failure patterns and how to avoid them
+- What to capture (network requests, Redux actions, console errors)
+- How to debug when tests fail
+- Real-world examples from PRs #85 and #86
+
 ## 🏗️ Design Principles
 
 ### Minimal Storage Principle

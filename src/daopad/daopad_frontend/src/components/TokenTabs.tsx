@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import { Link } from 'react-router-dom';
 import type { Identity } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
 import { getProposalService, getTokenService } from '../services/backend';
 import { KongLockerService } from '../services/backend';
-import TokenDashboard from './TokenDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Label } from '@/components/ui/label';
 import type { Token, VotingPower, LPPosition } from '../types';
 
 interface TokenTabsProps {
@@ -18,10 +16,9 @@ interface TokenTabsProps {
 
 const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
   const [tokens, setTokens] = useState<Token[]>([]);
-  const [activeTab, setActiveTab] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
-  const [tokenVotingPowers, setTokenVotingPowers] = useState<Record<string, VotingPower[]>>({});
+  const [tokenVotingPowers, setTokenVotingPowers] = useState<Record<string, number>>({});
   const [userLPPositions, setUserLPPositions] = useState<LPPosition[]>([]);
 
   useEffect(() => {
@@ -175,6 +172,10 @@ const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
 
   return (
     <div className="space-y-6">
+      <div className="space-y-4">
+        <h2 className="text-2xl font-display text-executive-ivory tracking-wide">Your DAOs</h2>
+        <div className="h-px bg-executive-gold w-16"></div>
+      </div>
 
       {showOrbitDebugPanels && OrbitStationTest && (
         <Suspense
@@ -192,24 +193,47 @@ const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
         </Suspense>
       )}
 
+      {/* Grid of token cards linking to DAO routes */}
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {tokens.map(token => {
+          const votingPower = tokenVotingPowers[token.canister_id] || 0;
+          const lpCount = userLPPositions.filter(pos =>
+            pos.address_0 === token.canister_id ||
+            pos.address_1 === token.canister_id
+          ).length;
 
-      <div>
-        {tokens[activeTab] && (
-          <TokenDashboard
-            token={tokens[activeTab]}
-            tokens={tokens}
-            activeTokenIndex={activeTab}
-            onTokenChange={setActiveTab}
-            tokenVotingPowers={tokenVotingPowers}
-            identity={identity}
-            votingPower={tokenVotingPowers[tokens[activeTab].canister_id] || 0}
-            lpPositions={userLPPositions.filter(pos =>
-              pos.address_0 === tokens[activeTab].canister_id ||
-              pos.address_1 === tokens[activeTab].canister_id
-            )}
-            onRefresh={loadTokensAndPowers}
-          />
-        )}
+          return (
+            <Link
+              key={token.canister_id}
+              to={`/dao/${token.canister_id}`}
+              className="block"
+            >
+              <Card className="bg-executive-darkGray border-executive-mediumGray hover:border-executive-gold transition-colors h-full">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-executive-ivory">{token.symbol}</CardTitle>
+                    {votingPower > 0 && (
+                      <Badge className="bg-executive-gold/20 text-executive-gold border-executive-gold/30">
+                        VP: {votingPower.toFixed(2)}
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <p className="text-sm text-executive-lightGray/70">{token.name}</p>
+                  <p className="text-xs text-executive-lightGray/50 font-mono truncate">
+                    {token.canister_id}
+                  </p>
+                  {lpCount > 0 && (
+                    <p className="text-xs text-executive-gold/70">
+                      {lpCount} LP position{lpCount > 1 ? 's' : ''}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

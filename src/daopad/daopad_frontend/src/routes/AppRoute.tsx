@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useIdentity } from '../hooks/useIdentity';
 import { useLogout } from '../hooks/useLogout';
@@ -30,9 +31,9 @@ function AppRoute() {
   const [isCheckingKongLocker, setIsCheckingKongLocker] = useState(false);
   const intervalRef = useRef(null);
 
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const { principal, isAuthenticated } = useSelector(state => state.auth);
-  const authInitialized = useSelector(state => state.auth.isInitialized);
   const { icpBalance, isLoading: balanceLoading } = useSelector(state => state.balance);
   const { kongLockerCanister } = useSelector(state => state.dao);
   const publicStats = useSelector(state => state.dao.publicDashboard.stats);
@@ -57,25 +58,54 @@ function AppRoute() {
 
   // Load public data for logged-out users with proper cleanup and visibility handling
   useEffect(() => {
-    console.log('[AppRoute] useEffect fired', { isAuthenticated, authInitialized });
-
-    if (!isAuthenticated) {
-      console.log('[AppRoute] User NOT authenticated - dispatching fetchPublicDashboard NOW');
-      dispatch(fetchPublicDashboard());
-
-      // Set up polling interval
-      intervalRef.current = setInterval(() => {
-        console.log('[AppRoute] Polling - dispatching fetchPublicDashboard');
+    const startPolling = () => {
+      if (!isAuthenticated) {
+        // Always dispatch on initial load for anonymous users
         dispatch(fetchPublicDashboard());
-      }, 30000);
-    }
 
-    // Cleanup on unmount or when authentication changes
-    return () => {
+        // Only start polling interval if document is visible
+        // This prevents unnecessary API calls when tab is in background
+        if (!document.hidden) {
+          intervalRef.current = setInterval(() => {
+            if (!document.hidden) {
+              dispatch(fetchPublicDashboard());
+            }
+          }, 30000);
+        }
+      }
+    };
+
+    const stopPolling = () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+    };
+
+    // Handle visibility changes
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else if (!isAuthenticated) {
+        // Resume polling when tab becomes visible
+        stopPolling(); // Clear any existing interval first
+        startPolling();
+      }
+    };
+
+    if (!isAuthenticated) {
+      startPolling();
+    } else {
+      stopPolling();
+    }
+
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Cleanup on unmount
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isAuthenticated, dispatch]);
 
@@ -214,28 +244,36 @@ function AppRoute() {
       </header>
 
     <main className="container mx-auto px-4 py-8">
-      {!isAuthenticated ? (
-        /* Public dashboard for logged-out users */
-        <div className="space-y-8">
-          <PublicStatsStrip />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <PublicActivityFeed />
-            <TreasuryShowcase />
+      {isAuthenticated ? (
+        // AUTHENTICATED USER PATH
+        shouldShowKongLockerSetup ? (
+          <div className="max-w-2xl mx-auto">
+            <KongLockerSetup
+              identity={identity}
+              onComplete={handleKongLockerComplete}
+            />
           </div>
-        </div>
-      ) : shouldShowKongLockerSetup ? (
-        /* Kong Locker setup for new users */
-        <div className="max-w-2xl mx-auto">
-          <KongLockerSetup
-            identity={identity}
-            onComplete={handleKongLockerComplete}
-          />
-        </div>
+        ) : (
+          <TokenTabs identity={identity} />
+        )
       ) : (
-        /* Token dashboard for authenticated users with Kong Locker */
-        <TokenTabs
-          identity={identity}
-        />
+        // ANONYMOUS USER PATH - Show public dashboard
+        <div className="space-y-8">
+          {/* Stats overview */}
+          <section>
+            <PublicStatsStrip />
+          </section>
+
+          {/* Active proposals feed */}
+          <section>
+            <PublicActivityFeed />
+          </section>
+
+          {/* Treasury showcase */}
+          <section>
+            <TreasuryShowcase onSelectToken={(tokenId) => navigate(`/dao/${tokenId}`)} />
+          </section>
+        </div>
       )}
     </main>
 

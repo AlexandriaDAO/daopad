@@ -1,29 +1,15 @@
 import { Page } from '@playwright/test';
 
 /**
- * Handle Internet Identity authentication
+ * Handle Internet Identity authentication for E2E tests
  *
- * Auth is auto-loaded by playwright.config.ts storageState
- * This helper just navigates to /app and optionally verifies auth
+ * Auth is loaded from .auth/user.json via playwright.config.ts storageState
+ * This just does any additional setup needed per test
  */
 export async function authenticateForTests(page: Page) {
-  // Auth already loaded by Playwright - just navigate
-  await page.goto('/app', { waitUntil: 'networkidle' });
-
-  // Optional: Verify auth was actually loaded
-  const authPresent = await page.evaluate(() => {
-    // Check for any IC-related localStorage keys
-    const keys = Object.keys(localStorage);
-    return keys.some(k => k.includes('identity') || k.includes('ic-') || k.includes('delegation'));
-  });
-
-  if (!authPresent) {
-    console.warn('⚠️  Warning: No IC identity found in localStorage');
-    // Don't throw - maybe auth works differently or page needs more time
-  }
-
-  // Wait a bit for any async auth initialization
-  await page.waitForTimeout(2000);
+  // Auth already loaded from storageState - nothing needed here
+  // Tests will navigate where they need to go
+  console.log('✅ Authentication loaded from storageState');
 }
 
 /**

@@ -33,7 +33,8 @@ import { useTokenMetadata } from '../hooks/useTokenMetadata';
 import OrbitStationPlaceholder from './orbit/OrbitStationPlaceholder';
 
 const TokenDashboard = memo(function TokenDashboard({
-  token,
+  token: propToken,
+  tokenId: propTokenId,
   tokens = null,
   activeTokenIndex = 0,
   onTokenChange = null,
@@ -41,9 +42,24 @@ const TokenDashboard = memo(function TokenDashboard({
   identity,
   votingPower,
   lpPositions,
-  onRefresh
+  onRefresh,
+  isReadOnly = false
 }) {
   const dispatch = useDispatch();
+
+  // Create token object from tokenId if only ID provided (for anonymous users)
+  const token = useMemo(() => {
+    if (propToken) return propToken;
+    if (propTokenId) {
+      return {
+        canister_id: propTokenId,
+        symbol: 'Token',
+        name: 'Unknown Token'
+      };
+    }
+    return null;
+  }, [propToken, propTokenId]);
+
   const activeStation = useActiveStation(token?.canister_id);
   const [orbitStation, setOrbitStation] = useState(null);
   const [activeProposal, setActiveProposal] = useState(null);
@@ -62,6 +78,14 @@ const TokenDashboard = memo(function TokenDashboard({
 
   // Use custom hook for token metadata
   const { tokenMetadata, loading: loadingMetadata } = useTokenMetadata(token);
+
+  console.log('[TokenDashboard] Mounting with:', {
+    hasToken: !!token,
+    tokenId: token?.canister_id,
+    hasIdentity: !!identity,
+    isReadOnly,
+    timestamp: new Date().toISOString()
+  });
 
   const toPrincipalText = (value) => {
     if (!value) return null;
@@ -86,8 +110,14 @@ const TokenDashboard = memo(function TokenDashboard({
   }, [orbitStation]);
 
   const loadVotingPower = async () => {
-    if (!identity || !token) return;
+    if (!token) return;
+    if (!identity) {
+      console.log('[TokenDashboard] Skipping user voting power (no identity)');
+      setUserVotingPower(0);
+      return;
+    }
 
+    console.log('[TokenDashboard] Loading user voting power');
     setLoadingVP(true);
     try {
       const tokenService = getTokenService(identity);
@@ -97,19 +127,22 @@ const TokenDashboard = memo(function TokenDashboard({
         // Convert BigInt to number for voting power
         const vp = typeof result.data === 'bigint' ? Number(result.data) : result.data;
         setUserVotingPower(vp);
+        console.log('[TokenDashboard] User voting power loaded:', vp);
       }
     } catch (err) {
-      console.error('Failed to load voting power:', err);
+      console.error('[TokenDashboard] Failed to load voting power:', err);
     } finally {
       setLoadingVP(false);
     }
   };
 
   const loadTotalVotingPower = async () => {
-    if (!identity || !token) return;
+    if (!token) return;
 
+    console.log('[TokenDashboard] Loading total voting power (with identity:', !!identity, ')');
     setLoadingTotalVP(true);
     try {
+      // Total voting power can be fetched without identity
       const tokenService = getTokenService(identity);
       const tokenPrincipal = Principal.fromText(token.canister_id);
       const result = await tokenService.getTotalVotingPowerForToken(tokenPrincipal);
@@ -117,28 +150,35 @@ const TokenDashboard = memo(function TokenDashboard({
         // Convert BigInt to number for voting power
         const totalVp = typeof result.data === 'bigint' ? Number(result.data) : result.data;
         setTotalVotingPower(totalVp);
+        console.log('[TokenDashboard] Total voting power loaded:', totalVp);
       }
     } catch (err) {
-      console.error('Failed to load total voting power:', err);
+      console.error('[TokenDashboard] Failed to load total voting power:', err);
     } finally {
       setLoadingTotalVP(false);
     }
   };
 
   const loadTokenStatus = async () => {
-    if (!identity || !token) return;
+    if (!token) return;
 
+    console.log('[TokenDashboard] Loading token status (with identity:', !!identity, ')');
     setLoading(true);
     setError('');
 
     try {
+      // Station info can be fetched without identity
       const tokenService = getTokenService(identity);
-      const daopadService = getProposalService(identity);
+      const proposalService = getProposalService(identity);
       const tokenPrincipal = Principal.fromText(token.canister_id);
 
+      console.log('[TokenDashboard] Fetching station for token:', token.canister_id);
       const stationResult = await tokenService.getStationForToken(tokenPrincipal);
+      console.log('[TokenDashboard] Station result:', stationResult);
+
       if (stationResult.success && stationResult.data) {
         const stationText = toPrincipalText(stationResult.data);
+        console.log('[TokenDashboard] Station found:', stationText);
         setOrbitStation({
           station_id: stationText,
           name: `${token.symbol} Treasury`,
@@ -151,9 +191,13 @@ const TokenDashboard = memo(function TokenDashboard({
         }));
         setActiveProposal(null);
       } else {
+        console.log('[TokenDashboard] No station found, checking for proposal');
         setOrbitStation(null);
         const proposalResult = await proposalService.getActiveForToken(tokenPrincipal);
+        console.log('[TokenDashboard] Proposal result:', proposalResult);
+
         if (proposalResult.success && proposalResult.data) {
+          console.log('[TokenDashboard] Active proposal found');
           setActiveProposal(proposalResult.data);
           dispatch(upsertStationMapping({
             tokenId: token.canister_id,
@@ -162,6 +206,7 @@ const TokenDashboard = memo(function TokenDashboard({
             source: 'token-status',
           }));
         } else {
+          console.log('[TokenDashboard] No station or proposal - token not linked');
           setActiveProposal(null);
           dispatch(upsertStationMapping({
             tokenId: token.canister_id,
@@ -172,7 +217,7 @@ const TokenDashboard = memo(function TokenDashboard({
         }
       }
     } catch (err) {
-      console.error('Error loading token status:', err);
+      console.error('[TokenDashboard] Error loading token status:', err);
       setError('Failed to load token status');
       dispatch(upsertStationMapping({
         tokenId: token?.canister_id,
@@ -380,11 +425,11 @@ const TokenDashboard = memo(function TokenDashboard({
           <Tabs defaultValue="agreement" className="w-full" onValueChange={(value) => setActiveTab(value)}>
             <div className="flex items-center gap-3 mb-6">
               <TabsList variant="executive" className="flex-1 grid grid-cols-5">
-                <TabsTrigger variant="executive" value="agreement">Agreement</TabsTrigger>
-                <TabsTrigger variant="executive" value="accounts">Treasury</TabsTrigger>
-                <TabsTrigger variant="executive" value="activity">Activity</TabsTrigger>
-                <TabsTrigger variant="executive" value="canisters">Canisters</TabsTrigger>
-                <TabsTrigger variant="executive" value="settings">Settings</TabsTrigger>
+                <TabsTrigger variant="executive" value="agreement" data-testid="agreement-tab">Agreement</TabsTrigger>
+                <TabsTrigger variant="executive" value="accounts" data-testid="treasury-tab">Treasury</TabsTrigger>
+                <TabsTrigger variant="executive" value="activity" data-testid="activity-tab">Activity</TabsTrigger>
+                <TabsTrigger variant="executive" value="canisters" data-testid="canisters-tab">Canisters</TabsTrigger>
+                <TabsTrigger variant="executive" value="settings" data-testid="settings-tab">Settings</TabsTrigger>
               </TabsList>
 
               {/* Refresh Button */}
@@ -401,7 +446,7 @@ const TokenDashboard = memo(function TokenDashboard({
               </Button>
             </div>
 
-            <TabsContent value="accounts" className="mt-4 space-y-6">
+            <TabsContent value="accounts" className="mt-4 space-y-6" data-testid="treasury-overview">
               {activeTab === 'accounts' && (
                 <>
                   <AccountsTable

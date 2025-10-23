@@ -11,7 +11,7 @@ export const fetchPublicDashboard = createAsyncThunk(
       const tokenService = getTokenService(null);
       const kongService = getKongLockerService(null);
 
-      // Use existing methods - no wrappers needed
+      // Fetch available data (getSystemStats doesn't exist in backend)
       const [proposals, stations, registrations] =
         await Promise.all([
           proposalService.listActive(),

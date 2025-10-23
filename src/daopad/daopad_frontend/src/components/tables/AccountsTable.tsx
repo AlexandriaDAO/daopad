@@ -270,7 +270,7 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
                             {account.blockchain || 'Unknown'}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="text-right font-mono" data-testid="account-balance">
                           {account.balanceFormatted}
                         </TableCell>
                         <TableCell className="text-right">
