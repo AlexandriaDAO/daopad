@@ -22,7 +22,7 @@ export default function DaoTreasury() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="treasury-overview">
       <AccountsTable
         stationId={orbitStation.station_id}
         identity={identity}
