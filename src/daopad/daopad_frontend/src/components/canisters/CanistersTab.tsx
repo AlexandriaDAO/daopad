@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '../ui/alert';
 import { Button } from '../ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { Loader2, Plus, Server } from 'lucide-react';
+import { normalizeCanisterForReact, principalToString } from '../../utils/principal';
 
 export default function CanistersTab({ token, stationId, identity }) {
   // Filter out backend canister from management UI
@@ -64,9 +65,11 @@ export default function CanistersTab({ token, stationId, identity }) {
         console.log('Privileges:', privileges);
 
         // Filter out backend canister from display
-        const filteredCanisters = canisters.filter(
-          c => c.canister_id !== BACKEND_CANISTER
-        );
+        // Convert Principal objects to strings for comparison
+        const filteredCanisters = canisters.filter(c => {
+          const canisterIdString = principalToString(c.canister_id);
+          return canisterIdString !== BACKEND_CANISTER;
+        });
         setCanisters(filteredCanisters);
       } else {
         console.error('Error:', result.error);
@@ -169,15 +172,19 @@ export default function CanistersTab({ token, stationId, identity }) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="canisters-grid">
-          {canisters.map(canister => (
-            <CanisterCard
-              key={canister.id}
-              canister={canister}
-              identity={identity || null}
-              onTopUp={() => handleTopUp(canister.canister_id)}
-              onConfigure={() => handleConfigure(canister.canister_id)}
-            />
-          ))}
+          {canisters.map(canister => {
+            // Normalize canister data - convert Principal objects to strings for React rendering
+            const normalizedCanister = normalizeCanisterForReact(canister);
+            return (
+              <CanisterCard
+                key={normalizedCanister.id || normalizedCanister.canister_id}
+                canister={normalizedCanister}
+                identity={identity || null}
+                onTopUp={() => handleTopUp(normalizedCanister.canister_id)}
+                onConfigure={() => handleConfigure(normalizedCanister.canister_id)}
+              />
+            );
+          })}
         </div>
       )}
 
