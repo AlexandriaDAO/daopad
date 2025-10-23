@@ -169,19 +169,128 @@ Network requests: 0 list_orbit_accounts calls ← Never triggered
 
 **When applicable** (public features only), Playwright tests verify **backend-to-frontend data flow**, NOT superficial UI element existence.
 
+### 🚨 CRITICAL: The Three-Layer Verification Rule
+
+**EVERY test MUST verify all three layers or it's invalid:**
+
+```typescript
+// ❌ INVALID TEST - Only checks UI (false confidence)
+test('feature works', async ({ page }) => {
+  await page.goto('/feature');
+  await expect(page.locator('[data-testid="content"]')).toBeVisible();
+});
+
+// ✅ VALID TEST - Verifies full data pipeline
+test('feature works', async ({ page }) => {
+  const verification = createDataVerifier(page);
+
+  await page.goto('/feature');
+  await page.waitForTimeout(5000); // Let API calls complete
+
+  // LAYER 1: Network - Did backend respond successfully?
+  verification.assertNoConsoleErrors();
+  verification.assertBackendSuccess();
+
+  // LAYER 2: Redux - Did state update correctly?
+  const reduxState = await verification.getReduxActions();
+  expect(reduxState.find(a => a.type.includes('/fulfilled'))).toBeDefined();
+
+  // LAYER 3: UI - Does UI reflect the data?
+  await expect(page.locator('[data-testid="content"]')).toBeVisible();
+});
+```
+
+### Real-World Failure: Canisters Tab (PR #101)
+
+**What Happened**: Test passed ✅ but feature was broken ❌
+
+```typescript
+// The "passing" test
+test('should load canister list', async ({ page }) => {
+  await page.goto('/dao/token/canisters');
+
+  const emptyState = page.locator('[data-testid="canisters-empty-state"]');
+  const grid = page.locator('[data-testid="canisters-grid"]');
+
+  const emptyVisible = await emptyState.isVisible();
+  const gridVisible = await grid.isVisible();
+
+  expect(emptyVisible || gridVisible).toBe(true); // ✅ PASSED
+});
+```
+
+**Why It Passed**: Empty state WAS visible (test saw UI element ✅)
+
+**Why It Was Broken**: API call failed with Candid decode error:
+```
+Invalid record {paginate:opt record {...}} argument: {"offset":[],"limit":[20]}
+```
+
+**What The Test Missed**:
+- ❌ Didn't check console for errors
+- ❌ Didn't verify backend call succeeded
+- ❌ Didn't distinguish "empty because no data" from "empty because API failed"
+
+**The Fix**: Always verify WHY UI is in that state:
+```typescript
+test('should load canister list', async ({ page }) => {
+  const consoleErrors: string[] = [];
+  const backendCalls: any[] = [];
+
+  page.on('console', msg => {
+    if (msg.type() === 'error') consoleErrors.push(msg.text());
+  });
+
+  page.on('response', async (response) => {
+    if (response.url().includes('lwsav-iiaaa-aaaap-qp2qq-cai')) {
+      backendCalls.push({
+        url: response.url(),
+        ok: response.ok(),
+        status: response.status()
+      });
+    }
+  });
+
+  await page.goto('/dao/token/canisters');
+  await page.waitForTimeout(5000);
+
+  // VERIFY: No Candid decode errors
+  const candidErrors = consoleErrors.filter(e =>
+    e.includes('Invalid record') || e.includes('Candid')
+  );
+  expect(candidErrors).toHaveLength(0); // ❌ WOULD HAVE FAILED
+
+  // VERIFY: Backend calls succeeded
+  expect(backendCalls.length).toBeGreaterThan(0);
+  expect(backendCalls.every(c => c.ok)).toBe(true); // ❌ WOULD HAVE FAILED
+
+  // NOW check UI
+  const emptyState = page.locator('[data-testid="canisters-empty-state"]');
+  const grid = page.locator('[data-testid="canisters-grid"]');
+
+  const emptyVisible = await emptyState.isVisible();
+  const gridVisible = await grid.isVisible();
+
+  expect(emptyVisible || gridVisible).toBe(true);
+});
+```
+
 ### What We Test (Public Features Only)
 ✅ **Backend canister responses** - IC canister calls succeed with valid data
+✅ **Console error absence** - No Candid decode, unauthorized, or runtime errors
+✅ **Network response codes** - All backend calls return 200 OK
 ✅ **Redux state updates** - Thunks execute and populate store correctly
 ✅ **Data transformation** - Backend responses correctly map to UI state
 ✅ **Error handling** - Network failures and invalid data handled gracefully
 ✅ **Public dashboards** - Anonymous user data loading
 
-### What We DON'T Test
-❌ **Element existence** - "Does button exist?" (false confidence)
-❌ **Static content** - "Does text say 'Dashboard'?" (meaningless)
+### What We DON'T Test (Never Sufficient Alone)
+❌ **Element existence ONLY** - "Does button exist?" (false confidence)
+❌ **Static content ONLY** - "Does text say 'Dashboard'?" (meaningless)
 ❌ **CSS properties** - "Is button blue?" (not our concern)
 ❌ **Superficial interactions** - "Click works?" without verifying backend impact
 ❌ **Authenticated features** - II auth incompatible with Playwright automation
+❌ **Empty states WITHOUT verifying why** - Could be intentional OR broken API
 
 ---
 
@@ -571,6 +680,188 @@ test.afterEach(async ({ page }, testInfo) => {
       fullPage: true
     });
   }
+});
+```
+
+---
+
+## Mandatory Test Helpers
+
+### Create the Data Verifier (Copy This Into Every Test File)
+
+**File**: `e2e/helpers/data-verifier.ts` (create if doesn't exist)
+
+```typescript
+import { Page } from '@playwright/test';
+import { expect } from '@playwright/test';
+
+export function createDataVerifier(page: Page) {
+  const consoleErrors: string[] = [];
+  const consoleWarnings: string[] = [];
+  const networkCalls: Array<{
+    url: string;
+    ok: boolean;
+    status: number;
+    timestamp: number;
+  }> = [];
+
+  // Capture console errors
+  page.on('console', msg => {
+    if (msg.type() === 'error') {
+      consoleErrors.push(msg.text());
+      console.error('[Browser Console Error]:', msg.text());
+    } else if (msg.type() === 'warning') {
+      consoleWarnings.push(msg.text());
+    }
+  });
+
+  // Capture backend network calls
+  page.on('response', async (response) => {
+    if (response.url().includes('lwsav-iiaaa-aaaap-qp2qq-cai') ||
+        response.url().includes('icp0.io/api') ||
+        response.url().includes('ic0.app/api')) {
+      networkCalls.push({
+        url: response.url(),
+        ok: response.ok(),
+        status: response.status(),
+        timestamp: Date.now()
+      });
+
+      if (!response.ok()) {
+        console.error('[Network Error]:', response.status(), response.url());
+      }
+    }
+  });
+
+  return {
+    /**
+     * Assert no critical console errors
+     * MANDATORY: Call this in every test after page actions
+     */
+    assertNoConsoleErrors() {
+      const criticalErrors = consoleErrors.filter(e =>
+        e.includes('Invalid record') ||
+        e.includes('Candid') ||
+        e.includes('decode') ||
+        e.includes('not authorized') ||
+        e.includes('TypeError') ||
+        e.includes('ReferenceError') ||
+        e.includes('SyntaxError')
+      );
+
+      if (criticalErrors.length > 0) {
+        console.error('\n=== CRITICAL CONSOLE ERRORS ===');
+        criticalErrors.forEach((err, i) => {
+          console.error(`${i + 1}. ${err}`);
+        });
+      }
+
+      expect(criticalErrors).toHaveLength(0);
+    },
+
+    /**
+     * Assert backend calls succeeded
+     * MANDATORY: Call this in every test after page actions
+     */
+    assertBackendSuccess() {
+      expect(networkCalls.length).toBeGreaterThan(0);
+
+      const failedCalls = networkCalls.filter(c => !c.ok);
+      if (failedCalls.length > 0) {
+        console.error('\n=== FAILED BACKEND CALLS ===');
+        failedCalls.forEach((call, i) => {
+          console.error(`${i + 1}. ${call.status} ${call.url}`);
+        });
+      }
+
+      expect(failedCalls).toHaveLength(0);
+    },
+
+    /**
+     * Get all captured network calls
+     */
+    getNetworkCalls() {
+      return networkCalls;
+    },
+
+    /**
+     * Get all console errors
+     */
+    getConsoleErrors() {
+      return consoleErrors;
+    },
+
+    /**
+     * Print debug summary
+     */
+    printSummary() {
+      console.log('\n=== DATA VERIFICATION SUMMARY ===');
+      console.log(`Network Calls: ${networkCalls.length}`);
+      console.log(`  - Successful: ${networkCalls.filter(c => c.ok).length}`);
+      console.log(`  - Failed: ${networkCalls.filter(c => !c.ok).length}`);
+      console.log(`Console Errors: ${consoleErrors.length}`);
+      if (consoleErrors.length > 0) {
+        consoleErrors.forEach((err, i) => console.log(`  ${i + 1}. ${err}`));
+      }
+    }
+  };
+}
+```
+
+### Required Test Pattern (Use This Template)
+
+```typescript
+import { test, expect } from '@playwright/test';
+import { createDataVerifier } from './helpers/data-verifier';
+
+test.describe('Feature Name', () => {
+  test('should verify full data pipeline', async ({ page }) => {
+    // STEP 1: Set up data verification
+    const verify = createDataVerifier(page);
+
+    // STEP 2: Navigate and perform actions
+    await page.goto('https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io/dao/ysy5f-2qaaa-aaaap-qkmmq-cai/feature');
+
+    // STEP 3: Wait for async operations
+    await page.waitForTimeout(5000); // Let API calls complete
+
+    // STEP 4: MANDATORY - Verify no errors
+    verify.assertNoConsoleErrors();
+
+    // STEP 5: MANDATORY - Verify backend success
+    verify.assertBackendSuccess();
+
+    // STEP 6: Verify UI state (only after data verified!)
+    await expect(page.locator('[data-testid="content"]')).toBeVisible();
+
+    // STEP 7: Optional - Print summary for debugging
+    verify.printSummary();
+  });
+});
+```
+
+### Migration: Update Existing Tests
+
+**Before** (❌ Invalid - only checks UI):
+```typescript
+test('loads page', async ({ page }) => {
+  await page.goto('/feature');
+  await expect(page.locator('h1')).toBeVisible();
+});
+```
+
+**After** (✅ Valid - verifies data pipeline):
+```typescript
+test('loads page', async ({ page }) => {
+  const verify = createDataVerifier(page);
+
+  await page.goto('/feature');
+  await page.waitForTimeout(5000);
+
+  verify.assertNoConsoleErrors();
+  verify.assertBackendSuccess();
+
+  await expect(page.locator('h1')).toBeVisible();
 });
 ```
 
@@ -1067,6 +1358,17 @@ daopad_frontend/
 
 ## Checklist: Before Submitting PR with Playwright Tests
 
+### Mandatory Data Verification (Tests Will Be Rejected Without These)
+
+- [ ] ✅ **Uses `createDataVerifier()` helper** in every test
+- [ ] ✅ **Calls `verify.assertNoConsoleErrors()`** after page actions
+- [ ] ✅ **Calls `verify.assertBackendSuccess()`** after page actions
+- [ ] ✅ **Verifies data flow**: Network → Redux → UI (all 3 layers)
+- [ ] ✅ **NO tests that only check UI element existence**
+- [ ] ✅ **Empty states verified as intentional** (not API failures)
+
+### Standard Test Requirements
+
 - [ ] Tests run against **deployed IC canister** (not local code)
 - [ ] All tests **pass** after final deployment
 - [ ] Tests capture **network requests** (IC canister calls)
@@ -1077,6 +1379,32 @@ daopad_frontend/
 - [ ] Test file includes **comprehensive beforeEach/afterEach logging**
 - [ ] PR description shows **test results** (not just "tests added")
 - [ ] If tests fail: **Iterate 5-7 times** before asking for help
+
+### Test Quality Self-Review
+
+**Ask yourself these questions before submitting**:
+
+1. **❓ If the API call fails, will my test fail?**
+   - ✅ YES → Good test (catches real bugs)
+   - ❌ NO → Bad test (false confidence)
+
+2. **❓ Am I checking console errors for Candid decode failures?**
+   - ✅ YES → Will catch type mismatches
+   - ❌ NO → Silent failures will pass tests
+
+3. **❓ Am I verifying backend calls succeeded (200 OK)?**
+   - ✅ YES → Will catch network/auth failures
+   - ❌ NO → Timeouts will be blamed, not root cause
+
+4. **❓ Can I explain WHY the UI is in this state?**
+   - ✅ "Empty because API returned empty array" → Verified
+   - ❌ "Empty state is visible" → Could be broken API
+
+5. **❓ Would this test have caught the Canisters Tab bug (PR #101)?**
+   - ✅ YES → Properly verifies data pipeline
+   - ❌ NO → Needs more verification layers
+
+**If you answered NO to any question, your test is invalid - fix before submitting.**
 
 ---
 
