@@ -28,15 +28,15 @@ const OperatingAgreementTab = ({ tokenId, stationId, tokenSymbol, identity }) =>
         Principal.fromText(tokenId)
       );
 
-      if ('ok' in result) {
-        const data = JSON.parse(result.ok.data);
+      if ('Ok' in result) {
+        const data = JSON.parse(result.Ok.data);
         setData(data);
         setSnapshotInfo({
-          created: new Date(Number(result.ok.created_at) / 1000000),
-          version: result.ok.version
+          created: new Date(Number(result.Ok.created_at) / 1000000),
+          version: result.Ok.version
         });
-      } else if ('err' in result) {
-        console.log('No snapshot found:', result.err);
+      } else if ('Err' in result) {
+        console.log('No snapshot found:', result.Err);
         setError('No snapshot available. Click regenerate to create one.');
       } else {
         setError('No snapshot available. Click regenerate to create one.');
@@ -63,18 +63,18 @@ const OperatingAgreementTab = ({ tokenId, stationId, tokenSymbol, identity }) =>
         Principal.fromText(stationId)
       );
 
-      if ('ok' in result) {
-        const data = JSON.parse(result.ok.data);
+      if ('Ok' in result) {
+        const data = JSON.parse(result.Ok.data);
         setData(data);
         setSnapshotInfo({
-          created: new Date(Number(result.ok.created_at) / 1000000),
-          version: result.ok.version
+          created: new Date(Number(result.Ok.created_at) / 1000000),
+          version: result.Ok.version
         });
         toast.success('Agreement regenerated successfully', {
-          description: `Version ${result.ok.version} has been created.`
+          description: `Version ${result.Ok.version} has been created.`
         });
-      } else if ('err' in result) {
-        const errorMsg = result.err || 'Unknown error occurred';
+      } else if ('Err' in result) {
+        const errorMsg = result.Err || 'Unknown error occurred';
         console.error('Backend error:', errorMsg);
         setError('Failed to regenerate: ' + errorMsg);
         toast.error('Failed to regenerate', {
