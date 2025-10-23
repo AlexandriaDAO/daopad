@@ -63,6 +63,8 @@ export function Component() {
 ```
 
 ### 6. Testing Requirements
+
+**For Backend Changes**:
 ```markdown
 ## Testing
 - Type discovery: dfx canister --network ic call
@@ -70,6 +72,24 @@ export function Component() {
 - Candid: candid-extractor (after Rust changes)
 - Deploy: ./deploy.sh --network ic
 - Sync declarations: cp -r src/declarations/* frontend/src/declarations/
+```
+
+**For Frontend Changes** (MANDATORY):
+```markdown
+## Playwright Testing
+
+**See**: `PLAYWRIGHT_TESTING_GUIDE.md` section "For Plan Writers"
+
+**Required in every frontend plan**:
+1. Manual browser verification workflow (BEFORE Playwright)
+2. Console error inspection commands
+3. Exit criteria (when to stop iterating)
+4. Test file template with `createDataVerifier()`
+5. Iteration loop with console error checking
+
+**Copy the "Mandatory Plan Template" from PLAYWRIGHT_TESTING_GUIDE.md into your plan.**
+
+DO NOT write custom testing sections - use the standardized template from the guide.
 ```
 
 ### 7. Embed Orchestrator (MANDATORY TOP OF PLAN)

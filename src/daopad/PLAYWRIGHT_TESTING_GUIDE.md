@@ -1356,6 +1356,269 @@ daopad_frontend/
 
 ---
 
+## For Plan Writers: Mandatory Playwright Plan Template
+
+**Purpose**: This section provides the EXACT template to copy into implementation plans for frontend changes. This prevents agents from skipping verification steps.
+
+### Why This Exists
+
+**Real failures**:
+- **PR #101**: Tests passed ✅ but canisters tab broken ❌ (Candid decode error)
+- **PR #102**: Tests passed ✅ but data not loading ❌ (TypeError in console)
+
+**Root cause**: Plans said "run tests" without specifying HOW to verify correctness.
+
+**Solution**: Standardized template that MUST be copied into every frontend plan.
+
+---
+
+### Mandatory Plan Template (Copy This Into Every Frontend Plan)
+
+```markdown
+## Playwright Testing Workflow (MANDATORY - DO NOT SKIP)
+
+### CRITICAL: Exit Criteria (When To Stop Iterating)
+
+**SUCCESS - Stop iterating when ALL are true**:
+1. ✅ Manual browser: ZERO console errors
+2. ✅ Manual browser: ALL backend calls 200 OK
+3. ✅ Manual browser: UI displays data (not stuck loading)
+4. ✅ Playwright: `verify.assertNoConsoleErrors()` passes
+5. ✅ Playwright: `verify.assertBackendSuccess()` passes
+6. ✅ Playwright: UI assertions pass
+
+**FAILURE - Keep iterating when ANY are true**:
+1. ❌ Console shows errors (Candid, TypeError, decode, etc.)
+2. ❌ Network tab shows failed calls (500, 400, etc.)
+3. ❌ UI stuck loading or showing error state
+4. ❌ Playwright data verifier assertions fail
+5. ❌ Iteration count < 5
+
+**PROHIBITED - Never declare victory based on**:
+- ❌ "Tests passed" (without verifying what they checked)
+- ❌ "Deployment succeeded" (deployment ≠ feature works)
+- ❌ "No obvious errors" (if console wasn't inspected)
+
+---
+
+### Step 1: Manual Browser Verification (BEFORE Playwright)
+
+**YOU MUST DO THIS FIRST**:
+
+\`\`\`bash
+# 1. Deploy to mainnet
+./deploy.sh --network ic --frontend-only
+
+# 2. Open in incognito browser (anonymous user test)
+open "https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io/dao/ysy5f-2qaaa-aaaap-qkmmq-cai/[TAB]"
+
+# 3. Open DevTools Console (F12) - READ EVERY LINE
+
+# 4. Check for errors (MANDATORY):
+#    Search console output for these patterns:
+#    - "Invalid record" → Candid type mismatch
+#    - "TypeError" → Wrong property access (e.g., .filter is not a function)
+#    - "Cannot read property" → Missing/undefined data
+#    - "not authorized" → Auth issue
+#    - "decode" / "Candid" → Candid decode failure
+#    - "SyntaxError" → JSON parse error
+
+# 5. Check Network tab:
+#    Filter for: lwsav-iiaaa-aaaap-qp2qq-cai
+#    Verify: ALL calls return 200 OK (not 500/400)
+#    If any failures: Click request, read response, fix backend issue
+
+# 6. Verify UI state:
+#    ✅ Data displays = Good
+#    ❌ Empty state when should have data = Check why
+#    ❌ Stuck loading (spinner forever) = API not completing
+#    ❌ Error message shown = Read error, fix root cause
+
+# 7. Document findings in PR comment:
+gh pr comment [NUM] --body "## Manual Verification Results
+
+Console Errors: [NONE / List them]
+Backend Calls: [X calls, all 200 OK / Y failed]
+UI State: [Data loaded / Stuck loading / Error shown]
+
+Next: [Proceeding to Playwright / Fixing error: ...]"
+\`\`\`
+
+**If console has ANY errors**: Fix immediately, redeploy, repeat Step 1.
+
+**DO NOT proceed to Playwright until**:
+- ✅ ZERO console errors
+- ✅ ALL backend calls 200 OK
+- ✅ UI shows data OR intentional empty state
+
+---
+
+### Step 2: Update Test File (MANDATORY)
+
+**Before running Playwright, ensure test uses data verification**:
+
+\`\`\`typescript
+// e2e/[feature].spec.ts
+import { test, expect } from '@playwright/test';
+import { createDataVerifier } from './helpers/data-verifier';
+
+test.describe('[Feature] Tab - Anonymous User', () => {
+  test('should load [feature] data without errors', async ({ page }) => {
+    // STEP 1: Create data verifier (MANDATORY)
+    const verify = createDataVerifier(page);
+
+    // STEP 2: Navigate
+    await page.goto('https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io/dao/ysy5f-2qaaa-aaaap-qkmmq-cai/[tab]');
+
+    // STEP 3: Wait for async operations
+    await page.waitForTimeout(5000);
+
+    // STEP 4: MANDATORY - Verify no console errors
+    verify.assertNoConsoleErrors();
+
+    // STEP 5: MANDATORY - Verify backend success
+    verify.assertBackendSuccess();
+
+    // STEP 6: Verify UI state (only after data verified)
+    await expect(page.locator('[data-testid="content"]')).toBeVisible();
+
+    // STEP 7: Print debug summary
+    verify.printSummary();
+  });
+});
+\`\`\`
+
+**If test file lacks these calls**: Update it NOW before running tests.
+
+---
+
+### Step 3: Run Playwright Tests
+
+\`\`\`bash
+cd daopad_frontend
+npx playwright test e2e/[feature].spec.ts --project=chromium
+
+# Read output carefully:
+# - "=== CRITICAL CONSOLE ERRORS ===" → Fix these first
+# - "=== FAILED BACKEND CALLS ===" → Backend issue
+# - Assertion failures → Read exact error message
+\`\`\`
+
+---
+
+### Step 4: Autonomous Iteration Loop
+
+\`\`\`
+FOR iteration = 1 TO 5:
+
+  // ALWAYS start with manual browser verification
+  1. Open https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io/dao/ysy5f-2qaaa-aaaap-qkmmq-cai/[tab]
+  2. Read console (F12) - every line
+  3. Check Network tab - every call status
+
+  IF console has errors:
+    - Copy exact error text
+    - Identify error type:
+      * "Invalid record {field...}" → Candid type encoding wrong
+      * "TypeError: X is not a function" → Property/method doesn't exist
+      * "Cannot read property 'X' of undefined" → Missing data
+    - Fix in code
+    - git add . && git commit -m "Fix: [error]" && git push
+    - ./deploy.sh --network ic --frontend-only
+    - sleep 300s
+    - GOTO step 1 (verify fix)
+
+  IF console clean BUT UI broken:
+    - Check Network tab response bodies
+    - Compare to code expectations (property names, structure)
+    - Fix mismatch
+    - Deploy, push, sleep, verify
+
+  IF console clean AND UI works:
+    - Run Playwright: npx playwright test e2e/[feature].spec.ts
+    - IF data verifier passes AND UI passes: SUCCESS, exit loop
+    - IF data verifier fails: Read error, fix, continue loop
+    - IF UI fails but data passes: UI bug, fix, continue loop
+
+  IF iteration = 5:
+    - Comment on PR with findings
+    - Request human help
+    - EXIT
+
+END FOR
+\`\`\`
+
+**NO QUESTIONS ALLOWED**: Make best judgment, fix, iterate. Only ask after 5 iterations.
+
+---
+
+### Step 5: Success Verification Checklist
+
+**Before declaring "PR ready" or "fix complete", verify ALL of these**:
+
+\`\`\`bash
+# 1. Console verification
+open "https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io/dao/ysy5f-2qaaa-aaaap-qkmmq-cai/[tab]"
+# Check: ZERO errors in console ✅
+
+# 2. Network verification
+# Check Network tab: All calls to lwsav-iiaaa-aaaap-qp2qq-cai return 200 ✅
+
+# 3. UI verification
+# Check: Data displays (not stuck loading, not empty when should have data) ✅
+
+# 4. Playwright verification
+cd daopad_frontend && npx playwright test e2e/[feature].spec.ts --project=chromium
+# Output: "X passed (X/X)" ✅
+# Output: verify.assertNoConsoleErrors() passed ✅
+# Output: verify.assertBackendSuccess() passed ✅
+
+# 5. Data pipeline verification
+# Can you explain: "Why is the UI in this state?"
+# ✅ "Empty because API returned []" = Verified
+# ❌ "Empty state is visible" = NOT verified (could be broken API)
+\`\`\`
+
+**If ANY checklist item fails**: You are NOT done. Continue iteration loop.
+
+```
+
+---
+
+### Anti-Patterns For Agents
+
+**❌ BAD - Agent declares victory too early** (PR #102):
+```
+Agent: "Deployed! Tests pass! ✅"
+Reality: Console has TypeError
+Reality: UI stuck loading
+Reality: Test only checked "page loaded"
+```
+
+**✅ GOOD - Agent follows verification workflow**:
+```
+Agent: "Deployed. Manual verification..."
+[Opens browser, reads console]
+Agent: "Console error: TypeError: ...filter is not a function"
+Agent: "Backend returns {Ok: {canisters: [...]}} but code expects {data: [...]}"
+Agent: "Fixing property access mismatch."
+[Makes fix, deploys, verifies again]
+Agent: "Console clean. Data loads. Playwright confirms. SUCCESS."
+```
+
+**Key difference**: Good agent READS console errors and iterates. Bad agent assumes test pass = success.
+
+---
+
+### Template Variables To Fill
+
+When copying this template into your plan, replace:
+- `[TAB]` → Feature name (e.g., "canisters", "settings", "agreement")
+- `[NUM]` → PR number (available after PR creation)
+- `[feature]` → Test file name (e.g., "canisters", "activity")
+
+---
+
 ## Checklist: Before Submitting PR with Playwright Tests
 
 ### Mandatory Data Verification (Tests Will Be Rejected Without These)
