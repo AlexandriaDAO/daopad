@@ -4,6 +4,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { ArrowUpCircle, Settings, Activity, AlertCircle } from 'lucide-react';
+import { principalToString } from '../../utils/principal';
 
 const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure, identity }) {
   const [status, setStatus] = useState(null);
@@ -96,7 +97,7 @@ const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure
               {canister.name}
             </CardTitle>
             <p className="text-xs text-gray-500 font-mono mt-1">
-              ID: {canister.id?.substring(0, 8)}...
+              ID: {principalToString(canister.id || canister.canister_id).substring(0, 8)}...
             </p>
           </div>
           <Badge variant={(canister.state && 'Active' in canister.state) ? 'default' : 'secondary'}>
@@ -110,7 +111,7 @@ const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure
         <div>
           <p className="text-xs text-gray-600 dark:text-gray-400">Canister Principal:</p>
           <p className="text-xs font-mono text-gray-800 dark:text-gray-200 break-all">
-            {canister.canister_id}
+            {principalToString(canister.canister_id)}
           </p>
         </div>
 

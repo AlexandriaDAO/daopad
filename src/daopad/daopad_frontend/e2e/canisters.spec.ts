@@ -1,38 +1,43 @@
 import { test, expect } from '@playwright/test';
+import { createDataVerifier } from './helpers/data-verifier';
 
 test.describe('Canisters Tab - Anonymous User', () => {
-  test('should load canister list for anonymous users', async ({ page }) => {
+  test('should render canister list without Principal errors', async ({ page }) => {
+    // STEP 1: Create data verifier (MANDATORY)
+    const verify = createDataVerifier(page);
+
+    // STEP 2: Navigate
     // Navigate to ALEX DAO canisters tab (unauthenticated)
     await page.goto('https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io/dao/ysy5f-2qaaa-aaaap-qkmmq-cai/canisters');
 
-    // Wait for canisters tab to load
-    await page.waitForSelector('[data-testid="canisters-tab"]', { timeout: 30000 });
+    // STEP 3: Wait for async operations
+    await page.waitForTimeout(5000);
 
-    // Check if empty state or grid is visible
-    const emptyState = page.locator('[data-testid="canisters-empty-state"]');
-    const grid = page.locator('[data-testid="canisters-grid"]');
+    // STEP 4: MANDATORY - Verify no console errors (especially React error #31)
+    const errors = verify.getConsoleErrors();
+    const reactError31 = errors.filter(e =>
+      e.includes('React error #31') ||
+      e.includes('object with keys {_arr, _isPrincipal}') ||
+      e.includes('Objects are not valid as a React child')
+    );
 
-    const emptyVisible = await emptyState.isVisible();
-    const gridVisible = await grid.isVisible();
-
-    // One of them should be visible
-    expect(emptyVisible || gridVisible).toBe(true);
-
-    // If grid visible, verify canister cards exist
-    if (gridVisible) {
-      const canisterCards = page.locator('[data-testid^="canister-card-"]');
-      const count = await canisterCards.count();
-
-      // Should have at least 0 cards (ALEX may have 0 external canisters)
-      expect(count).toBeGreaterThanOrEqual(0);
-
-      // If canisters exist, verify they show proper content
-      if (count > 0) {
-        await expect(canisterCards.first()).toBeVisible();
-        // Anonymous users should see "Login to view cycles"
-        await expect(canisterCards.first()).toContainText('Login to view cycles');
-      }
+    if (reactError31.length > 0) {
+      console.error('\n=== REACT ERROR #31 DETECTED ===');
+      reactError31.forEach((err, i) => console.error(`${i + 1}. ${err}`));
     }
+
+    expect(reactError31).toHaveLength(0);
+    verify.assertNoConsoleErrors();
+
+    // STEP 5: MANDATORY - Verify backend success
+    verify.assertBackendSuccess();
+
+    // STEP 6: Verify UI renders (not crashed)
+    const gridOrEmpty = await page.locator('[data-testid="canisters-grid"], [data-testid="canisters-empty-state"]').first();
+    await expect(gridOrEmpty).toBeVisible();
+
+    // STEP 7: Print debug summary
+    verify.printSummary();
   });
 
   test('should handle DAOs with no canisters gracefully', async ({ page }) => {
