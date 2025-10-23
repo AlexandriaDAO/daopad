@@ -1,7 +1,43 @@
-// Security policy configuration for frontend assets
+// Security policy and SPA routing configuration for frontend assets
 [
   {
     "match": "**/*",
-    "security_policy": "standard"
+    "security_policy": "standard",
+    "headers": {
+      "Content-Security-Policy": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src 'self' https://*.icp0.io https://*.ic0.app https://*.internetcomputer.org https://identity.ic0.app https://identity.internetcomputer.org wss://*.icp0.io wss://*.ic0.app; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
+    }
+  },
+  {
+    "match": "index.html",
+    "cache": {
+      "max_age": 0
+    },
+    "headers": {
+      "Cache-Control": "no-cache, no-store, must-revalidate"
+    }
+  },
+  {
+    "match": "**/*.js",
+    "cache": {
+      "max_age": 31536000
+    },
+    "headers": {
+      "Content-Type": "application/javascript",
+      "Cache-Control": "public, max-age=31536000, immutable"
+    }
+  },
+  {
+    "match": "**/*.css",
+    "cache": {
+      "max_age": 31536000
+    },
+    "headers": {
+      "Content-Type": "text/css",
+      "Cache-Control": "public, max-age=31536000, immutable"
+    }
+  },
+  {
+    "match": "*",
+    "allow_raw_access": false
   }
 ]

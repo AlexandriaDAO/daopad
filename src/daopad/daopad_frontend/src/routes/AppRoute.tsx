@@ -15,6 +15,7 @@ import { getKongLockerService } from '../services/backend';
 // Components
 import KongLockerSetup from '../components/KongLockerSetup';
 import TokenTabs from '../components/TokenTabs';
+import TokenDashboard from '../components/TokenDashboard';
 import PublicStatsStrip from '../components/PublicStatsStrip';
 import PublicActivityFeed from '../components/PublicActivityFeed';
 import TreasuryShowcase from '../components/TreasuryShowcase';
@@ -28,6 +29,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 function AppRoute() {
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [isCheckingKongLocker, setIsCheckingKongLocker] = useState(false);
+  const [selectedTokenId, setSelectedTokenId] = useState(null);
   const intervalRef = useRef(null);
 
   const dispatch = useDispatch();
@@ -242,17 +244,58 @@ function AppRoute() {
       </header>
 
     <main className="container mx-auto px-4 py-8">
-      {isAuthenticated && shouldShowKongLockerSetup ? (
-        <div className="max-w-2xl mx-auto">
-          <KongLockerSetup
-            identity={identity}
-            onComplete={handleKongLockerComplete}
-          />
-        </div>
+      {isAuthenticated ? (
+        // AUTHENTICATED USER PATH
+        shouldShowKongLockerSetup ? (
+          <div className="max-w-2xl mx-auto">
+            <KongLockerSetup
+              identity={identity}
+              onComplete={handleKongLockerComplete}
+            />
+          </div>
+        ) : (
+          <TokenTabs identity={identity} />
+        )
       ) : (
-        <TokenTabs
-          identity={identity}
-        />
+        // ANONYMOUS USER PATH - Show public dashboard or selected token
+        <div className="space-y-8">
+          {selectedTokenId ? (
+            // Show selected token dashboard (read-only for anonymous users)
+            <div>
+              <Button
+                variant="ghost"
+                className="mb-4 text-executive-gold hover:text-executive-goldLight"
+                onClick={() => setSelectedTokenId(null)}
+              >
+                ← Back to Dashboard
+              </Button>
+              <TokenDashboard
+                tokenId={selectedTokenId}
+                identity={null}
+                votingPower={0}
+                isReadOnly={true}
+              />
+            </div>
+          ) : (
+            // Show public dashboard overview
+            <>
+              {/* Stats overview */}
+              <section>
+                <PublicStatsStrip />
+              </section>
+
+              {/* Active proposals feed */}
+              <section>
+                <PublicActivityFeed />
+              </section>
+
+              {/* Treasury showcase */}
+              <section>
+                <TreasuryShowcase onSelectToken={setSelectedTokenId} />
+              </section>
+            </>
+          )}
+        </div>
       )}
     </main>
 

@@ -4,11 +4,31 @@
     "ignore": false
   },
   {
-    "match": ".well-known/ic-domains", 
+    "match": ".well-known/ic-domains",
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "Content-Type": "text/plain"
     },
     "ignore": false
+  },
+  {
+    "match": "**/*.js",
+    "headers": {
+      "Content-Type": "application/javascript",
+      "Cache-Control": "public, max-age=31536000, immutable"
+    }
+  },
+  {
+    "match": "**/*.css",
+    "headers": {
+      "Content-Type": "text/css",
+      "Cache-Control": "public, max-age=31536000, immutable"
+    }
+  },
+  {
+    "match": "index.html",
+    "headers": {
+      "Cache-Control": "no-cache, no-store, must-revalidate"
+    }
   }
 ]

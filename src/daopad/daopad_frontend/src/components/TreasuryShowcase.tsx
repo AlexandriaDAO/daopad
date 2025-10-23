@@ -4,7 +4,11 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 
-const TreasuryShowcase = () => {
+interface TreasuryShowcaseProps {
+  onSelectToken?: (tokenId: string) => void;
+}
+
+const TreasuryShowcase: React.FC<TreasuryShowcaseProps> = ({ onSelectToken }) => {
   const treasuries = useSelector(state => state.dao.publicDashboard.treasuries);
   const [searchTerm, setSearchTerm] = useState('');
   const hasPartialData = useSelector(state => state.dao.publicDashboard.hasPartialData);
@@ -56,8 +60,17 @@ const TreasuryShowcase = () => {
                 className="flex justify-between items-center p-2
                           bg-executive-darkGray/30 rounded
                           border border-executive-gold/10
-                          hover:bg-executive-darkGray/50 transition-colors"
+                          hover:bg-executive-darkGray/50 transition-colors
+                          cursor-pointer"
                 data-testid="treasury-item"
+                onClick={() => onSelectToken?.(tokenId)}
+                role="button"
+                tabIndex={0}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    onSelectToken?.(tokenId);
+                  }
+                }}
               >
                 <div className="flex flex-col">
                   <span className="text-xs font-mono text-executive-lightGray">
