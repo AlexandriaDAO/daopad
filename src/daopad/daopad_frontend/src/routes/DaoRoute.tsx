@@ -12,6 +12,7 @@ export default function DaoRoute() {
   const [token, setToken] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [orbitStation, setOrbitStation] = useState<any>(null);
+  const [overviewStats, setOverviewStats] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,57 +36,62 @@ export default function DaoRoute() {
           return;
         }
 
-        // Fetch station info (works for both authenticated and anonymous)
-        try {
-          const stationResult = await tokenService.getStationForToken(principal);
-          console.log('[DaoRoute] Station result:', stationResult);
+        // PARALLEL DATA FETCHING (critical performance optimization)
+        // Fetch all data simultaneously instead of sequentially
+        const [stationResult, metadataResult, overviewResult] = await Promise.all([
+          // 1. Station info (works for both authenticated and anonymous)
+          tokenService.getStationForToken(principal).catch(e => {
+            console.warn('[DaoRoute] Station fetch failed:', e);
+            return { success: false, error: e };
+          }),
 
-          if (stationResult.success && stationResult.data) {
-            const stationId = typeof stationResult.data === 'string'
-              ? stationResult.data
-              : stationResult.data.toString();
+          // 2. Token metadata (only if authenticated)
+          isAuthenticated && identity
+            ? tokenService.getTokenMetadata(principal).catch(e => {
+                console.warn('[DaoRoute] Metadata fetch failed:', e);
+                return { success: false, error: e };
+              })
+            : Promise.resolve({ success: false }),
 
-            setOrbitStation({
-              station_id: stationId,
-              name: `${tokenId} Treasury`
-            });
-          }
-        } catch (e) {
-          console.warn('[DaoRoute] Could not fetch station:', e);
-          // Don't fail - DAO might not have station yet
+          // 3. Overview stats (NEW - works for anonymous)
+          tokenService.getDaoOverview(principal).catch(e => {
+            console.warn('[DaoRoute] Overview fetch failed:', e);
+            return { success: false, error: e };
+          }),
+        ]);
+
+        console.log('[DaoRoute] Parallel fetch results:', {
+          station: stationResult,
+          metadata: metadataResult,
+          overview: overviewResult
+        });
+
+        // Process station info
+        if (stationResult.success && stationResult.data) {
+          const stationId = typeof stationResult.data === 'string'
+            ? stationResult.data
+            : stationResult.data.toString();
+
+          setOrbitStation({
+            station_id: stationId,
+            name: `${tokenId} Treasury`
+          });
         }
 
-        // Fetch token metadata if authenticated
-        if (isAuthenticated && identity) {
-          try {
-            const metadataResult = await tokenService.getTokenMetadata(principal);
-            console.log('[DaoRoute] Metadata result:', metadataResult);
+        // Process overview stats
+        if (overviewResult.success && overviewResult.data) {
+          setOverviewStats(overviewResult.data);
+        }
 
-            if (metadataResult.success && metadataResult.data) {
-              setToken({
-                canister_id: tokenId,
-                symbol: metadataResult.data.symbol || tokenId.slice(0, 5).toUpperCase(),
-                name: metadataResult.data.name || 'Token'
-              });
-            } else {
-              // Fallback if metadata fetch fails
-              setToken({
-                canister_id: tokenId,
-                symbol: tokenId.slice(0, 5).toUpperCase(),
-                name: 'Token'
-              });
-            }
-          } catch (e) {
-            console.warn('[DaoRoute] Could not fetch metadata:', e);
-            // Fallback token object
-            setToken({
-              canister_id: tokenId,
-              symbol: tokenId.slice(0, 5).toUpperCase(),
-              name: 'Token'
-            });
-          }
+        // Process token metadata
+        if (metadataResult.success && metadataResult.data) {
+          setToken({
+            canister_id: tokenId,
+            symbol: metadataResult.data.symbol || tokenId.slice(0, 5).toUpperCase(),
+            name: metadataResult.data.name || 'Token'
+          });
         } else {
-          // Anonymous users get basic token object
+          // Fallback for anonymous or failed metadata
           setToken({
             canister_id: tokenId,
             symbol: tokenId.slice(0, 5).toUpperCase(),
@@ -115,7 +121,7 @@ export default function DaoRoute() {
   // Render layout with token data (shared across all tab routes)
   return (
     <DaoLayout token={token} orbitStation={orbitStation}>
-      <Outlet context={{ token, orbitStation, identity, isAuthenticated }} />
+      <Outlet context={{ token, orbitStation, overviewStats, identity, isAuthenticated }} />
     </DaoLayout>
   );
 }

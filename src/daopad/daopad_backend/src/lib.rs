@@ -8,6 +8,7 @@ use candid::{Nat, Principal};
 use ic_cdk::init;
 
 pub use api::*;
+pub use api::orbit_overview::DaoOverviewStats;
 pub use proposals::orbit_link::{OrbitLinkProposal, ProposalStatus};
 pub use proposals::{
     OrbitRequestProposal, OrbitRequestType, ProposalError, ProposalId, ProposalType,

@@ -17,6 +17,27 @@ export class TokenService extends BackendServiceBase {
   }
 
   /**
+   * Get DAO overview stats (treasury, proposals, members)
+   * Returns aggregate statistics for the Overview tab
+   *
+   * @param {string|Principal} tokenId - The token canister ID
+   * @returns {Promise<{success: boolean, data?: DaoOverviewStats, error?: string}>}
+   */
+  async getDaoOverview(tokenId) {
+    try {
+      const actor = await this.getActor();
+      const tokenPrincipal = this.toPrincipal(tokenId);
+      const result = await actor.get_dao_overview(tokenPrincipal);
+
+      // Handle Result<DaoOverviewStats, String> response
+      return this.wrapResult(result);
+    } catch (error) {
+      console.error('[TokenService] getDaoOverview error:', error);
+      return { success: false, error: error.message || 'Unknown error' };
+    }
+  }
+
+  /**
    * List all registered Orbit Stations (token -> station mappings)
    */
   async listAllStations() {
