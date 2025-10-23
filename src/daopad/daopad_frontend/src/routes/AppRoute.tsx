@@ -242,17 +242,36 @@ function AppRoute() {
       </header>
 
     <main className="container mx-auto px-4 py-8">
-      {isAuthenticated && shouldShowKongLockerSetup ? (
-        <div className="max-w-2xl mx-auto">
-          <KongLockerSetup
-            identity={identity}
-            onComplete={handleKongLockerComplete}
-          />
-        </div>
+      {isAuthenticated ? (
+        // AUTHENTICATED USER PATH
+        shouldShowKongLockerSetup ? (
+          <div className="max-w-2xl mx-auto">
+            <KongLockerSetup
+              identity={identity}
+              onComplete={handleKongLockerComplete}
+            />
+          </div>
+        ) : (
+          <TokenTabs identity={identity} />
+        )
       ) : (
-        <TokenTabs
-          identity={identity}
-        />
+        // ANONYMOUS USER PATH - Show public dashboard
+        <div className="space-y-8">
+          {/* Stats overview */}
+          <section>
+            <PublicStatsStrip />
+          </section>
+
+          {/* Active proposals feed */}
+          <section>
+            <PublicActivityFeed />
+          </section>
+
+          {/* Treasury showcase */}
+          <section>
+            <TreasuryShowcase />
+          </section>
+        </div>
       )}
     </main>
 
