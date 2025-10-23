@@ -1,14 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 
-// ES module equivalent of __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Use persistent browser profile to maintain II auth across test runs
-// This persists IndexedDB (where II stores auth) unlike storageState
-const userDataDir = join(__dirname, '.playwright-profile');
+// NOTE: II authentication requires IndexedDB (not capturable by storageState)
+// For authenticated tests: Login once manually, II delegation persists in browser
+// OR run tests in --headed mode with manual login each time
 
 export default defineConfig({
   testDir: './e2e',
@@ -27,14 +21,6 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-    launchOptions: {
-      // Persistent profile - maintains ALL browser state including IndexedDB
-      args: [
-        '--enable-logging',
-        '--v=1',
-        `--user-data-dir=${userDataDir}`
-      ]
-    }
   },
 
   projects: [
@@ -42,6 +28,9 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
+        launchOptions: {
+          args: ['--enable-logging', '--v=1']
+        }
       },
     },
   ],
