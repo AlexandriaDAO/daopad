@@ -19,12 +19,24 @@ interface DAOSettingsProps {
 }
 
 interface SystemInfo {
-  name: string;
-  raw_rand_successful: boolean;
-  cycles: bigint;
-  last_upgrade_timestamp: bigint;
-  upgrader_id: string;
-  cycles_top_up_strategy?: CycleStrategy;
+  station_id: Principal;
+  system_info: {
+    name: string;
+    version: string;
+    raw_rand_successful: boolean;
+    cycles: bigint;
+    last_upgrade_timestamp: bigint;
+    upgrader_id: Principal;
+    upgrader_cycles?: [bigint];
+    cycle_obtain_strategy?: CycleStrategy;
+    disaster_recovery?: [{
+      user_group_name?: [string];
+      committee: {
+        user_group_id: string;
+        quorum: number;
+      };
+    }];
+  };
 }
 
 type CycleStrategy =
