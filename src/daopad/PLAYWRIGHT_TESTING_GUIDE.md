@@ -19,6 +19,47 @@ After extensive testing (PR #91), we discovered:
 
 **Recommendation**: Use Playwright ONLY for public features. Test authenticated features manually in browser.
 
+### Standard Test Station (Use This For All Tests)
+
+**Token**: ALEX (ysy5f-2qaaa-aaaap-qkmmq-cai)
+**Station**: fec7w-zyaaa-aaaaa-qaffq-cai
+**URL Pattern**: `https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io/dao/ysy5f-2qaaa-aaaap-qkmmq-cai/treasury`
+
+Always use this station for testing - it's the reference implementation. Ignore other stations until core functionality is stable.
+
+---
+
+## Real Bug Found: Treasury Data Not Loading for Anonymous Users (PR #94)
+
+**Bug Discovery**: Playwright test navigated to `/dao/ysy5f-2qaaa-aaaap-qkmmq-cai/treasury` and found:
+- ✅ DaoRoute loaded: Token ID → "YSY5F DAO"
+- ✅ Station fetched: `fec7w-zyaaa-aaaaa-qaffq-cai`
+- ✅ Page rendered: `treasury-overview` element exists
+- ❌ **Zero treasury accounts displayed**
+
+**Root Cause** (AccountsTable.tsx:48):
+```typescript
+if (stationId && identity && tokenId) {
+  dispatch(fetchOrbitAccounts({ ... }));
+}
+```
+
+Anonymous users have `identity = null`, so treasury data never fetches even though:
+1. Backend supports anonymous queries (acts as admin proxy)
+2. Station ID successfully loaded
+3. UI components all rendered
+
+**Test Evidence**:
+```
+Station info: ✓ Treasury Station: fec7w-zyaaa-aaaaa-qaffq-cai
+Treasury accounts found: 0  ← Should be 4!
+Network requests: 0 list_orbit_accounts calls ← Never triggered
+```
+
+**Fix Required**: AccountsTable should fetch data when `stationId && tokenId` (make identity optional for read-only view).
+
+**Lesson**: Tests correctly identified that new routing works BUT exposed existing bug in data loading logic. This is exactly what integration tests should catch!
+
 ---
 
 ## Core Philosophy: Data-Driven Integration Testing
