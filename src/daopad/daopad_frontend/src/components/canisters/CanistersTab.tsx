@@ -50,8 +50,8 @@ export default function CanistersTab({ token, stationId, identity }) {
       console.log('Success:', result.success);
       if (result.success) {
         // Handle Candid variant response structure
-        // Backend returns: { canisters: [...], total: bigint, privileges: [...] }
-        const responseData = result.data;
+        // Check if data is double-wrapped in Ok variant
+        const responseData = result.data?.Ok ? result.data.Ok : result.data;
         const canisters = responseData?.canisters || [];
         const total = typeof responseData?.total === 'bigint'
           ? Number(responseData.total)
@@ -59,7 +59,8 @@ export default function CanistersTab({ token, stationId, identity }) {
         const privileges = responseData?.privileges || [];
 
         console.log('Total canisters:', total);
-        console.log('Raw canisters:', canisters);
+        console.log('Canister count:', canisters.length);
+        console.log('Raw response data:', result.data);
         console.log('Privileges:', privileges);
 
         // Filter out backend canister from display
