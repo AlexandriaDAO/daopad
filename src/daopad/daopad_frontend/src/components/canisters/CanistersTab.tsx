@@ -19,7 +19,7 @@ export default function CanistersTab({ token, stationId, identity }) {
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [selectedCanisterId, setSelectedCanisterId] = useState(null);
   const [filters, setFilters] = useState({
-    paginate: { offset: [], limit: [20] },
+    paginate: [{ offset: [], limit: [20] }],
     canister_ids: [],
     labels: [],
     states: [],
