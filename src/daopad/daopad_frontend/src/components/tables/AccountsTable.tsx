@@ -33,9 +33,11 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
   const accounts = useSelector(state =>
     selectFormattedAccounts(state, stationId, tokenSymbol)
   );
-  const total = useSelector(state =>
-    state.orbit.accounts.data[stationId]?.total || 0
-  );
+  const total = useSelector(state => {
+    const rawTotal = state.orbit.accounts.data[stationId]?.total || 0;
+    // Convert BigInt to number if necessary
+    return typeof rawTotal === 'bigint' ? Number(rawTotal) : rawTotal;
+  });
   const isLoading = useSelector(state =>
     selectOrbitAccountsLoading(state, stationId)
   );
