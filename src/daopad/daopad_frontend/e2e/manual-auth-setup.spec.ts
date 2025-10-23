@@ -53,15 +53,29 @@ test('manual auth setup', async ({ page, context }) => {
     }
 
     console.log('✅ Authentication detected!');
-    console.log('   Waiting for app to fully load...');
+    console.log('   Waiting for delegation to fully establish...');
 
     // Stay on /app and wait for full auth state
     await page.waitForLoadState('networkidle');
 
-    // Wait a bit for any async auth initialization
-    await page.waitForTimeout(5000);
+    // CRITICAL: Wait for delegation to be stored in app's localStorage
+    // II auth happens in popup, then delegation gets stored in app domain
+    await page.waitForTimeout(10000);
 
-    console.log('✅ DAO page loaded. Saving auth state...');
+    // Verify delegation is actually stored
+    const hasAuth = await page.evaluate(() => {
+      const keys = Object.keys(localStorage);
+      return keys.some(k => k.includes('delegation') || k.includes('identity'));
+    });
+
+    if (hasAuth) {
+      console.log('✅ Delegation found in localStorage');
+    } else {
+      console.log('⚠️  No delegation found - may need more time');
+      await page.waitForTimeout(5000);
+    }
+
+    console.log('✅ Auth state ready. Saving...');
 
     // Save authentication state (now includes full delegation state)
     await context.storageState({ path: '.auth/user.json' });
