@@ -41,7 +41,7 @@ export default function CanistersTab({ token, stationId, identity }) {
       console.log('Token canister ID:', token.canister_id);
       console.log('Filters:', JSON.stringify(filters, null, 2));
 
-      const result = await getOrbitCanisterService(identity).listCanisters(
+      const result = await getOrbitCanisterService(identity || null).listCanisters(
         token.canister_id,
         filters
       );
@@ -49,7 +49,8 @@ export default function CanistersTab({ token, stationId, identity }) {
       console.log('=== LIST CANISTERS RESULT ===');
       console.log('Success:', result.success);
       if (result.success) {
-        console.log('Total canisters:', result.total);
+        const total = typeof result.total === 'bigint' ? Number(result.total) : result.total;
+        console.log('Total canisters:', total);
         console.log('Raw canisters:', result.data);
         console.log('Privileges:', result.privileges);
 
@@ -98,7 +99,7 @@ export default function CanistersTab({ token, stationId, identity }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="canisters-tab">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -140,7 +141,7 @@ export default function CanistersTab({ token, stationId, identity }) {
           ))}
         </div>
       ) : canisters.length === 0 ? (
-        <div className="text-center py-12">
+        <div className="text-center py-12" data-testid="canisters-empty-state">
           <Server className="h-12 w-12 mx-auto text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
             No canisters yet
@@ -158,11 +159,12 @@ export default function CanistersTab({ token, stationId, identity }) {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="canisters-grid">
           {canisters.map(canister => (
             <CanisterCard
               key={canister.id}
               canister={canister}
+              identity={identity || null}
               onTopUp={() => handleTopUp(canister.canister_id)}
               onConfigure={() => handleConfigure(canister.canister_id)}
             />

@@ -4,14 +4,14 @@ import { formatOrbitError } from '../../../utils/errorParsers';
 export class OrbitCanisterService extends BackendServiceBase {
   /**
    * List canisters managed by Orbit Station
-   * @param {string|Principal} stationId - Orbit Station ID
+   * @param {string|Principal} tokenId - Token canister ID (backend looks up station)
    * @param {Object} filters - Optional filters
    */
-  async listCanisters(stationId, filters = {}) {
+  async listCanisters(tokenId, filters = {}) {
     try {
       const actor = await this.getActor();
-      const stationPrincipal = this.toPrincipal(stationId);
-      const result = await actor.list_orbit_canisters(stationPrincipal, filters);
+      const tokenPrincipal = this.toPrincipal(tokenId);
+      const result = await actor.list_orbit_canisters(tokenPrincipal, filters);
 
       if ('Ok' in result) {
         return { success: true, data: result.Ok };
@@ -29,15 +29,15 @@ export class OrbitCanisterService extends BackendServiceBase {
 
   /**
    * Get specific canister details
-   * @param {string|Principal} stationId - Orbit Station ID
+   * @param {string|Principal} tokenId - Token canister ID (backend looks up station)
    * @param {string|Principal} canisterId - Canister ID
    */
-  async getCanister(stationId, canisterId) {
+  async getCanister(tokenId, canisterId) {
     try {
       const actor = await this.getActor();
-      const stationPrincipal = this.toPrincipal(stationId);
+      const tokenPrincipal = this.toPrincipal(tokenId);
       const canisterPrincipal = this.toPrincipal(canisterId);
-      const result = await actor.get_orbit_canister(stationPrincipal, canisterPrincipal);
+      const result = await actor.get_orbit_canister(tokenPrincipal, canisterPrincipal);
 
       if ('Ok' in result) {
         return { success: true, data: result.Ok };
@@ -55,17 +55,17 @@ export class OrbitCanisterService extends BackendServiceBase {
 
   /**
    * Create request to create a new canister
-   * @param {string|Principal} stationId - Orbit Station ID
+   * @param {string|Principal} tokenId - Token canister ID (backend looks up station)
    * @param {Object} operationInput - Canister creation parameters
    * @param {string} title - Request title
    * @param {string} summary - Request summary
    */
-  async createCanisterRequest(stationId, operationInput, title, summary) {
+  async createCanisterRequest(tokenId, operationInput, title, summary) {
     try {
       const actor = await this.getActor();
-      const stationPrincipal = this.toPrincipal(stationId);
+      const tokenPrincipal = this.toPrincipal(tokenId);
       const result = await actor.create_orbit_canister_request(
-        stationPrincipal,
+        tokenPrincipal,
         operationInput,
         title,
         summary
@@ -87,17 +87,17 @@ export class OrbitCanisterService extends BackendServiceBase {
 
   /**
    * Create request to change canister controllers
-   * @param {string|Principal} stationId - Orbit Station ID
+   * @param {string|Principal} tokenId - Token canister ID (backend looks up station)
    * @param {Object} operationInput - Change parameters
    * @param {string} title - Request title
    * @param {string} summary - Request summary
    */
-  async changeCanisterRequest(stationId, operationInput, title, summary) {
+  async changeCanisterRequest(tokenId, operationInput, title, summary) {
     try {
       const actor = await this.getActor();
-      const stationPrincipal = this.toPrincipal(stationId);
+      const tokenPrincipal = this.toPrincipal(tokenId);
       const result = await actor.change_orbit_canister_request(
-        stationPrincipal,
+        tokenPrincipal,
         operationInput,
         title,
         summary
@@ -119,17 +119,17 @@ export class OrbitCanisterService extends BackendServiceBase {
 
   /**
    * Create request to configure canister settings
-   * @param {string|Principal} stationId - Orbit Station ID
+   * @param {string|Principal} tokenId - Token canister ID (backend looks up station)
    * @param {Object} operationInput - Configuration parameters
    * @param {string} title - Request title
    * @param {string} summary - Request summary
    */
-  async configureCanisterRequest(stationId, operationInput, title, summary) {
+  async configureCanisterRequest(tokenId, operationInput, title, summary) {
     try {
       const actor = await this.getActor();
-      const stationPrincipal = this.toPrincipal(stationId);
+      const tokenPrincipal = this.toPrincipal(tokenId);
       const result = await actor.configure_orbit_canister_request(
-        stationPrincipal,
+        tokenPrincipal,
         operationInput,
         title,
         summary
@@ -151,17 +151,17 @@ export class OrbitCanisterService extends BackendServiceBase {
 
   /**
    * Create request to fund a canister
-   * @param {string|Principal} stationId - Orbit Station ID
+   * @param {string|Principal} tokenId - Token canister ID (backend looks up station)
    * @param {Object} operationInput - Funding parameters
    * @param {string} title - Request title
    * @param {string} summary - Request summary
    */
-  async fundCanisterRequest(stationId, operationInput, title, summary) {
+  async fundCanisterRequest(tokenId, operationInput, title, summary) {
     try {
       const actor = await this.getActor();
-      const stationPrincipal = this.toPrincipal(stationId);
+      const tokenPrincipal = this.toPrincipal(tokenId);
       const result = await actor.fund_orbit_canister_request(
-        stationPrincipal,
+        tokenPrincipal,
         operationInput,
         title,
         summary
@@ -183,17 +183,17 @@ export class OrbitCanisterService extends BackendServiceBase {
 
   /**
    * Create request to monitor a canister
-   * @param {string|Principal} stationId - Orbit Station ID
+   * @param {string|Principal} tokenId - Token canister ID (backend looks up station)
    * @param {Object} operationInput - Monitoring parameters
    * @param {string} title - Request title
    * @param {string} summary - Request summary
    */
-  async monitorCanisterRequest(stationId, operationInput, title, summary) {
+  async monitorCanisterRequest(tokenId, operationInput, title, summary) {
     try {
       const actor = await this.getActor();
-      const stationPrincipal = this.toPrincipal(stationId);
+      const tokenPrincipal = this.toPrincipal(tokenId);
       const result = await actor.monitor_orbit_canister_request(
-        stationPrincipal,
+        tokenPrincipal,
         operationInput,
         title,
         summary
@@ -215,17 +215,17 @@ export class OrbitCanisterService extends BackendServiceBase {
 
   /**
    * Create request to snapshot a canister
-   * @param {string|Principal} stationId - Orbit Station ID
+   * @param {string|Principal} tokenId - Token canister ID (backend looks up station)
    * @param {Object} operationInput - Snapshot parameters
    * @param {string} title - Request title
    * @param {string} summary - Request summary
    */
-  async snapshotCanisterRequest(stationId, operationInput, title, summary) {
+  async snapshotCanisterRequest(tokenId, operationInput, title, summary) {
     try {
       const actor = await this.getActor();
-      const stationPrincipal = this.toPrincipal(stationId);
+      const tokenPrincipal = this.toPrincipal(tokenId);
       const result = await actor.snapshot_orbit_canister_request(
-        stationPrincipal,
+        tokenPrincipal,
         operationInput,
         title,
         summary
@@ -247,17 +247,17 @@ export class OrbitCanisterService extends BackendServiceBase {
 
   /**
    * Create request to prune canister snapshots
-   * @param {string|Principal} stationId - Orbit Station ID
+   * @param {string|Principal} tokenId - Token canister ID (backend looks up station)
    * @param {Object} operationInput - Prune parameters
    * @param {string} title - Request title
    * @param {string} summary - Request summary
    */
-  async pruneCanisterSnapshotsRequest(stationId, operationInput, title, summary) {
+  async pruneCanisterSnapshotsRequest(tokenId, operationInput, title, summary) {
     try {
       const actor = await this.getActor();
-      const stationPrincipal = this.toPrincipal(stationId);
+      const tokenPrincipal = this.toPrincipal(tokenId);
       const result = await actor.prune_orbit_canister_snapshots_request(
-        stationPrincipal,
+        tokenPrincipal,
         operationInput,
         title,
         summary
@@ -279,17 +279,17 @@ export class OrbitCanisterService extends BackendServiceBase {
 
   /**
    * Create request to restore canister from snapshot
-   * @param {string|Principal} stationId - Orbit Station ID
+   * @param {string|Principal} tokenId - Token canister ID (backend looks up station)
    * @param {Object} operationInput - Restore parameters
    * @param {string} title - Request title
    * @param {string} summary - Request summary
    */
-  async restoreCanisterRequest(stationId, operationInput, title, summary) {
+  async restoreCanisterRequest(tokenId, operationInput, title, summary) {
     try {
       const actor = await this.getActor();
-      const stationPrincipal = this.toPrincipal(stationId);
+      const tokenPrincipal = this.toPrincipal(tokenId);
       const result = await actor.restore_orbit_canister_request(
-        stationPrincipal,
+        tokenPrincipal,
         operationInput,
         title,
         summary
@@ -311,19 +311,19 @@ export class OrbitCanisterService extends BackendServiceBase {
 
   /**
    * Create request to call a canister method
-   * @param {string|Principal} stationId - Orbit Station ID
+   * @param {string|Principal} tokenId - Token canister ID (backend looks up station)
    * @param {string|Principal} externalCanisterId - Target canister ID
    * @param {Object} methodInput - Method call parameters
    * @param {string} title - Request title
    * @param {string} summary - Request summary
    */
-  async callCanisterMethodRequest(stationId, externalCanisterId, methodInput, title, summary) {
+  async callCanisterMethodRequest(tokenId, externalCanisterId, methodInput, title, summary) {
     try {
       const actor = await this.getActor();
-      const stationPrincipal = this.toPrincipal(stationId);
+      const tokenPrincipal = this.toPrincipal(tokenId);
       const canisterPrincipal = this.toPrincipal(externalCanisterId);
       const result = await actor.call_orbit_canister_method_request(
-        stationPrincipal,
+        tokenPrincipal,
         canisterPrincipal,
         methodInput,
         title,
@@ -346,15 +346,15 @@ export class OrbitCanisterService extends BackendServiceBase {
 
   /**
    * Get canister snapshots
-   * @param {string|Principal} stationId - Orbit Station ID
+   * @param {string|Principal} tokenId - Token canister ID (backend looks up station)
    * @param {string|Principal} canisterId - Canister ID
    */
-  async getCanisterSnapshots(stationId, canisterId) {
+  async getCanisterSnapshots(tokenId, canisterId) {
     try {
       const actor = await this.getActor();
-      const stationPrincipal = this.toPrincipal(stationId);
+      const tokenPrincipal = this.toPrincipal(tokenId);
       const canisterPrincipal = this.toPrincipal(canisterId);
-      const result = await actor.get_canister_snapshots(stationPrincipal, canisterPrincipal);
+      const result = await actor.get_canister_snapshots(tokenPrincipal, canisterPrincipal);
 
       if ('Ok' in result) {
         return { success: true, data: result.Ok };

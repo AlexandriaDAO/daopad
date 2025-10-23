@@ -5,7 +5,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { ArrowUpCircle, Settings, Activity, AlertCircle } from 'lucide-react';
 
-const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure }) {
+const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure, identity }) {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -26,7 +26,7 @@ const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure
       setLoading(true);
       try {
         // Use Principal for IC management canister calls
-        const result = await getOrbitCanisterService(identity).getCanisterStatus(
+        const result = await getOrbitCanisterService(identity || null).getCanisterStatus(
           canister.canister_id  // This is the Principal
         );
         // Only update state if component is still mounted and this is the latest request
@@ -35,7 +35,10 @@ const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure
             setStatus(result.data);
           } else {
             // Expected failure for non-controlled canisters - don't log as error
-            setStatus({ unavailable: true, reason: 'Authorization required' });
+            setStatus({
+              unavailable: true,
+              reason: identity ? 'Authorization required' : 'Login to view cycles'
+            });
           }
         }
       } catch (error) {
@@ -44,7 +47,10 @@ const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure
           if (!error.message?.includes('controllers') && !error.message?.includes('Only the')) {
             console.error(`Unexpected error fetching IC status:`, error);
           }
-          setStatus({ unavailable: true, reason: 'Cannot fetch' });
+          setStatus({
+            unavailable: true,
+            reason: identity ? 'Cannot fetch' : 'Login to view cycles'
+          });
         }
       } finally {
         if (!isCancelled) {
@@ -59,7 +65,7 @@ const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure
     return () => {
       isCancelled = true;
     };
-  }, [canister?.canister_id]);
+  }, [canister?.canister_id, identity]);
 
   const formatCycles = (cycles) => {
     if (!cycles) return '0 T';
@@ -82,7 +88,7 @@ const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure
   };
 
   return (
-    <Card className="hover:shadow-lg transition-shadow">
+    <Card className="hover:shadow-lg transition-shadow" data-testid={`canister-card-${canister.id}`}>
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start">
           <div className="flex-1 min-w-0">
@@ -213,6 +219,7 @@ const CanisterCard = memo(function CanisterCard({ canister, onTopUp, onConfigure
     prevProps.canister.id === nextProps.canister.id &&
     prevProps.canister.canister_id === nextProps.canister.canister_id &&
     prevProps.canister.name === nextProps.canister.name &&
+    prevProps.identity === nextProps.identity &&
     stateEquals &&
     prevProps.canister.labels?.length === nextProps.canister.labels?.length &&
     prevProps.canister.monitoring === nextProps.canister.monitoring
