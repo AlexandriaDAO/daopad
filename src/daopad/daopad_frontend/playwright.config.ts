@@ -1,7 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
+import path from 'path';
 
-// NOTE: StorageState doesn't work with II auth (uses IndexedDB not localStorage)
-// Treasury tests requiring auth must be run in --headed mode with manual login
+// Use persistent browser profile to maintain II auth across test runs
+// This persists IndexedDB (where II stores auth) unlike storageState
+const userDataDir = path.join(__dirname, '.playwright-profile');
 
 export default defineConfig({
   testDir: './e2e',
@@ -20,6 +22,14 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    launchOptions: {
+      // Persistent profile - maintains ALL browser state including IndexedDB
+      args: [
+        '--enable-logging',
+        '--v=1',
+        `--user-data-dir=${userDataDir}`
+      ]
+    }
   },
 
   projects: [
@@ -27,9 +37,6 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        launchOptions: {
-          args: ['--enable-logging', '--v=1']
-        }
       },
     },
   ],
