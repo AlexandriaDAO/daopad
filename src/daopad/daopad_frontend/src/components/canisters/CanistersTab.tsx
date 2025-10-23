@@ -49,13 +49,21 @@ export default function CanistersTab({ token, stationId, identity }) {
       console.log('=== LIST CANISTERS RESULT ===');
       console.log('Success:', result.success);
       if (result.success) {
-        const total = typeof result.total === 'bigint' ? Number(result.total) : result.total;
+        // Handle Candid variant response structure
+        // Backend returns: { canisters: [...], total: bigint, privileges: [...] }
+        const responseData = result.data;
+        const canisters = responseData?.canisters || [];
+        const total = typeof responseData?.total === 'bigint'
+          ? Number(responseData.total)
+          : responseData?.total || 0;
+        const privileges = responseData?.privileges || [];
+
         console.log('Total canisters:', total);
-        console.log('Raw canisters:', result.data);
-        console.log('Privileges:', result.privileges);
+        console.log('Raw canisters:', canisters);
+        console.log('Privileges:', privileges);
 
         // Filter out backend canister from display
-        const filteredCanisters = (result.data || []).filter(
+        const filteredCanisters = canisters.filter(
           c => c.canister_id !== BACKEND_CANISTER
         );
         setCanisters(filteredCanisters);
