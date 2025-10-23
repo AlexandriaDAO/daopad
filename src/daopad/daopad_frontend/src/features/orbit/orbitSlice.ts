@@ -69,7 +69,7 @@ export const fetchOrbitAccounts = createAsyncThunk(
       const service = getOrbitAccountsService(identity);
 
       const response = await service.listAccounts(
-        stationId,
+        tokenId,
         searchQuery || undefined,
         pagination.limit || 20,
         pagination.offset || 0
