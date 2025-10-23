@@ -1,9 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
-import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// ES module equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Use persistent browser profile to maintain II auth across test runs
 // This persists IndexedDB (where II stores auth) unlike storageState
-const userDataDir = path.join(__dirname, '.playwright-profile');
+const userDataDir = join(__dirname, '.playwright-profile');
 
 export default defineConfig({
   testDir: './e2e',
