@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Principal } from '@dfinity/principal';
+import type { Identity } from '@dfinity/agent';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Button } from '../ui/button';
 import { Alert, AlertDescription } from '../ui/alert';
@@ -10,15 +11,29 @@ import { toast } from 'sonner';
 interface Props {
     tokenId: Principal;
     stationId: Principal;
+    identity: Identity | null;
     onComplete: () => void;  // Callback to recheck status
 }
 
 type WizardStep = 'intro' | 'creating' | 'approving';
 
-const AutoApprovedSetupWizard: React.FC<Props> = ({ tokenId, stationId, onComplete }) => {
+const AutoApprovedSetupWizard: React.FC<Props> = ({ tokenId, stationId, identity, onComplete }) => {
+    const isAnonymous = !identity;
     const [step, setStep] = useState<WizardStep>('intro');
     const [requestIds, setRequestIds] = useState<string[]>([]);
     const [error, setError] = useState<string | null>(null);
+
+    // Hide wizard for anonymous users
+    if (isAnonymous) {
+        return (
+            <Alert className="border-blue-200 bg-blue-50 mb-6">
+                <Info className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-800">
+                    🔒 Sign in to configure AutoApproved policies for this treasury
+                </AlertDescription>
+            </Alert>
+        );
+    }
 
     const handleCreateRequests = async () => {
         setStep('creating');

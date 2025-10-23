@@ -51,8 +51,8 @@ const DAOSettings: React.FC<DAOSettingsProps> = ({ tokenCanisterId, identity, st
                 setLoading(true);
                 setError(null);
 
-                const governanceService = getOrbitGovernanceService(identity);
-                const result = await governanceService.getSystemInfo(stationId);
+                const governanceService = getOrbitGovernanceService(identity || null);
+                const result = await governanceService.getSystemInfo(tokenId);
 
                 // Handle service response
                 if (result.success) {
@@ -70,7 +70,7 @@ const DAOSettings: React.FC<DAOSettingsProps> = ({ tokenCanisterId, identity, st
         };
 
         fetchSystemInfo();
-    }, [tokenCanisterId]);
+    }, [tokenCanisterId, tokenId]);
 
     const copyToClipboard = (text: string): void => {
         navigator.clipboard.writeText(text);
