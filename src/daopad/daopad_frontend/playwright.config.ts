@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// NOTE: II authentication requires IndexedDB (not capturable by storageState)
+// For authenticated tests: Login once manually, II delegation persists in browser
+// OR run tests in --headed mode with manual login each time
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
@@ -14,7 +18,6 @@ export default defineConfig({
 
   use: {
     baseURL: process.env.TEST_BASE_URL || 'https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io',
-    // No auth needed - site is public for read-only access
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

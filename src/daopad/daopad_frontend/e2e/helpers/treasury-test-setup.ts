@@ -122,8 +122,11 @@ export async function setupTreasuryTestMonitoring(
  * Replaces repetitive navigation boilerplate
  */
 export async function navigateToTreasury(page: Page, tokenId: string = TEST_TOKEN_ID): Promise<void> {
-  await page.goto(`/dao/${tokenId}`);
+  await page.goto('/app');
   await page.waitForLoadState('networkidle');
+
+  // Wait for DAO selector to auto-select
+  await page.waitForTimeout(3000);
 
   // Wait for tab to be clickable
   await page.waitForSelector('[data-testid="treasury-tab"]', {

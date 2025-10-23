@@ -1,21 +1,43 @@
 # Playwright Testing Guide for DAOPad
 
+## ⚠️ CRITICAL LIMITATION: Internet Identity Authentication
+
+**Playwright CANNOT automate Internet Identity authentication in this project.**
+
+### Why Authenticated Tests Don't Work
+
+After extensive testing (PR #91), we discovered:
+
+1. **II stores auth in IndexedDB** - Playwright's `storageState` only captures localStorage/cookies
+2. **Persistent contexts not supported** - `launchPersistentContext` incompatible with test runner
+3. **Every workaround fails** - No way to persist II delegation between test runs
+
+### What This Means
+
+✅ **Public/Anonymous Features** - Playwright works perfectly (see `app-route.spec.ts`)
+❌ **Authenticated Features** - Require manual browser testing (treasury, proposals, etc.)
+
+**Recommendation**: Use Playwright ONLY for public features. Test authenticated features manually in browser.
+
+---
+
 ## Core Philosophy: Data-Driven Integration Testing
 
-**CRITICAL**: Playwright tests in this project verify **backend-to-frontend data flow**, NOT superficial UI element existence.
+**When applicable** (public features only), Playwright tests verify **backend-to-frontend data flow**, NOT superficial UI element existence.
 
-### What We Test
+### What We Test (Public Features Only)
 ✅ **Backend canister responses** - IC canister calls succeed with valid data
 ✅ **Redux state updates** - Thunks execute and populate store correctly
 ✅ **Data transformation** - Backend responses correctly map to UI state
 ✅ **Error handling** - Network failures and invalid data handled gracefully
-✅ **Cross-canister integration** - DAOPad ↔ Orbit Station ↔ Kong Locker data flows
+✅ **Public dashboards** - Anonymous user data loading
 
 ### What We DON'T Test
 ❌ **Element existence** - "Does button exist?" (false confidence)
 ❌ **Static content** - "Does text say 'Dashboard'?" (meaningless)
 ❌ **CSS properties** - "Is button blue?" (not our concern)
 ❌ **Superficial interactions** - "Click works?" without verifying backend impact
+❌ **Authenticated features** - II auth incompatible with Playwright automation
 
 ---
 
@@ -700,16 +722,34 @@ if (!isAuthenticated) {
 
 ### When to Write Playwright Tests
 
-✅ **Write tests for**:
-- New features that fetch backend data (proposals, treasury, voting)
-- Cross-canister integrations (Orbit Station, Kong Locker)
-- Complex user workflows (create proposal → vote → execute)
-- Bug fixes for UI issues (verify the fix actually works)
+✅ **Write tests for PUBLIC features**:
+- Public dashboards and statistics
+- Anonymous user data loading
+- Homepage and marketing pages
+- Features that DON'T require authentication
 
-❌ **Don't write tests for**:
-- Static pages (About, FAQ)
+❌ **Don't write Playwright tests for**:
+- **Authenticated features** (treasury, proposals, voting) - **II auth incompatible**
+- Static pages (About, FAQ) - not worth testing
 - Simple UI components without backend dependencies
 - One-off debugging (use browser DevTools instead)
+
+### For Authenticated Features
+
+Since Playwright can't handle II authentication:
+
+**Manual Testing Checklist** (do this in browser):
+1. Login with II
+2. Navigate to feature (treasury, proposals, etc.)
+3. Verify backend calls in Network tab
+4. Check Redux state in Redux DevTools
+5. Verify UI renders correct data
+6. Test error scenarios manually
+
+**Document Test Cases** (for future reference):
+- Write test scenarios in comments/docs
+- List what should be verified
+- Keep for when/if auth solution is found
 
 ### Test File Organization
 

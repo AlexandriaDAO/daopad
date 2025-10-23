@@ -380,11 +380,11 @@ const TokenDashboard = memo(function TokenDashboard({
           <Tabs defaultValue="agreement" className="w-full" onValueChange={(value) => setActiveTab(value)}>
             <div className="flex items-center gap-3 mb-6">
               <TabsList variant="executive" className="flex-1 grid grid-cols-5">
-                <TabsTrigger variant="executive" value="agreement">Agreement</TabsTrigger>
-                <TabsTrigger variant="executive" value="accounts">Treasury</TabsTrigger>
-                <TabsTrigger variant="executive" value="activity">Activity</TabsTrigger>
-                <TabsTrigger variant="executive" value="canisters">Canisters</TabsTrigger>
-                <TabsTrigger variant="executive" value="settings">Settings</TabsTrigger>
+                <TabsTrigger variant="executive" value="agreement" data-testid="agreement-tab">Agreement</TabsTrigger>
+                <TabsTrigger variant="executive" value="accounts" data-testid="treasury-tab">Treasury</TabsTrigger>
+                <TabsTrigger variant="executive" value="activity" data-testid="activity-tab">Activity</TabsTrigger>
+                <TabsTrigger variant="executive" value="canisters" data-testid="canisters-tab">Canisters</TabsTrigger>
+                <TabsTrigger variant="executive" value="settings" data-testid="settings-tab">Settings</TabsTrigger>
               </TabsList>
 
               {/* Refresh Button */}
@@ -401,7 +401,7 @@ const TokenDashboard = memo(function TokenDashboard({
               </Button>
             </div>
 
-            <TabsContent value="accounts" className="mt-4 space-y-6">
+            <TabsContent value="accounts" className="mt-4 space-y-6" data-testid="treasury-overview">
               {activeTab === 'accounts' && (
                 <>
                   <AccountsTable

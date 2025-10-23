@@ -258,7 +258,7 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
                     </TableRow>
                   ) : (
                     accounts.map((account) => (
-                      <TableRow key={account.id}>
+                      <TableRow key={account.id} data-testid="treasury-account">
                         <TableCell className="font-medium">
                           {account.name || 'Unnamed Account'}
                         </TableCell>
@@ -270,7 +270,7 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
                             {account.blockchain || 'Unknown'}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="text-right font-mono" data-testid="account-balance">
                           {account.balanceFormatted}
                         </TableCell>
                         <TableCell className="text-right">

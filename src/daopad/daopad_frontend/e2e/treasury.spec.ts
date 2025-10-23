@@ -78,9 +78,10 @@ test.describe('Treasury Tab - E2E', () => {
   });
 
   test('should load Treasury tab without console errors', async () => {
-    await page.goto('/dao/ysy5f-2qaaa-aaaap-qkmmq-cai');
+    await page.goto('/app');
 
-    await page.waitForSelector('h1:has-text("Alexandria")', { timeout: 10000 });
+    // Wait for DAO selector to auto-select (give time for page to load)
+    await page.waitForTimeout(3000);
 
     await page.click('[data-testid="treasury-tab"]');
 
@@ -98,7 +99,8 @@ test.describe('Treasury Tab - E2E', () => {
   });
 
   test('should display 4 treasury accounts', async () => {
-    await page.goto('/dao/ysy5f-2qaaa-aaaap-qkmmq-cai');
+    await page.goto('/app');
+    await page.waitForTimeout(3000); // Wait for DAO auto-select
     await page.click('[data-testid="treasury-tab"]');
 
     await page.waitForSelector('[data-testid="treasury-account"]', {
@@ -119,7 +121,8 @@ test.describe('Treasury Tab - E2E', () => {
   });
 
   test('should display account balances', async () => {
-    await page.goto('/dao/ysy5f-2qaaa-aaaap-qkmmq-cai');
+    await page.goto('/app');
+    await page.waitForTimeout(3000);
     await page.click('[data-testid="treasury-tab"]');
 
     await page.waitForSelector('[data-testid="treasury-account"]');
@@ -135,7 +138,8 @@ test.describe('Treasury Tab - E2E', () => {
   });
 
   test('should show asset breakdown (ICP/ALEX)', async () => {
-    await page.goto('/dao/ysy5f-2qaaa-aaaap-qkmmq-cai');
+    await page.goto('/app');
+    await page.waitForTimeout(3000);
     await page.click('[data-testid="treasury-tab"]');
 
     await page.waitForSelector('[data-testid="treasury-account"]');
@@ -150,7 +154,8 @@ test.describe('Treasury Tab - E2E', () => {
   });
 
   test('should not show loading spinner indefinitely', async () => {
-    await page.goto('/dao/ysy5f-2qaaa-aaaap-qkmmq-cai');
+    await page.goto('/app');
+    await page.waitForTimeout(3000);
     await page.click('[data-testid="treasury-tab"]');
 
     await page.waitForSelector('[data-testid="loading-spinner"]', {
@@ -163,7 +168,8 @@ test.describe('Treasury Tab - E2E', () => {
   });
 
   test('should handle network errors gracefully', async () => {
-    await page.goto('/dao/ysy5f-2qaaa-aaaap-qkmmq-cai');
+    await page.goto('/app');
+    await page.waitForTimeout(3000);
     await page.click('[data-testid="treasury-tab"]');
 
     await Promise.race([
@@ -183,7 +189,8 @@ test.describe('Treasury Tab - E2E', () => {
   });
 
   test('should capture React component errors', async () => {
-    await page.goto('/dao/ysy5f-2qaaa-aaaap-qkmmq-cai');
+    await page.goto('/app');
+    await page.waitForTimeout(3000);
 
     await page.exposeFunction('logReactError', (error: string) => {
       console.error('React error:', error);
@@ -223,7 +230,8 @@ test.describe('Treasury Network Requests', () => {
       }
     });
 
-    await page.goto('/dao/ysy5f-2qaaa-aaaap-qkmmq-cai');
+    await page.goto('/app');
+    await page.waitForTimeout(3000);
     await page.click('[data-testid="treasury-tab"]');
     await page.waitForTimeout(5000);
 
@@ -250,7 +258,8 @@ test.describe('Treasury Network Requests', () => {
       }
     });
 
-    await page.goto('/dao/ysy5f-2qaaa-aaaap-qkmmq-cai');
+    await page.goto('/app');
+    await page.waitForTimeout(3000);
     await page.click('[data-testid="treasury-tab"]');
     await page.waitForTimeout(5000);
 
