@@ -6,6 +6,7 @@ mod orbit;
 mod orbit_accounts;
 mod orbit_assets;
 mod orbit_canisters;
+pub mod orbit_overview;
 mod orbit_permissions;
 pub mod orbit_requests;
 mod orbit_security;
@@ -33,6 +34,7 @@ pub use orbit_assets::{
     AssetResponse,
 };
 pub use orbit_canisters::*;
+pub use orbit_overview::*;
 pub use orbit_permissions::*;
 pub use orbit_requests::*;
 pub use orbit_security::*;

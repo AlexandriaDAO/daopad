@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import OrbitStationPlaceholder from '../../components/orbit/OrbitStationPlaceholder';
 
 export default function DaoOverview() {
-  const { token, orbitStation, identity, isAuthenticated } = useOutletContext<any>();
+  const { token, orbitStation, overviewStats, identity, isAuthenticated } = useOutletContext<any>();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="dao-overview">
       {/* Basic DAO information */}
       <Card className="bg-executive-darkGray border-executive-mediumGray">
         <CardHeader>
@@ -38,7 +38,74 @@ export default function DaoOverview() {
         </CardContent>
       </Card>
 
-      {/* Quick stats (if authenticated) */}
+      {/* Treasury Summary (visible to everyone) */}
+      {overviewStats && overviewStats.treasury_total_icp > 0 && (
+        <Card
+          className="bg-executive-darkGray border-executive-mediumGray"
+          data-testid="treasury-summary"
+        >
+          <CardHeader>
+            <CardTitle className="text-executive-ivory">💰 Treasury Summary</CardTitle>
+          </CardHeader>
+          <CardContent className="grid md:grid-cols-2 gap-4">
+            <StatItem
+              label="Total Value"
+              value={`${formatICP(Number(overviewStats.treasury_total_icp))} ICP`}
+              testId="treasury-total"
+            />
+            <StatItem
+              label="Accounts"
+              value={String(overviewStats.treasury_account_count)}
+              testId="account-count"
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Governance Activity (visible to everyone) */}
+      {overviewStats && (
+        <Card
+          className="bg-executive-darkGray border-executive-mediumGray"
+          data-testid="governance-activity"
+        >
+          <CardHeader>
+            <CardTitle className="text-executive-ivory">📊 Governance Activity</CardTitle>
+          </CardHeader>
+          <CardContent className="grid md:grid-cols-2 gap-4">
+            <StatItem
+              label="Active Proposals"
+              value={String(overviewStats.active_proposal_count)}
+              testId="active-proposals"
+            />
+            <StatItem
+              label="Recent (30 days)"
+              value={String(overviewStats.recent_proposal_count)}
+              testId="recent-proposals"
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Community Stats (visible to everyone) */}
+      {overviewStats && overviewStats.member_count > 0 && (
+        <Card
+          className="bg-executive-darkGray border-executive-mediumGray"
+          data-testid="community-stats"
+        >
+          <CardHeader>
+            <CardTitle className="text-executive-ivory">👥 Community</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <StatItem
+              label="Members"
+              value={String(overviewStats.member_count)}
+              testId="member-count"
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Your Participation (authenticated only) */}
       {isAuthenticated && (
         <Card className="bg-executive-darkGray border-executive-mediumGray">
           <CardHeader>
@@ -87,6 +154,28 @@ export default function DaoOverview() {
       </div>
     </div>
   );
+}
+
+// Helper component for stat display
+interface StatItemProps {
+  label: string;
+  value: string;
+  testId?: string;
+}
+
+function StatItem({ label, value, testId }: StatItemProps) {
+  return (
+    <div data-testid={testId}>
+      <p className="text-sm text-executive-lightGray/70">{label}</p>
+      <p className="text-2xl font-bold text-executive-ivory mt-1">{value}</p>
+    </div>
+  );
+}
+
+// Format ICP with proper decimals (8 decimals = e8s)
+function formatICP(e8s: number): string {
+  const icp = e8s / 100_000_000;
+  return icp.toFixed(2);
 }
 
 interface NavCardProps {
