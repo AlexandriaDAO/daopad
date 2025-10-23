@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useIdentity } from '../hooks/useIdentity';
 import { useLogout } from '../hooks/useLogout';
@@ -15,7 +16,6 @@ import { getKongLockerService } from '../services/backend';
 // Components
 import KongLockerSetup from '../components/KongLockerSetup';
 import TokenTabs from '../components/TokenTabs';
-import TokenDashboard from '../components/TokenDashboard';
 import PublicStatsStrip from '../components/PublicStatsStrip';
 import PublicActivityFeed from '../components/PublicActivityFeed';
 import TreasuryShowcase from '../components/TreasuryShowcase';
@@ -29,9 +29,9 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 function AppRoute() {
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [isCheckingKongLocker, setIsCheckingKongLocker] = useState(false);
-  const [selectedTokenId, setSelectedTokenId] = useState(null);
   const intervalRef = useRef(null);
 
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const { principal, isAuthenticated } = useSelector(state => state.auth);
   const { icpBalance, isLoading: balanceLoading } = useSelector(state => state.balance);
@@ -257,44 +257,22 @@ function AppRoute() {
           <TokenTabs identity={identity} />
         )
       ) : (
-        // ANONYMOUS USER PATH - Show public dashboard or selected token
+        // ANONYMOUS USER PATH - Show public dashboard
         <div className="space-y-8">
-          {selectedTokenId ? (
-            // Show selected token dashboard (read-only for anonymous users)
-            <div>
-              <Button
-                variant="ghost"
-                className="mb-4 text-executive-gold hover:text-executive-goldLight"
-                onClick={() => setSelectedTokenId(null)}
-              >
-                ← Back to Dashboard
-              </Button>
-              <TokenDashboard
-                tokenId={selectedTokenId}
-                identity={null}
-                votingPower={0}
-                isReadOnly={true}
-              />
-            </div>
-          ) : (
-            // Show public dashboard overview
-            <>
-              {/* Stats overview */}
-              <section>
-                <PublicStatsStrip />
-              </section>
+          {/* Stats overview */}
+          <section>
+            <PublicStatsStrip />
+          </section>
 
-              {/* Active proposals feed */}
-              <section>
-                <PublicActivityFeed />
-              </section>
+          {/* Active proposals feed */}
+          <section>
+            <PublicActivityFeed />
+          </section>
 
-              {/* Treasury showcase */}
-              <section>
-                <TreasuryShowcase onSelectToken={setSelectedTokenId} />
-              </section>
-            </>
-          )}
+          {/* Treasury showcase */}
+          <section>
+            <TreasuryShowcase onSelectToken={(tokenId) => navigate(`/dao/${tokenId}`)} />
+          </section>
         </div>
       )}
     </main>

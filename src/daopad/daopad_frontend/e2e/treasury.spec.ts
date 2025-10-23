@@ -1,5 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { authenticateForTests } from './helpers/auth';
+import { TEST_TOKEN_ID } from './helpers/treasury-test-setup';
 
 const BACKEND_CANISTER = process.env.VITE_BACKEND_CANISTER_ID || 'lwsav-iiaaa-aaaap-qp2qq-cai';
 
@@ -78,12 +79,8 @@ test.describe('Treasury Tab - E2E', () => {
   });
 
   test('should load Treasury tab without console errors', async () => {
-    await page.goto('/app');
-
-    // Wait for DAO selector to auto-select (give time for page to load)
-    await page.waitForTimeout(3000);
-
-    await page.click('[data-testid="treasury-tab"]');
+    // Navigate directly to treasury route
+    await page.goto(`/dao/${TEST_TOKEN_ID}/treasury`);
 
     await page.waitForSelector('[data-testid="treasury-overview"]', {
       timeout: 30000
@@ -99,9 +96,8 @@ test.describe('Treasury Tab - E2E', () => {
   });
 
   test('should display 4 treasury accounts', async () => {
-    await page.goto('/app');
-    await page.waitForTimeout(3000); // Wait for DAO auto-select
-    await page.click('[data-testid="treasury-tab"]');
+    // Navigate directly to treasury route
+    await page.goto(`/dao/${TEST_TOKEN_ID}/treasury`);
 
     await page.waitForSelector('[data-testid="treasury-account"]', {
       timeout: 30000,
@@ -121,9 +117,8 @@ test.describe('Treasury Tab - E2E', () => {
   });
 
   test('should display account balances', async () => {
-    await page.goto('/app');
-    await page.waitForTimeout(3000);
-    await page.click('[data-testid="treasury-tab"]');
+    // Navigate directly to treasury route
+    await page.goto(`/dao/${TEST_TOKEN_ID}/treasury`);
 
     await page.waitForSelector('[data-testid="treasury-account"]');
 
@@ -138,9 +133,8 @@ test.describe('Treasury Tab - E2E', () => {
   });
 
   test('should show asset breakdown (ICP/ALEX)', async () => {
-    await page.goto('/app');
-    await page.waitForTimeout(3000);
-    await page.click('[data-testid="treasury-tab"]');
+    // Navigate directly to treasury route
+    await page.goto(`/dao/${TEST_TOKEN_ID}/treasury`);
 
     await page.waitForSelector('[data-testid="treasury-account"]');
 
@@ -154,9 +148,8 @@ test.describe('Treasury Tab - E2E', () => {
   });
 
   test('should not show loading spinner indefinitely', async () => {
-    await page.goto('/app');
-    await page.waitForTimeout(3000);
-    await page.click('[data-testid="treasury-tab"]');
+    // Navigate directly to treasury route
+    await page.goto(`/dao/${TEST_TOKEN_ID}/treasury`);
 
     await page.waitForSelector('[data-testid="loading-spinner"]', {
       state: 'detached',
@@ -168,9 +161,8 @@ test.describe('Treasury Tab - E2E', () => {
   });
 
   test('should handle network errors gracefully', async () => {
-    await page.goto('/app');
-    await page.waitForTimeout(3000);
-    await page.click('[data-testid="treasury-tab"]');
+    // Navigate directly to treasury route
+    await page.goto(`/dao/${TEST_TOKEN_ID}/treasury`);
 
     await Promise.race([
       page.waitForSelector('[data-testid="treasury-account"]', { timeout: 30000 }),
@@ -189,15 +181,13 @@ test.describe('Treasury Tab - E2E', () => {
   });
 
   test('should capture React component errors', async () => {
-    await page.goto('/app');
-    await page.waitForTimeout(3000);
-
     await page.exposeFunction('logReactError', (error: string) => {
       console.error('React error:', error);
       consoleErrors.push(`React: ${error}`);
     });
 
-    await page.click('[data-testid="treasury-tab"]');
+    // Navigate directly to treasury route
+    await page.goto(`/dao/${TEST_TOKEN_ID}/treasury`);
     await page.waitForTimeout(5000);
 
     const errorBoundary = await page.locator('[data-testid="error-boundary"]').count() > 0;
@@ -230,9 +220,8 @@ test.describe('Treasury Network Requests', () => {
       }
     });
 
-    await page.goto('/app');
-    await page.waitForTimeout(3000);
-    await page.click('[data-testid="treasury-tab"]');
+    // Navigate directly to treasury route
+    await page.goto(`/dao/${TEST_TOKEN_ID}/treasury`);
     await page.waitForTimeout(5000);
 
     expect(networkCalls.length).toBeGreaterThan(0);
@@ -258,9 +247,8 @@ test.describe('Treasury Network Requests', () => {
       }
     });
 
-    await page.goto('/app');
-    await page.waitForTimeout(3000);
-    await page.click('[data-testid="treasury-tab"]');
+    // Navigate directly to treasury route
+    await page.goto(`/dao/${TEST_TOKEN_ID}/treasury`);
     await page.waitForTimeout(5000);
 
     expect(accountsData).not.toBeNull();
