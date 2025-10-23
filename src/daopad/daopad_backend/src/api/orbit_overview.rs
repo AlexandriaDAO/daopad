@@ -1,5 +1,6 @@
 use candid::{Nat, Principal, CandidType, Deserialize};
 use ic_cdk::update;
+use std::collections::HashMap;
 use crate::storage::state::{
     TOKEN_ORBIT_STATIONS, TREASURY_PROPOSALS,
     ORBIT_REQUEST_PROPOSALS, ORBIT_PROPOSALS
@@ -12,6 +13,7 @@ use crate::types::orbit::{
     UserDTO, Account,
 };
 use crate::proposals::types::ProposalStatus;
+use crate::api::orbit_accounts::{Asset, ListAssetsInput, ListAssetsResult};
 
 /// Aggregate overview stats for a DAO
 /// Provides key metrics without requiring full treasury data
@@ -59,13 +61,14 @@ pub async fn get_dao_overview(
     let accounts_future = list_accounts_call(station_id);
     let users_future = list_users_call(station_id);
     let system_info_future = system_info_call(station_id);
+    let assets_future = list_assets_call(station_id);
 
     // Execute in parallel (critical performance optimization)
-    let (accounts_result, users_result, system_info_result) =
-        futures::join!(accounts_future, users_future, system_info_future);
+    let (accounts_result, users_result, system_info_result, assets_result) =
+        futures::join!(accounts_future, users_future, system_info_future, assets_future);
 
     // 3. Process Orbit results
-    let (treasury_total, account_count) = calculate_treasury_total(&accounts_result);
+    let (treasury_total, account_count) = calculate_treasury_total(&accounts_result, &assets_result);
     let member_count = users_result.as_ref()
         .map(|users| users.len() as u64)
         .unwrap_or(0);
@@ -218,30 +221,60 @@ async fn system_info_call(station_id: Principal) -> Result<SystemInfo, String> {
     }
 }
 
+/// List all assets in Orbit Station (for symbol lookup)
+async fn list_assets_call(station_id: Principal) -> Result<Vec<Asset>, String> {
+    let input = ListAssetsInput {};
+
+    let result: Result<(ListAssetsResult,), _> =
+        ic_cdk::call(station_id, "list_assets", (input,)).await;
+
+    match result {
+        Ok((ListAssetsResult::Ok { assets },)) => Ok(assets),
+        Ok((ListAssetsResult::Err(e),)) => {
+            Err(format!("List assets error: {:?}", e))
+        }
+        Err((code, msg)) => {
+            Err(format!("Call failed: {:?} - {}", code, msg))
+        }
+    }
+}
+
 // ============================================================================
 // Helper Functions: Treasury Calculation
 // ============================================================================
 
 /// Calculate total ICP balance and account count
-fn calculate_treasury_total(accounts_result: &Result<Vec<Account>, String>) -> (u64, u64) {
+/// Filters assets by symbol == "ICP" to avoid summing non-ICP tokens
+fn calculate_treasury_total(
+    accounts_result: &Result<Vec<Account>, String>,
+    assets_result: &Result<Vec<Asset>, String>
+) -> (u64, u64) {
     let Ok(accounts) = accounts_result else {
         return (0, 0);
     };
 
     let account_count = accounts.len() as u64;
 
-    // We need to fetch assets to know which are ICP
-    // For now, sum ALL balances and assume most valuable is ICP
-    // TODO: Could be enhanced to filter by asset.symbol == "ICP" with list_assets call
+    // Build asset_id -> symbol map for ICP filtering
+    let asset_map: HashMap<String, String> = match assets_result {
+        Ok(assets) => assets.iter()
+            .map(|a| (a.id.clone(), a.symbol.clone()))
+            .collect(),
+        Err(_) => HashMap::new(),
+    };
+
+    // Sum only ICP balances (filter by symbol, not decimals)
     let mut total_icp_e8s = 0u64;
 
     for account in accounts {
         for account_asset in &account.assets {
-            if let Some(balance) = &account_asset.balance {
-                let balance_u64 = nat_to_u64(&balance.balance);
-                // Heuristic: ICP has 8 decimals
-                if balance.decimals == 8 {
-                    total_icp_e8s = total_icp_e8s.saturating_add(balance_u64);
+            // Check if this asset is ICP by symbol
+            if let Some(symbol) = asset_map.get(&account_asset.asset_id) {
+                if symbol == "ICP" {
+                    if let Some(balance) = &account_asset.balance {
+                        let balance_u64 = nat_to_u64(&balance.balance);
+                        total_icp_e8s = total_icp_e8s.saturating_add(balance_u64);
+                    }
                 }
             }
         }
