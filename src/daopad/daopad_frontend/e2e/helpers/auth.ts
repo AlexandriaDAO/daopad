@@ -1,4 +1,6 @@
 import { Page } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Handle Internet Identity authentication
@@ -7,10 +9,24 @@ import { Page } from '@playwright/test';
  * This helper just navigates to /app and optionally verifies auth
  */
 export async function authenticateForTests(page: Page) {
+  // Check if .auth/user.json exists before navigating
+  const authFilePath = path.join(__dirname, '../..', '.auth/user.json');
+
+  if (!fs.existsSync(authFilePath)) {
+    throw new Error(
+      '\n❌ Authentication not configured!\n\n' +
+      'Please run the authentication setup first:\n' +
+      '  npx playwright test e2e/manual-auth-setup.spec.ts --headed\n\n' +
+      'Or use the convenience script:\n' +
+      '  ./setup-auth.sh\n\n' +
+      'See PLAYWRIGHT_AUTH_SETUP.md for details.'
+    );
+  }
+
   // Auth already loaded by Playwright - just navigate
   await page.goto('/app', { waitUntil: 'networkidle' });
 
-  // Optional: Verify auth was actually loaded
+  // Verify auth was actually loaded
   const authPresent = await page.evaluate(() => {
     // Check for any IC-related localStorage keys
     const keys = Object.keys(localStorage);
@@ -19,7 +35,8 @@ export async function authenticateForTests(page: Page) {
 
   if (!authPresent) {
     console.warn('⚠️  Warning: No IC identity found in localStorage');
-    // Don't throw - maybe auth works differently or page needs more time
+    console.warn('    Session may have expired. Try re-running setup:');
+    console.warn('    npx playwright test e2e/manual-auth-setup.spec.ts --headed');
   }
 
   // Wait a bit for any async auth initialization
