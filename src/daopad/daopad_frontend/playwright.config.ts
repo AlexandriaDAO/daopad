@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const authFile = '.auth/user.json';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
@@ -14,21 +16,28 @@ export default defineConfig({
 
   use: {
     baseURL: process.env.TEST_BASE_URL || 'https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io',
-    // No auth needed - site is public for read-only access
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
 
   projects: [
+    // Setup project - run once to authenticate
+    {
+      name: 'setup',
+      testMatch: /.*\.setup\.ts/,
+    },
+    // Tests with authentication
     {
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
+        storageState: authFile,
         launchOptions: {
           args: ['--enable-logging', '--v=1']
         }
       },
+      dependencies: ['setup'],
     },
   ],
 
