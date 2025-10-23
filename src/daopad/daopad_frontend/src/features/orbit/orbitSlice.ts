@@ -90,17 +90,34 @@ export const fetchOrbitAccounts = createAsyncThunk(
 
                 if (assetsResult.success && assetsResult.data) {
                   // Map assets to the format expected by selectors
-                  const assetsWithSymbols = assetsResult.data.assets.map(asset => ({
-                    id: asset.asset_id,
-                    asset_id: asset.asset_id,
-                    symbol: asset.symbol,  // ✅ CORRECT SYMBOL FROM ORBIT!
-                    decimals: asset.decimals,
-                    balance: {
-                      balance: BigInt(asset.balance),
-                      decimals: asset.decimals,
-                      asset_id: asset.asset_id,
+                  const assetsWithSymbols = assetsResult.data.assets.map(asset => {
+                    // Handle balance conversion safely
+                    let balanceValue = 0n;
+                    try {
+                      if (typeof asset.balance === 'bigint') {
+                        balanceValue = asset.balance;
+                      } else if (typeof asset.balance === 'string' && asset.balance) {
+                        balanceValue = BigInt(asset.balance);
+                      } else if (typeof asset.balance === 'number') {
+                        balanceValue = BigInt(Math.floor(asset.balance));
+                      }
+                    } catch (e) {
+                      console.warn(`Invalid balance for asset ${asset.asset_id}:`, asset.balance, e);
+                      balanceValue = 0n;
                     }
-                  }));
+
+                    return {
+                      id: asset.asset_id,
+                      asset_id: asset.asset_id,
+                      symbol: asset.symbol,
+                      decimals: asset.decimals,
+                      balance: {
+                        balance: balanceValue,
+                        decimals: asset.decimals,
+                        asset_id: asset.asset_id,
+                      }
+                    };
+                  });
 
                   return {
                     ...account,
