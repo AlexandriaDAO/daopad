@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 const BACKEND_CANISTER = "lwsav-iiaaa-aaaap-qp2qq-cai";
 
 export default function AdminRemovalActions({ tokenId, stationId, identity }) {
+    const isAnonymous = !identity;
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [removing, setRemoving] = useState({});
@@ -145,6 +146,14 @@ export default function AdminRemovalActions({ tokenId, stationId, identity }) {
                     <UserMinus className="w-5 h-5" />
                     Remove Non-Backend Admins
                 </CardTitle>
+                {isAnonymous && (
+                    <Alert className="mt-2 border-yellow-500 bg-yellow-950/50">
+                        <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                        <AlertDescription className="text-yellow-200">
+                            Read-only mode: Sign in to manage admin users
+                        </AlertDescription>
+                    </Alert>
+                )}
             </CardHeader>
             <CardContent className="space-y-4">
                 <Alert className="border-orange-500">
@@ -168,11 +177,11 @@ export default function AdminRemovalActions({ tokenId, stationId, identity }) {
                         </div>
                         <Button
                             onClick={() => handleRemoveAdmin(user)}
-                            disabled={removing[user.id]}
+                            disabled={isAnonymous || removing[user.id]}
                             variant="destructive"
                             size="sm"
                         >
-                            {removing[user.id] ? 'Creating Proposal...' : 'Remove Admin'}
+                            {isAnonymous ? '🔒 Sign In to Remove' : (removing[user.id] ? 'Creating Proposal...' : 'Remove Admin')}
                         </Button>
                     </div>
                 ))}
@@ -180,12 +189,12 @@ export default function AdminRemovalActions({ tokenId, stationId, identity }) {
                 {users.length > 1 && (
                     <Button
                         onClick={handleRemoveAllAdmins}
-                        disabled={loading}
+                        disabled={isAnonymous || loading}
                         variant="outline"
                         className="w-full border-orange-500 text-orange-300 hover:bg-orange-950"
                     >
                         <Users className="w-4 h-4 mr-2" />
-                        Remove All {users.length} Admins (Batch)
+                        {isAnonymous ? '🔒 Sign In to Remove All' : `Remove All ${users.length} Admins (Batch)`}
                     </Button>
                 )}
             </CardContent>

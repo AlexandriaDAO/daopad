@@ -40,7 +40,7 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
     const [completedCount, setCompletedCount] = useState(0);
 
     const fetchSecurityStatus = async () => {
-        if (!stationId || !identity) return;
+        if (!stationId) return;
 
         setLoading(true);
         setError(null);
@@ -54,10 +54,19 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
             asset_management: null,
             system_configuration: null,
             operational_permissions: null,
+            // NEW: 8 additional bypass detection checks
+            controller_manipulation: null,
+            external_canister_calls: null,
+            system_restore: null,
+            addressbook_injection: null,
+            monitoring_drain: null,
+            snapshot_operations: null,
+            named_rule_bypass: null,
+            remove_operations: null,
         });
 
         try {
-            const securityService = new OrbitSecurityService(identity);
+            const securityService = new OrbitSecurityService(identity || null);
 
             // Progress callback to update UI as checks complete
             const onProgress = (progress) => {
@@ -74,7 +83,12 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
             );
 
             if (result.success) {
-                setSecurityData(result.data);
+                // Handle BigInt in decentralization_score
+                const data = result.data;
+                if (data.decentralization_score && typeof data.decentralization_score === 'bigint') {
+                    data.decentralization_score = Number(data.decentralization_score);
+                }
+                setSecurityData(data);
             } else {
                 setError(result.error || 'Failed to verify security status');
             }
@@ -87,10 +101,10 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
     };
 
     useEffect(() => {
-        if (stationId && identity) {
+        if (stationId) {
             fetchSecurityStatus();
         }
-    }, [stationId, identity]);
+    }, [stationId]);
 
 
     if (loading) {
@@ -187,6 +201,7 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
                 <AutoApprovedSetupWizard
                     tokenId={tokenId}
                     stationId={stationId}
+                    identity={identity}
                     onComplete={fetchSecurityStatus}
                 />
             )}
