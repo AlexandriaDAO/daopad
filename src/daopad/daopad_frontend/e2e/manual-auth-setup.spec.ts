@@ -53,10 +53,9 @@ test('manual auth setup', async ({ page, context }) => {
     }
 
     console.log('✅ Authentication detected!');
-    console.log('   Now navigating to ALEX DAO page to complete auth setup...');
+    console.log('   Waiting for app to fully load...');
 
-    // Navigate to a specific DAO page to ensure full auth state is established
-    await page.goto('/app/dao/ysy5f-2qaaa-aaaap-qkmmq-cai');
+    // Stay on /app and wait for full auth state
     await page.waitForLoadState('networkidle');
 
     // Wait a bit for any async auth initialization
