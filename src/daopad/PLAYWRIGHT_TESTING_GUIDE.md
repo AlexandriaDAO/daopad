@@ -109,27 +109,26 @@ await page.goto('https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io/dao/ysy5f-2qaaa-aaa
 
 ---
 
-## Current Test Status (as of PR #99)
+## Current Test Status (as of PR #100)
 
 | Tab | Status | Tests Passing | Notes |
 |-----|--------|---------------|-------|
 | **Overview** | ✅ Working | 7/7 (100%) | Fully functional for anonymous users |
 | **Activity** | ✅ Working | 9/10 (90%) | One perf timeout, but functionally correct |
 | **Treasury** | ✅ Working | Unknown | Fixed in PR #95, likely passing |
+| **Settings** | ✅ Working | 6/6 (100%) | Fixed token ID + test assertions (PR #100) |
 | **Canisters** | ❌ Broken | 0/3 (0%) | Wrong token ID in tests |
-| **Settings** | ❌ Broken | 0/2 (0%) | Wrong token ID in tests |
 | **Agreement** | ⚠️ Untested | - | No E2E tests yet |
 
 **Performance Expectations**:
 - ✅ **10-13s load time**: Acceptable (IC queries + Redux + rendering)
 - ⚠️ **30s+ timeout**: Likely wrong token ID or broken data loading
-- ❌ **2m timeout**: Critical failure (security dashboard is exception - takes 60s)
+- ❌ **2m timeout**: Critical failure (security dashboard is exception - takes ~22s)
 
 **Next Steps**:
-1. Fix Canisters tab (update token ID in tests)
-2. Fix Settings tab (update token ID in tests)
-3. Add Agreement tab tests
-4. Consider performance optimizations after all tabs work
+1. Fix Canisters tab (update token ID in tests - same fix as Settings/PR #100)
+2. Add Agreement tab tests
+3. Consider performance optimizations after all tabs work
 
 ---
 
@@ -304,6 +303,43 @@ baseURL: 'https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io'
 cat canister_ids.json | jq '.daopad_frontend.ic'
 # "l7rlj-6aaaa-aaaap-qp2ra-cai" ← use this!
 ```
+
+### 2️⃣b Test Assertion Mismatch (Quick Fix Pattern)
+
+**Symptom**: Test fails but `error-context.md` shows the feature IS working - just checking for wrong text/selector.
+
+**Example from PR #100**:
+```yaml
+# error-context.md page snapshot shows:
+- heading "0% Decentralized" [level=2]
+- heading "Admin User Count" [level=4]
+
+# But test was looking for:
+await expect(page.locator('text=Decentralization Score')).toBeVisible();
+await expect(page.locator('text=Admin Control')).toBeVisible();
+```
+
+**Quick Fix Process**:
+1. ✅ Check `test-results/.../error-context.md` FIRST (more reliable than screenshots)
+2. ✅ Search page snapshot for actual text: "0% Decentralized" exists!
+3. ✅ Fix test assertion to match actual UI implementation
+4. ✅ Re-run tests (no deployment needed - only fixing test code)
+
+**When This Pattern Applies**:
+- ✅ Page snapshot shows data loaded correctly
+- ✅ No console errors captured
+- ✅ Redux actions show fulfilled state
+- ❌ Just the assertion text/selector is wrong
+
+**When This DOESN'T Apply** (real application bug):
+- ❌ Snapshot shows loading state stuck
+- ❌ Console errors present
+- ❌ Redux shows rejected actions
+- ❌ Network requests failed
+
+**Time Saved**: 2-5 minutes per iteration by avoiding unnecessary deployments.
+
+**Prevention**: When writing tests, copy exact text from deployed UI rather than guessing what it "should" say.
 
 ### 3️⃣ Surface-Level Assertions (False Confidence)
 
