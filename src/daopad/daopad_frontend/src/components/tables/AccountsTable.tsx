@@ -45,10 +45,10 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
 
   // Fetch accounts on mount and when dependencies change
   useEffect(() => {
-    if (stationId && identity && tokenId) {
+    if (stationId && tokenId) {
       dispatch(fetchOrbitAccounts({
         stationId,
-        identity,
+        identity: identity || null,
         tokenId,
         searchQuery,
         pagination
@@ -64,7 +64,7 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
   const handleRefresh = () => {
     dispatch(fetchOrbitAccounts({
       stationId,
-      identity,
+      identity: identity || null,
       tokenId,
       searchQuery,
       pagination
@@ -258,7 +258,7 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
                     </TableRow>
                   ) : (
                     accounts.map((account) => (
-                      <TableRow key={account.id}>
+                      <TableRow key={account.id} data-testid="treasury-account">
                         <TableCell className="font-medium">
                           {account.name || 'Unnamed Account'}
                         </TableCell>
