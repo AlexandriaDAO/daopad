@@ -34,36 +34,47 @@ test.describe('App Route - Public Dashboard Loading', () => {
     page.on('response', async (response) => {
       const url = response.url();
 
-      // Capture all IC canister calls
-      if (url.includes('lwsav-iiaaa-aaaap-qp2qq-cai') ||  // DAOPad backend
-          url.includes('ic0.app/api') ||
-          url.includes('icp0.io/api')) {
+      // Capture all IC canister calls (both icp0.io and ic0.app)
+      const isICRequest = (url.includes('icp0.io/api') || url.includes('ic0.app/api'));
+
+      if (isICRequest) {
+        // DEBUG: Log to see what Playwright actually captures
+        console.log('[DEBUG] IC Request:', url.substring(url.indexOf('canister/') || 0));
+
+        let responseText = '[binary]';
 
         try {
-          const responseText = await response.text();
-          const entry = {
-            url: url,
-            status: response.status(),
-            timestamp: Date.now(),
-            response: responseText
-          };
-
-          networkRequests.push(entry);
-
-          // Track specific public dashboard methods
-          if (url.includes('get_system_stats') ||
-              url.includes('list_active') ||
-              url.includes('list_all_stations') ||
-              url.includes('list_all_registrations')) {
-            publicDashboardCalls.push(entry);
-            console.log(`[Public Dashboard API] ${response.status()} ${extractMethodName(url)}`);
-          }
-
-          if (!response.ok()) {
-            console.error(`[Network Error] ${url}:`, responseText.substring(0, 500));
-          }
+          responseText = await response.text();
         } catch (e) {
-          // Binary response, skip
+          // CBOR binary response - that's expected for IC calls
+          // Still count the request even if we can't read the body
+        }
+
+        const entry = {
+          url: url,
+          status: response.status(),
+          timestamp: Date.now(),
+          response: responseText
+        };
+
+        networkRequests.push(entry);
+
+        // Track calls to DAOPad backend canister
+        if (url.includes('lwsav-iiaaa-aaaap-qp2qq-cai')) {
+          publicDashboardCalls.push(entry);
+          console.log(`[Public Dashboard API] ${response.status()} DAOPad backend`);
+        }
+
+        // Track calls to other canisters (Kong Locker, tokens, etc)
+        if (url.includes('eazgb-giaaa-aaaap-qqc2q-cai') ||  // Kong Locker
+            url.includes('ysy5f-2qaaa-aaaap-qkmmq-cai') ||  // ALEX token
+            url.includes('b3d2q-ayaaa-aaaap-qqcfq-cai')) {   // Another token
+          publicDashboardCalls.push(entry);
+          console.log(`[Dashboard Service Call] ${response.status()} ${extractCanisterId(url)}`);
+        }
+
+        if (!response.ok()) {
+          console.error(`[Network Error] ${url}:`, responseText.substring(0, 500));
         }
       }
     });
@@ -116,7 +127,7 @@ test.describe('App Route - Public Dashboard Loading', () => {
 
       console.log('\n=== REDUX ACTIONS ===');
       const reduxLog = await page.evaluate(() => (window as any).__REDUX_DISPATCH_LOG__ || []);
-      const publicDashboardActions = reduxLog.filter((a: any) => a.type.includes('publicDashboard'));
+      const publicDashboardActions = reduxLog.filter((a: any) => a.type && typeof a.type === 'string' && a.type.includes('publicDashboard'));
       if (publicDashboardActions.length === 0) {
         console.log('No publicDashboard Redux actions found');
       } else {
@@ -176,11 +187,13 @@ test.describe('App Route - Public Dashboard Loading', () => {
     }
 
     // Verify public dashboard API calls succeeded
-    expect(publicDashboardCalls.length).toBeGreaterThan(0);
+    // Expect at least 3 calls (proposals, stations, registrations from daoSlice.ts)
+    expect(publicDashboardCalls.length).toBeGreaterThanOrEqual(3);
     const failedCalls = publicDashboardCalls.filter(c => c.status >= 400);
     if (failedCalls.length > 0) {
       throw new Error(`Failed API calls found:\n${failedCalls.map(c => `${c.status} ${c.url}`).join('\n')}`);
     }
+    console.log(`✓ Captured ${publicDashboardCalls.length} IC canister calls`);
   });
 
   test('should fetch data from all 4 backend services', async ({ page }) => {
@@ -192,18 +205,14 @@ test.describe('App Route - Public Dashboard Loading', () => {
     // Wait 15 seconds for all requests to complete
     await page.waitForTimeout(15000);
 
-    // Check for specific method calls
-    const methodCalls = publicDashboardCalls.map(c => extractMethodName(c.url));
-
-    console.log('Captured method calls:', methodCalls);
-
-    // Note: The actual method names may vary based on IC canister implementation
-    // We're checking that we got multiple different API calls
+    // Verify we captured IC canister calls
     expect(publicDashboardCalls.length).toBeGreaterThan(0);
 
     // All should return 200
     const failedCalls = publicDashboardCalls.filter(call => call.status >= 400);
     expect(failedCalls.length).toBe(0);
+
+    console.log(`✓ Captured ${publicDashboardCalls.length} IC canister calls, all successful`);
   });
 
   test('should update Redux state with dashboard data', async ({ page }) => {
@@ -355,4 +364,9 @@ function extractMethodName(url: string): string {
   } catch {
     return 'unknown';
   }
+}
+
+function extractCanisterId(url: string): string {
+  const match = url.match(/canister\/([a-z0-9-]+)/);
+  return match ? match[1] : 'unknown';
 }
