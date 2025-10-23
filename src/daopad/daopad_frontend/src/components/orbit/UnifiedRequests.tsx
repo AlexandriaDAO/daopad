@@ -56,14 +56,15 @@ const UnifiedRequests = ({ tokenId, identity }) => {
       filtersPage: filters.page
     });
 
-    if (!tokenId || !identity) return;
+    if (!tokenId) return; // ✅ Allow anonymous viewing - identity only required for voting
 
     try {
       setLoading(true);
       setError(null);
 
       // Use backend proxy - it already works!
-      const backend = getProposalService(identity);
+      // Identity is optional - null for anonymous viewing, required for voting
+      const backend = getProposalService(identity || null);
       const actor = await backend.getActor();
 
       // Get domain filters
@@ -107,7 +108,15 @@ const UnifiedRequests = ({ tokenId, identity }) => {
       if ('Ok' in result) {
         const response = result.Ok;
         // Backend already returns properly formatted data
-        let allRequests = response.requests || [];
+        // Convert BigInt values to numbers for display
+        let allRequests = (response.requests || []).map(request => ({
+          ...request,
+          yes_votes: typeof request.yes_votes === 'bigint' ? Number(request.yes_votes) : request.yes_votes,
+          no_votes: typeof request.no_votes === 'bigint' ? Number(request.no_votes) : request.no_votes,
+          total_voting_power: typeof request.total_voting_power === 'bigint' ? Number(request.total_voting_power) : request.total_voting_power,
+          created_at: typeof request.created_at === 'bigint' ? Number(request.created_at) : request.created_at,
+          expires_at: typeof request.expires_at === 'bigint' ? Number(request.expires_at) : request.expires_at,
+        }));
 
         // Also fetch treasury proposal
         try {
@@ -122,16 +131,17 @@ const UnifiedRequests = ({ tokenId, identity }) => {
               : statusVariant;
 
             // Convert proposal to request-like format for display
+            // Convert BigInt values to numbers
             const proposalAsRequest = {
               id: treasuryResult.data.orbit_request_id,
               title: `Treasury Transfer Proposal`,
               status: statusKey === 'Active' ? 'Created' : statusKey,
               operation: { Transfer: null },
-              created_at: treasuryResult.data.created_at,
-              expires_at: treasuryResult.data.expires_at,
-              yes_votes: treasuryResult.data.yes_votes,
-              no_votes: treasuryResult.data.no_votes,
-              total_voting_power: treasuryResult.data.total_voting_power,
+              created_at: typeof treasuryResult.data.created_at === 'bigint' ? Number(treasuryResult.data.created_at) : treasuryResult.data.created_at,
+              expires_at: typeof treasuryResult.data.expires_at === 'bigint' ? Number(treasuryResult.data.expires_at) : treasuryResult.data.expires_at,
+              yes_votes: typeof treasuryResult.data.yes_votes === 'bigint' ? Number(treasuryResult.data.yes_votes) : treasuryResult.data.yes_votes,
+              no_votes: typeof treasuryResult.data.no_votes === 'bigint' ? Number(treasuryResult.data.no_votes) : treasuryResult.data.no_votes,
+              total_voting_power: typeof treasuryResult.data.total_voting_power === 'bigint' ? Number(treasuryResult.data.total_voting_power) : treasuryResult.data.total_voting_power,
               is_treasury_proposal: true,
               proposal_id: treasuryResult.data.id
             };

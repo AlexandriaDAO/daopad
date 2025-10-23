@@ -76,22 +76,32 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
 
   // Fetch proposal for this Orbit request
   const fetchProposal = useCallback(async () => {
-    if (!identity || !tokenId || !orbitRequestId) {
+    if (!tokenId || !orbitRequestId) {
       setLoading(false);
       return;
     }
+    // ✅ Proposals viewable without identity - voting requires auth
 
     setLoading(true);
     setError(null);
     try {
-      const proposalService = getProposalService(identity);
+      const proposalService = getProposalService(identity || null);
       const result = await proposalService.getOrbitRequestProposal(
         Principal.fromText(tokenId),
         orbitRequestId
       );
 
-      if (result.success) {
-        setProposal(result.data);
+      if (result.success && result.data) {
+        // Convert BigInt values to numbers for display
+        const proposal = {
+          ...result.data,
+          yes_votes: typeof result.data.yes_votes === 'bigint' ? Number(result.data.yes_votes) : result.data.yes_votes,
+          no_votes: typeof result.data.no_votes === 'bigint' ? Number(result.data.no_votes) : result.data.no_votes,
+          total_voting_power: typeof result.data.total_voting_power === 'bigint' ? Number(result.data.total_voting_power) : result.data.total_voting_power,
+          created_at: typeof result.data.created_at === 'bigint' ? Number(result.data.created_at) : result.data.created_at,
+          expires_at: typeof result.data.expires_at === 'bigint' ? Number(result.data.expires_at) : result.data.expires_at,
+        };
+        setProposal(proposal);
         // Note: hasVoted detection happens on vote attempt (backend returns AlreadyVoted error)
         // We don't have a query endpoint for this, so we detect it during voting
       } else {
