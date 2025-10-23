@@ -92,7 +92,7 @@ export function VoteButtons({
 
   if (hasVoted || localHasVoted) {
     return (
-      <div className="text-sm text-muted-foreground">
+      <div className="text-sm text-muted-foreground" data-testid="vote-already-voted">
         ✓ You have already voted (VP: {userVotingPower.toLocaleString()})
       </div>
     );
@@ -100,20 +100,21 @@ export function VoteButtons({
 
   if (userVotingPower === 0) {
     return (
-      <div className="text-sm text-muted-foreground">
+      <div className="text-sm text-muted-foreground" data-testid="vote-no-power">
         No voting power - lock LP tokens to participate
       </div>
     );
   }
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2" data-testid="vote-buttons">
       <Button
         variant="default"
         size="sm"
         className="flex-1 bg-green-600 hover:bg-green-700"
         onClick={() => handleVote(true)}
         disabled={disabled || voting !== null}
+        data-testid="vote-yes-button"
       >
         {voting === 'yes' ? (
           <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Voting...</>
@@ -128,6 +129,7 @@ export function VoteButtons({
         className="flex-1 border-red-600 text-red-600 hover:bg-red-50"
         onClick={() => handleVote(false)}
         disabled={disabled || voting !== null}
+        data-testid="vote-no-button"
       >
         {voting === 'no' ? (
           <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Voting...</>

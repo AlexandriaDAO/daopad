@@ -71,15 +71,15 @@ const DaoProposals: React.FC<DaoProposalsProps> = ({ identity, dao }) => {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
-    if (dao?.station_canister?.[0] && identity && isAuthenticated) {
-      fetchProposals();
+    if (dao?.station_canister?.[0]) {
+      fetchProposals(); // ✅ Works for anonymous users - no identity required to view proposals
       // Note: fetchLPPositions() disabled - backend method doesn't exist yet
       // TODO: Implement getMyLpPositions in getProposalService
     } else {
       setLoading(false);
       setProposals([]);
     }
-  }, [dao, identity, isAuthenticated, filter]);
+  }, [dao, filter]); // Removed identity and isAuthenticated from dependencies
 
   // Disabled: Backend method getMyLpPositions doesn't exist yet
   // TODO: Implement this method in getProposalService when LP position tracking is added
@@ -123,11 +123,21 @@ const DaoProposals: React.FC<DaoProposalsProps> = ({ identity, dao }) => {
 
     try {
       // Create OrbitStationService with the DAO's station
-      const orbitService = new OrbitStationService(identity, dao.station_canister[0]);
+      // Identity is optional - null for anonymous viewing, required for voting
+      const orbitService = new OrbitStationService(identity || null, dao.station_canister[0]);
       const result = await orbitService.listRequests(filter);
 
       if (result.success) {
-        setProposals(result.data || []);
+        // Convert BigInt values to numbers for display
+        const proposals = (result.data || []).map(proposal => ({
+          ...proposal,
+          yes_votes: typeof proposal.yes_votes === 'bigint' ? Number(proposal.yes_votes) : proposal.yes_votes,
+          no_votes: typeof proposal.no_votes === 'bigint' ? Number(proposal.no_votes) : proposal.no_votes,
+          total_voting_power: typeof proposal.total_voting_power === 'bigint' ? Number(proposal.total_voting_power) : proposal.total_voting_power,
+          created_at: typeof proposal.created_at === 'bigint' ? Number(proposal.created_at) : proposal.created_at,
+          expires_at: typeof proposal.expires_at === 'bigint' ? Number(proposal.expires_at) : proposal.expires_at,
+        }));
+        setProposals(proposals);
       } else {
         setError(result.error || 'Failed to fetch proposals');
       }
@@ -320,11 +330,12 @@ const DaoProposals: React.FC<DaoProposalsProps> = ({ identity, dao }) => {
           {proposals.map((proposal) => (
             <ProposalCard
               key={proposal.id}
+              data-testid="dao-proposal"
               proposal={proposal}
               onClick={handleProposalClick}
               onApprove={handleApprove}
               onReject={handleReject}
-              canVote={dao.is_registered}
+              canVote={identity && isAuthenticated && dao.is_registered}
               isVotingLoading={votingLoading[proposal.id]}
             />
           ))}
