@@ -8,6 +8,7 @@ import DAOTransitionChecklist from './DAOTransitionChecklist';
 import RequestPoliciesView from './RequestPoliciesView';
 import AdminRemovalActions from './AdminRemovalActions';
 import AutoApprovedSetupWizard from './AutoApprovedSetupWizard';
+import PermissionFixActions from './PermissionFixActions';
 import { generateMarkdownReport, generateJSONReport, downloadReport } from '../../utils/reportGenerator';
 
 const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
@@ -212,6 +213,15 @@ const SecurityDashboard = ({ stationId, tokenSymbol, identity, tokenId }) => {
                 stationId={stationId}
                 identity={identity}
             />
+
+            {/* Permission Fix Actions - Show if there are treasury control issues */}
+            {securityData?.issues?.some(i => i.category === 'Treasury Control') && (
+                <PermissionFixActions
+                    tokenId={tokenId}
+                    stationId={stationId}
+                    identity={identity}
+                />
+            )}
 
             {/* Existing checklist */}
             <DAOTransitionChecklist
