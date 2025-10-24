@@ -266,11 +266,19 @@ pub async fn vote_on_proposal(
     let now = time();
     if now > proposal.expires_at {
         proposal.status = ProposalStatus::Expired;
+        let proposal_id = proposal.id;
         UNIFIED_PROPOSALS.with(|proposals| {
             proposals
                 .borrow_mut()
                 .remove(&(StorablePrincipal(token_id), orbit_request_id.clone()));
         });
+
+        // Clean up all votes for this expired proposal to prevent memory leak
+        UNIFIED_PROPOSAL_VOTES.with(|votes| {
+            let mut votes_map = votes.borrow_mut();
+            votes_map.retain(|(pid, _), _| *pid != proposal_id);
+        });
+
         return Err(ProposalError::Expired);
     }
 
@@ -348,6 +356,7 @@ pub async fn vote_on_proposal(
         // Single approval function
         approve_orbit_request(station_id, &proposal.orbit_request_id).await?;
         proposal.status = ProposalStatus::Executed;
+        let proposal_id = proposal.id;
 
         // Remove from active proposals
         UNIFIED_PROPOSALS.with(|proposals| {
@@ -356,13 +365,19 @@ pub async fn vote_on_proposal(
                 .remove(&(StorablePrincipal(token_id), orbit_request_id.clone()));
         });
 
+        // Clean up all votes for this executed proposal to prevent memory leak
+        UNIFIED_PROPOSAL_VOTES.with(|votes| {
+            let mut votes_map = votes.borrow_mut();
+            votes_map.retain(|(pid, _), _| *pid != proposal_id);
+        });
+
         ic_cdk::println!(
             "Proposal {:?} executed! {} yes votes > {} required",
             proposal.id,
             proposal.yes_votes,
             required_votes
         );
-    } else if proposal.no_votes >= (current_total_vp - required_votes) {
+    } else if proposal.no_votes > (current_total_vp - required_votes) {
         // Rejected - impossible to reach threshold
         let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
             stations
@@ -378,6 +393,7 @@ pub async fn vote_on_proposal(
         }
 
         proposal.status = ProposalStatus::Rejected;
+        let proposal_id = proposal.id;
 
         UNIFIED_PROPOSALS.with(|proposals| {
             proposals
@@ -385,7 +401,13 @@ pub async fn vote_on_proposal(
                 .remove(&(StorablePrincipal(token_id), orbit_request_id));
         });
 
-        ic_cdk::println!("Proposal {:?} rejected and cleaned up", proposal.id);
+        // Clean up all votes for this rejected proposal to prevent memory leak
+        UNIFIED_PROPOSAL_VOTES.with(|votes| {
+            let mut votes_map = votes.borrow_mut();
+            votes_map.retain(|(pid, _), _| *pid != proposal_id);
+        });
+
+        ic_cdk::println!("Proposal {:?} rejected and cleaned up", proposal_id);
     } else {
         // Still active - update vote counts and refresh total VP
         proposal.total_voting_power = current_total_vp;
@@ -707,18 +729,58 @@ async fn create_edit_user_request_in_orbit(
     groups: Vec<String>,
     name: Option<String>,
 ) -> Result<String, ProposalError> {
-    // Implementation would go here - similar to transfer request
-    // For now, return a placeholder
-    Ok(format!("orbit-request-{}", time()))
+    use crate::api::CreateRequestResult;
+    use crate::types::orbit::{
+        RequestOperation, SubmitRequestInput, EditUserOperationInput,
+    };
+
+    // Create the EditUser operation input
+    let edit_user_op = EditUserOperationInput {
+        id: user_id.clone(),
+        name,
+        identities: None,  // Not changing identities
+        groups: Some(groups),
+        status: None,  // Not changing status
+        cancel_pending_requests: None,
+    };
+
+    let request_input = SubmitRequestInput {
+        operation: RequestOperation::EditUser(edit_user_op),
+        title: Some(format!("Edit user {}", user_id)),
+        summary: Some("Community-approved user modification".to_string()),
+        execution_plan: None,
+    };
+
+    let result: Result<(CreateRequestResult,), _> =
+        ic_cdk::call(station_id, "create_request", (request_input,)).await;
+
+    match result {
+        Ok((CreateRequestResult::Ok(response),)) => Ok(response.request.id),
+        Ok((CreateRequestResult::Err(e),)) => Err(ProposalError::OrbitError {
+            code: e.code.clone(),
+            message: e.message.clone().unwrap_or_else(|| "No message provided".to_string()),
+            details: format_orbit_error_details(&e),
+        }),
+        Err((code, msg)) => Err(ProposalError::IcCallFailed {
+            code: code as i32,
+            message: msg,
+        }),
+    }
 }
 
 async fn create_add_asset_request_in_orbit(
-    station_id: Principal,
-    asset: AssetDetails,
+    _station_id: Principal,
+    _asset: AssetDetails,
 ) -> Result<String, ProposalError> {
-    // Implementation would go here - similar to transfer request
-    // For now, return a placeholder
-    Ok(format!("orbit-request-{}", time()))
+    // NOTE: AddAsset operation is not yet supported in RequestOperation enum
+    // The types exist in RequestOperationInput but not in RequestOperation
+    // This requires updating the Orbit type definitions
+    // For now, return an error indicating this operation is not yet supported
+
+    Err(ProposalError::Custom(
+        "AddAsset operation is not yet implemented in Orbit integration. \
+         The type definitions need to be updated to support asset management operations.".to_string()
+    ))
 }
 
 /// Single approval function (no duplication)
