@@ -17,7 +17,7 @@ export default function DaoRoute() {
   const [error, setError] = useState<string | null>(null);
 
   // Fetch voting power using existing hook
-  const { userVotingPower, loadingVP } = useVoting(tokenId);
+  const { userVotingPower, loadingVP, fetchVotingPower } = useVoting(tokenId);
 
   useEffect(() => {
     async function loadToken() {
@@ -129,6 +129,7 @@ export default function DaoRoute() {
       orbitStation={orbitStation}
       votingPower={userVotingPower}
       loadingVotingPower={loadingVP}
+      refreshVotingPower={fetchVotingPower}
     >
       <Outlet context={{
         token,
@@ -137,7 +138,8 @@ export default function DaoRoute() {
         identity,
         isAuthenticated,
         votingPower: userVotingPower,
-        loadingVotingPower: loadingVP
+        loadingVotingPower: loadingVP,
+        refreshVotingPower: fetchVotingPower
       }} />
     </DaoLayout>
   );

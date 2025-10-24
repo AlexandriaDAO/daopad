@@ -36,6 +36,7 @@ export default function DaoTreasury() {
         tokenId={token.canister_id}
         tokenSymbol={token.symbol}
         votingPower={votingPower}
+        loadingVotingPower={loadingVotingPower}
       />
       {isAuthenticated && (
         <div className="space-y-4">

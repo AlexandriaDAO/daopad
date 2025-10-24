@@ -20,7 +20,7 @@ import TransferRequestDialog from '../orbit/TransferRequestDialog';
 import { useToast } from '@/hooks/use-toast';
 import { safeStringify, debugLog } from '@/utils/logging';
 
-export default function AccountsTable({ stationId, identity, tokenId, tokenSymbol, votingPower }) {
+export default function AccountsTable({ stationId, identity, tokenId, tokenSymbol, votingPower, loadingVotingPower = false }) {
   const { toast } = useToast();
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState('');
@@ -428,6 +428,8 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
                                   <TooltipContent>
                                     {!identity ? (
                                       <p>Login with Internet Identity to create transfer proposals</p>
+                                    ) : loadingVotingPower ? (
+                                      <p>Loading voting power...</p>
                                     ) : votingPower < 10000 ? (
                                       <p>
                                         Need {(10000 - votingPower).toLocaleString()} more VP to propose transfers

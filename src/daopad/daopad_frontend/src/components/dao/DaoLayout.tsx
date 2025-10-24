@@ -2,12 +2,15 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import TokenHeader from '../token/TokenHeader';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { RefreshCw } from 'lucide-react';
 
 interface DaoLayoutProps {
   token: any;
   orbitStation: any;
   votingPower?: number;
   loadingVotingPower?: boolean;
+  refreshVotingPower?: () => void;
   children: React.ReactNode;
 }
 
@@ -16,6 +19,7 @@ export default function DaoLayout({
   orbitStation,
   votingPower = 0,
   loadingVotingPower = false,
+  refreshVotingPower,
   children
 }: DaoLayoutProps) {
   const location = useLocation();
@@ -53,7 +57,7 @@ export default function DaoLayout({
                   ✓ Treasury Station: {orbitStation.station_id}
                 </p>
                 {votingPower > 0 && (
-                  <div className="mt-2">
+                  <div className="mt-2 flex items-center gap-2">
                     <Badge variant={votingPower >= 10000 ? "default" : "secondary"}>
                       {loadingVotingPower ? (
                         "Loading VP..."
@@ -61,6 +65,18 @@ export default function DaoLayout({
                         `${votingPower.toLocaleString()} VP${votingPower >= 10000 ? " ✓" : ""}`
                       )}
                     </Badge>
+                    {refreshVotingPower && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={refreshVotingPower}
+                        disabled={loadingVotingPower}
+                        className="h-6 w-6 p-0"
+                        title="Refresh voting power"
+                      >
+                        <RefreshCw className={`h-3 w-3 ${loadingVotingPower ? 'animate-spin' : ''}`} />
+                      </Button>
+                    )}
                   </div>
                 )}
               </>
