@@ -19,7 +19,7 @@ export class OrbitRequestsService extends BackendServiceBase {
         created_to: filters.createdTo || null,
         expiration_from: filters.expirationFrom || null,
         expiration_to: filters.expirationTo || null,
-        sort_by: filters.sortBy || null,
+        sort_by: filters.sortBy || { CreatedAt: { Desc: null } },  // Default sort
         page: filters.page || 0,
         limit: filters.limit || 20,
       };

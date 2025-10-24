@@ -348,6 +348,33 @@ pub struct AccountCallerPrivileges {
     pub can_transfer: bool,
 }
 
+// Minimal Account struct - avoids Option<RequestPolicyRule> Candid deserialization bug
+// Used by methods that don't need policy fields (get_dao_overview, get_treasury_accounts_with_balances)
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub struct AccountMinimal {
+    pub id: String,
+    pub name: String,
+    pub assets: Vec<AccountAssetMinimal>,
+    pub metadata: Vec<AccountMetadata>,
+    // REMOVED: transfer_request_policy, configs_request_policy (Option<RequestPolicyRule>)
+}
+
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub struct AccountAssetMinimal {
+    pub asset_id: String,
+    // REMOVED: balance (Option<AccountBalance>)
+}
+
+#[derive(CandidType, Deserialize)]
+pub enum ListAccountsResultMinimal {
+    Ok {
+        accounts: Vec<AccountMinimal>,
+        total: u64,
+        next_offset: Option<u64>,
+    },
+    Err(Error),
+}
+
 // List accounts input/output
 #[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
 pub struct PaginationInput {
@@ -490,6 +517,33 @@ pub struct DisasterRecovery {
 pub struct DisasterRecoveryCommittee {
     pub user_group_id: String, // UUID as string
     pub quorum: u16,
+}
+
+// Minimal SystemInfo - avoids Option<DisasterRecovery> Candid deserialization bug
+// Used by get_orbit_system_info which only needs basic system info
+#[derive(CandidType, Serialize, Deserialize, Debug)]
+pub struct SystemInfoMinimal {
+    pub name: String,
+    pub version: String,
+    pub upgrader_id: Principal,
+    pub cycles: u64,
+    pub upgrader_cycles: Option<u64>,  // Option<primitive> is OK
+    pub last_upgrade_timestamp: String,
+    pub raw_rand_successful: bool,
+    // REMOVED: disaster_recovery (Option<DisasterRecovery>)
+    pub cycle_obtain_strategy: CycleObtainStrategy,
+}
+
+#[derive(CandidType, Deserialize, Debug)]
+pub enum SystemInfoResultMinimal {
+    Ok { system: SystemInfoMinimal },
+    Err(Error),
+}
+
+#[derive(CandidType, Serialize, Deserialize, Debug)]
+pub struct SystemInfoResponseMinimal {
+    pub station_id: Principal,
+    pub system_info: SystemInfoMinimal,
 }
 
 #[derive(CandidType, Serialize, Deserialize, Debug)]

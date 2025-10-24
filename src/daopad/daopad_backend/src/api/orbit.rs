@@ -3,7 +3,7 @@ use crate::storage::state::TOKEN_ORBIT_STATIONS;
 use crate::types::orbit::{
     AccountBalance, AccountMetadata, AddAccountOperationInput, Allow, AuthScope,
     FetchAccountBalancesInput, FetchAccountBalancesResult, ListAccountsInput, ListAccountsResult,
-    SystemInfoResult, SystemInfoResponse, TreasuryManagementData, TreasuryAccountDetails,
+    SystemInfoResultMinimal, SystemInfoResponseMinimal, TreasuryManagementData, TreasuryAccountDetails,
     TreasuryAddressBookEntry, AssetBalanceInfo, ListAddressBookInput, ListAddressBookResult,
     RequestPolicyRule,
 };
@@ -52,13 +52,13 @@ pub fn list_all_orbit_stations() -> Vec<(Principal, Principal)> {
 }
 
 #[update] // MUST be update, not query for cross-canister calls
-pub async fn get_orbit_system_info(token_canister_id: Principal) -> Result<SystemInfoResponse, String> {
+pub async fn get_orbit_system_info(token_canister_id: Principal) -> Result<SystemInfoResponseMinimal, String> {
     // Get station ID for token
     let station_id = get_orbit_station_for_token(token_canister_id)
         .ok_or_else(|| format!("No Orbit Station found for token {}", token_canister_id))?;
 
     // Call system_info on the station (we have admin access)
-    let result: Result<(SystemInfoResult,), _> = ic_cdk::call(
+    let result: Result<(SystemInfoResultMinimal,), _> = ic_cdk::call(
         station_id,
         "system_info",
         ()
@@ -67,13 +67,13 @@ pub async fn get_orbit_system_info(token_canister_id: Principal) -> Result<Syste
     match result {
         Ok((system_info_result,)) => {
             match system_info_result {
-                SystemInfoResult::Ok { system } => {
-                    Ok(SystemInfoResponse {
+                SystemInfoResultMinimal::Ok { system } => {
+                    Ok(SystemInfoResponseMinimal {
                         station_id,
                         system_info: system,
                     })
                 },
-                SystemInfoResult::Err(e) => {
+                SystemInfoResultMinimal::Err(e) => {
                     Err(format!("Orbit Station error: {:?}", e))
                 }
             }
@@ -281,7 +281,7 @@ pub async fn get_user_pending_requests(
     token_canister_id: Principal,
     _user_principal: Principal // TODO: Use this to filter for specific user's requests
 ) -> Result<Vec<crate::api::orbit_requests::OrbitRequestSummary>, String> {
-    use crate::api::orbit_requests::{ListRequestsInput, ListRequestsOperationType, PaginationInput, RequestStatusCode};
+    use crate::api::orbit_requests::{ListRequestsInput, ListRequestsOperationType, PaginationInput, RequestStatusCode, ListRequestsSortBy, SortByDirection};
 
     // Get all pending AddUser requests
     let filters = ListRequestsInput {
@@ -302,7 +302,7 @@ pub async fn get_user_pending_requests(
             offset: None,
             limit: Some(50),
         }),
-        sort_by: None,
+        sort_by: ListRequestsSortBy::CreatedAt(SortByDirection::Desc),
         only_approvable: false,
         with_evaluation_results: false,
         deduplication_keys: Some(vec![]), // CRITICAL: Include ALL fields!

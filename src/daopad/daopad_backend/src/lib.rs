@@ -28,7 +28,7 @@ pub use proposals::{
 };
 pub use types::orbit::{
     Account, AccountBalance, ListAccountsResult,
-    PaginationInput, Resource, SystemInfoResponse,
+    PaginationInput, Resource, SystemInfoResponseMinimal,
     // User types
     UserDTO, UserGroup,
     // External canister types

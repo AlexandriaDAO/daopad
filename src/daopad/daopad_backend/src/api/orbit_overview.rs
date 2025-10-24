@@ -1,15 +1,14 @@
-use candid::{Nat, Principal, CandidType, Deserialize};
+use candid::{Principal, CandidType, Deserialize};
 use ic_cdk::update;
-use std::collections::HashMap;
 use crate::storage::state::{
     TOKEN_ORBIT_STATIONS, UNIFIED_PROPOSALS, ORBIT_PROPOSALS
 };
 use crate::types::StorablePrincipal;
 use crate::types::orbit::{
-    ListAccountsInput, ListAccountsResult,
+    ListAccountsInput, AccountMinimal, ListAccountsResultMinimal,
     ListUsersInput, ListUsersResult,
     SystemInfoResult, SystemInfo,
-    UserDTO, Account,
+    UserDTO,
 };
 use crate::proposals::types::ProposalStatus;
 use crate::api::orbit_accounts::{Asset, ListAssetsInput, ListAssetsResult};
@@ -56,15 +55,11 @@ pub async fn get_dao_overview(
         });
     };
 
-    // 2. Query Orbit Station in parallel using futures::join!
-    let accounts_future = list_accounts_call(station_id);
-    let users_future = list_users_call(station_id);
-    let system_info_future = system_info_call(station_id);
-    let assets_future = list_assets_call(station_id);
-
-    // Execute in parallel (critical performance optimization)
-    let (accounts_result, users_result, system_info_result, assets_result) =
-        futures::join!(accounts_future, users_future, system_info_future, assets_future);
+    // 2. Query Orbit Station sequentially (futures::join! causes "Call already trapped" error)
+    let accounts_result = list_accounts_call(station_id).await;
+    let users_result = list_users_call(station_id).await;
+    let system_info_result = system_info_call(station_id).await;
+    let assets_result = list_assets_call(station_id).await;
 
     // 3. Process Orbit results
     let (treasury_total, account_count) = calculate_treasury_total(&accounts_result, &assets_result);
@@ -143,18 +138,18 @@ fn count_recent_proposals(token_id: Principal, days: u64) -> u64 {
 // ============================================================================
 
 /// List all accounts in Orbit Station (admin-level access)
-async fn list_accounts_call(station_id: Principal) -> Result<Vec<Account>, String> {
+async fn list_accounts_call(station_id: Principal) -> Result<Vec<AccountMinimal>, String> {
     let input = ListAccountsInput {
         search_term: None,
         paginate: None,
     };
 
-    let result: Result<(ListAccountsResult,), _> =
+    let result: Result<(ListAccountsResultMinimal,), _> =
         ic_cdk::call(station_id, "list_accounts", (input,)).await;
 
     match result {
-        Ok((ListAccountsResult::Ok { accounts, .. },)) => Ok(accounts),
-        Ok((ListAccountsResult::Err(e),)) => {
+        Ok((ListAccountsResultMinimal::Ok { accounts, .. },)) => Ok(accounts),
+        Ok((ListAccountsResultMinimal::Err(e),)) => {
             Err(format!("List accounts error: {:?}", e))
         }
         Err((code, msg)) => {
@@ -225,10 +220,11 @@ async fn list_assets_call(station_id: Principal) -> Result<Vec<Asset>, String> {
 // ============================================================================
 
 /// Calculate total ICP balance and account count
-/// Filters assets by symbol == "ICP" to avoid summing non-ICP tokens
+/// AccountMinimal doesn't include balance data (removed to avoid Candid Option<AccountBalance> bug)
+/// Returns 0 for balance as a workaround - balance calculation would require full Account type
 fn calculate_treasury_total(
-    accounts_result: &Result<Vec<Account>, String>,
-    assets_result: &Result<Vec<Asset>, String>
+    accounts_result: &Result<Vec<AccountMinimal>, String>,
+    _assets_result: &Result<Vec<Asset>, String>
 ) -> (u64, u64) {
     let Ok(accounts) = accounts_result else {
         return (0, 0);
@@ -236,43 +232,10 @@ fn calculate_treasury_total(
 
     let account_count = accounts.len() as u64;
 
-    // Build asset_id -> symbol map for ICP filtering
-    let asset_map: HashMap<String, String> = match assets_result {
-        Ok(assets) => assets.iter()
-            .map(|a| (a.id.clone(), a.symbol.clone()))
-            .collect(),
-        Err(_) => HashMap::new(),
-    };
+    // TODO: Balance calculation requires AccountAsset.balance field which we removed
+    // to avoid Option<AccountBalance> Candid deserialization bug.
+    // For now, return 0. Frontend should use get_treasury_accounts_with_balances for actual balances.
+    let total_icp: u64 = 0;
 
-    // Sum only ICP balances (filter by symbol, not decimals)
-    let mut total_icp_e8s = 0u64;
-
-    for account in accounts {
-        for account_asset in &account.assets {
-            // Check if this asset is ICP by symbol
-            if let Some(symbol) = asset_map.get(&account_asset.asset_id) {
-                if symbol == "ICP" {
-                    if let Some(balance) = &account_asset.balance {
-                        let balance_u64 = nat_to_u64(&balance.balance);
-                        total_icp_e8s = total_icp_e8s.saturating_add(balance_u64);
-                    }
-                }
-            }
-        }
-    }
-
-    (total_icp_e8s, account_count)
-}
-
-/// Convert Nat to u64 (with overflow handling)
-fn nat_to_u64(nat: &Nat) -> u64 {
-    let bytes = nat.0.to_bytes_le();
-    if bytes.len() <= 8 {
-        let mut array = [0u8; 8];
-        array[..bytes.len()].copy_from_slice(&bytes);
-        u64::from_le_bytes(array)
-    } else {
-        // Overflow - return max value
-        u64::MAX
-    }
+    (total_icp, account_count)
 }
