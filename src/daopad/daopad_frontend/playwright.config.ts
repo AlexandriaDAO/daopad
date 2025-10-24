@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import * as fs from 'fs';
 
 // NOTE: II authentication requires IndexedDB (not capturable by storageState)
 // For authenticated tests: Login once manually, II delegation persists in browser
@@ -6,10 +7,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
-  fullyParallel: false, // Set at project level instead
+  // Parallelization configured at project level - see projects below
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 2 : 4, // Increase workers for parallel tests
+  workers: process.env.CI ? 2 : 4, // 2 workers in CI to avoid rate limits, 4 locally
   reporter: [
     ['html'],
     ['list'],
@@ -54,10 +55,12 @@ export default defineConfig({
         launchOptions: {
           args: ['--enable-logging', '--v=1']
         },
-        // Attempt to use storage state if it exists
-        storageState: '.auth/user.json',
+        // Use storage state only if auth file exists
+        ...(fs.existsSync('.auth/user.json')
+          ? { storageState: '.auth/user.json' }
+          : {}),
       },
-      fullyParallel: false, // Serial execution for auth tests
+      fullyParallel: false, // Serial execution for auth tests (IndexedDB limitation)
     },
   ],
 
