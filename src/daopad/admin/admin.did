@@ -1,0 +1,114 @@
+type OrbitOperationType = variant {
+  RemoveAsset;
+  AddUserGroup;
+  EditPermission;
+  SnapshotExternalCanister;
+  PruneExternalCanister;
+  EditNamedRule;
+  ConfigureExternalCanister;
+  ChangeExternalCanister;
+  MonitorExternalCanister;
+  AddUser;
+  EditAsset;
+  EditUserGroup;
+  SetDisasterRecovery;
+  EditRequestPolicy;
+  RemoveRequestPolicy;
+  AddAsset;
+  SystemUpgrade;
+  RemoveAddressBookEntry;
+  SystemRestore;
+  CreateExternalCanister;
+  EditAddressBookEntry;
+  FundExternalCanister;
+  EditUser;
+  ManageSystemInfo;
+  Transfer;
+  EditAccount;
+  AddAddressBookEntry;
+  RemoveUser;
+  Other : text;
+  AddRequestPolicy;
+  RemoveNamedRule;
+  RemoveUserGroup;
+  CallExternalCanister;
+  AddNamedRule;
+  RestoreExternalCanister;
+  AddAccount;
+};
+type ProposalError = variant {
+  AlreadyVoted : nat64;
+  InvalidTransferDetails : text;
+  NotActive;
+  NotFound : nat64;
+  Custom : text;
+  NoStationLinked : principal;
+  IcCallFailed : record { code : int32; message : text };
+  OrbitError : record { code : text; message : text; details : opt text };
+  ActiveProposalExists;
+  InsufficientVotingPowerToPropose : record {
+    required : nat64;
+    current : nat64;
+  };
+  ZeroVotingPower;
+  NoVotingPower;
+  Expired;
+  AuthRequired;
+};
+type ProposalStatus = variant { Active; Rejected; Executed; Expired };
+type Result = variant { Ok : text; Err : text };
+type Result_1 = variant { Ok : nat64; Err : ProposalError };
+type Result_2 = variant { Ok; Err : text };
+type Result_3 = variant { Ok; Err : ProposalError };
+type TransferDetails = record {
+  to : text;
+  title : text;
+  from_account_id : text;
+  memo : opt text;
+  description : text;
+  amount : nat;
+  from_asset_id : text;
+};
+type UnifiedProposal = record {
+  id : nat64;
+  status : ProposalStatus;
+  yes_votes : nat64;
+  operation_type : OrbitOperationType;
+  created_at : nat64;
+  token_canister_id : principal;
+  orbit_request_id : text;
+  proposer : principal;
+  voter_count : nat32;
+  total_voting_power : nat64;
+  no_votes : nat64;
+  expires_at : nat64;
+  transfer_details : opt TransferDetails;
+};
+type VoteChoice = variant { No; Yes };
+service : () -> {
+  // Called by FRONTEND after backend creates Orbit request
+  // This triggers proposal creation for community voting
+  create_proposal : (principal, text, text) -> (Result);
+  // Ensure a proposal exists for an Orbit request
+  ensure_proposal_for_request : (principal, text, text) -> (Result_1);
+  // Get user's registered Kong Locker principal
+  get_kong_locker : (principal) -> (opt principal) query;
+  // Get Orbit Station for a token
+  get_orbit_station : (principal) -> (opt principal) query;
+  // Get a specific proposal
+  get_proposal : (principal, text) -> (opt UnifiedProposal) query;
+  // Get the user's vote on a proposal
+  get_user_vote : (principal, principal, text) -> (opt VoteChoice) query;
+  // Check if a user has voted on a proposal
+  has_user_voted : (principal, principal, text) -> (bool) query;
+  // List all active proposals for a token
+  list_unified_proposals : (principal) -> (vec UnifiedProposal) query;
+  // Register user's Kong Locker canister
+  // Called by backend when user registers (forwarded from backend)
+  register_kong_locker : (principal, principal) -> (Result_2);
+  // Register Orbit Station for a token
+  // Called by backend when linking a token to an Orbit Station
+  register_orbit_station : (principal, principal) -> (Result_2);
+  // Single voting endpoint for ALL Orbit operations
+  vote_on_proposal : (principal, text, bool) -> (Result_3);
+}
