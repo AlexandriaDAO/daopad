@@ -406,3 +406,179 @@ pub async fn create_autoapprove_all_accounts(
 
     Ok(request_ids)
 }
+
+// ===== MULTI-ASSET TREASURY METHODS =====
+
+/// Get single account with all assets and fresh balances
+///
+/// Fetches account details from Orbit Station and ensures all asset balances are fresh.
+/// If any balances are null or stale, calls fetch_account_balances to refresh them.
+#[update]
+pub async fn get_treasury_account_details(
+    token_canister_id: Principal,
+    account_id: String,
+) -> Result<Account, String> {
+    // 1. Get station ID from token mapping
+    let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
+        stations.borrow()
+            .get(&StorablePrincipal(token_canister_id))
+            .map(|s| s.0)
+            .ok_or_else(|| "No Orbit Station linked to this token".to_string())
+    })?;
+
+    // 2. Call Orbit's get_account to get full account with assets
+    #[derive(CandidType, Deserialize)]
+    struct GetAccountInput {
+        account_id: String,
+    }
+
+    #[derive(CandidType, Deserialize)]
+    enum GetAccountResult {
+        Ok { account: Account },
+        Err(Error),
+    }
+
+    let result: Result<(GetAccountResult,), _> = call(
+        station_id,
+        "get_account",
+        (GetAccountInput { account_id: account_id.clone() },)
+    ).await;
+
+    match result {
+        Ok((GetAccountResult::Ok { account },)) => {
+            // 3. Check if we need to fetch fresh balances
+            let needs_refresh = account.assets.iter().any(|a| {
+                a.balance.is_none() ||
+                a.balance.as_ref().map_or(false, |b| b.query_state != "fresh")
+            });
+
+            if needs_refresh {
+                // Fetch fresh balances
+                let balance_result: Result<(FetchAccountBalancesResult,), _> = call(
+                    station_id,
+                    "fetch_account_balances",
+                    (FetchAccountBalancesInput {
+                        account_ids: vec![account_id.clone()]
+                    },)
+                ).await;
+
+                match balance_result {
+                    Ok((FetchAccountBalancesResult::Ok { balances },)) => {
+                        // Merge balances into account assets
+                        let mut updated_account = account.clone();
+                        for (idx, asset) in updated_account.assets.iter_mut().enumerate() {
+                            if idx < balances.len() {
+                                if let Some(balance) = &balances[idx] {
+                                    asset.balance = Some(balance.clone());
+                                }
+                            }
+                        }
+                        Ok(updated_account)
+                    }
+                    Ok((FetchAccountBalancesResult::Err(e),)) => {
+                        // Return account even if balance fetch fails (balances may be null)
+                        ic_cdk::println!("Warning: Failed to fetch balances: {}", e);
+                        Ok(account)
+                    }
+                    Err((code, msg)) => {
+                        ic_cdk::println!("Warning: Balance fetch call failed: {:?} - {}", code, msg);
+                        Ok(account)
+                    }
+                }
+            } else {
+                // All balances are fresh
+                Ok(account)
+            }
+        }
+        Ok((GetAccountResult::Err(err),)) => Err(format!("Orbit error: {}", err)),
+        Err((code, msg)) => Err(format!("Call failed: {:?} - {}", code, msg)),
+    }
+}
+
+/// List all treasury accounts with complete asset and balance data
+///
+/// Returns all accounts in the station with their assets and fresh balances.
+/// This is the primary method for the Treasury Tab to fetch multi-asset data.
+#[update]
+pub async fn get_treasury_accounts_with_balances(
+    token_canister_id: Principal,
+) -> Result<Vec<Account>, String> {
+    // 1. Get station ID
+    let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
+        stations.borrow()
+            .get(&StorablePrincipal(token_canister_id))
+            .map(|s| s.0)
+            .ok_or_else(|| "No Orbit Station linked to this token".to_string())
+    })?;
+
+    // 2. List all accounts
+    let list_input = ListAccountsInput {
+        search_term: None,
+        paginate: None,
+    };
+
+    let accounts_result: Result<(ListAccountsResult,), _> = call(
+        station_id,
+        "list_accounts",
+        (list_input,)
+    ).await;
+
+    let accounts = match accounts_result {
+        Ok((ListAccountsResult::Ok { accounts, .. },)) => accounts,
+        Ok((ListAccountsResult::Err(e),)) => return Err(format!("Orbit error: {}", e)),
+        Err((code, msg)) => return Err(format!("Failed to list accounts: {:?} - {}", code, msg)),
+    };
+
+    // 3. Collect all account IDs for batch balance fetch
+    let account_ids: Vec<String> = accounts.iter().map(|a| a.id.clone()).collect();
+
+    if account_ids.is_empty() {
+        return Ok(vec![]);
+    }
+
+    // 4. Fetch balances for all accounts in one call
+    let balance_result: Result<(FetchAccountBalancesResult,), _> = call(
+        station_id,
+        "fetch_account_balances",
+        (FetchAccountBalancesInput {
+            account_ids: account_ids.clone()
+        },)
+    ).await;
+
+    match balance_result {
+        Ok((FetchAccountBalancesResult::Ok { balances },)) => {
+            // 5. Merge balances into accounts
+            let mut updated_accounts = accounts;
+
+            // Balances are returned as a flat list for all accounts
+            // We need to match them back to the correct assets
+            let mut balance_idx = 0;
+
+            for account in updated_accounts.iter_mut() {
+                for asset in account.assets.iter_mut() {
+                    if balance_idx < balances.len() {
+                        if let Some(balance) = &balances[balance_idx] {
+                            // Verify this balance matches our asset
+                            if balance.account_id == account.id && balance.asset_id == asset.asset_id {
+                                asset.balance = Some(balance.clone());
+                            }
+                        }
+                        balance_idx += 1;
+                    }
+                }
+            }
+
+            Ok(updated_accounts)
+        }
+        Ok((FetchAccountBalancesResult::Err(e),)) => {
+            // Return accounts without updated balances
+            ic_cdk::println!("Warning: Failed to fetch balances: {}", e);
+            Ok(accounts)
+        }
+        Err((code, msg)) => {
+            // Return accounts without updated balances
+            ic_cdk::println!("Warning: Balance fetch failed: {:?} - {}", code, msg);
+            Ok(accounts)
+        }
+    }
+}

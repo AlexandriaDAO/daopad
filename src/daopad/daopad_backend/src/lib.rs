@@ -15,7 +15,7 @@ pub use proposals::{
     TransferDetails, TreasuryProposal, VoteChoice,
 };
 pub use types::orbit::{
-    AccountBalance, ListAccountsResult,
+    Account, AccountBalance, ListAccountsResult,
     PaginationInput, Resource, SystemInfoResponse,
     // User types
     UserDTO, UserGroup,
