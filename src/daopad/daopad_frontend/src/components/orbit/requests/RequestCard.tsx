@@ -21,6 +21,15 @@ const statusConfig = {
 function getOperationType(request) {
   console.log('[getOperationType] Request:', request);
 
+  // Check if operation is an array (from backend)
+  if (request.operation && Array.isArray(request.operation) && request.operation.length > 0) {
+    const op = request.operation[0];
+    if (typeof op === 'string') return op;
+    if (typeof op === 'object' && op !== null) {
+      return Object.keys(op)[0];
+    }
+  }
+
   // Check multiple possible locations for operation type
   if (request.operation) {
     if (typeof request.operation === 'string') return request.operation;

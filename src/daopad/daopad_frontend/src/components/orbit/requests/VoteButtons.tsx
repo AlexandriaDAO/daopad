@@ -94,7 +94,10 @@ export function VoteButtons({
 
   // Show vote status from backend
   if (hasVoted) {
-    const voteText = userVote && Object.keys(userVote)[0] === 'Yes' ? 'YES' : 'NO';
+    const voteText = userVote
+      ? (Object.keys(userVote)[0] === 'Yes' ? 'YES' : 'NO')
+      : 'UNKNOWN';
+
     return (
       <div className="text-sm text-muted-foreground" data-testid="vote-already-voted">
         ✓ You voted {voteText} (VP: {userVotingPower.toLocaleString()})

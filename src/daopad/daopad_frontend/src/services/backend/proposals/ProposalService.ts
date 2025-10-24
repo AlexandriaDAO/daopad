@@ -180,7 +180,11 @@ export class ProposalService extends BackendServiceBase {
   /**
    * Vote on an Orbit request (not a regular proposal)
    */
-  async voteOnOrbitRequest(tokenId, orbitRequestId, vote) {
+  async voteOnOrbitRequest(
+    tokenId: string,
+    orbitRequestId: string,
+    vote: boolean
+  ): Promise<{ success: boolean; error?: string; code?: string }> {
     try {
       const actor = await this.getActor();
       const tokenPrincipal = this.toPrincipal(tokenId);
