@@ -5,6 +5,7 @@ import { Principal } from '@dfinity/principal';
 import { getTokenService } from '../services/backend';
 import DaoLayout from '../components/dao/DaoLayout';
 import { FallbackLoader } from '../components/ui/fallback-loader';
+import { useVoting } from '../hooks/useVoting';
 
 export default function DaoRoute() {
   const { tokenId } = useParams();
@@ -14,6 +15,9 @@ export default function DaoRoute() {
   const [orbitStation, setOrbitStation] = useState<any>(null);
   const [overviewStats, setOverviewStats] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch voting power using existing hook
+  const { userVotingPower, loadingVP } = useVoting(tokenId);
 
   useEffect(() => {
     async function loadToken() {
@@ -120,8 +124,21 @@ export default function DaoRoute() {
 
   // Render layout with token data (shared across all tab routes)
   return (
-    <DaoLayout token={token} orbitStation={orbitStation}>
-      <Outlet context={{ token, orbitStation, overviewStats, identity, isAuthenticated }} />
+    <DaoLayout
+      token={token}
+      orbitStation={orbitStation}
+      votingPower={userVotingPower}
+      loadingVotingPower={loadingVP}
+    >
+      <Outlet context={{
+        token,
+        orbitStation,
+        overviewStats,
+        identity,
+        isAuthenticated,
+        votingPower: userVotingPower,
+        loadingVotingPower: loadingVP
+      }} />
     </DaoLayout>
   );
 }
