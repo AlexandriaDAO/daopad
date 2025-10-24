@@ -9,6 +9,8 @@ use crate::types::orbit::{
     ListUserGroupsInput, ListUserGroupsResult,
     UserGroup,
 };
+use crate::storage::state::TOKEN_ORBIT_STATIONS;
+use crate::types::StorablePrincipal;
 
 /// List all permissions for a station (admin proxy)
 ///
@@ -101,7 +103,106 @@ pub async fn create_edit_permission_request(
     // Extract request ID from result
     match result.0 {
         CreateRequestResult::Ok(response) => {
-            Ok(response.request.id)
+            let request_id = response.request.id;
+
+            // CRITICAL: Auto-create proposal for governance
+            // Note: For permission edits, we need to determine which token this station belongs to
+            // Since we're called with station_id, we need to find the corresponding token
+            use crate::storage::state::STATION_TO_TOKEN;
+
+            let token_canister_id = STATION_TO_TOKEN.with(|s2t| {
+                s2t.borrow()
+                    .get(&StorablePrincipal(station_id))
+                    .map(|sp| sp.0)
+            }).ok_or("Station not linked to any token")?;
+
+            use crate::proposals::{ensure_proposal_for_request, OrbitRequestType};
+
+            match ensure_proposal_for_request(
+                token_canister_id,
+                request_id.clone(),
+                OrbitRequestType::EditPermission,  // 70% threshold
+            ).await {
+                Ok(_proposal_id) => Ok(request_id),
+                Err(e) => Err(format!("GOVERNANCE VIOLATION: Created Orbit request but failed to create proposal: {:?}", e))
+            }
+        }
+        CreateRequestResult::Err(e) => {
+            Err(format!("Orbit returned error: {:?}", e))
+        }
+    }
+}
+
+/// Remove dangerous permission from Operator group
+///
+/// This specialized function removes the Operator group (UUID: 00000000-0000-4000-8000-000000000001)
+/// from a specific permission. It automatically creates a governance proposal for the change.
+///
+/// Returns the request ID if successful.
+#[ic_cdk::update]
+pub async fn remove_permission_from_operator_group(
+    token_canister_id: Principal,
+    resource: Resource
+) -> Result<String, String> {
+    // Get station ID for token
+    let station_id = TOKEN_ORBIT_STATIONS.with(|s| {
+        s.borrow()
+            .get(&StorablePrincipal(token_canister_id))
+            .map(|sp| sp.0)
+    }).ok_or("Token not linked to any Orbit station")?;
+
+    // Get current permission configuration
+    let current = get_station_permission(station_id, resource.clone()).await?;
+
+    // Filter out Operator group UUID (00000000-0000-4000-8000-000000000001)
+    const OPERATOR_GROUP_UUID: &str = "00000000-0000-4000-8000-000000000001";
+    let filtered_groups: Vec<UUID> = current.allow.user_groups
+        .into_iter()
+        .filter(|id| id != OPERATOR_GROUP_UUID)
+        .collect();
+
+    // Create edit request with filtered groups (keep auth_scope and users unchanged)
+    let edit_perm_input = EditPermissionOperationInput {
+        resource,
+        auth_scope: Some(current.allow.auth_scope),
+        users: Some(current.allow.users),
+        user_groups: Some(filtered_groups),
+    };
+
+    // Construct the create request input
+    let create_input = CreateRequestInput {
+        operation: RequestOperationInput::EditPermission(edit_perm_input),
+        title: Some(format!("Remove dangerous permissions from Operator group")),
+        summary: Some(format!("Security fix: Removing Operator group from permission to prevent unauthorized treasury operations")),
+        execution_plan: None,
+        expiration_dt: None,
+    };
+
+    // Submit the request to Orbit Station
+    let result: (CreateRequestResult,) = ic_cdk::call(
+        station_id,
+        "create_request",
+        (create_input,)
+    )
+    .await
+    .map_err(|e| format!("Failed to create permission removal request: {:?}", e))?;
+
+    // Extract request ID from result and create proposal
+    match result.0 {
+        CreateRequestResult::Ok(response) => {
+            let request_id = response.request.id;
+
+            // CRITICAL: Auto-create proposal for governance
+            use crate::proposals::{ensure_proposal_for_request, OrbitRequestType};
+
+            match ensure_proposal_for_request(
+                token_canister_id,
+                request_id.clone(),
+                OrbitRequestType::EditPermission,  // 70% threshold
+            ).await {
+                Ok(_proposal_id) => Ok(request_id),
+                Err(e) => Err(format!("GOVERNANCE VIOLATION: Created Orbit request but failed to create proposal: {:?}", e))
+            }
         }
         CreateRequestResult::Err(e) => {
             Err(format!("Orbit returned error: {:?}", e))

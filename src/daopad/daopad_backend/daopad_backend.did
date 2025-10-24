@@ -1221,6 +1221,13 @@ service : () -> {
     ) -> (Result_1);
   regenerate_agreement_snapshot : (principal, principal) -> (Result_12);
   register_with_kong_locker : (principal) -> (Result);
+  // Remove dangerous permission from Operator group
+  // 
+  // This specialized function removes the Operator group (UUID: 00000000-0000-4000-8000-000000000001)
+  // from a specific permission. It automatically creates a governance proposal for the change.
+  // 
+  // Returns the request ID if successful.
+  remove_permission_from_operator_group : (principal, Resource) -> (Result);
   remove_treasury_asset : (principal, text) -> (Result);
   restore_orbit_canister_request : (
       principal,
