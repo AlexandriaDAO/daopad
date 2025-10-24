@@ -31,6 +31,7 @@ export default defineConfig({
         '**/activity.spec.ts',
         '**/agreement.spec.ts',
         '**/app-route.spec.ts',
+        '**/dao-header.spec.ts',
         '**/debug-page-load.spec.ts',
         '**/minimal-smoke.spec.ts',
         '**/settings.spec.ts'

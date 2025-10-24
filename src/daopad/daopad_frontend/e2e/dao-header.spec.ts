@@ -60,9 +60,9 @@ test.describe('DAO Header & Navigation', () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto(`${BASE_URL}/dao/${ALEX_TOKEN_ID}`);
 
-    // All tabs should be visible (scrollable container)
-    const tabContainer = page.locator('div').filter({ hasText: /Overview/ }).first();
-    await expect(tabContainer).toBeVisible();
+    // Verify Overview tab is visible (first tab, always visible)
+    const overviewTab = page.getByRole('link', { name: 'Overview' });
+    await expect(overviewTab).toBeVisible();
 
     // Check if we can scroll to last tab (Settings)
     const settingsTab = page.getByRole('link', { name: 'Settings' });
