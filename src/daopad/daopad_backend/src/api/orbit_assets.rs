@@ -62,12 +62,12 @@ pub async fn add_treasury_asset(
             let request_id = response.request.id.clone();
 
             // 4. CRITICAL: Auto-create proposal for governance
-            use crate::proposals::{ensure_proposal_for_request, OrbitRequestType};
+            use crate::proposals::ensure_proposal_for_request;
 
             match ensure_proposal_for_request(
                 token_canister_id,
                 request_id.clone(),
-                OrbitRequestType::AddAsset, // 40% threshold
+                "AddAsset".to_string(), // 40% threshold
             )
             .await
             {
@@ -125,12 +125,12 @@ pub async fn edit_treasury_asset(
         Ok((CreateRequestResult::Ok(response),)) => {
             let request_id = response.request.id.clone();
 
-            use crate::proposals::{ensure_proposal_for_request, OrbitRequestType};
+            use crate::proposals::ensure_proposal_for_request;
 
             match ensure_proposal_for_request(
                 token_canister_id,
                 request_id.clone(),
-                OrbitRequestType::EditAsset,
+                "EditAsset".to_string(),
             )
             .await
             {
@@ -176,12 +176,12 @@ pub async fn remove_treasury_asset(
         Ok((CreateRequestResult::Ok(response),)) => {
             let request_id = response.request.id.clone();
 
-            use crate::proposals::{ensure_proposal_for_request, OrbitRequestType};
+            use crate::proposals::ensure_proposal_for_request;
 
             match ensure_proposal_for_request(
                 token_canister_id,
                 request_id.clone(),
-                OrbitRequestType::RemoveAsset,
+                "RemoveAsset".to_string(),
             )
             .await
             {

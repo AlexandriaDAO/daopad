@@ -1,5 +1,5 @@
 use crate::proposals::orbit_link::OrbitLinkProposal;
-use crate::proposals::types::{ProposalId, TreasuryProposal, VoteChoice};
+use crate::proposals::types::{ProposalId, VoteChoice};
 use crate::storage::memory::{
     Memory, AGREEMENT_SNAPSHOTS_MEM_ID, KONG_LOCKER_PRINCIPALS_MEM_ID, MEMORY_MANAGER,
     ORBIT_STATIONS_MEM_ID, STATION_TO_TOKEN_MEM_ID,
@@ -51,31 +51,29 @@ thread_local! {
     // and we want flexibility during the DAO transition phase
     pub static VOTING_THRESHOLDS: RefCell<BTreeMap<StorablePrincipal, VotingThresholds>> = RefCell::new(BTreeMap::new());
 
-    // Treasury proposal storage (volatile - expires in 7 days)
+    // ============================================================================
+    // Unified Proposal Storage - ALL Orbit Operations
+    // ============================================================================
     // IMPORTANT: Using regular BTreeMap (not stable memory) since proposals are temporary
-    // and don't need to survive canister upgrades
+    // and expire in 7 days. They don't need to survive canister upgrades.
     //
-    // DESIGN: One active proposal per token (key = token Principal, not proposal ID)
-    // This matches the orbit_link.rs pattern and prevents proposal spam.
-    // New proposals for the same token will fail until the active one expires/executes.
-    pub static TREASURY_PROPOSALS: RefCell<BTreeMap<StorablePrincipal, TreasuryProposal>> = RefCell::new(BTreeMap::new());
+    // DESIGN: Single storage for ALL proposal types (treasury, user management, etc.)
+    // Key: (token_canister_id, orbit_request_id) for unique identification
+    // This replaces both TREASURY_PROPOSALS and ORBIT_REQUEST_PROPOSALS
+    //
+    // Benefits:
+    // - ONE voting system instead of three
+    // - ONE storage system to maintain
+    // - Consistent behavior across all operations
+    // - Easier to add new Orbit operations
+    pub static UNIFIED_PROPOSALS: RefCell<BTreeMap<(StorablePrincipal, String), crate::proposals::unified::UnifiedProposal>> = RefCell::new(BTreeMap::new());
 
-    // Vote tracking (separate from proposals for memory efficiency)
+    // Unified vote tracking for all proposals
     // Key: (ProposalId, Voter Principal)
     // Allows efficient double-vote prevention without storing full voter sets in proposals
+    pub static UNIFIED_PROPOSAL_VOTES: RefCell<BTreeMap<(ProposalId, StorablePrincipal), VoteChoice>> = RefCell::new(BTreeMap::new());
+
+    // Legacy vote tracking (kept for orbit_link.rs compatibility)
+    // TODO: Migrate orbit_link.rs to use UNIFIED_PROPOSAL_VOTES
     pub static PROPOSAL_VOTES: RefCell<BTreeMap<(ProposalId, StorablePrincipal), VoteChoice>> = RefCell::new(BTreeMap::new());
-
-    // Generic Orbit request proposal storage (volatile - expires in 7 days)
-    // IMPORTANT: Using regular BTreeMap (not stable memory) since proposals are temporary
-    //
-    // DESIGN: Multiple active proposals per token (key = (token_id, orbit_request_id))
-    // This allows voting on different request types concurrently (e.g., AddUser + EditPermission)
-    // Unlike treasury proposals which are limited to one per token, different operations can
-    // proceed simultaneously through the governance process.
-    pub static ORBIT_REQUEST_PROPOSALS: RefCell<BTreeMap<(StorablePrincipal, String), crate::proposals::types::OrbitRequestProposal>> = RefCell::new(BTreeMap::new());
-
-    // Vote tracking for Orbit request proposals
-    // Key: (ProposalId, Voter Principal)
-    // Separate from PROPOSAL_VOTES to keep concerns separated and enable independent evolution
-    pub static ORBIT_REQUEST_VOTES: RefCell<BTreeMap<(ProposalId, StorablePrincipal), VoteChoice>> = RefCell::new(BTreeMap::new());
 }
