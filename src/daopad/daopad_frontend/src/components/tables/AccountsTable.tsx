@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -53,8 +53,13 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
     return Array.isArray(tokenAssets) ? tokenAssets : [];
   });
 
+  // Create asset metadata Map for O(1) lookup
+  const assetMetadataMap = useMemo(() => {
+    return new Map(availableAssets.map(asset => [asset.id, asset]));
+  }, [availableAssets]);
+
   // Toggle account expansion
-  const toggleExpand = (accountId) => {
+  const toggleExpand = useCallback((accountId: string): void => {
     setExpandedAccounts(prev => {
       const next = new Set(prev);
       if (next.has(accountId)) {
@@ -64,7 +69,7 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
       }
       return next;
     });
-  };
+  }, []);
 
   // Fetch asset metadata on mount
   useEffect(() => {
@@ -222,23 +227,23 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
   };
 
   // Helper: Get asset metadata (symbol, name, decimals)
-  const getAssetMetadata = (asset, availableAssets) => {
+  const getAssetMetadata = useCallback((asset: any, metadataMap: Map<string, any>) => {
     // Try asset's own metadata first
     if (asset.symbol && asset.name) {
       return {
         symbol: asset.symbol,
         name: asset.name,
-        decimals: asset.decimals || 8
+        decimals: asset.decimals ?? 8
       };
     }
 
-    // Lookup from available assets
-    const metadata = availableAssets.find(a => a.id === asset.asset_id);
+    // Lookup from metadata Map (O(1) instead of O(n))
+    const metadata = metadataMap.get(asset.asset_id);
     if (metadata) {
       return {
         symbol: metadata.symbol || asset.asset_id?.slice(0, 6) || 'UNKNOWN',
         name: metadata.name || 'Unknown Asset',
-        decimals: metadata.decimals || 8
+        decimals: metadata.decimals ?? 8
       };
     }
 
@@ -248,26 +253,27 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
       name: 'Unknown Asset',
       decimals: 8
     };
-  };
+  }, []);
 
   // Helper: Format individual asset balance
-  const formatAssetBalance = (asset, metadata) => {
-    const balance = asset.balance?.balance || asset.balance || 0n;
-    const decimals = asset.balance?.decimals || metadata.decimals || 8;
+  const formatAssetBalance = useCallback((asset: any, metadata: any): string => {
+    const DISPLAY_DECIMAL_PLACES = 2;
+    const balance = asset.balance?.balance ?? asset.balance ?? 0n;
+    const decimals = asset.balance?.decimals ?? metadata.decimals ?? 8;
 
     if (typeof balance === 'bigint') {
       const divisor = 10n ** BigInt(decimals);
       const integerPart = balance / divisor;
       const fractionalPart = balance % divisor;
-      const fractionalStr = fractionalPart.toString().padStart(decimals, '0').slice(0, 2);
+      const fractionalStr = fractionalPart.toString().padStart(decimals, '0').slice(0, DISPLAY_DECIMAL_PLACES);
       return `${integerPart}.${fractionalStr} ${metadata.symbol}`;
     }
 
     return `0.00 ${metadata.symbol}`;
-  };
+  }, []);
 
   // Helper: Get balance status text
-  const getBalanceStatus = (asset) => {
+  const getBalanceStatus = useCallback((asset: any): string => {
     const queryState = asset.balance?.query_state;
 
     if (queryState === 'fresh') return '✓ Current';
@@ -276,10 +282,10 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
     if (!asset.balance) return 'No balance data';
 
     return 'Unknown status';
-  };
+  }, []);
 
   // Helper: Calculate portfolio value for main row
-  const getPortfolioValue = (account, availableAssets) => {
+  const getPortfolioValue = useCallback((account: any, metadataMap: Map<string, any>) => {
     const assets = account.assets || [];
 
     if (assets.length === 0) {
@@ -288,7 +294,7 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
 
     if (assets.length === 1) {
       const asset = assets[0];
-      const metadata = getAssetMetadata(asset, availableAssets);
+      const metadata = getAssetMetadata(asset, metadataMap);
       return formatAssetBalance(asset, metadata);
     }
 
@@ -298,7 +304,7 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
         Multi-asset portfolio
       </span>
     );
-  };
+  }, [getAssetMetadata, formatAssetBalance]);
 
   if (error) {
     return (
@@ -398,7 +404,7 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
                             </TableCell>
 
                             <TableCell className="text-right font-mono">
-                              {getPortfolioValue(account, availableAssets)}
+                              {getPortfolioValue(account, assetMetadataMap)}
                             </TableCell>
 
                             <TableCell className="text-right">
@@ -426,7 +432,7 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
                                     Asset Breakdown
                                   </div>
                                   {account.assets.map((asset) => {
-                                    const metadata = getAssetMetadata(asset, availableAssets);
+                                    const metadata = getAssetMetadata(asset, assetMetadataMap);
                                     return (
                                       <div
                                         key={asset.asset_id}
@@ -437,7 +443,7 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
                                           {/* Asset icon */}
                                           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                                             <span className="text-xs font-semibold">
-                                              {metadata.symbol.charAt(0).toUpperCase()}
+                                              {(metadata.symbol.charAt(0) || '?').toUpperCase()}
                                             </span>
                                           </div>
 
