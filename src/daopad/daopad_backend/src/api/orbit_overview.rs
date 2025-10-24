@@ -6,13 +6,28 @@ use crate::storage::state::{
 };
 use crate::types::StorablePrincipal;
 use crate::types::orbit::{
-    ListAccountsInput, ListAccountsResult,
+    ListAccountsInput,
     ListUsersInput, ListUsersResult,
     SystemInfoResult, SystemInfo,
-    UserDTO, Account,
+    UserDTO, Account, AccountAsset,
 };
 use crate::proposals::types::ProposalStatus;
 use crate::api::orbit_accounts::{Asset, ListAssetsInput, ListAssetsResult};
+
+// Minimal Account struct for overview - avoids Option<enum> Candid deserialization bug
+#[derive(CandidType, Deserialize, Debug, Clone)]
+struct AccountMinimal {
+    pub id: String,
+    pub assets: Vec<AccountAsset>,
+    // Skipping: addresses, name, metadata, transfer_request_policy, configs_request_policy, last_modification_timestamp
+}
+
+// Minimal ListAccountsResult for overview
+#[derive(CandidType, Deserialize, Debug)]
+enum ListAccountsResultMinimal {
+    Ok { accounts: Vec<AccountMinimal>, next_offset: Option<u64>, total: u64 },
+    Err(String),
+}
 
 /// Aggregate overview stats for a DAO
 /// Provides key metrics without requiring full treasury data
@@ -139,18 +154,19 @@ fn count_recent_proposals(token_id: Principal, days: u64) -> u64 {
 // ============================================================================
 
 /// List all accounts in Orbit Station (admin-level access)
-async fn list_accounts_call(station_id: Principal) -> Result<Vec<Account>, String> {
+/// Uses minimal struct to avoid Option<RequestPolicyRule> Candid deserialization bug
+async fn list_accounts_call(station_id: Principal) -> Result<Vec<AccountMinimal>, String> {
     let input = ListAccountsInput {
         search_term: None,
         paginate: None,
     };
 
-    let result: Result<(ListAccountsResult,), _> =
+    let result: Result<(ListAccountsResultMinimal,), _> =
         ic_cdk::call(station_id, "list_accounts", (input,)).await;
 
     match result {
-        Ok((ListAccountsResult::Ok { accounts, .. },)) => Ok(accounts),
-        Ok((ListAccountsResult::Err(e),)) => {
+        Ok((ListAccountsResultMinimal::Ok { accounts, .. },)) => Ok(accounts),
+        Ok((ListAccountsResultMinimal::Err(e),)) => {
             Err(format!("List accounts error: {:?}", e))
         }
         Err((code, msg)) => {
@@ -223,7 +239,7 @@ async fn list_assets_call(station_id: Principal) -> Result<Vec<Asset>, String> {
 /// Calculate total ICP balance and account count
 /// Filters assets by symbol == "ICP" to avoid summing non-ICP tokens
 fn calculate_treasury_total(
-    accounts_result: &Result<Vec<Account>, String>,
+    accounts_result: &Result<Vec<AccountMinimal>, String>,
     assets_result: &Result<Vec<Asset>, String>
 ) -> (u64, u64) {
     let Ok(accounts) = accounts_result else {
