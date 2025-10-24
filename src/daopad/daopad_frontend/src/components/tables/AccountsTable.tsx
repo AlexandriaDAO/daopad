@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, RefreshCw, ArrowUpRight } from 'lucide-react';
+import { Search, RefreshCw, ArrowUpRight, ChevronDown, ChevronRight } from 'lucide-react';
 import {
   fetchOrbitAccounts,
+  fetchTreasuryAssets,
   selectOrbitAccountsLoading,
   selectOrbitAccountsError,
 } from '@/features/orbit/orbitSlice';
@@ -23,6 +24,7 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState('');
   const [pagination, setPagination] = useState({ limit: 20, offset: 0 });
+  const [expandedAccounts, setExpandedAccounts] = useState(new Set());
   const [transferDialog, setTransferDialog] = useState({
     open: false,
     account: null,
@@ -44,6 +46,40 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
   const error = useSelector(state =>
     selectOrbitAccountsError(state, stationId)
   );
+
+  // Get asset metadata from Redux
+  const availableAssets = useSelector(state => {
+    const tokenAssets = state.orbit.assets?.data?.[tokenId];
+    return Array.isArray(tokenAssets) ? tokenAssets : [];
+  });
+
+  // Create asset metadata Map for O(1) lookup
+  const assetMetadataMap = useMemo(() => {
+    return new Map(availableAssets.map(asset => [asset.id, asset]));
+  }, [availableAssets]);
+
+  // Toggle account expansion
+  const toggleExpand = useCallback((accountId: string): void => {
+    setExpandedAccounts(prev => {
+      const next = new Set(prev);
+      if (next.has(accountId)) {
+        next.delete(accountId);
+      } else {
+        next.add(accountId);
+      }
+      return next;
+    });
+  }, []);
+
+  // Fetch asset metadata on mount
+  useEffect(() => {
+    if (tokenId) {
+      dispatch(fetchTreasuryAssets({
+        tokenId,
+        identity: identity || null
+      }));
+    }
+  }, [dispatch, tokenId, identity]);
 
   // Fetch accounts on mount and when dependencies change
   useEffect(() => {
@@ -190,6 +226,86 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
     setPagination({ ...pagination, offset: Math.max(0, pagination.offset - pagination.limit) });
   };
 
+  // Helper: Get asset metadata (symbol, name, decimals)
+  const getAssetMetadata = useCallback((asset: any, metadataMap: Map<string, any>) => {
+    // Try asset's own metadata first
+    if (asset.symbol && asset.name) {
+      return {
+        symbol: asset.symbol,
+        name: asset.name,
+        decimals: asset.decimals ?? 8
+      };
+    }
+
+    // Lookup from metadata Map (O(1) instead of O(n))
+    const metadata = metadataMap.get(asset.asset_id);
+    if (metadata) {
+      return {
+        symbol: metadata.symbol || asset.asset_id?.slice(0, 6) || 'UNKNOWN',
+        name: metadata.name || 'Unknown Asset',
+        decimals: metadata.decimals ?? 8
+      };
+    }
+
+    // Fallback
+    return {
+      symbol: asset.asset_id?.slice(0, 6) || 'UNKNOWN',
+      name: 'Unknown Asset',
+      decimals: 8
+    };
+  }, []);
+
+  // Helper: Format individual asset balance
+  const formatAssetBalance = useCallback((asset: any, metadata: any): string => {
+    const DISPLAY_DECIMAL_PLACES = 2;
+    const balance = asset.balance?.balance ?? asset.balance ?? 0n;
+    const decimals = asset.balance?.decimals ?? metadata.decimals ?? 8;
+
+    if (typeof balance === 'bigint') {
+      const divisor = 10n ** BigInt(decimals);
+      const integerPart = balance / divisor;
+      const fractionalPart = balance % divisor;
+      const fractionalStr = fractionalPart.toString().padStart(decimals, '0').slice(0, DISPLAY_DECIMAL_PLACES);
+      return `${integerPart}.${fractionalStr} ${metadata.symbol}`;
+    }
+
+    return `0.00 ${metadata.symbol}`;
+  }, []);
+
+  // Helper: Get balance status text
+  const getBalanceStatus = useCallback((asset: any): string => {
+    const queryState = asset.balance?.query_state;
+
+    if (queryState === 'fresh') return '✓ Current';
+    if (queryState === 'stale') return '⏱ Updating...';
+    if (queryState === 'stale_refreshing') return '🔄 Refreshing...';
+    if (!asset.balance) return 'No balance data';
+
+    return 'Unknown status';
+  }, []);
+
+  // Helper: Calculate portfolio value for main row
+  const getPortfolioValue = useCallback((account: any, metadataMap: Map<string, any>) => {
+    const assets = account.assets || [];
+
+    if (assets.length === 0) {
+      return <span className="text-muted-foreground">No assets</span>;
+    }
+
+    if (assets.length === 1) {
+      const asset = assets[0];
+      const metadata = getAssetMetadata(asset, metadataMap);
+      return formatAssetBalance(asset, metadata);
+    }
+
+    // Multiple assets - show summary
+    return (
+      <span className="text-muted-foreground">
+        Multi-asset portfolio
+      </span>
+    );
+  }, [getAssetMetadata, formatAssetBalance]);
+
   if (error) {
     return (
       <Card>
@@ -244,50 +360,123 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Account Name</TableHead>
-                    <TableHead>Account ID</TableHead>
-                    <TableHead>Blockchain</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
+                    <TableHead>Account</TableHead>
+                    <TableHead>Assets</TableHead>
+                    <TableHead className="text-right">Portfolio Value</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {accounts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center text-muted-foreground">
                         No accounts found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    accounts.map((account) => (
-                      <TableRow key={account.id} data-testid="treasury-account">
-                        <TableCell className="font-medium">
-                          {account.name || 'Unnamed Account'}
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {account.id.slice(0, 8)}...{account.id.slice(-6)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {account.blockchain || 'Unknown'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-mono" data-testid="account-balance">
-                          {account.balanceFormatted}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleTransfer(account)}
-                            disabled={!identity}
+                    accounts.map((account) => {
+                      const isExpanded = expandedAccounts.has(account.id);
+                      const assetCount = account.assets?.length || 0;
+
+                      return (
+                        <React.Fragment key={account.id}>
+                          {/* Main row - clickable */}
+                          <TableRow
+                            onClick={() => toggleExpand(account.id)}
+                            className="cursor-pointer hover:bg-muted/50 transition-colors"
+                            data-testid="treasury-account"
                           >
-                            <ArrowUpRight className="w-4 h-4 mr-2" />
-                            Transfer
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-2">
+                                {isExpanded ? (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                )}
+                                <span>{account.name || 'Unnamed Account'}</span>
+                              </div>
+                            </TableCell>
+
+                            <TableCell>
+                              <Badge variant="secondary">
+                                {assetCount} {assetCount === 1 ? 'asset' : 'assets'}
+                              </Badge>
+                            </TableCell>
+
+                            <TableCell className="text-right font-mono">
+                              {getPortfolioValue(account, assetMetadataMap)}
+                            </TableCell>
+
+                            <TableCell className="text-right">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Don't trigger row expansion
+                                  handleTransfer(account);
+                                }}
+                                disabled={!identity}
+                              >
+                                <ArrowUpRight className="w-4 h-4 mr-2" />
+                                Transfer
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+
+                          {/* Expanded asset details */}
+                          {isExpanded && account.assets && account.assets.length > 0 && (
+                            <TableRow>
+                              <TableCell colSpan={4} className="bg-muted/30 p-0">
+                                <div className="p-4 space-y-2">
+                                  <div className="text-sm font-medium text-muted-foreground mb-3">
+                                    Asset Breakdown
+                                  </div>
+                                  {account.assets.map((asset) => {
+                                    const metadata = getAssetMetadata(asset, assetMetadataMap);
+                                    return (
+                                      <div
+                                        key={asset.asset_id}
+                                        className="flex items-center justify-between py-2 px-3 rounded-md bg-background border"
+                                        data-testid="asset-detail-row"
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          {/* Asset icon */}
+                                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                            <span className="text-xs font-semibold">
+                                              {(metadata.symbol.charAt(0) || '?').toUpperCase()}
+                                            </span>
+                                          </div>
+
+                                          {/* Asset name/symbol */}
+                                          <div>
+                                            <div className="font-medium" data-testid="asset-symbol">
+                                              {metadata.symbol}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                              {metadata.name}
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        {/* Balance */}
+                                        <div className="text-right">
+                                          <div className="font-mono" data-testid="asset-balance">
+                                            {formatAssetBalance(asset, metadata)}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            {getBalanceStatus(asset)}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
