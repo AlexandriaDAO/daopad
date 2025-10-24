@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { existsSync } from 'node:fs';
 
 /**
  * Manual treasury test - run in --headed mode
@@ -7,6 +8,13 @@ import { test, expect } from '@playwright/test';
 test.describe('Treasury Manual Test (Login Required)', () => {
   test('complete treasury flow with manual login', async ({ page }) => {
     test.setTimeout(600000); // 10 minutes
+
+    // Check if we have auth or should skip
+    const hasAuth = existsSync('.auth/user.json');
+    if (!hasAuth && !process.env.CI) {
+      test.skip();
+      return;
+    }
 
     console.log('');
     console.log('==========================================');

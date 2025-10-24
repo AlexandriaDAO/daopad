@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { authenticateForTests } from './helpers/auth';
+import { existsSync } from 'node:fs';
 import {
   setupTreasuryTestMonitoring,
   navigateToTreasury,
@@ -13,6 +14,13 @@ test.describe('Treasury Enhanced - Data Pipeline', () => {
   let testState: TreasuryTestState;
 
   test.beforeEach(async ({ page }) => {
+    // Check if we have auth or should skip
+    const hasAuth = existsSync('.auth/user.json');
+    if (!hasAuth && !process.env.CI) {
+      test.skip();
+      return;
+    }
+
     // Initialize fresh state for each test
     testState = {
       networkRequests: [],
