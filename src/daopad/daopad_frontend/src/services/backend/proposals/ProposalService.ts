@@ -176,6 +176,33 @@ export class ProposalService extends BackendServiceBase {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Vote on an Orbit request (not a regular proposal)
+   */
+  async voteOnOrbitRequest(tokenId, orbitRequestId, vote) {
+    try {
+      const actor = await this.getActor();
+      const tokenPrincipal = this.toPrincipal(tokenId);
+      // vote is a boolean: true = yes, false = no
+      const result = await actor.vote_on_orbit_request(tokenPrincipal, orbitRequestId, vote);
+
+      // vote_on_orbit_request returns () on success or throws an error
+      // Since it returns unit type, we just return success if no error was thrown
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to vote on orbit request:', error);
+      // Parse the error message to provide better feedback
+      if (error.message && error.message.includes('AlreadyVoted')) {
+        return {
+          success: false,
+          error: 'You have already voted on this request',
+          code: 'ALREADY_VOTED'
+        };
+      }
+      return { success: false, error: error.message || error.toString() };
+    }
+  }
 }
 
 export const getProposalService = (identity) => {
