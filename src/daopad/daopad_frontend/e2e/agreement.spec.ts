@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createDataVerifier } from './helpers/data-verifier';
+import * as fs from 'fs';
 
 // Test constants
 const TEST_TOKEN = 'ysy5f-2qaaa-aaaap-qkmmq-cai';
@@ -92,11 +93,11 @@ test.describe('Agreement Tab - Data Pipeline Verification', () => {
     }
 
     // Verify Wyoming LLC reference
-    await expect(page.locator('text=/Wyoming/i')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=/Wyoming/i').first()).toBeVisible({ timeout: 15000 });
 
     // Verify smart contract governance statement
-    await expect(page.locator('text=/smart contracts/i')).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('text=/Internet Computer/i')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=/smart contracts/i').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=/Internet Computer/i').first()).toBeVisible({ timeout: 15000 });
 
     console.log('✅ All legal components present');
   });
@@ -276,9 +277,9 @@ test.describe('Agreement Tab - Content Accuracy', () => {
     await page.waitForTimeout(15000);
 
     // Verify key legal statements are present
-    await expect(page.locator('text=/Wyoming/i')).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('text=/limited liability company/i')).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('text=/Operating Agreement/i')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=/Wyoming/i').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=/limited liability company/i').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=/Operating Agreement/i').first()).toBeVisible({ timeout: 15000 });
 
     console.log('✅ Wyoming LLC compliance statements verified');
   });
@@ -288,7 +289,7 @@ test.describe('Agreement Tab - Content Accuracy', () => {
     await page.waitForTimeout(15000);
 
     // Verify on-chain references
-    await expect(page.locator('text=/Internet Computer/i')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=/Internet Computer/i').first()).toBeVisible({ timeout: 15000 });
 
     // Check for Orbit or governance references
     const orbitText = page.locator('text=/Orbit/i');
@@ -307,7 +308,7 @@ test.describe('Agreement Tab - Content Accuracy', () => {
     await page.waitForTimeout(15000);
 
     // Verify voting power explanation
-    await expect(page.locator('text=/voting power/i')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=/voting power/i').first()).toBeVisible({ timeout: 15000 });
 
     // Check for Kong Locker or voting mechanism details
     const kongText = page.locator('text=/Kong Locker/i');
@@ -381,7 +382,6 @@ test.describe('Agreement Tab - Error Scenarios', () => {
 test.describe('Agreement Tab - Regeneration Workflow', () => {
   test('STEP 19: Regenerate button triggers backend call', async ({ page }) => {
     // Check if auth exists, skip if not
-    const fs = require('fs');
     if (!fs.existsSync('playwright/.auth/user.json')) {
       test.skip(true, 'Auth file not available - skipping authenticated test');
     }
@@ -427,7 +427,6 @@ test.describe('Agreement Tab - Regeneration Workflow', () => {
 
   test('STEP 20: Version increments after successful regeneration', async ({ page }) => {
     // Check if auth exists, skip if not
-    const fs = require('fs');
     if (!fs.existsSync('playwright/.auth/user.json')) {
       test.skip(true, 'Auth file not available - skipping authenticated test');
     }
