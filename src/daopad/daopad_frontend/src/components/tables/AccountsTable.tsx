@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Search, RefreshCw, ArrowUpRight, ChevronDown, ChevronRight } from 'lucide-react';
 import {
   fetchOrbitAccounts,
@@ -19,7 +20,7 @@ import TransferRequestDialog from '../orbit/TransferRequestDialog';
 import { useToast } from '@/hooks/use-toast';
 import { safeStringify, debugLog } from '@/utils/logging';
 
-export default function AccountsTable({ stationId, identity, tokenId, tokenSymbol, votingPower }) {
+export default function AccountsTable({ stationId, identity, tokenId, tokenSymbol, votingPower, loadingVotingPower = false }) {
   const { toast } = useToast();
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState('');
@@ -408,18 +409,41 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
                             </TableCell>
 
                             <TableCell className="text-right">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation(); // Don't trigger row expansion
-                                  handleTransfer(account);
-                                }}
-                                disabled={!identity}
-                              >
-                                <ArrowUpRight className="w-4 h-4 mr-2" />
-                                Transfer
-                              </Button>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation(); // Don't trigger row expansion
+                                        handleTransfer(account);
+                                      }}
+                                      disabled={!identity}
+                                    >
+                                      <ArrowUpRight className="w-4 h-4 mr-2" />
+                                      Transfer
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {!identity ? (
+                                      <p>Login with Internet Identity to create transfer proposals</p>
+                                    ) : loadingVotingPower ? (
+                                      <p>Loading voting power...</p>
+                                    ) : votingPower < 10000 ? (
+                                      <p>
+                                        Need {(10000 - votingPower).toLocaleString()} more VP to propose transfers
+                                        <br />
+                                        <span className="text-xs text-muted-foreground">
+                                          Current: {votingPower.toLocaleString()} VP / Required: 10,000 VP
+                                        </span>
+                                      </p>
+                                    ) : (
+                                      <p>Create a transfer proposal (requires community vote)</p>
+                                    )}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             </TableCell>
                           </TableRow>
 

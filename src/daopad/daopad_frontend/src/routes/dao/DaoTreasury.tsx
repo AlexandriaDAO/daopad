@@ -6,7 +6,14 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import OrbitStationPlaceholder from '../../components/orbit/OrbitStationPlaceholder';
 
 export default function DaoTreasury() {
-  const { token, orbitStation, identity, isAuthenticated } = useOutletContext<any>();
+  const {
+    token,
+    orbitStation,
+    identity,
+    isAuthenticated,
+    votingPower = 0,
+    loadingVotingPower = false
+  } = useOutletContext<any>();
 
   if (!orbitStation) {
     return (
@@ -28,7 +35,8 @@ export default function DaoTreasury() {
         identity={identity}
         tokenId={token.canister_id}
         tokenSymbol={token.symbol}
-        votingPower={0}
+        votingPower={votingPower}
+        loadingVotingPower={loadingVotingPower}
       />
       {isAuthenticated && (
         <div className="space-y-4">
