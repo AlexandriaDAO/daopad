@@ -14,7 +14,7 @@
   },
   "type": "module",
   "workspaces": [
-    "src/daopad_frontend"
+    "src/daopad/daopad_frontend"
   ],
   "devDependencies": {
     "shadcn": "^3.3.1"
