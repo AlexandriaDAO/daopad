@@ -222,6 +222,69 @@ export class OrbitAccountsService extends BackendServiceBase {
       };
     }
   }
+
+  /**
+   * Get all treasury accounts with complete multi-asset balance data
+   * Returns all accounts with their assets and fresh balances in one efficient call
+   * This is the primary method for the Treasury Tab
+   */
+  async getTreasuryAccountsWithBalances(tokenId) {
+    try {
+      const actor = await this.getActor();
+      const tokenPrincipal = this.toPrincipal(tokenId);
+
+      const result = await actor.get_treasury_accounts_with_balances(tokenPrincipal);
+
+      if (result.Ok) {
+        return {
+          success: true,
+          data: result.Ok
+        };
+      } else {
+        return {
+          success: false,
+          error: result.Err
+        };
+      }
+    } catch (error) {
+      console.error('Failed to get treasury accounts with balances:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * List all treasury assets (alias for listStationAssets with better naming)
+   * Returns complete asset metadata for all assets in the treasury
+   */
+  async listTreasuryAssets(tokenId) {
+    try {
+      const actor = await this.getActor();
+      const tokenPrincipal = this.toPrincipal(tokenId);
+
+      const result = await actor.list_treasury_assets(tokenPrincipal);
+
+      if (result.Ok) {
+        return {
+          success: true,
+          data: result.Ok
+        };
+      } else {
+        return {
+          success: false,
+          error: result.Err
+        };
+      }
+    } catch (error) {
+      console.error('Failed to list treasury assets:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
 }
 
 export const getOrbitAccountsService = (identity) => {

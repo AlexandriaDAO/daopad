@@ -61,85 +61,66 @@ export const fetchOrbitRequests = createAsyncThunk(
   }
 );
 
-// Fetch Orbit accounts with balances
+// Fetch Orbit accounts with multi-asset balances (NEW: uses efficient backend method)
 export const fetchOrbitAccounts = createAsyncThunk(
   'orbit/fetchAccounts',
-  async ({ stationId, identity, searchQuery, pagination, tokenId }, { rejectWithValue }) => {
+  async ({ stationId, identity, tokenId }, { rejectWithValue }) => {
     try {
       const service = getOrbitAccountsService(identity);
 
-      const response = await service.listAccounts(
-        tokenId,
-        searchQuery || undefined,
-        pagination.limit || 20,
-        pagination.offset || 0
-      );
+      // Use new efficient method that fetches all accounts with balances in one call
+      const response = await service.getTreasuryAccountsWithBalances(tokenId);
 
       if (response.success) {
-        const accounts = response.data.accounts || [];
+        const accounts = response.data || [];
 
-        // NEW: Fetch asset details with correct symbols for each account
-        if (accounts.length > 0 && tokenId) {
-          const enrichedAccounts = await Promise.all(
-            accounts.map(async (account) => {
+        // Process accounts to ensure balance data is properly formatted
+        const processedAccounts = accounts.map(account => ({
+          ...account,
+          assets: (account.assets || []).map(accountAsset => {
+            // Handle balance conversion safely
+            let balanceValue = 0n;
+            if (accountAsset.balance && accountAsset.balance[0]) {
+              const bal = accountAsset.balance[0];
               try {
-                const assetsResult = await service.getAccountWithAssets(
-                  tokenId,
-                  account.id
-                );
-
-                if (assetsResult.success && assetsResult.data) {
-                  // Map assets to the format expected by selectors
-                  const assetsWithSymbols = assetsResult.data.assets.map(asset => {
-                    // Handle balance conversion safely
-                    let balanceValue = 0n;
-                    try {
-                      if (typeof asset.balance === 'bigint') {
-                        balanceValue = asset.balance;
-                      } else if (typeof asset.balance === 'string' && asset.balance) {
-                        balanceValue = BigInt(asset.balance);
-                      } else if (typeof asset.balance === 'number') {
-                        balanceValue = BigInt(Math.floor(asset.balance));
-                      }
-                    } catch (e) {
-                      console.warn(`Invalid balance for asset ${asset.asset_id}:`, asset.balance, e);
-                      balanceValue = 0n;
-                    }
-
-                    return {
-                      id: asset.asset_id,
-                      asset_id: asset.asset_id,
-                      symbol: asset.symbol,
-                      decimals: asset.decimals,
-                      balance: {
-                        balance: balanceValue,
-                        decimals: asset.decimals,
-                        asset_id: asset.asset_id,
-                      }
-                    };
-                  });
-
-                  return {
-                    ...account,
-                    assets: assetsWithSymbols,
-                  };
+                if (typeof bal.balance === 'bigint') {
+                  balanceValue = bal.balance;
+                } else if (typeof bal.balance === 'string' && bal.balance) {
+                  balanceValue = BigInt(bal.balance);
+                } else if (typeof bal.balance === 'number') {
+                  balanceValue = BigInt(Math.floor(bal.balance));
+                } else if (bal.balance && typeof bal.balance === 'object' && '_0_' in bal.balance) {
+                  // Handle Candid Nat encoding
+                  balanceValue = BigInt(bal.balance._0_.toString());
                 }
-              } catch (error) {
-                console.warn(`Failed to get assets for account ${account.id}:`, error);
+              } catch (e) {
+                console.warn(`Invalid balance for asset ${accountAsset.asset_id}:`, bal.balance, e);
               }
 
-              // Fallback to original account if enrichment fails
-              return account;
-            })
-          );
+              return {
+                asset_id: accountAsset.asset_id,
+                balance: balanceValue,
+                decimals: bal.decimals || 8,
+                query_state: bal.query_state || 'unknown',
+                last_update_timestamp: bal.last_update_timestamp,
+              };
+            }
 
-          response.data.accounts = enrichedAccounts;
-        }
+            // No balance data available
+            return {
+              asset_id: accountAsset.asset_id,
+              balance: 0n,
+              decimals: 8,
+              query_state: 'missing',
+            };
+          })
+        }));
 
-        return { stationId, data: response.data };
+        return { stationId, tokenId, data: { accounts: processedAccounts, total: processedAccounts.length } };
       }
       throw new Error(response.error || 'Failed to fetch accounts');
     } catch (error) {
+      console.error('Failed to fetch treasury accounts:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -179,6 +160,26 @@ export const fetchOrbitStationStatus = createAsyncThunk(
 
       return { tokenId, status: 'missing' };
     } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// Fetch available treasury assets
+export const fetchTreasuryAssets = createAsyncThunk(
+  'orbit/fetchAssets',
+  async ({ tokenId, identity }, { rejectWithValue }) => {
+    try {
+      const service = getOrbitAccountsService(identity);
+
+      const response = await service.listTreasuryAssets(tokenId);
+
+      if (response.success) {
+        return { tokenId, data: response.data || [] };
+      }
+      throw new Error(response.error || 'Failed to fetch treasury assets');
+    } catch (error) {
+      console.error('Failed to fetch treasury assets:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -257,6 +258,14 @@ const initialState = {
   // Accounts (keyed by stationId)
   accounts: {
     data: {}, // stationId -> { accounts, total, balances }
+    loading: {},
+    error: {},
+    lastFetch: {},
+  },
+
+  // Treasury Assets (keyed by tokenId)
+  assets: {
+    data: {}, // tokenId -> array of assets
     loading: {},
     error: {},
     lastFetch: {},
@@ -387,6 +396,25 @@ const orbitSlice = createSlice({
         const { tokenId } = action.meta.arg;
         state.stationStatus.loading[tokenId] = false;
         state.stationStatus.error[tokenId] = action.payload;
+      });
+
+    // Treasury Assets
+    builder
+      .addCase(fetchTreasuryAssets.pending, (state, action) => {
+        const { tokenId } = action.meta.arg;
+        state.assets.loading[tokenId] = true;
+        state.assets.error[tokenId] = null;
+      })
+      .addCase(fetchTreasuryAssets.fulfilled, (state, action) => {
+        const { tokenId, data } = action.payload;
+        state.assets.data[tokenId] = data;
+        state.assets.loading[tokenId] = false;
+        state.assets.lastFetch[tokenId] = Date.now();
+      })
+      .addCase(fetchTreasuryAssets.rejected, (state, action) => {
+        const { tokenId } = action.meta.arg;
+        state.assets.loading[tokenId] = false;
+        state.assets.error[tokenId] = action.payload;
       });
 
     // Create Transfer Request
