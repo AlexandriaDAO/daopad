@@ -103,12 +103,12 @@ pub async fn create_remove_admin_request(
 
             // CRITICAL: Auto-create DAOPad proposal for community voting
             // This ensures ALL admin removal requests go through governance
-            use crate::proposals::{ensure_proposal_for_request, OrbitRequestType};
+            use crate::proposals::ensure_proposal_for_request;
 
             match ensure_proposal_for_request(
                 token_canister_id,
                 request_id.clone(),
-                OrbitRequestType::EditUser,
+                "EditUser".to_string(),
             ).await {
                 Ok(proposal_id) => {
                     ic_cdk::println!(

@@ -116,12 +116,12 @@ pub async fn create_edit_permission_request(
                     .map(|sp| sp.0)
             }).ok_or("Station not linked to any token")?;
 
-            use crate::proposals::{ensure_proposal_for_request, OrbitRequestType};
+            use crate::proposals::ensure_proposal_for_request;
 
             match ensure_proposal_for_request(
                 token_canister_id,
                 request_id.clone(),
-                OrbitRequestType::EditPermission,  // 70% threshold
+                "EditPermission".to_string(),  // 70% threshold
             ).await {
                 Ok(_proposal_id) => Ok(request_id),
                 Err(e) => Err(format!("GOVERNANCE VIOLATION: Created Orbit request but failed to create proposal: {:?}", e))
@@ -193,12 +193,12 @@ pub async fn remove_permission_from_operator_group(
             let request_id = response.request.id;
 
             // CRITICAL: Auto-create proposal for governance
-            use crate::proposals::{ensure_proposal_for_request, OrbitRequestType};
+            use crate::proposals::ensure_proposal_for_request;
 
             match ensure_proposal_for_request(
                 token_canister_id,
                 request_id.clone(),
-                OrbitRequestType::EditPermission,  // 70% threshold
+                "EditPermission".to_string(),  // 70% threshold
             ).await {
                 Ok(_proposal_id) => Ok(request_id),
                 Err(e) => Err(format!("GOVERNANCE VIOLATION: Created Orbit request but failed to create proposal: {:?}", e))

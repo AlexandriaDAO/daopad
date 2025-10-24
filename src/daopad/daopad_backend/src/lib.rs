@@ -11,6 +11,18 @@ pub use api::*;
 pub use api::orbit_overview::DaoOverviewStats;
 pub use proposals::orbit_link::{OrbitLinkProposal, ProposalStatus};
 pub use proposals::{
+    // Unified voting system exports
+    vote_on_proposal,                      // Single voting endpoint
+    create_orbit_request_with_proposal,    // Single creation endpoint
+    get_proposal,                          // Single query
+    list_unified_proposals,                // Single list
+    ensure_proposal_for_request,           // For backwards compatibility
+    has_user_voted,
+    get_user_vote,
+    OrbitOperation,
+    UnifiedProposal,
+
+    // Types
     OrbitRequestProposal, OrbitRequestType, ProposalError, ProposalId, ProposalType,
     TransferDetails, TreasuryProposal, VoteChoice,
 };
