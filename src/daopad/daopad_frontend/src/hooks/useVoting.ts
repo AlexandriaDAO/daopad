@@ -40,11 +40,14 @@ export function useVoting(tokenId) {
   // Vote on an Orbit request with improved error handling
   const vote = useCallback(async (orbitRequestId, voteChoice) => {
     if (!identity) throw new Error('Not authenticated');
+    if (!tokenId) throw new Error('Token ID required');
 
     setVoting(true);
     try {
       const proposalService = getProposalService(identity);
-      const result = await proposalService.vote(orbitRequestId, voteChoice);
+      // Use voteOnOrbitRequest instead of vote (which is for regular proposals)
+      // voteChoice should be a boolean: true for yes, false for no
+      const result = await proposalService.voteOnOrbitRequest(tokenId, orbitRequestId, voteChoice);
 
       if (!result.success) {
         // Parse specific error types - ensure error is a string

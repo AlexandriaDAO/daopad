@@ -72,7 +72,39 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
   const [proposal, setProposal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hasVoted, setHasVoted] = useState(false);
+  const [userVote, setUserVote] = useState(null); // NEW: Track actual vote
   const [error, setError] = useState(null);
+
+  // NEW: Check if user has voted
+  const checkVoteStatus = useCallback(async () => {
+    if (!identity || !tokenId || !orbitRequestId) return;
+
+    try {
+      const proposalService = getProposalService(identity);
+      const actor = await proposalService.getActor();
+
+      // Call new backend method
+      const voted = await actor.has_user_voted_on_orbit_request(
+        identity.getPrincipal(),
+        Principal.fromText(tokenId),
+        orbitRequestId
+      );
+
+      setHasVoted(voted);
+
+      // Get actual vote if voted
+      if (voted) {
+        const vote = await actor.get_user_vote_on_orbit_request(
+          identity.getPrincipal(),
+          Principal.fromText(tokenId),
+          orbitRequestId
+        );
+        setUserVote(vote); // Will be { Yes: null } or { No: null }
+      }
+    } catch (err) {
+      console.error('Failed to check vote status:', err);
+    }
+  }, [identity, tokenId, orbitRequestId]);
 
   // Fetch proposal for this Orbit request
   const fetchProposal = useCallback(async () => {
@@ -102,8 +134,9 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
           expires_at: typeof result.data.expires_at === 'bigint' ? Number(result.data.expires_at) : result.data.expires_at,
         };
         setProposal(proposal);
-        // Note: hasVoted detection happens on vote attempt (backend returns AlreadyVoted error)
-        // We don't have a query endpoint for this, so we detect it during voting
+
+        // NEW: Check if user has voted
+        await checkVoteStatus();
       } else {
         setProposal(null);
         setHasVoted(false);
@@ -115,7 +148,7 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
     } finally {
       setLoading(false);
     }
-  }, [identity, tokenId, orbitRequestId]);
+  }, [identity, tokenId, orbitRequestId, checkVoteStatus]);
 
   // Auto-create proposal if it doesn't exist
   const ensureProposal = useCallback(async () => {
@@ -167,9 +200,11 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
   return {
     proposal,
     loading,
-    hasVoted,
+    hasVoted, // Now properly tracked from backend
+    userVote, // NEW: Actual vote choice
     error,
     fetchProposal,
-    ensureProposal
+    ensureProposal,
+    checkVoteStatus // NEW: Expose for manual refresh
   };
 }
