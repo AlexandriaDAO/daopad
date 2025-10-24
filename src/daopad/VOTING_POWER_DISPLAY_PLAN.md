@@ -105,16 +105,21 @@ Implements VOTING_POWER_DISPLAY_PLAN.md"
 
 ---
 
-# Implementation Plan: Display Voting Power in Treasury Tab
+# Implementation Plan: Display Voting Power in Treasury Tab & Header
 
 ## Problem Statement
 
-**Current Issue:** Voting power is hardcoded to `0` in DaoTreasury.tsx:31, preventing users from:
+**Current Issue:** Voting power is hardcoded to `0` in DaoTreasury.tsx:31, and not displayed in DaoLayout header, preventing users from:
 1. Seeing their governance rights (voting power from locked LP tokens)
 2. Understanding why transfer buttons are disabled
 3. Knowing if they meet the 10,000 VP threshold required for proposals
 
-**Root Cause:** DaoRoute doesn't fetch voting power, and DaoTreasury doesn't fetch it either.
+**Root Cause:**
+- DaoRoute doesn't use the existing `useVoting` hook
+- DaoLayout header doesn't display voting power (should show in page header)
+- DaoTreasury receives hardcoded `0` instead of context value
+
+**Existing Infrastructure:** ✅ `useVoting` hook already exists and works (used in Activity tab)
 
 ## Current State
 
@@ -122,16 +127,16 @@ Implements VOTING_POWER_DISPLAY_PLAN.md"
 ```
 daopad_frontend/src/
 ├── routes/
-│   ├── DaoRoute.tsx                    # MODIFY - Add VP fetching
+│   ├── DaoRoute.tsx                    # MODIFY - Use useVoting hook
 │   └── dao/
-│       └── DaoTreasury.tsx             # MODIFY - Display VP, pass to AccountsTable
+│       └── DaoTreasury.tsx             # MODIFY - Pass VP from context to AccountsTable
 ├── components/
+│   ├── dao/
+│   │   └── DaoLayout.tsx               # MODIFY - Display VP in header
 │   └── tables/
 │       └── AccountsTable.tsx           # MODIFY - Show VP requirements
-└── services/
-    └── backend/
-        └── tokens/
-            └── TokenService.ts         # EXISTING - Has getMyVotingPowerForToken()
+└── hooks/
+    └── useVoting.ts                    # EXISTING - Already fetches VP correctly!
 ```
 
 ### Existing Code Analysis
@@ -176,26 +181,34 @@ disabled={!identity}
 />
 ```
 
-#### TokenService.ts (lines 101-111)
+#### useVoting.ts (lines 1-144) - EXISTING HOOK
 ```typescript
-// EXISTING SERVICE - Already works correctly
-async getMyVotingPowerForToken(tokenId) {
-  try {
-    const actor = await this.getActor();
-    const tokenPrincipal = this.toPrincipal(tokenId);
-    const result = await actor.get_my_voting_power_for_token(tokenPrincipal);
-    return this.wrapResult(result);
-  } catch (error) {
-    console.error('Failed to get my voting power:', error);
-    return { success: false, error: error.message };
-  }
+// EXISTING HOOK - Already fetches VP correctly!
+export function useVoting(tokenId) {
+  const { identity } = useAuth();
+  const [userVotingPower, setUserVotingPower] = useState(0);
+
+  const fetchVotingPower = useCallback(async () => {
+    if (!identity || !tokenId) return;
+    const kongService = getKongLockerService(identity);
+    const result = await kongService.getVotingPower(tokenId);
+    if (result.success) {
+      setUserVotingPower(Number(result.data));
+    }
+  }, [identity, tokenId]);
+
+  useEffect(() => {
+    fetchVotingPower();
+  }, [fetchVotingPower]);
+
+  return { vote, voting, userVotingPower, fetchVotingPower, loadingVP };
 }
 ```
-**Status:** Working correctly - just needs to be called.
+**Status:** ✅ Working correctly in Activity tab - just need to use it in DaoRoute!
 
 ## Implementation Plan
 
-### 1. DaoRoute.tsx - Fetch Voting Power
+### 1. DaoRoute.tsx - Use Existing useVoting Hook
 
 **Location:** `daopad_frontend/src/routes/DaoRoute.tsx`
 
@@ -203,45 +216,12 @@ async getMyVotingPowerForToken(tokenId) {
 ```typescript
 // PSEUDOCODE
 
-// ADD new state variable after line 16
-const [votingPower, setVotingPower] = useState<number>(0);
-const [loadingVotingPower, setLoadingVotingPower] = useState<boolean>(false);
+// ADD import at top (line ~5)
+import { useVoting } from '../hooks/useVoting';
 
-// MODIFY the useEffect (currently lines 18-111) to include voting power fetch
-useEffect(() => {
-  async function loadToken() {
-    // ... existing station/metadata/overview fetch logic ...
-
-    // ADD voting power fetch for authenticated users
-    if (isAuthenticated && identity && tokenId) {
-      setLoadingVotingPower(true);
-      try {
-        const tokenService = getTokenService(identity);
-        const vpResult = await tokenService.getMyVotingPowerForToken(principal);
-
-        if (vpResult.success && vpResult.data !== undefined) {
-          // Convert BigInt to number if necessary
-          const vp = typeof vpResult.data === 'bigint' ? Number(vpResult.data) : vpResult.data;
-          setVotingPower(vp);
-          console.log('[DaoRoute] Voting power loaded:', vp);
-        } else {
-          setVotingPower(0);
-          console.warn('[DaoRoute] No voting power data');
-        }
-      } catch (error) {
-        console.error('[DaoRoute] Failed to fetch voting power:', error);
-        setVotingPower(0);
-      } finally {
-        setLoadingVotingPower(false);
-      }
-    } else {
-      // Not authenticated - set to 0
-      setVotingPower(0);
-    }
-  }
-
-  loadToken();
-}, [tokenId, identity, isAuthenticated]);
+// ADD useVoting hook after other hooks (line ~11)
+// Use the EXISTING hook instead of duplicating fetch logic
+const { userVotingPower, loadingVP } = useVoting(tokenId);
 
 // MODIFY Outlet context to include votingPower (line 124)
 <Outlet context={{
@@ -250,16 +230,90 @@ useEffect(() => {
   overviewStats,
   identity,
   isAuthenticated,
-  votingPower,           // ADD
-  loadingVotingPower     // ADD
+  votingPower: userVotingPower,     // ADD - from useVoting hook
+  loadingVotingPower: loadingVP     // ADD - from useVoting hook
 }} />
 ```
 
 **Expected Result:**
-- Voting power fetched on page load for authenticated users
+- Voting power automatically fetched via existing hook
+- No duplicated fetching logic
 - Available in context for all child routes
 
-### 2. DaoTreasury.tsx - Display and Pass Voting Power
+### 2. DaoLayout.tsx - Display Voting Power in Header
+
+**Location:** `daopad_frontend/src/components/dao/DaoLayout.tsx`
+
+**Changes:**
+```typescript
+// PSEUDOCODE
+
+// MODIFY component signature to accept votingPower (line 5-9)
+interface DaoLayoutProps {
+  token: any;
+  orbitStation: any;
+  votingPower?: number;        // ADD
+  loadingVotingPower?: boolean; // ADD
+  children: React.ReactNode;
+}
+
+export default function DaoLayout({
+  token,
+  orbitStation,
+  votingPower = 0,              // ADD with default
+  loadingVotingPower = false,   // ADD with default
+  children
+}: DaoLayoutProps) {
+
+// ADD VP display in header (after line 44, before closing </div>)
+{orbitStation && (
+  <>
+    <p className="text-xs text-green-600 mt-1">
+      ✓ Treasury Station: {orbitStation.station_id}
+    </p>
+    {/* ADD: Voting Power Badge */}
+    {votingPower > 0 && (
+      <div className="mt-2">
+        <Badge variant={votingPower >= 10000 ? "default" : "secondary"}>
+          {loadingVotingPower ? (
+            "Loading VP..."
+          ) : (
+            `${votingPower.toLocaleString()} VP${votingPower >= 10000 ? " ✓" : ""}`
+          )}
+        </Badge>
+      </div>
+    )}
+  </>
+)}
+```
+
+**Expected Result:**
+- VP badge visible in page header across all tabs
+- Consistent display of voting power throughout DAO pages
+
+### 3. DaoRoute.tsx - Pass VP to DaoLayout
+
+**Location:** `daopad_frontend/src/routes/DaoRoute.tsx`
+
+**Changes:**
+```typescript
+// PSEUDOCODE
+
+// MODIFY DaoLayout call to pass votingPower (line 123)
+<DaoLayout
+  token={token}
+  orbitStation={orbitStation}
+  votingPower={userVotingPower}     // ADD
+  loadingVotingPower={loadingVP}    // ADD
+>
+  <Outlet context={{ token, orbitStation, overviewStats, identity, isAuthenticated, votingPower: userVotingPower, loadingVotingPower: loadingVP }} />
+</DaoLayout>
+```
+
+**Expected Result:**
+- VP displayed in header on all DAO pages (not just Treasury)
+
+### 4. DaoTreasury.tsx - Use VP from Context
 
 **Location:** `daopad_frontend/src/routes/dao/DaoTreasury.tsx`
 
@@ -277,43 +331,21 @@ const {
   loadingVotingPower = false  // ADD with default
 } = useOutletContext<any>();
 
-// ADD VP display badge before AccountsTable (around line 25)
-<div className="space-y-6" data-testid="treasury-overview">
-  {/* ADD: Voting Power Badge */}
-  {isAuthenticated && (
-    <div className="flex items-center gap-3 mb-4">
-      <Badge variant={votingPower >= 10000 ? "default" : "secondary"}>
-        {loadingVotingPower ? (
-          <span>Loading VP...</span>
-        ) : (
-          <span>
-            {votingPower.toLocaleString()} VP
-            {votingPower >= 10000 ? " ✓ Can propose transfers" : " ⚠️ Need 10,000 VP to propose"}
-          </span>
-        )}
-      </Badge>
-    </div>
-  )}
-
-  {/* MODIFY AccountsTable to pass actual votingPower (line 26-32) */}
-  <AccountsTable
-    stationId={orbitStation.station_id}
-    identity={identity}
-    tokenId={token.canister_id}
-    tokenSymbol={token.symbol}
-    votingPower={votingPower}  // CHANGE from 0 to votingPower
-  />
-
-  {/* ... rest of component ... */}
-</div>
+// MODIFY AccountsTable to pass actual votingPower (line 26-32)
+<AccountsTable
+  stationId={orbitStation.station_id}
+  identity={identity}
+  tokenId={token.canister_id}
+  tokenSymbol={token.symbol}
+  votingPower={votingPower}  // CHANGE from 0 to votingPower
+/>
 ```
 
 **Expected Result:**
-- VP badge visible when authenticated
-- Shows current voting power and threshold status
 - Actual voting power passed to AccountsTable
+- Transfer button logic uses real VP
 
-### 3. AccountsTable.tsx - Enhanced Transfer Button Feedback
+### 5. AccountsTable.tsx - Enhanced Transfer Button Feedback
 
 **Location:** `daopad_frontend/src/components/tables/AccountsTable.tsx`
 
@@ -466,23 +498,27 @@ grep "get_my_voting_power_for_token" console.log  # Should show successful calls
 
 ## Files Modified Summary
 
-1. **DaoRoute.tsx** (15 lines added)
-   - Add votingPower state
-   - Fetch VP in useEffect
+1. **DaoRoute.tsx** (~5 lines added)
+   - Import and use existing `useVoting` hook
+   - Pass VP to DaoLayout props
    - Include in Outlet context
 
-2. **DaoTreasury.tsx** (12 lines added)
-   - Receive votingPower from context
-   - Add VP badge display
-   - Pass actual VP to AccountsTable
+2. **DaoLayout.tsx** (~12 lines added)
+   - Add votingPower props
+   - Display VP badge in header
 
-3. **AccountsTable.tsx** (20 lines added)
+3. **DaoTreasury.tsx** (~3 lines changed)
+   - Receive votingPower from context
+   - Pass actual VP to AccountsTable (change from 0)
+
+4. **AccountsTable.tsx** (~20 lines added)
    - Import Tooltip component
    - Wrap transfer button with tooltip
    - Show VP-specific messages
 
-**Total LOC:** ~47 lines added (all frontend)
-**Backend Changes:** None (uses existing API)
+**Total LOC:** ~40 lines added (all frontend)
+**Backend Changes:** None (uses existing useVoting hook)
+**Key Optimization:** No duplicate VP fetching logic - reuses existing hook!
 
 ## Success Metrics
 
