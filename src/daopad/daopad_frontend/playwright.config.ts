@@ -6,10 +6,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
-  fullyParallel: false,
+  fullyParallel: false, // Set at project level instead
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1,
+  workers: process.env.CI ? 2 : 4, // Increase workers for parallel tests
   reporter: [
     ['html'],
     ['list'],
@@ -25,13 +25,39 @@ export default defineConfig({
 
   projects: [
     {
-      name: 'chromium',
+      name: 'anonymous-parallel',
+      testMatch: [
+        '**/activity.spec.ts',
+        '**/agreement.spec.ts',
+        '**/app-route.spec.ts',
+        '**/debug-page-load.spec.ts',
+        '**/minimal-smoke.spec.ts',
+        '**/settings.spec.ts'
+      ],
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {
           args: ['--enable-logging', '--v=1']
         }
       },
+      fullyParallel: true,
+    },
+    {
+      name: 'authenticated-serial',
+      testMatch: [
+        '**/treasury*.spec.ts',
+        '**/canisters.spec.ts',
+        '**/manual-auth-setup.spec.ts'
+      ],
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: {
+          args: ['--enable-logging', '--v=1']
+        },
+        // Attempt to use storage state if it exists
+        storageState: '.auth/user.json',
+      },
+      fullyParallel: false, // Serial execution for auth tests
     },
   ],
 
