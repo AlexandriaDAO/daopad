@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import * as fs from 'fs';
+import { existsSync } from 'node:fs';
 
 // NOTE: II authentication requires IndexedDB (not capturable by storageState)
 // For authenticated tests: Login once manually, II delegation persists in browser
@@ -56,7 +56,7 @@ export default defineConfig({
           args: ['--enable-logging', '--v=1']
         },
         // Use storage state only if auth file exists
-        ...(fs.existsSync('.auth/user.json')
+        ...(existsSync('.auth/user.json')
           ? { storageState: '.auth/user.json' }
           : {}),
       },
