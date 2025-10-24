@@ -11,7 +11,7 @@ test.describe('Agreement Tab - Data Pipeline Verification', () => {
     const verify = createDataVerifier(page);
 
     await page.goto(BASE_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000); // 15 seconds to match actual IC canister call latency
 
     // Verify no console errors
     verify.assertNoConsoleErrors();
@@ -20,11 +20,11 @@ test.describe('Agreement Tab - Data Pipeline Verification', () => {
     verify.assertBackendSuccess();
 
     // Verify UI loaded
-    await expect(page.locator('text=LLC Operating Agreement')).toBeVisible();
+    await expect(page.locator('text=LLC Operating Agreement')).toBeVisible({ timeout: 15000 });
 
     // Verify regenerate button exists
     const regenerateBtn = page.locator('button:has-text("Regenerate")');
-    await expect(regenerateBtn).toBeVisible();
+    await expect(regenerateBtn).toBeVisible({ timeout: 15000 });
 
     verify.printSummary();
   });
@@ -33,7 +33,7 @@ test.describe('Agreement Tab - Data Pipeline Verification', () => {
     const verify = createDataVerifier(page);
 
     await page.goto(BASE_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000);
 
     // Verify backend call to get_agreement_snapshot was made
     const networkCalls = verify.getNetworkCalls();
@@ -50,7 +50,7 @@ test.describe('Agreement Tab - Data Pipeline Verification', () => {
     const verify = createDataVerifier(page);
 
     await page.goto(BASE_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000);
 
     verify.assertNoConsoleErrors();
 
@@ -66,7 +66,7 @@ test.describe('Agreement Tab - Data Pipeline Verification', () => {
 
     for (const article of articles) {
       const heading = page.locator(`h2:has-text("${article}")`).first();
-      await expect(heading).toBeVisible();
+      await expect(heading).toBeVisible({ timeout: 15000 });
     }
 
     console.log('✅ All 6 articles render correctly');
@@ -76,27 +76,27 @@ test.describe('Agreement Tab - Data Pipeline Verification', () => {
     const verify = createDataVerifier(page);
 
     await page.goto(BASE_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000);
 
     // Verify document title
-    await expect(page.locator('text=LIMITED LIABILITY COMPANY OPERATING AGREEMENT')).toBeVisible();
+    await expect(page.locator('text=LIMITED LIABILITY COMPANY OPERATING AGREEMENT')).toBeVisible({ timeout: 15000 });
 
     // Verify effective date
-    await expect(page.locator('text=/Effective Date:/i')).toBeVisible();
+    await expect(page.locator('text=/Effective Date:/i')).toBeVisible({ timeout: 15000 });
 
     // Verify on-chain reference (station ID)
     const stationRef = page.locator(`text=/Station.*${TEST_STATION}/i`).first();
     const stationRefExists = await stationRef.count() > 0;
     if (stationRefExists) {
-      await expect(stationRef).toBeVisible();
+      await expect(stationRef).toBeVisible({ timeout: 15000 });
     }
 
     // Verify Wyoming LLC reference
-    await expect(page.locator('text=/Wyoming/i')).toBeVisible();
+    await expect(page.locator('text=/Wyoming/i')).toBeVisible({ timeout: 15000 });
 
     // Verify smart contract governance statement
-    await expect(page.locator('text=/smart contracts/i')).toBeVisible();
-    await expect(page.locator('text=/Internet Computer/i')).toBeVisible();
+    await expect(page.locator('text=/smart contracts/i')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=/Internet Computer/i')).toBeVisible({ timeout: 15000 });
 
     console.log('✅ All legal components present');
   });
@@ -105,7 +105,7 @@ test.describe('Agreement Tab - Data Pipeline Verification', () => {
     const verify = createDataVerifier(page);
 
     await page.goto(BASE_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000);
 
     verify.assertNoConsoleErrors();
     verify.assertBackendSuccess();
@@ -115,10 +115,10 @@ test.describe('Agreement Tab - Data Pipeline Verification', () => {
     const versionExists = await versionInfo.count() > 0;
 
     if (versionExists) {
-      await expect(versionInfo).toBeVisible();
+      await expect(versionInfo).toBeVisible({ timeout: 15000 });
 
       // Should also show "Generated:" timestamp
-      await expect(page.locator('text=/Generated:/i')).toBeVisible();
+      await expect(page.locator('text=/Generated:/i')).toBeVisible({ timeout: 15000 });
 
       const versionText = await versionInfo.textContent();
       console.log(`✅ Version info displayed: ${versionText}`);
@@ -131,13 +131,13 @@ test.describe('Agreement Tab - Data Pipeline Verification', () => {
     const verify = createDataVerifier(page);
 
     await page.goto(BASE_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000);
 
     verify.assertNoConsoleErrors();
 
     // Verify Article II exists
     const articleII = page.locator('h2:has-text("ARTICLE II")').first();
-    await expect(articleII).toBeVisible();
+    await expect(articleII).toBeVisible({ timeout: 15000 });
 
     // Check for membership sections
     const sections = [
@@ -160,13 +160,13 @@ test.describe('Agreement Tab - Data Pipeline Verification', () => {
     const verify = createDataVerifier(page);
 
     await page.goto(BASE_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000);
 
     verify.assertNoConsoleErrors();
 
     // Verify Article III exists
     const articleIII = page.locator('h2:has-text("ARTICLE III")').first();
-    await expect(articleIII).toBeVisible();
+    await expect(articleIII).toBeVisible({ timeout: 15000 });
 
     // Check for voting/operations content
     const operationsText = page.locator('text=/operations/i');
@@ -182,13 +182,13 @@ test.describe('Agreement Tab - Data Pipeline Verification', () => {
     const verify = createDataVerifier(page);
 
     await page.goto(BASE_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000);
 
     verify.assertNoConsoleErrors();
 
     // Verify Article IV exists
     const articleIV = page.locator('h2:has-text("ARTICLE IV")').first();
-    await expect(articleIV).toBeVisible();
+    await expect(articleIV).toBeVisible({ timeout: 15000 });
 
     console.log('✅ Article IV (Treasury) renders');
   });
@@ -197,13 +197,13 @@ test.describe('Agreement Tab - Data Pipeline Verification', () => {
     const verify = createDataVerifier(page);
 
     await page.goto(BASE_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000);
 
     verify.assertNoConsoleErrors();
 
     // Verify Article V exists
     const articleV = page.locator('h2:has-text("ARTICLE V")').first();
-    await expect(articleV).toBeVisible();
+    await expect(articleV).toBeVisible({ timeout: 15000 });
 
     console.log('✅ Article V (Canisters) renders');
   });
@@ -212,13 +212,13 @@ test.describe('Agreement Tab - Data Pipeline Verification', () => {
     const verify = createDataVerifier(page);
 
     await page.goto(BASE_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000);
 
     verify.assertNoConsoleErrors();
 
     // Verify Article VI exists
     const articleVI = page.locator('h2:has-text("ARTICLE VI")').first();
-    await expect(articleVI).toBeVisible();
+    await expect(articleVI).toBeVisible({ timeout: 15000 });
 
     // Check for immutability/amendments content
     const immutabilityText = page.locator('text=/immutable/i');
@@ -236,15 +236,15 @@ test.describe('Agreement Tab - Export & Links', () => {
     const verify = createDataVerifier(page);
 
     await page.goto(BASE_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000);
 
     verify.assertNoConsoleErrors();
 
     // Verify "Copy Link" button exists
-    await expect(page.locator('button:has-text("Copy Link")')).toBeVisible();
+    await expect(page.locator('button:has-text("Copy Link")')).toBeVisible({ timeout: 15000 });
 
     // Verify "Open Standalone" button exists
-    await expect(page.locator('button:has-text("Open Standalone")')).toBeVisible();
+    await expect(page.locator('button:has-text("Open Standalone")')).toBeVisible({ timeout: 15000 });
 
     console.log('✅ Permanent link buttons verified');
   });
@@ -253,7 +253,7 @@ test.describe('Agreement Tab - Export & Links', () => {
     const verify = createDataVerifier(page);
 
     await page.goto(BASE_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000);
 
     verify.assertNoConsoleErrors();
 
@@ -262,7 +262,7 @@ test.describe('Agreement Tab - Export & Links', () => {
     const exportExists = await exportBtn.count() > 0;
 
     if (exportExists) {
-      await expect(exportBtn).toBeVisible();
+      await expect(exportBtn).toBeVisible({ timeout: 15000 });
       console.log('✅ Export markdown button verified');
     } else {
       console.log('⚠️ Export button not found - may be in different location');
@@ -273,22 +273,22 @@ test.describe('Agreement Tab - Export & Links', () => {
 test.describe('Agreement Tab - Content Accuracy', () => {
   test('STEP 13: Wyoming LLC compliance statements render', async ({ page }) => {
     await page.goto(BASE_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000);
 
     // Verify key legal statements are present
-    await expect(page.locator('text=/Wyoming/i')).toBeVisible();
-    await expect(page.locator('text=/limited liability company/i')).toBeVisible();
-    await expect(page.locator('text=/Operating Agreement/i')).toBeVisible();
+    await expect(page.locator('text=/Wyoming/i')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=/limited liability company/i')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=/Operating Agreement/i')).toBeVisible({ timeout: 15000 });
 
     console.log('✅ Wyoming LLC compliance statements verified');
   });
 
   test('STEP 14: Blockchain verification details included', async ({ page }) => {
     await page.goto(BASE_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000);
 
     // Verify on-chain references
-    await expect(page.locator('text=/Internet Computer/i')).toBeVisible();
+    await expect(page.locator('text=/Internet Computer/i')).toBeVisible({ timeout: 15000 });
 
     // Check for Orbit or governance references
     const orbitText = page.locator('text=/Orbit/i');
@@ -304,10 +304,10 @@ test.describe('Agreement Tab - Content Accuracy', () => {
 
   test('STEP 15: Voting mechanism explanation included', async ({ page }) => {
     await page.goto(BASE_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000);
 
     // Verify voting power explanation
-    await expect(page.locator('text=/voting power/i')).toBeVisible();
+    await expect(page.locator('text=/voting power/i')).toBeVisible({ timeout: 15000 });
 
     // Check for Kong Locker or voting mechanism details
     const kongText = page.locator('text=/Kong Locker/i');
@@ -327,7 +327,7 @@ test.describe('Agreement Tab - Error Scenarios', () => {
     const verify = createDataVerifier(page);
 
     await page.goto(BASE_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000);
 
     // Should NOT see the variant case mismatch error
     await expect(page.locator('text=Unexpected response format')).not.toBeVisible();
@@ -344,7 +344,7 @@ test.describe('Agreement Tab - Error Scenarios', () => {
     const verify = createDataVerifier(page);
 
     await page.goto(BASE_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000);
 
     // Verify no console errors even if snapshot doesn't exist
     verify.assertNoConsoleErrors();
@@ -368,7 +368,7 @@ test.describe('Agreement Tab - Error Scenarios', () => {
     const verify = createDataVerifier(page);
 
     await page.goto(BASE_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000);
 
     // This is the most critical test - ensure ZERO console errors
     verify.assertNoConsoleErrors();
@@ -388,14 +388,14 @@ test.describe('Agreement Tab - Regeneration Workflow', () => {
     const verify = createDataVerifier(page);
 
     await page.goto(BASE_URL);
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(15000);
 
     // Get initial network call count
     const initialCalls = verify.getNetworkCalls().length;
 
     // Click regenerate button
     const regenerateBtn = page.locator('button:has-text("Regenerate")');
-    await expect(regenerateBtn).toBeVisible();
+    await expect(regenerateBtn).toBeVisible({ timeout: 15000 });
     await regenerateBtn.click();
 
     // Wait for backend call (regeneration takes time)
@@ -435,7 +435,7 @@ test.describe('Agreement Tab - Regeneration Workflow', () => {
     const verify = createDataVerifier(page);
 
     await page.goto(BASE_URL);
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(15000);
 
     // Get initial version (if exists)
     const getVersion = async () => {
