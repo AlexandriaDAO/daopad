@@ -56,15 +56,11 @@ pub async fn get_dao_overview(
         });
     };
 
-    // 2. Query Orbit Station in parallel using futures::join!
-    let accounts_future = list_accounts_call(station_id);
-    let users_future = list_users_call(station_id);
-    let system_info_future = system_info_call(station_id);
-    let assets_future = list_assets_call(station_id);
-
-    // Execute in parallel (critical performance optimization)
-    let (accounts_result, users_result, system_info_result, assets_result) =
-        futures::join!(accounts_future, users_future, system_info_future, assets_future);
+    // 2. Query Orbit Station sequentially (IC CDK limitation - no concurrent calls)
+    let accounts_result = list_accounts_call(station_id).await;
+    let users_result = list_users_call(station_id).await;
+    let system_info_result = system_info_call(station_id).await;
+    let assets_result = list_assets_call(station_id).await;
 
     // 3. Process Orbit results
     let (treasury_total, account_count) = calculate_treasury_total(&accounts_result, &assets_result);

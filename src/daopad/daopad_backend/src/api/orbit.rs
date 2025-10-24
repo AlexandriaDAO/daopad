@@ -281,7 +281,7 @@ pub async fn get_user_pending_requests(
     token_canister_id: Principal,
     _user_principal: Principal // TODO: Use this to filter for specific user's requests
 ) -> Result<Vec<crate::api::orbit_requests::OrbitRequestSummary>, String> {
-    use crate::api::orbit_requests::{ListRequestsInput, ListRequestsOperationType, PaginationInput, RequestStatusCode};
+    use crate::api::orbit_requests::{ListRequestsInput, ListRequestsOperationType, ListRequestsSortBy, PaginationInput, RequestStatusCode, SortByDirection};
 
     // Get all pending AddUser requests
     let filters = ListRequestsInput {
@@ -302,7 +302,7 @@ pub async fn get_user_pending_requests(
             offset: None,
             limit: Some(50),
         }),
-        sort_by: None,
+        sort_by: ListRequestsSortBy::CreatedAt(SortByDirection::Desc),
         only_approvable: false,
         with_evaluation_results: false,
         deduplication_keys: Some(vec![]), // CRITICAL: Include ALL fields!

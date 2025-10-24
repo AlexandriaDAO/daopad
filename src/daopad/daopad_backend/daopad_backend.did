@@ -403,7 +403,7 @@ type ListOrbitRequestsResponse = record {
   next_offset : opt nat64;
 };
 type ListRequestsInput = record {
-  sort_by : opt ListRequestsSortBy;
+  sort_by : ListRequestsSortBy;
   deduplication_keys : opt vec text;
   with_evaluation_results : bool;
   expiration_from_dt : opt text;

@@ -482,7 +482,7 @@ pub struct ListRequestsInput {
     pub created_from_dt: Option<TimestampRFC3339>,
     pub created_to_dt: Option<TimestampRFC3339>,
     pub paginate: Option<PaginationInput>,
-    pub sort_by: Option<ListRequestsSortBy>,
+    pub sort_by: ListRequestsSortBy,
     pub only_approvable: bool,
     pub with_evaluation_results: bool,
     pub deduplication_keys: Option<Vec<String>>,
@@ -706,7 +706,7 @@ pub async fn get_orbit_requests_simple() -> Result<Vec<SimpleRequest>, String> {
             offset: None,
             limit: Some(10),  // Get 10 requests
         }),
-        sort_by: None,
+        sort_by: ListRequestsSortBy::CreatedAt(SortByDirection::Desc),
         only_approvable: false,
         with_evaluation_results: false,
         deduplication_keys: None,

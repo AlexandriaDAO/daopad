@@ -90,9 +90,9 @@ const UnifiedRequests = ({ tokenId, identity }) => {
           limit: [filters.limit],
           offset: filters.page > 0 ? [BigInt(filters.page * filters.limit)] : []
         }],
-        sort_by: filters.sort_by ? [{
+        sort_by: {
           [filters.sort_by.field]: filters.sort_by.direction === 'Asc' ? { Asc: null } : { Desc: null }
-        }] : [],
+        },
         only_approvable: filters.only_approvable,
         with_evaluation_results: false,
         deduplication_keys: [],

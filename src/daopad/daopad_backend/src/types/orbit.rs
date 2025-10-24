@@ -336,7 +336,9 @@ pub struct Account {
     pub addresses: Vec<AccountAddress>,
     pub name: String,
     pub metadata: Vec<AccountMetadata>,
+    #[serde(default)]
     pub transfer_request_policy: Option<RequestPolicyRule>,
+    #[serde(default)]
     pub configs_request_policy: Option<RequestPolicyRule>,
     pub last_modification_timestamp: String, // RFC3339 timestamp
 }
