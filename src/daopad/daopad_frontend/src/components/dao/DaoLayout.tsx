@@ -37,82 +37,91 @@ export default function DaoLayout({
 
       {/* Header with token info */}
       <header className="border-b border-executive-mediumGray bg-executive-darkGray">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center gap-4">
-            <Link to="/app" className="text-executive-gold hover:text-executive-goldLight">
+        <div className="container mx-auto px-4 lg:px-6 max-w-7xl">
+          {/* Back button row */}
+          <div className="py-4">
+            <Link to="/app" className="text-executive-gold hover:text-executive-goldLight inline-flex items-center gap-2">
               ← Back to Dashboard
             </Link>
           </div>
-          <div className="mt-4">
-            <h1 className="text-3xl font-display text-executive-ivory tracking-wide">
-              {token.symbol} DAO
-            </h1>
-            <div className="h-px bg-executive-gold w-16 mt-2"></div>
-            <p className="text-sm text-executive-lightGray/70 mt-2 font-mono">
-              {token.canister_id}
-            </p>
+
+          {/* Main header content - responsive grid */}
+          <div className="pb-6 grid grid-cols-1 lg:grid-cols-3 gap-4 items-center">
+            {/* Left: Token info */}
+            <div>
+              <h1 className="text-2xl md:text-3xl font-display text-executive-ivory tracking-wide">
+                {token.name}
+              </h1>
+              <div className="h-px bg-executive-gold w-16 mt-2"></div>
+              <p className="text-xs md:text-sm text-executive-lightGray/70 mt-2 font-mono break-all">
+                {token.canister_id}
+              </p>
+            </div>
+
+            {/* Center: Orbit Station status */}
             {orbitStation && (
-              <>
-                <p className="text-xs text-green-600 mt-1">
-                  ✓ Treasury Station: {orbitStation.station_id}
+              <div className="flex flex-col items-start lg:items-center">
+                <p className="text-xs text-green-600 font-mono break-all">
+                  ✓ Treasury: {orbitStation.station_id}
                 </p>
-                {votingPower > 0 && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <Badge variant={votingPower >= 10000 ? "default" : "secondary"}>
-                      {loadingVotingPower ? (
-                        "Loading VP..."
-                      ) : (
-                        `${votingPower.toLocaleString()} VP${votingPower >= 10000 ? " ✓" : ""}`
-                      )}
-                    </Badge>
-                    {refreshVotingPower && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={refreshVotingPower}
-                        disabled={loadingVotingPower}
-                        className="h-6 w-6 p-0"
-                        title="Refresh voting power"
-                      >
-                        <RefreshCw className={`h-3 w-3 ${loadingVotingPower ? 'animate-spin' : ''}`} />
-                      </Button>
-                    )}
-                  </div>
+              </div>
+            )}
+
+            {/* Right: Voting power */}
+            {votingPower > 0 && (
+              <div className="flex items-center gap-2 lg:justify-end">
+                <Badge variant={votingPower >= 10000 ? "default" : "secondary"}>
+                  {loadingVotingPower ? "Loading VP..." : `${votingPower.toLocaleString()} VP${votingPower >= 10000 ? " ✓" : ""}`}
+                </Badge>
+                {refreshVotingPower && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={refreshVotingPower}
+                    disabled={loadingVotingPower}
+                    className="h-6 w-6 p-0"
+                    title="Refresh voting power"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${loadingVotingPower ? 'animate-spin' : ''}`} />
+                  </Button>
                 )}
-              </>
+              </div>
             )}
           </div>
         </div>
       </header>
 
       {/* Tab navigation */}
-      <nav className="border-b border-executive-mediumGray bg-executive-darkGray">
-        <div className="container mx-auto px-4">
-          <div className="flex gap-2">
-            <TabLink to={`/dao/${tokenId}`} active={isOverview}>
-              Overview
-            </TabLink>
-            <TabLink to={`/dao/${tokenId}/agreement`} active={currentTab === 'agreement'}>
-              Agreement
-            </TabLink>
-            <TabLink to={`/dao/${tokenId}/treasury`} active={currentTab === 'treasury'}>
-              Treasury
-            </TabLink>
-            <TabLink to={`/dao/${tokenId}/activity`} active={currentTab === 'activity'}>
-              Activity
-            </TabLink>
-            <TabLink to={`/dao/${tokenId}/canisters`} active={currentTab === 'canisters'}>
-              Canisters
-            </TabLink>
-            <TabLink to={`/dao/${tokenId}/settings`} active={currentTab === 'settings'}>
-              Settings
-            </TabLink>
+      <div className="border-b border-executive-mediumGray bg-executive-darkGray">
+        <div className="container mx-auto px-4 lg:px-6 max-w-7xl">
+          {/* Mobile: Scrollable tabs | Desktop: Flex wrap */}
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+            <div className="inline-flex sm:flex sm:flex-wrap gap-1 min-w-full sm:min-w-0">
+              <TabButton to={`/dao/${tokenId}`} active={isOverview}>
+                Overview
+              </TabButton>
+              <TabButton to={`/dao/${tokenId}/agreement`} active={currentTab === 'agreement'}>
+                Agreement
+              </TabButton>
+              <TabButton to={`/dao/${tokenId}/treasury`} active={currentTab === 'treasury'}>
+                Treasury
+              </TabButton>
+              <TabButton to={`/dao/${tokenId}/activity`} active={currentTab === 'activity'}>
+                Activity
+              </TabButton>
+              <TabButton to={`/dao/${tokenId}/canisters`} active={currentTab === 'canisters'}>
+                Canisters
+              </TabButton>
+              <TabButton to={`/dao/${tokenId}/settings`} active={currentTab === 'settings'}>
+                Settings
+              </TabButton>
+            </div>
           </div>
         </div>
-      </nav>
+      </div>
 
       {/* Tab content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 lg:px-6 max-w-7xl py-8">
         {children}
       </main>
 
@@ -130,21 +139,22 @@ export default function DaoLayout({
   );
 }
 
-interface TabLinkProps {
+interface TabButtonProps {
   to: string;
   active: boolean;
   children: React.ReactNode;
 }
 
-function TabLink({ to, active, children }: TabLinkProps) {
+function TabButton({ to, active, children }: TabButtonProps) {
   return (
     <Link
       to={to}
       className={`
-        px-4 py-3 border-b-2 transition-colors
+        whitespace-nowrap px-4 py-3 text-sm font-medium transition-all
+        rounded-t-md border-b-2
         ${active
-          ? 'border-executive-gold text-executive-gold'
-          : 'border-transparent text-executive-lightGray/70 hover:text-executive-gold hover:border-executive-gold/50'
+          ? 'bg-executive-mediumGray/30 border-executive-gold text-executive-gold'
+          : 'border-transparent text-executive-lightGray/70 hover:text-executive-gold hover:bg-executive-mediumGray/10 hover:border-executive-gold/50'
         }
       `}
     >

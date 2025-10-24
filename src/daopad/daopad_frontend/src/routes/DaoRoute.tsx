@@ -89,17 +89,19 @@ export default function DaoRoute() {
 
         // Process token metadata
         if (metadataResult.success && metadataResult.data) {
+          // Use real metadata (no fallback - shows actual token info)
           setToken({
             canister_id: tokenId,
-            symbol: metadataResult.data.symbol || tokenId.slice(0, 5).toUpperCase(),
-            name: metadataResult.data.name || 'Token'
+            symbol: metadataResult.data.symbol,
+            name: metadataResult.data.name
           });
         } else {
-          // Fallback for anonymous or failed metadata
+          // Fallback for anonymous or failed metadata (clearer format)
+          const shortId = tokenId.slice(0, 8);
           setToken({
             canister_id: tokenId,
-            symbol: tokenId.slice(0, 5).toUpperCase(),
-            name: 'Token'
+            symbol: shortId.toUpperCase(),
+            name: `${shortId.toUpperCase()} DAO`
           });
         }
 
