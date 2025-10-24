@@ -445,7 +445,7 @@ pub async fn get_treasury_account_details(
     ).await;
 
     match result {
-        Ok((GetAccountResult::Ok { account },)) => {
+        Ok((GetAccountResult::Ok { mut account },)) => {
             // 3. Check if we need to fetch fresh balances
             let needs_refresh = account.assets.iter().any(|a| {
                 a.balance.is_none() ||
@@ -464,16 +464,26 @@ pub async fn get_treasury_account_details(
 
                 match balance_result {
                     Ok((FetchAccountBalancesResult::Ok { balances },)) => {
-                        // Merge balances into account assets
-                        let mut updated_account = account.clone();
-                        for (idx, asset) in updated_account.assets.iter_mut().enumerate() {
-                            if idx < balances.len() {
-                                if let Some(balance) = &balances[idx] {
-                                    asset.balance = Some(balance.clone());
-                                }
+                        // Merge balances into account assets using HashMap for correctness
+                        use std::collections::HashMap;
+                        let balance_map: HashMap<String, AccountBalance> = balances
+                            .into_iter()
+                            .filter_map(|opt_balance| opt_balance)
+                            .map(|balance| (balance.asset_id.clone(), balance))
+                            .collect();
+
+                        // Mutate in place (avoid cloning entire account)
+                        for asset in account.assets.iter_mut() {
+                            if let Some(balance) = balance_map.get(&asset.asset_id) {
+                                asset.balance = Some(balance.clone());
+                            } else {
+                                ic_cdk::println!(
+                                    "Warning: No balance found for account {} asset {}",
+                                    account.id, asset.asset_id
+                                );
                             }
                         }
-                        Ok(updated_account)
+                        Ok(account)
                     }
                     Ok((FetchAccountBalancesResult::Err(e),)) => {
                         // Return account even if balance fetch fails (balances may be null)
@@ -547,23 +557,27 @@ pub async fn get_treasury_accounts_with_balances(
 
     match balance_result {
         Ok((FetchAccountBalancesResult::Ok { balances },)) => {
-            // 5. Merge balances into accounts
+            // 5. Merge balances into accounts using HashMap for guaranteed correctness
             let mut updated_accounts = accounts;
 
-            // Balances are returned as a flat list for all accounts
-            // We need to match them back to the correct assets
-            let mut balance_idx = 0;
+            // Create lookup map: (account_id, asset_id) -> balance
+            use std::collections::HashMap;
+            let balance_map: HashMap<(String, String), AccountBalance> = balances
+                .into_iter()
+                .filter_map(|opt_balance| opt_balance)
+                .map(|balance| ((balance.account_id.clone(), balance.asset_id.clone()), balance))
+                .collect();
 
+            // Merge with guaranteed correctness
             for account in updated_accounts.iter_mut() {
                 for asset in account.assets.iter_mut() {
-                    if balance_idx < balances.len() {
-                        if let Some(balance) = &balances[balance_idx] {
-                            // Verify this balance matches our asset
-                            if balance.account_id == account.id && balance.asset_id == asset.asset_id {
-                                asset.balance = Some(balance.clone());
-                            }
-                        }
-                        balance_idx += 1;
+                    if let Some(balance) = balance_map.get(&(account.id.clone(), asset.asset_id.clone())) {
+                        asset.balance = Some(balance.clone());
+                    } else {
+                        ic_cdk::println!(
+                            "Warning: No balance found for account {} asset {}",
+                            account.id, asset.asset_id
+                        );
                     }
                 }
             }
