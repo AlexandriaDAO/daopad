@@ -50,7 +50,7 @@ function getOperationType(request) {
 
 export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
   const operationType = getOperationType(request);
-  const { proposal, loading, hasVoted, ensureProposal, fetchProposal } = useProposal(
+  const { proposal, loading, hasVoted, userVote, ensureProposal, fetchProposal } = useProposal(
     tokenId,
     request.id,
     operationType
@@ -146,7 +146,8 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
                   tokenId={tokenId}
                   onVote={onVote}
                   userVotingPower={userVotingPower}
-                  hasVoted={hasVoted}
+                  hasVoted={hasVoted} // From backend now
+                  userVote={userVote} // NEW: Pass actual vote
                   disabled={proposal.status && Object.keys(proposal.status)[0] !== 'Active'}
                   onVoteComplete={fetchProposal}
                 />

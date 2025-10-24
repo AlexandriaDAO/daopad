@@ -11,12 +11,13 @@ export function VoteButtons({
   onVote,
   disabled,
   userVotingPower,
-  hasVoted,
+  hasVoted, // Now comes from backend, not local state
+  userVote, // NEW: Show what they voted for
   onVoteComplete
 }) {
   const navigate = useNavigate();
   const [voting, setVoting] = useState(null); // 'yes' | 'no' | null
-  const [localHasVoted, setLocalHasVoted] = useState(hasVoted);
+  // Remove localHasVoted - use prop from backend
   const [voteError, setVoteError] = useState(null);
   const [isRetrying, setIsRetrying] = useState(false);
 
@@ -29,18 +30,21 @@ export function VoteButtons({
 
       // Only set success state if vote actually succeeded
       toast.success(`Vote recorded! ${vote ? "Yes" : "No"} with ${userVotingPower.toLocaleString()} VP`);
-      setLocalHasVoted(true);
 
+      // After successful vote, trigger refresh
       if (onVoteComplete) {
-        setTimeout(onVoteComplete, 500); // Small delay for UI feedback
+        setTimeout(onVoteComplete, 500);
       }
     } catch (error) {
       setVoteError(error);
 
       // Handle specific error types
       if (error.code === 'ALREADY_VOTED') {
-        setLocalHasVoted(true);
         toast.info(error.message);
+        // Refresh to get vote status from backend
+        if (onVoteComplete) {
+          onVoteComplete();
+        }
       } else if (error.code === 'KONG_LOCKER_NOT_REGISTERED') {
         toast.error(
           <div className="flex items-center gap-2">
@@ -74,8 +78,6 @@ export function VoteButtons({
       } else {
         toast.error(error.message || 'Vote failed');
       }
-
-      // Don't set localHasVoted unless actually voted!
     } finally {
       setVoting(null);
     }
@@ -90,10 +92,12 @@ export function VoteButtons({
     setIsRetrying(false);
   };
 
-  if (hasVoted || localHasVoted) {
+  // Show vote status from backend
+  if (hasVoted) {
+    const voteText = userVote && Object.keys(userVote)[0] === 'Yes' ? 'YES' : 'NO';
     return (
       <div className="text-sm text-muted-foreground" data-testid="vote-already-voted">
-        ✓ You have already voted (VP: {userVotingPower.toLocaleString()})
+        ✓ You voted {voteText} (VP: {userVotingPower.toLocaleString()})
       </div>
     );
   }

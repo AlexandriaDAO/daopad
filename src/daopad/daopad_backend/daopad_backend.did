@@ -905,6 +905,7 @@ type UserDTO = record {
 type UserGroup = record { id : text; name : text };
 type UserSpecifier = variant { Id : vec text; Any; Group : vec text };
 type UserStatus = variant { Inactive; Active };
+type VoteChoice = variant { No; Yes };
 type VotingPowerEntry = record {
   user_principal : principal;
   kong_locker_principal : principal;
@@ -1147,9 +1148,17 @@ service : () -> {
   // Get active proposal for a token (if any)
   get_treasury_proposal : (principal) -> (opt TreasuryProposal) query;
   get_user_pending_requests : (principal, principal) -> (Result_30);
+  // Get the user's vote on an Orbit request (for UI display)
+  get_user_vote_on_orbit_request : (principal, principal, text) -> (
+      opt VoteChoice,
+    ) query;
   get_voting_thresholds : (principal) -> (Result_31) query;
   has_proposal_passed : (principal, ProposalType, nat64, nat64, nat64) -> (
       Result_32,
+    ) query;
+  // Check if a user has voted on an Orbit request proposal
+  has_user_voted_on_orbit_request : (principal, principal, text) -> (
+      bool,
     ) query;
   health_check : () -> (text) query;
   initialize_default_thresholds : (principal) -> (Result);

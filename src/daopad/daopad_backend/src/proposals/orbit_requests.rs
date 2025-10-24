@@ -129,6 +129,13 @@ pub async fn vote_on_orbit_request(
         );
     });
 
+    // Add explicit logging after recording vote
+    ic_cdk::println!(
+        "Vote recorded: proposal_id={:?}, voter={}, vote={}, new_yes={}, new_no={}",
+        proposal.id, voter, if vote { "YES" } else { "NO" },
+        proposal.yes_votes, proposal.no_votes
+    );
+
     // 7. Check threshold and execute atomically
     // SECURITY: Recalculate total VP on each vote to prevent stale VP vulnerability
     // Users depositing LP after proposal creation should be counted in threshold
@@ -198,11 +205,35 @@ pub async fn vote_on_orbit_request(
     } else {
         // Still active - update vote counts and refresh total VP
         proposal.total_voting_power = current_total_vp;
-        ORBIT_REQUEST_PROPOSALS.with(|proposals| {
-            proposals
-                .borrow_mut()
-                .insert((StorablePrincipal(token_id), orbit_request_id), proposal.clone());
+
+        // CRITICAL: Save the updated proposal IMMEDIATELY
+        let save_result = ORBIT_REQUEST_PROPOSALS.with(|proposals| {
+            let mut map = proposals.borrow_mut();
+            map.insert(
+                (StorablePrincipal(token_id), orbit_request_id.clone()),
+                proposal.clone()
+            );
+            // Return true to confirm save
+            true
         });
+
+        // Add verification logging
+        ic_cdk::println!(
+            "Proposal updated: id={:?}, yes={}, no={}, saved={}",
+            proposal.id, proposal.yes_votes, proposal.no_votes, save_result
+        );
+
+        // VERIFICATION: Read back to ensure it saved
+        let verification = ORBIT_REQUEST_PROPOSALS.with(|proposals| {
+            proposals.borrow()
+                .get(&(StorablePrincipal(token_id), orbit_request_id.clone()))
+                .map(|p| (p.yes_votes, p.no_votes))
+        });
+
+        ic_cdk::println!(
+            "Verification read: votes={:?}",
+            verification
+        );
     }
 
     Ok(())
@@ -219,6 +250,48 @@ pub fn get_orbit_request_proposal(
             .borrow()
             .get(&(StorablePrincipal(token_id), orbit_request_id))
             .cloned()
+    })
+}
+
+/// Check if a user has voted on an Orbit request proposal
+#[query]
+pub fn has_user_voted_on_orbit_request(
+    user: Principal,
+    token_id: Principal,
+    orbit_request_id: String,
+) -> bool {
+    // 1. Get proposal to find its ID
+    let proposal = ORBIT_REQUEST_PROPOSALS.with(|proposals| {
+        proposals.borrow().get(&(StorablePrincipal(token_id), orbit_request_id.clone())).cloned()
+    });
+
+    // 2. If no proposal, user hasn't voted
+    if proposal.is_none() {
+        return false;
+    }
+
+    // 3. Check if vote exists for this user
+    let proposal_id = proposal.unwrap().id;
+    ORBIT_REQUEST_VOTES.with(|votes| {
+        votes.borrow().contains_key(&(proposal_id, StorablePrincipal(user)))
+    })
+}
+
+/// Get the user's vote on an Orbit request (for UI display)
+#[query]
+pub fn get_user_vote_on_orbit_request(
+    user: Principal,
+    token_id: Principal,
+    orbit_request_id: String,
+) -> Option<VoteChoice> {
+    // 1. Get proposal ID
+    let proposal = ORBIT_REQUEST_PROPOSALS.with(|proposals| {
+        proposals.borrow().get(&(StorablePrincipal(token_id), orbit_request_id.clone())).cloned()
+    })?;
+
+    // 2. Get user's vote
+    ORBIT_REQUEST_VOTES.with(|votes| {
+        votes.borrow().get(&(proposal.id, StorablePrincipal(user))).cloned()
     })
 }
 
