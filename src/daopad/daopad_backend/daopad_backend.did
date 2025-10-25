@@ -1175,12 +1175,16 @@ service : () -> {
   get_treasury_proposal : (principal) -> (opt TreasuryProposal) query;
   get_user_pending_requests : (principal, principal) -> (Result_30);
   // Get the user's vote on a proposal
+  // Note: Proposals now live in admin canister - frontend should query admin directly
+  // This method returns None to indicate data is in admin, not backend
   get_user_vote : (principal, principal, text) -> (opt VoteChoice) query;
   get_voting_thresholds : (principal) -> (Result_31) query;
   has_proposal_passed : (principal, ProposalType, nat64, nat64, nat64) -> (
       Result_32,
     ) query;
   // Check if a user has voted on a proposal
+  // Note: Proposals now live in admin canister - frontend should query admin directly
+  // This method returns false to indicate data is in admin, not backend
   has_user_voted : (principal, principal, text) -> (bool) query;
   health_check : () -> (text) query;
   initialize_default_thresholds : (principal) -> (Result);
@@ -1220,6 +1224,8 @@ service : () -> {
   list_station_user_groups : (principal) -> (Result_39);
   list_treasury_assets : (principal) -> (Result_37);
   // List all active proposals for a token
+  // Note: Proposals now live in admin canister - frontend should query admin directly
+  // This method returns empty to indicate proposals are in admin, not backend
   list_unified_proposals : (principal) -> (vec UnifiedProposal) query;
   monitor_orbit_canister_request : (
       principal,

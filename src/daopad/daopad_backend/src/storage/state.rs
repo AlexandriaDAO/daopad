@@ -80,8 +80,19 @@ thread_local! {
 
     /// Admin canister principal for proposal delegation
     /// Backend creates Orbit requests but admin handles voting and approvals
-    pub static ADMIN_CANISTER_ID: RefCell<Option<Principal>> = RefCell::new(
-        // Hard-coded admin canister ID (odkrm-viaaa-aaaap-qp2oq-cai)
-        Some(Principal::from_text("odkrm-viaaa-aaaap-qp2oq-cai").unwrap())
-    );
+    /// Initialized in init() to avoid panics during module loading
+    pub static ADMIN_CANISTER_ID: RefCell<Option<Principal>> = RefCell::new(None);
+}
+
+/// Initialize admin canister ID at startup
+/// Called by init() and post_upgrade()
+pub fn initialize_admin_canister_id() {
+    // Hard-coded admin canister ID (odkrm-viaaa-aaaap-qp2oq-cai)
+    if let Ok(admin_principal) = Principal::from_text("odkrm-viaaa-aaaap-qp2oq-cai") {
+        ADMIN_CANISTER_ID.with(|id| {
+            *id.borrow_mut() = Some(admin_principal);
+        });
+    } else {
+        ic_cdk::trap("Failed to initialize admin canister ID - invalid principal");
+    }
 }

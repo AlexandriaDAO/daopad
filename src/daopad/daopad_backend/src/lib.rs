@@ -5,7 +5,7 @@ mod storage;
 mod types;
 
 use candid::{Nat, Principal};
-use ic_cdk::init;
+use ic_cdk::{init, post_upgrade};
 use crate::types::{AccountMinimalWithBalances, AccountAssetWithBalance};
 
 pub use api::*;
@@ -56,7 +56,16 @@ pub use types::{AgreementSnapshot, TokenInfo, VotingThresholds};
 
 #[init]
 fn init() {
+    // Initialize admin canister ID for proposal delegation
+    storage::state::initialize_admin_canister_id();
     ic_cdk::println!("DAOPad backend initialized");
+}
+
+#[post_upgrade]
+fn post_upgrade() {
+    // Re-initialize admin canister ID after upgrade
+    storage::state::initialize_admin_canister_id();
+    ic_cdk::println!("DAOPad backend upgraded");
 }
 
 ic_cdk::export_candid!();
