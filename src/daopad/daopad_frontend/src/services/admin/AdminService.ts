@@ -225,11 +225,32 @@ export class AdminService {
     return result;
   }
 
-  async ensureProposal(tokenId: string, requestId: string, operationType: string) {
+  async ensureProposal(tokenId: string, requestId: string, operationType: string, kongLockerPrincipal?: string) {
     const actor = await this.getActor();
     const tokenPrincipal = Principal.fromText(tokenId);
 
-    console.log('[AdminService] Ensuring proposal:', { tokenId, requestId, operationType });
+    console.log('[AdminService] Ensuring proposal:', { tokenId, requestId, operationType, kongLockerPrincipal });
+
+    // CRITICAL: Register Kong Locker if provided (needed for voting power calculation)
+    if (kongLockerPrincipal && this.identity) {
+      try {
+        const userPrincipal = this.identity.getPrincipal();
+        const kongLockerPrinc = Principal.fromText(kongLockerPrincipal);
+
+        console.log('[AdminService] Registering Kong Locker:', { userPrincipal: userPrincipal.toText(), kongLockerPrincipal });
+
+        const regResult = await actor.register_kong_locker(userPrincipal, kongLockerPrinc);
+
+        if ('Err' in regResult) {
+          console.warn('[AdminService] Kong Locker registration failed (may already be registered):', regResult.Err);
+        } else {
+          console.log('[AdminService] Kong Locker registered successfully');
+        }
+      } catch (err) {
+        console.warn('[AdminService] Failed to register Kong Locker:', err);
+        // Continue anyway - might already be registered
+      }
+    }
 
     // Admin creates vote tracking for this request
     const result = await actor.ensure_proposal_for_request(

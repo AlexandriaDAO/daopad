@@ -3,7 +3,7 @@ import { useAuth } from '../providers/AuthProvider/IIProvider';
 import { getAdminService } from '../services/admin/AdminService';
 import { Principal } from '@dfinity/principal';
 
-export function useProposal(tokenId, orbitRequestId, operationType) {
+export function useProposal(tokenId, orbitRequestId, operationType, kongLockerPrincipal) {
   const { identity } = useAuth();
   const [proposal, setProposal] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -69,11 +69,12 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
       console.log('[useProposal] Ensuring vote tracking for:', {
         tokenId,
         orbitRequestId,
-        operationType
+        operationType,
+        kongLockerPrincipal
       });
 
       const adminService = getAdminService(identity);
-      await adminService.ensureProposal(tokenId, orbitRequestId, operationType);
+      await adminService.ensureProposal(tokenId, orbitRequestId, operationType, kongLockerPrincipal);
 
       // Refresh proposal data
       await fetchProposal();
@@ -81,7 +82,7 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
       console.error('[useProposal] Failed to ensure proposal:', err);
       setError(err.message || 'Failed to create proposal');
     }
-  }, [identity, tokenId, orbitRequestId, operationType, fetchProposal]);
+  }, [identity, tokenId, orbitRequestId, operationType, kongLockerPrincipal, fetchProposal]);
 
   // Initial fetch
   useEffect(() => {

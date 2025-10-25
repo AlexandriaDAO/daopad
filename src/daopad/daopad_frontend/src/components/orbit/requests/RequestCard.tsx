@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useProposal } from '@/hooks/useProposal';
+import { useSelector } from 'react-redux';
 import VoteProgressBar from './VoteProgressBar';
 import VoteButtons from './VoteButtons';
 
@@ -59,10 +60,13 @@ function getOperationType(request) {
 
 export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
   const operationType = getOperationType(request);
+  const kongLockerCanister = useSelector((state: any) => state.dao.kongLockerCanister);
+
   const { proposal, loading, hasVoted, userVote, ensureProposal, fetchProposal } = useProposal(
     tokenId,
     request.id,
-    operationType
+    operationType,
+    kongLockerCanister  // Pass Kong Locker principal
   );
 
   // Auto-create proposal when card is viewed (only for Created status)
