@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useProposal } from '@/hooks/useProposal';
+import { useSelector } from 'react-redux';
 import VoteProgressBar from './VoteProgressBar';
 import VoteButtons from './VoteButtons';
 
@@ -59,13 +60,16 @@ function getOperationType(request) {
 
 export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
   const operationType = getOperationType(request);
+  const kongLockerCanister = useSelector((state: any) => state.dao.kongLockerCanister);
+
   const { proposal, loading, hasVoted, userVote, ensureProposal, fetchProposal } = useProposal(
     tokenId,
     request.id,
-    operationType
+    operationType,
+    kongLockerCanister  // Pass Kong Locker principal
   );
 
-  // Auto-create proposal when card is viewed (only for Created status)
+  // Auto-create proposal when card is viewed (only for Created status AND when user is authenticated)
   useEffect(() => {
     // Extract status from variant if needed (backend returns { Created: null })
     const statusValue = typeof request.status === 'object' && request.status !== null
@@ -77,14 +81,16 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
       status: statusValue,
       hasProposal: !!proposal,
       loading,
-      operationType
+      operationType,
+      hasKongLocker: !!kongLockerCanister
     });
 
-    if (!proposal && !loading && (statusValue === 'Created' || statusValue === 'Scheduled')) {
+    // Only create proposal if user is authenticated (has Kong Locker)
+    if (!proposal && !loading && (statusValue === 'Created' || statusValue === 'Scheduled') && kongLockerCanister) {
       console.log('[RequestCard] Creating proposal for request:', request.id);
       ensureProposal();
     }
-  }, [proposal, loading, request.status, ensureProposal]);
+  }, [proposal, loading, request.status, kongLockerCanister, ensureProposal]);
 
   // Extract status from variant if needed
   const statusValue = typeof request.status === 'object' && request.status !== null
@@ -128,13 +134,19 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
           <div className="mt-4 space-y-3 border-t pt-4">
             <h4 className="font-medium text-sm">Community Vote</h4>
 
-            {loading && (
+            {!kongLockerCanister && (
+              <div className="text-sm text-muted-foreground">
+                Sign in to vote on this request
+              </div>
+            )}
+
+            {kongLockerCanister && loading && (
               <div className="text-sm text-muted-foreground">
                 Loading proposal...
               </div>
             )}
 
-            {!loading && !proposal && (
+            {kongLockerCanister && !loading && !proposal && (
               <div className="text-sm text-muted-foreground">
                 Creating proposal for community vote...
               </div>

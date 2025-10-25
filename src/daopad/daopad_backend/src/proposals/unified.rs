@@ -549,123 +549,71 @@ pub async fn create_orbit_request_with_proposal(
 }
 
 /// Get a specific proposal
+/// Note: Proposals now live in admin canister - frontend should query admin directly
+/// This method returns None to indicate proposals are in admin, not backend
 #[query]
 pub fn get_proposal(
-    token_id: Principal,
-    orbit_request_id: String,
+    _token_id: Principal,
+    _orbit_request_id: String,
 ) -> Option<UnifiedProposal> {
-    UNIFIED_PROPOSALS.with(|proposals| {
-        proposals
-            .borrow()
-            .get(&(StorablePrincipal(token_id), orbit_request_id))
-            .cloned()
-    })
+    // Proposals stored in admin canister, not backend
+    // Frontend should query admin canister directly for proposal data
+    None
 }
 
 /// List all active proposals for a token
+/// Note: Proposals now live in admin canister - frontend should query admin directly
+/// This method returns empty to indicate proposals are in admin, not backend
 #[query]
-pub fn list_unified_proposals(token_id: Principal) -> Vec<UnifiedProposal> {
-    UNIFIED_PROPOSALS.with(|proposals| {
-        proposals
-            .borrow()
-            .iter()
-            .filter(|((t, _), p)| t.0 == token_id && p.status == ProposalStatus::Active)
-            .map(|(_, p)| p.clone())
-            .collect()
-    })
+pub fn list_unified_proposals(_token_id: Principal) -> Vec<UnifiedProposal> {
+    // Proposals stored in admin canister, not backend
+    // Frontend should query admin canister directly for proposal data
+    Vec::new()
 }
 
 /// Check if a user has voted on a proposal
+/// Note: Proposals now live in admin canister - frontend should query admin directly
+/// This method returns false to indicate data is in admin, not backend
 #[query]
 pub fn has_user_voted(
-    user: Principal,
-    token_id: Principal,
-    orbit_request_id: String,
+    _user: Principal,
+    _token_id: Principal,
+    _orbit_request_id: String,
 ) -> bool {
-    // Get proposal to find its ID
-    let proposal = UNIFIED_PROPOSALS.with(|proposals| {
-        proposals
-            .borrow()
-            .get(&(StorablePrincipal(token_id), orbit_request_id))
-            .cloned()
-    });
-
-    if let Some(p) = proposal {
-        UNIFIED_PROPOSAL_VOTES.with(|votes| {
-            votes.borrow().contains_key(&(p.id, StorablePrincipal(user)))
-        })
-    } else {
-        false
-    }
+    // Vote data stored in admin canister, not backend
+    // Frontend should query admin canister directly
+    false
 }
 
 /// Get the user's vote on a proposal
+/// Note: Proposals now live in admin canister - frontend should query admin directly
+/// This method returns None to indicate data is in admin, not backend
 #[query]
 pub fn get_user_vote(
-    user: Principal,
-    token_id: Principal,
-    orbit_request_id: String,
+    _user: Principal,
+    _token_id: Principal,
+    _orbit_request_id: String,
 ) -> Option<VoteChoice> {
-    let proposal = UNIFIED_PROPOSALS.with(|proposals| {
-        proposals
-            .borrow()
-            .get(&(StorablePrincipal(token_id), orbit_request_id))
-            .cloned()
-    })?;
-
-    UNIFIED_PROPOSAL_VOTES.with(|votes| {
-        votes.borrow().get(&(proposal.id, StorablePrincipal(user))).cloned()
-    })
+    // Vote data stored in admin canister, not backend
+    // Frontend should query admin canister directly
+    None
 }
 
-/// Ensure a proposal exists for an Orbit request (for backwards compatibility)
+/// Ensure a proposal exists for an Orbit request
+/// NOTE: This is a NO-OP - we don't store proposals, Orbit does!
+/// Proposals are stored in Orbit Station, vote tracking happens in admin canister
+/// Frontend should call admin canister directly for voting operations
 #[update]
 pub async fn ensure_proposal_for_request(
-    token_id: Principal,
-    orbit_request_id: String,
-    request_type_str: String,
+    _token_id: Principal,
+    _orbit_request_id: String,
+    _request_type_str: String,
 ) -> Result<ProposalId, ProposalError> {
-    let caller = ic_cdk::caller();
-    let now = time();
-
-    // Get total voting power BEFORE taking the borrow
-    let total_voting_power = get_total_voting_power_for_token(token_id).await?;
-
-    // ATOMIC: Check-and-insert within single borrow scope
-    UNIFIED_PROPOSALS.with(|proposals| {
-        let mut map = proposals.borrow_mut();
-        let key = (StorablePrincipal(token_id), orbit_request_id.clone());
-
-        // If exists, return existing ID
-        if let Some(existing) = map.get(&key) {
-            return Ok(existing.id);
-        }
-
-        // Otherwise create new proposal atomically
-        let proposal_id = ProposalId::new();
-        let operation_type = OrbitOperationType::from_string(&request_type_str);
-        let duration_hours = operation_type.voting_duration_hours();
-        let duration_nanos = duration_hours * 3600 * 1_000_000_000;
-
-        let proposal = UnifiedProposal {
-            id: proposal_id,
-            token_canister_id: token_id,
-            orbit_request_id: orbit_request_id.clone(),
-            operation_type,
-            proposer: caller,
-            created_at: now,
-            expires_at: now + duration_nanos,
-            yes_votes: 0,
-            no_votes: 0,
-            total_voting_power,
-            voter_count: 0,
-            status: ProposalStatus::Active,
-            transfer_details: None,
-        };
-
-        map.insert(key, proposal);
-        Ok(proposal_id)
-    })
+    // Proposals are stored in Orbit, not here
+    // Return a dummy ID to satisfy frontend expectations
+    // Frontend will query Orbit directly for request details
+    // and call admin directly for voting
+    Ok(ProposalId(0))
 }
 
 // ============================================================================

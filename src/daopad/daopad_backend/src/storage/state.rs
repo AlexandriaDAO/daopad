@@ -5,6 +5,7 @@ use crate::storage::memory::{
     ORBIT_STATIONS_MEM_ID, STATION_TO_TOKEN_MEM_ID,
 };
 use crate::types::{AgreementSnapshot, StorablePrincipal, VotingThresholds};
+use candid::Principal;
 use ic_stable_structures::StableBTreeMap;
 use std::cell::RefCell;
 use std::collections::BTreeMap;

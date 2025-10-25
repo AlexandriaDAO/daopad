@@ -5,7 +5,7 @@ mod storage;
 mod types;
 
 use candid::{Nat, Principal};
-use ic_cdk::init;
+use ic_cdk::{init, post_upgrade};
 use crate::types::{AccountMinimalWithBalances, AccountAssetWithBalance};
 
 pub use api::*;
@@ -57,6 +57,11 @@ pub use types::{AgreementSnapshot, TokenInfo, VotingThresholds};
 #[init]
 fn init() {
     ic_cdk::println!("DAOPad backend initialized");
+}
+
+#[post_upgrade]
+fn post_upgrade() {
+    ic_cdk::println!("DAOPad backend upgraded");
 }
 
 ic_cdk::export_candid!();

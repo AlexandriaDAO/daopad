@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
+import AppHeader from '@/components/AppHeader';
 
 interface DaoLayoutProps {
   token: any;
@@ -31,11 +32,11 @@ export default function DaoLayout({
 
   return (
     <div className="min-h-screen bg-executive-charcoal text-executive-lightGray">
-      {/* Executive letterhead gold trim line */}
-      <div className="h-1 bg-gradient-to-r from-transparent via-executive-gold to-transparent"></div>
+      {/* Unified app header with authentication */}
+      <AppHeader />
 
-      {/* Header with token info */}
-      <header className="border-b border-executive-mediumGray bg-executive-darkGray">
+      {/* DAO-specific subheader with token info */}
+      <div className="border-b border-executive-mediumGray bg-executive-darkGray">
         <div className="container mx-auto px-4 lg:px-6 max-w-7xl">
           {/* Back button row */}
           <div className="py-4">
@@ -88,7 +89,7 @@ export default function DaoLayout({
             )}
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Tab navigation */}
       <div className="border-b border-executive-mediumGray bg-executive-darkGray">
