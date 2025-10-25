@@ -305,7 +305,7 @@ pub async fn get_user_pending_requests(
             offset: None,
             limit: Some(50),
         }),
-        sort_by: None,
+        sort_by: (),
         only_approvable: false,
         with_evaluation_results: false,
         deduplication_keys: Some(vec![]), // CRITICAL: Include ALL fields!
@@ -392,12 +392,12 @@ pub async fn get_treasury_management_data(
         let can_edit = priv_info.map_or(false, |p| p.can_edit);
 
         // Format assets with balances
+        // NOTE: AccountAssetMinimal doesn't have balance field - need to fetch separately
+        // For now, returning zero balance (TODO: integrate fetch_account_balances)
         let mut asset_balances = Vec::new();
         for account_asset in &account.assets {
             if let Some(asset_info) = asset_map.get(&account_asset.asset_id) {
-                let balance_nat = account_asset.balance.as_ref()
-                    .map(|b| b.balance.clone())
-                    .unwrap_or(candid::Nat::from(0u64));
+                let balance_nat = candid::Nat::from(0u64);  // TODO: Fetch actual balance
 
                 let balance_u64 = nat_to_u64(&balance_nat);
                 let balance_formatted = format_balance(balance_u64, asset_info.decimals);

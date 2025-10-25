@@ -9,7 +9,7 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-candid = { version = "0.10", features = ["value"] }
+candid = { version = "0.10.20", features = ["value"] }
 futures = "0.3"
 ic-cdk = "0.17"
 ic-stable-structures = "0.6"

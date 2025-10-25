@@ -15,6 +15,10 @@ type AccountAssetInfo = record {
   assets : vec AssetBalanceInfo;
   account_name : text;
 };
+type AccountAssetWithBalance = record {
+  balance : AccountBalance;
+  asset_id : text;
+};
 type AccountBalance = record {
   account_id : text;
   decimals : nat32;
@@ -30,12 +34,20 @@ type AccountCallerPrivileges = record {
 };
 type AccountMinimal = record {
   id : text;
-  configs_request_policy : null;
   metadata : vec AssetMetadata;
   name : text;
   assets : vec AccountAsset;
   addresses : vec AccountAddress;
-  transfer_request_policy : null;
+  last_modification_timestamp : text;
+};
+type AccountMinimalWithBalances = record {
+  id : text;
+  configs_request_policy : opt RequestPolicyRule;
+  metadata : vec AssetMetadata;
+  name : text;
+  assets : vec AccountAssetWithBalance;
+  addresses : vec AccountAddress;
+  transfer_request_policy : opt RequestPolicyRule;
   last_modification_timestamp : text;
 };
 type AccountWithAssets = record {
@@ -349,7 +361,6 @@ type ListAccountsResultMinimal = variant {
     total : nat64;
     privileges : vec AccountCallerPrivileges;
     accounts : vec AccountMinimal;
-    next_offset : null;
   };
   Err : Error;
 };
@@ -376,6 +387,12 @@ type ListAssetsResult = variant {
   Ok : record { assets : vec Asset };
   Err : Error;
 };
+type ListExternalCanistersInputMinimal = record {
+  states : vec ExternalCanisterState;
+  canister_ids : vec principal;
+  labels : vec text;
+  paginate : PaginationInputMinimal;
+};
 type ListExternalCanistersResult = variant {
   Ok : record {
     total : nat64;
@@ -391,7 +408,7 @@ type ListOrbitRequestsResponse = record {
   next_offset : opt nat64;
 };
 type ListRequestsInput = record {
-  sort_by : opt ListRequestsSortBy;
+  sort_by : null;
   deduplication_keys : opt vec text;
   with_evaluation_results : bool;
   expiration_from_dt : opt text;
@@ -441,11 +458,6 @@ type ListRequestsOperationType = variant {
   AddNamedRule;
   RestoreExternalCanister : opt principal;
   AddAccount;
-};
-type ListRequestsSortBy = variant {
-  ExpirationDt : SortByDirection;
-  LastModificationDt : SortByDirection;
-  CreatedAt : SortByDirection;
 };
 type LogVisibility = variant { controllers; public };
 type MonitorExternalCanisterKind = variant { Start : MonitoringConfig; Stop };
@@ -594,6 +606,7 @@ type OrbitRequestType = variant {
   AddAccount;
 };
 type PaginationInput = record { offset : opt nat64; limit : opt nat64 };
+type PaginationInputMinimal = record { offset : nat64; limit : nat16 };
 type PaginationInput_1 = record { offset : opt nat64; limit : opt nat16 };
 type Permission = record { resource : Resource; allow : Allow };
 type PermissionAction = variant { Read; Update };
@@ -788,7 +801,7 @@ type Result_24 = variant { Ok : ProposalConfig; Err : text };
 type Result_25 = variant { Ok : RequestPoliciesDetails; Err : text };
 type Result_26 = variant { Ok : Permission; Err : text };
 type Result_27 = variant { Ok : Account; Err : text };
-type Result_28 = variant { Ok : vec Account; Err : text };
+type Result_28 = variant { Ok : vec AccountMinimalWithBalances; Err : text };
 type Result_29 = variant { Ok : TreasuryManagementData; Err : text };
 type Result_3 = variant { Ok : BackendStatusCheck; Err : text };
 type Result_30 = variant { Ok : vec OrbitRequestSummary; Err : text };
@@ -826,7 +839,6 @@ type SnapshotExternalCanisterOperationInput = record {
   force : bool;
   external_canister_id : text;
 };
-type SortByDirection = variant { Asc; Desc };
 type SubmitRequestResponse = record {
   privileges : RequestCallerPrivilegesDTO;
   request : RequestDTO;
@@ -1178,14 +1190,9 @@ service : () -> {
     ) query;
   list_all_orbit_stations : () -> (vec record { principal; principal }) query;
   list_orbit_accounts : (principal, text, nat16, nat64) -> (Result_33);
-  list_orbit_canisters : (
-      principal,
-      vec principal,
-      vec text,
-      vec ExternalCanisterState,
-      nat16,
-      nat64,
-    ) -> (Result_34);
+  list_orbit_canisters : (principal, ListExternalCanistersInputMinimal) -> (
+      Result_34,
+    );
   // List all requests from Orbit Station with domain filtering
   // 
   // This method acts as an admin proxy, allowing DAOPad to query

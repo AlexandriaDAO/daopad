@@ -279,7 +279,7 @@ pub struct AccountAddress {
     pub format: String,
 }
 
-#[derive(CandidType, Deserialize, Debug, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Debug, Clone)]
 pub struct AccountBalance {
     pub account_id: String, // UUID
     pub asset_id: String,   // UUID
@@ -293,6 +293,22 @@ pub struct AccountBalance {
 pub struct AccountAsset {
     pub asset_id: String, // UUID
     pub balance: Option<AccountBalance>,
+}
+
+/// Minimal AccountAsset for deserialization - skips balance field
+/// Balance is fetched separately via fetch_account_balances
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub struct AccountAssetMinimal {
+    pub asset_id: String, // UUID
+    // Skip balance - will be fetched separately
+}
+
+/// AccountAsset with balance data - used for returning to frontend
+/// This is NOT deserialized from Orbit - it's constructed after merging balance data
+#[derive(CandidType, Serialize, Debug, Clone)]
+pub struct AccountAssetWithBalance {
+    pub asset_id: String,
+    pub balance: AccountBalance,  // Non-optional - always populated
 }
 
 // User specifier for approval rules
@@ -341,11 +357,14 @@ pub struct Account {
     pub last_modification_timestamp: String, // RFC3339 timestamp
 }
 
+/// AccountCallerPrivileges - CRITICAL: Field order must match Orbit response
+/// Order: id, can_transfer, can_edit
+/// Last verified: 2025-10-25 via dfx test
 #[derive(CandidType, Deserialize, Debug, Clone)]
 pub struct AccountCallerPrivileges {
     pub id: String, // UUID
-    pub can_edit: bool,
     pub can_transfer: bool,
+    pub can_edit: bool,
 }
 
 // List accounts input/output
@@ -1414,7 +1433,7 @@ pub struct SystemInfoResponseMinimal {
 
 /// Minimal PaginationInput for INPUT (sending to Orbit)
 /// Uses concrete types instead of Option<T>
-#[derive(CandidType, Serialize, Clone, Debug)]
+#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
 pub struct PaginationInputMinimal {
     pub offset: u64,  // Default to 0 if not filtering
     pub limit: u16,   // Default to 50 if not filtering
@@ -1428,38 +1447,56 @@ pub struct ListAccountsInputMinimal {
     pub paginate: PaginationInputMinimal,  // Always include pagination
 }
 
-/// Minimal Account for deserialization - ignores policy fields
-/// Keeps the structure but uses unit types for problematic Option fields
+/// Account for deserializing list_accounts response with balance data
+/// Uses AccountAsset which has Option<AccountBalance> - this works fine
+/// The problem was with Vec<Option<T>> in fetch_account_balances, not Option<T> itself
+/// Candid ignores extra policy fields in responses, so we only define what we need
+/// Last verified: 2025-10-25 via dfx test
 #[derive(CandidType, Deserialize, Debug, Clone)]
 pub struct AccountMinimal {
     pub id: String,
-    pub assets: Vec<AccountAsset>,  // Keep original - it has opt balance inside
-    pub addresses: Vec<AccountAddress>,
-    pub name: String,
+    // Skip configs_request_policy - Candid will ignore it
     pub metadata: Vec<AccountMetadata>,
-    #[serde(default)]
-    pub transfer_request_policy: (),  // Ignore - too complex to deserialize
-    #[serde(default)]
-    pub configs_request_policy: (),   // Ignore - too complex to deserialize
+    pub name: String,
+    pub assets: Vec<AccountAsset>,  // Use AccountAsset with Option<AccountBalance>
+    pub addresses: Vec<AccountAddress>,
+    // Skip transfer_request_policy - Candid will ignore it
+    pub last_modification_timestamp: String,
+}
+
+/// Account with balance data - used for returning to frontend
+/// This is NOT deserialized from Orbit - it's constructed after merging balance data
+/// With Candid 0.11+, Option<T> should work properly
+#[derive(CandidType, Serialize, Debug, Clone)]
+pub struct AccountMinimalWithBalances {
+    pub id: String,
+    pub configs_request_policy: Option<RequestPolicyRule>,  // Include for frontend compatibility
+    pub metadata: Vec<AccountMetadata>,
+    pub name: String,
+    pub assets: Vec<AccountAssetWithBalance>,  // All assets have balances
+    pub addresses: Vec<AccountAddress>,
+    pub transfer_request_policy: Option<RequestPolicyRule>,  // Include for frontend compatibility
     pub last_modification_timestamp: String,
 }
 
 /// Minimal ListAccountsResult using minimal Account type
+/// CRITICAL: Field order must match Orbit's exact response: total, privileges, accounts
+/// Skipping next_offset field - Candid will ignore it
+/// Last verified: 2025-10-25 via dfx test
 #[derive(CandidType, Deserialize)]
 pub enum ListAccountsResultMinimal {
     Ok {
-        accounts: Vec<AccountMinimal>,
-        privileges: Vec<AccountCallerPrivileges>,
         total: u64,
-        #[serde(default)]
-        next_offset: (),  // Ignore pagination offset
+        privileges: Vec<AccountCallerPrivileges>,
+        accounts: Vec<AccountMinimal>,
+        // Skip next_offset - Candid ignores extra fields in responses
     },
     Err(Error),
 }
 
 /// Minimal ListExternalCanistersInput for INPUT (sending to Orbit)
 /// Uses empty vecs and concrete PaginationInputMinimal instead of Option<T>
-#[derive(CandidType, Serialize, Debug)]
+#[derive(CandidType, Deserialize, Serialize, Debug)]
 pub struct ListExternalCanistersInputMinimal {
     pub canister_ids: Vec<Principal>,  // Empty vec instead of None
     pub labels: Vec<String>,  // Empty vec instead of None

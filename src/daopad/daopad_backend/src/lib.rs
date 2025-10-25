@@ -6,6 +6,7 @@ mod types;
 
 use candid::{Nat, Principal};
 use ic_cdk::init;
+use crate::types::{AccountMinimalWithBalances, AccountAssetWithBalance};
 
 pub use api::*;
 pub use api::orbit_overview::DaoOverviewStats;
@@ -27,10 +28,10 @@ pub use proposals::{
     TransferDetails, TreasuryProposal, VoteChoice,
 };
 pub use types::orbit::{
-    Account, AccountBalance,
+    Account, AccountBalance, AccountMinimal,  // Added AccountMinimal
     // Minimal types (no Option<T> for Candid 0.10.18 compatibility)
     SystemInfoResponseMinimal, ListAccountsResultMinimal,
-    PaginationInputMinimal,
+    PaginationInputMinimal, ListExternalCanistersInputMinimal,  // Added ListExternalCanistersInputMinimal
     Resource,
     // User types
     UserDTO, UserGroup,

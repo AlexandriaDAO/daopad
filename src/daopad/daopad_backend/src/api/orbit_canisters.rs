@@ -24,31 +24,16 @@ use crate::types::orbit::{
 #[ic_cdk::update]
 async fn list_orbit_canisters(
     token_canister_id: Principal,
-    canister_ids: Vec<Principal>,  // Empty = no filter
-    labels: Vec<String>,  // Empty = no filter
-    states: Vec<ExternalCanisterState>,  // Empty = no filter
-    limit: u16,  // Default to 50
-    offset: u64,  // Default to 0
+    filters: ListExternalCanistersInputMinimal,  // Single struct param (matches frontend)
 ) -> Result<ListExternalCanistersResult, String> {
     let station_id = get_orbit_station_for_token(token_canister_id)
         .ok_or_else(|| "No Orbit Station linked to this token".to_string())?;
 
-    // Build MINIMAL request (no Option<T>!)
-    let request = ListExternalCanistersInputMinimal {
-        canister_ids,
-        labels,
-        states,
-        paginate: PaginationInputMinimal {
-            offset,
-            limit,
-        },
-        // sort_by omitted - not critical
-    };
-
+    // Use filters directly (already in correct format)
     let result: CallResult<(ListExternalCanistersResult,)> = call(
         station_id,
         "list_external_canisters",
-        (request,),
+        (filters,),
     )
     .await;
 

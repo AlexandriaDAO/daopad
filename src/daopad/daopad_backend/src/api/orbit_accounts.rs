@@ -512,7 +512,7 @@ pub async fn get_treasury_account_details(
 #[update]
 pub async fn get_treasury_accounts_with_balances(
     token_canister_id: Principal,
-) -> Result<Vec<Account>, String> {
+) -> Result<Vec<AccountMinimalWithBalances>, String> {
     // 1. Get station ID
     let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
         stations.borrow()
@@ -521,78 +521,67 @@ pub async fn get_treasury_accounts_with_balances(
             .ok_or_else(|| "No Orbit Station linked to this token".to_string())
     })?;
 
-    // 2. List all accounts
-    let list_input = ListAccountsInput {
-        search_term: None,
-        paginate: None,
+    // 2. List all accounts using minimal input (no Option<T>)
+    let list_input = ListAccountsInputMinimal {
+        search_term: String::new(),  // Empty string instead of None
+        paginate: PaginationInputMinimal {
+            offset: 0,
+            limit: 50,
+        },
     };
 
-    let accounts_result: Result<(ListAccountsResult,), _> = call(
+    let accounts_result: Result<(ListAccountsResultMinimal,), _> = call(
         station_id,
         "list_accounts",
         (list_input,)
     ).await;
 
     let accounts = match accounts_result {
-        Ok((ListAccountsResult::Ok { accounts, .. },)) => accounts,
-        Ok((ListAccountsResult::Err(e),)) => return Err(format!("Orbit error: {}", e)),
+        Ok((ListAccountsResultMinimal::Ok { accounts, .. },)) => accounts,
+        Ok((ListAccountsResultMinimal::Err(e),)) => return Err(format!("Orbit error: {}", e)),
         Err((code, msg)) => return Err(format!("Failed to list accounts: {:?} - {}", code, msg)),
     };
 
-    // 3. Collect all account IDs for batch balance fetch
-    let account_ids: Vec<String> = accounts.iter().map(|a| a.id.clone()).collect();
+    // FIXED: Balance data is already included in list_accounts response!
+    // The issue was using AccountAssetMinimal which skipped the balance field
+    // Now using AccountAsset which has Option<AccountBalance> - works fine in Candid 0.10.20+
+    // The Vec<Option<T>> problem was specific to fetch_account_balances, not Option<T> itself
 
-    if account_ids.is_empty() {
+    if accounts.is_empty() {
         return Ok(vec![]);
     }
 
-    // 4. Fetch balances for all accounts in one call
-    let balance_result: Result<(FetchAccountBalancesResult,), _> = call(
-        station_id,
-        "fetch_account_balances",
-        (FetchAccountBalancesInput {
-            account_ids: account_ids.clone()
-        },)
-    ).await;
+    // Transform accounts with balance data
+    use crate::types::orbit::{AccountMinimalWithBalances, AccountAssetWithBalance};
 
-    match balance_result {
-        Ok((FetchAccountBalancesResult::Ok { balances },)) => {
-            // 5. Merge balances into accounts using HashMap for guaranteed correctness
-            let mut updated_accounts = accounts;
-
-            // Create lookup map: (account_id, asset_id) -> balance
-            use std::collections::HashMap;
-            let balance_map: HashMap<(String, String), AccountBalance> = balances
+    let accounts_with_balances: Vec<AccountMinimalWithBalances> = accounts
+        .into_iter()
+        .map(|account| {
+            // Convert Vec<AccountAsset> to Vec<AccountAssetWithBalance>
+            // Filter out assets that don't have balance data (balance = None)
+            let assets_with_balances: Vec<AccountAssetWithBalance> = account.assets
                 .into_iter()
-                .filter_map(|opt_balance| opt_balance)
-                .map(|balance| ((balance.account_id.clone(), balance.asset_id.clone()), balance))
+                .filter_map(|asset| {
+                    // Only include assets that have balance data
+                    asset.balance.map(|balance| AccountAssetWithBalance {
+                        asset_id: asset.asset_id,
+                        balance,
+                    })
+                })
                 .collect();
 
-            // Merge with guaranteed correctness
-            for account in updated_accounts.iter_mut() {
-                for asset in account.assets.iter_mut() {
-                    if let Some(balance) = balance_map.get(&(account.id.clone(), asset.asset_id.clone())) {
-                        asset.balance = Some(balance.clone());
-                    } else {
-                        ic_cdk::println!(
-                            "Warning: No balance found for account {} asset {}",
-                            account.id, asset.asset_id
-                        );
-                    }
-                }
+            AccountMinimalWithBalances {
+                id: account.id,
+                configs_request_policy: None,  // Not fetched from minimal type
+                metadata: account.metadata,
+                name: account.name,
+                assets: assets_with_balances,  // ✅ Now populated with balance data!
+                addresses: account.addresses,
+                transfer_request_policy: None,  // Not fetched from minimal type
+                last_modification_timestamp: account.last_modification_timestamp,
             }
+        })
+        .collect();
 
-            Ok(updated_accounts)
-        }
-        Ok((FetchAccountBalancesResult::Err(e),)) => {
-            // Return accounts without updated balances
-            ic_cdk::println!("Warning: Failed to fetch balances: {}", e);
-            Ok(accounts)
-        }
-        Err((code, msg)) => {
-            // Return accounts without updated balances
-            ic_cdk::println!("Warning: Balance fetch failed: {:?} - {}", code, msg);
-            Ok(accounts)
-        }
-    }
+    Ok(accounts_with_balances)
 }
