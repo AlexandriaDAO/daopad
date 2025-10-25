@@ -1364,3 +1364,106 @@ pub enum ListAddressBookResult {
     },
     Err(Error),
 }
+
+// ===============================================
+// MINIMAL TYPES (No Option<T> - Candid 0.10.18 Fix)
+// ===============================================
+
+/// Minimal SystemInfo for deserialization - removes all Option<T> fields
+/// that cause "Not a valid visitor: OptionVisitor" errors
+#[derive(CandidType, Deserialize, Serialize, Debug)]
+pub struct SystemInfoMinimal {
+    pub name: String,
+    pub version: String,
+    pub upgrader_id: Principal,
+    pub cycles: u64,
+    // upgrader_cycles removed - not critical for display
+    pub last_upgrade_timestamp: String,
+    pub raw_rand_successful: bool,
+    // disaster_recovery removed - can query separately if needed
+    pub cycle_obtain_strategy: CycleObtainStrategyMinimal,
+}
+
+/// Minimal CycleObtainStrategy - removes Option<String> account_name
+#[derive(CandidType, Deserialize, Serialize, Debug)]
+pub enum CycleObtainStrategyMinimal {
+    Disabled,
+    MintFromNativeToken {
+        account_id: String,
+        // account_name removed - not critical
+    },
+    WithdrawFromCyclesLedger {
+        account_id: String,
+        // account_name removed - not critical
+    },
+}
+
+/// Minimal SystemInfoResult using minimal types
+#[derive(CandidType, Deserialize, Serialize, Debug)]
+pub enum SystemInfoResultMinimal {
+    Ok { system: SystemInfoMinimal },
+    Err(Error),
+}
+
+/// Minimal SystemInfoResponse using minimal types
+#[derive(CandidType, Deserialize, Serialize, Debug)]
+pub struct SystemInfoResponseMinimal {
+    pub station_id: Principal,
+    pub system_info: SystemInfoMinimal,
+}
+
+/// Minimal PaginationInput for INPUT (sending to Orbit)
+/// Uses concrete types instead of Option<T>
+#[derive(CandidType, Serialize, Clone, Debug)]
+pub struct PaginationInputMinimal {
+    pub offset: u64,  // Default to 0 if not filtering
+    pub limit: u16,   // Default to 50 if not filtering
+}
+
+/// Minimal ListAccountsInput for INPUT (sending to Orbit)
+/// Uses empty String and concrete PaginationInputMinimal
+#[derive(CandidType, Serialize)]
+pub struct ListAccountsInputMinimal {
+    pub search_term: String,  // Empty string instead of None
+    pub paginate: PaginationInputMinimal,  // Always include pagination
+}
+
+/// Minimal Account for deserialization - ignores policy fields
+/// Keeps the structure but uses unit types for problematic Option fields
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub struct AccountMinimal {
+    pub id: String,
+    pub assets: Vec<AccountAsset>,  // Keep original - it has opt balance inside
+    pub addresses: Vec<AccountAddress>,
+    pub name: String,
+    pub metadata: Vec<AccountMetadata>,
+    #[serde(default)]
+    pub transfer_request_policy: (),  // Ignore - too complex to deserialize
+    #[serde(default)]
+    pub configs_request_policy: (),   // Ignore - too complex to deserialize
+    pub last_modification_timestamp: String,
+}
+
+/// Minimal ListAccountsResult using minimal Account type
+#[derive(CandidType, Deserialize)]
+pub enum ListAccountsResultMinimal {
+    Ok {
+        accounts: Vec<AccountMinimal>,
+        privileges: Vec<AccountCallerPrivileges>,
+        total: u64,
+        #[serde(default)]
+        next_offset: (),  // Ignore pagination offset
+    },
+    Err(Error),
+}
+
+/// Minimal ListExternalCanistersInput for INPUT (sending to Orbit)
+/// Uses empty vecs and concrete PaginationInputMinimal instead of Option<T>
+#[derive(CandidType, Serialize, Debug)]
+pub struct ListExternalCanistersInputMinimal {
+    pub canister_ids: Vec<Principal>,  // Empty vec instead of None
+    pub labels: Vec<String>,  // Empty vec instead of None
+    pub states: Vec<ExternalCanisterState>,  // Empty vec instead of None
+    pub paginate: PaginationInputMinimal,  // Always include
+    // sort_by removed - not critical for basic listing
+}

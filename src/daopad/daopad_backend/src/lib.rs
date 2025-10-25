@@ -27,15 +27,18 @@ pub use proposals::{
     TransferDetails, TreasuryProposal, VoteChoice,
 };
 pub use types::orbit::{
-    Account, AccountBalance, ListAccountsResult,
-    PaginationInput, Resource, SystemInfoResponse,
+    Account, AccountBalance,
+    // Minimal types (no Option<T> for Candid 0.10.18 compatibility)
+    SystemInfoResponseMinimal, ListAccountsResultMinimal,
+    PaginationInputMinimal,
+    Resource,
     // User types
     UserDTO, UserGroup,
     // External canister types
     ChangeExternalCanisterOperationInput, ConfigureExternalCanisterOperationInput,
     CreateExternalCanisterOperationInput, ExternalCanister, ExternalCanisterCallerMethodCallInput,
-    ExternalCanisterIdInput, FundExternalCanisterOperationInput, GetExternalCanisterInput,
-    GetExternalCanisterResult, ListExternalCanistersInput, ListExternalCanistersResult,
+    ExternalCanisterIdInput, ExternalCanisterState, FundExternalCanisterOperationInput, GetExternalCanisterInput,
+    GetExternalCanisterResult, ListExternalCanistersResult,
     MonitorExternalCanisterOperationInput, PruneExternalCanisterOperationInput,
     RestoreExternalCanisterOperationInput, SnapshotExternalCanisterOperationInput,
     SubmitRequestInput, SubmitRequestResult,

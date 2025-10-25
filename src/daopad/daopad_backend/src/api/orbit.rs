@@ -2,8 +2,12 @@ use crate::kong_locker::{get_kong_locker_for_user, get_user_locked_tokens};
 use crate::storage::state::TOKEN_ORBIT_STATIONS;
 use crate::types::orbit::{
     AccountBalance, AccountMetadata, AddAccountOperationInput, Allow, AuthScope,
-    FetchAccountBalancesInput, FetchAccountBalancesResult, ListAccountsInput, ListAccountsResult,
-    SystemInfoResult, SystemInfoResponse, TreasuryManagementData, TreasuryAccountDetails,
+    FetchAccountBalancesInput, FetchAccountBalancesResult,
+    // Minimal types (no Option<T>)
+    SystemInfoResultMinimal, SystemInfoResponseMinimal, PaginationInputMinimal,
+    ListAccountsInputMinimal, ListAccountsResultMinimal, AccountMinimal,
+    // Original types still needed for some operations
+    TreasuryManagementData, TreasuryAccountDetails,
     TreasuryAddressBookEntry, AssetBalanceInfo, ListAddressBookInput, ListAddressBookResult,
     RequestPolicyRule,
 };
@@ -52,13 +56,13 @@ pub fn list_all_orbit_stations() -> Vec<(Principal, Principal)> {
 }
 
 #[update] // MUST be update, not query for cross-canister calls
-pub async fn get_orbit_system_info(token_canister_id: Principal) -> Result<SystemInfoResponse, String> {
+pub async fn get_orbit_system_info(token_canister_id: Principal) -> Result<SystemInfoResponseMinimal, String> {
     // Get station ID for token
     let station_id = get_orbit_station_for_token(token_canister_id)
         .ok_or_else(|| format!("No Orbit Station found for token {}", token_canister_id))?;
 
-    // Call system_info on the station (we have admin access)
-    let result: Result<(SystemInfoResult,), _> = ic_cdk::call(
+    // Call system_info on the station using MINIMAL types (no Option<T>)
+    let result: Result<(SystemInfoResultMinimal,), _> = ic_cdk::call(
         station_id,
         "system_info",
         ()
@@ -67,13 +71,13 @@ pub async fn get_orbit_system_info(token_canister_id: Principal) -> Result<Syste
     match result {
         Ok((system_info_result,)) => {
             match system_info_result {
-                SystemInfoResult::Ok { system } => {
-                    Ok(SystemInfoResponse {
+                SystemInfoResultMinimal::Ok { system } => {
+                    Ok(SystemInfoResponseMinimal {
                         station_id,
                         system_info: system,
                     })
                 },
-                SystemInfoResult::Err(e) => {
+                SystemInfoResultMinimal::Err(e) => {
                     Err(format!("Orbit Station error: {:?}", e))
                 }
             }
@@ -87,10 +91,10 @@ pub async fn get_orbit_system_info(token_canister_id: Principal) -> Result<Syste
 #[update]
 pub async fn list_orbit_accounts(
     token_canister_id: Principal,
-    search_term: Option<String>,
-    limit: Option<u64>,
-    offset: Option<u64>,
-) -> Result<ListAccountsResult, String> {
+    search_term: String,  // Empty string instead of None
+    limit: u16,           // Concrete value, default 50
+    offset: u64,          // Concrete value, default 0
+) -> Result<ListAccountsResultMinimal, String> {
     // Lookup station_id from token_id
     let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
         stations
@@ -102,18 +106,17 @@ pub async fn list_orbit_accounts(
         token_canister_id
     ))?;
 
-    // Build the input for list_accounts
-    let input = ListAccountsInput {
-        search_term,
-        paginate: if limit.is_some() || offset.is_some() {
-            Some(crate::types::orbit::PaginationInput { limit, offset })
-        } else {
-            None
+    // Build MINIMAL input (no Option<T>!)
+    let input = ListAccountsInputMinimal {
+        search_term,  // Empty string if not searching
+        paginate: PaginationInputMinimal {
+            offset,
+            limit,
         },
     };
 
-    // Call the Orbit Station canister
-    let result: Result<(ListAccountsResult,), _> =
+    // Call the Orbit Station canister with minimal types
+    let result: Result<(ListAccountsResultMinimal,), _> =
         ic_cdk::call(station_id, "list_accounts", (input,)).await;
 
     match result {
@@ -341,21 +344,24 @@ pub async fn get_treasury_management_data(
     station_id: Principal,
 ) -> Result<TreasuryManagementData, String> {
 
-    // 2. List all accounts
-    let accounts_input = ListAccountsInput {
-        search_term: None,
-        paginate: None,
+    // 2. List all accounts using MINIMAL input (no Option<T>)
+    let accounts_input = ListAccountsInputMinimal {
+        search_term: String::new(),  // Empty = no filter
+        paginate: PaginationInputMinimal {
+            offset: 0,
+            limit: 50,
+        },
     };
 
-    let accounts_result: Result<(ListAccountsResult,), _> = ic_cdk::call(
+    let accounts_result: Result<(ListAccountsResultMinimal,), _> = ic_cdk::call(
         station_id,
         "list_accounts",
         (accounts_input,)
     ).await;
 
     let (accounts, privileges) = match accounts_result {
-        Ok((ListAccountsResult::Ok { accounts, privileges, .. },)) => (accounts, privileges),
-        Ok((ListAccountsResult::Err(e),)) => {
+        Ok((ListAccountsResultMinimal::Ok { accounts, privileges, .. },)) => (accounts, privileges),
+        Ok((ListAccountsResultMinimal::Err(e),)) => {
             return Err(format!("Failed to list accounts: {:?}", e));
         }
         Err((code, msg)) => {
@@ -409,8 +415,9 @@ pub async fn get_treasury_management_data(
             account_id: account.id.clone(),
             account_name: account.name.clone(),
             assets: asset_balances,
-            transfer_policy: format_policy(&account.transfer_request_policy),
-            config_policy: format_policy(&account.configs_request_policy),
+            // Policy fields removed from AccountMinimal to avoid Option<T> deserialization errors
+            transfer_policy: "Policy data unavailable (Candid limitation)".to_string(),
+            config_policy: "Policy data unavailable (Candid limitation)".to_string(),
             can_transfer,
             can_edit,
             addresses: account.addresses.clone(),

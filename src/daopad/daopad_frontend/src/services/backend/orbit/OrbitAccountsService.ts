@@ -4,21 +4,23 @@ import { parseOrbitResult } from '../../utils/errorParsers';
 export class OrbitAccountsService extends BackendServiceBase {
   /**
    * List all accounts in Orbit Station
+   * Updated for Candid 0.10.18 - no Option<T> types
    */
   async listAccounts(stationId, searchTerm = null, offset = null, limit = null) {
     try {
       const actor = await this.getActor();
       const stationPrincipal = this.toPrincipal(stationId);
 
-      const searchTermOpt = searchTerm ? [searchTerm] : [];
-      const offsetOpt = offset !== null ? [offset] : [];
-      const limitOpt = limit !== null ? [limit] : [];
+      // Convert to concrete values (no Option<T>)
+      const searchStr = searchTerm || '';  // Empty string instead of None
+      const offsetNum = offset !== null ? BigInt(offset) : BigInt(0);  // Default 0
+      const limitNum = limit !== null ? limit : 50;  // Default 50
 
       const result = await actor.list_orbit_accounts(
         stationPrincipal,
-        searchTermOpt,
-        offsetOpt,
-        limitOpt
+        searchStr,
+        limitNum,
+        offsetNum
       );
       return parseOrbitResult(result);
     } catch (error) {

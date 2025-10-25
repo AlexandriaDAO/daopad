@@ -28,6 +28,16 @@ type AccountCallerPrivileges = record {
   can_transfer : bool;
   can_edit : bool;
 };
+type AccountMinimal = record {
+  id : text;
+  configs_request_policy : null;
+  metadata : vec AssetMetadata;
+  name : text;
+  assets : vec AccountAsset;
+  addresses : vec AccountAddress;
+  transfer_request_policy : null;
+  last_modification_timestamp : text;
+};
 type AccountWithAssets = record {
   assets : vec AssetWithBalance;
   account : Account;
@@ -194,13 +204,10 @@ type CreateRequestInput = record {
   summary : opt text;
   operation : RequestOperationInput;
 };
-type CycleObtainStrategy = variant {
+type CycleObtainStrategyMinimal = variant {
   Disabled;
-  MintFromNativeToken : record { account_id : text; account_name : opt text };
-  WithdrawFromCyclesLedger : record {
-    account_id : text;
-    account_name : opt text;
-  };
+  MintFromNativeToken : record { account_id : text };
+  WithdrawFromCyclesLedger : record { account_id : text };
 };
 type DaoOverviewStats = record {
   treasury_total_icp : nat64;
@@ -210,14 +217,6 @@ type DaoOverviewStats = record {
   station_id : opt principal;
   member_count : nat64;
   station_name : opt text;
-};
-type DisasterRecovery = record {
-  user_group_name : opt text;
-  committee : DisasterRecoveryCommittee;
-};
-type DisasterRecoveryCommittee = record {
-  user_group_id : text;
-  quorum : nat16;
 };
 type EditAddressBookEntryOperationInput = record {
   labels : opt vec text;
@@ -345,12 +344,12 @@ type GovernanceStats = record {
   total_proposals : nat64;
 };
 type IdListSpecifier = variant { Any; Ids : vec text };
-type ListAccountsResult = variant {
+type ListAccountsResultMinimal = variant {
   Ok : record {
     total : nat64;
     privileges : vec AccountCallerPrivileges;
-    accounts : vec Account;
-    next_offset : opt nat64;
+    accounts : vec AccountMinimal;
+    next_offset : null;
   };
   Err : Error;
 };
@@ -377,13 +376,6 @@ type ListAssetsResult = variant {
   Ok : record { assets : vec Asset };
   Err : Error;
 };
-type ListExternalCanistersInput = record {
-  sort_by : opt ListExternalCanistersSortInput;
-  states : opt vec ExternalCanisterState;
-  canister_ids : opt vec principal;
-  labels : opt vec text;
-  paginate : opt PaginationInput;
-};
 type ListExternalCanistersResult = variant {
   Ok : record {
     total : nat64;
@@ -392,10 +384,6 @@ type ListExternalCanistersResult = variant {
     next_offset : opt nat64;
   };
   Err : Error;
-};
-type ListExternalCanistersSortInput = record {
-  field : text;
-  direction : SortDirection;
 };
 type ListOrbitRequestsResponse = record {
   total : nat64;
@@ -455,9 +443,9 @@ type ListRequestsOperationType = variant {
   AddAccount;
 };
 type ListRequestsSortBy = variant {
-  ExpirationDt : SortDirection;
-  LastModificationDt : SortDirection;
-  CreatedAt : SortDirection;
+  ExpirationDt : SortByDirection;
+  LastModificationDt : SortByDirection;
+  CreatedAt : SortByDirection;
 };
 type LogVisibility = variant { controllers; public };
 type MonitorExternalCanisterKind = variant { Start : MonitoringConfig; Stop };
@@ -795,7 +783,7 @@ type Result_2 = variant { Ok : vec SecurityCheck; Err : text };
 type Result_20 = variant { Ok : nat64; Err : text };
 type Result_21 = variant { Ok : GetExternalCanisterResult; Err : text };
 type Result_22 = variant { Ok : vec SimpleRequest; Err : text };
-type Result_23 = variant { Ok : SystemInfoResponse; Err : text };
+type Result_23 = variant { Ok : SystemInfoResponseMinimal; Err : text };
 type Result_24 = variant { Ok : ProposalConfig; Err : text };
 type Result_25 = variant { Ok : RequestPoliciesDetails; Err : text };
 type Result_26 = variant { Ok : Permission; Err : text };
@@ -806,7 +794,7 @@ type Result_3 = variant { Ok : BackendStatusCheck; Err : text };
 type Result_30 = variant { Ok : vec OrbitRequestSummary; Err : text };
 type Result_31 = variant { Ok : VotingThresholds; Err : text };
 type Result_32 = variant { Ok : bool; Err : text };
-type Result_33 = variant { Ok : ListAccountsResult; Err : text };
+type Result_33 = variant { Ok : ListAccountsResultMinimal; Err : text };
 type Result_34 = variant { Ok : ListExternalCanistersResult; Err : text };
 type Result_35 = variant { Ok : ListOrbitRequestsResponse; Err : text };
 type Result_36 = variant { Ok : vec UserDTO; Err : text };
@@ -838,7 +826,7 @@ type SnapshotExternalCanisterOperationInput = record {
   force : bool;
   external_canister_id : text;
 };
-type SortDirection = variant { Asc; Desc };
+type SortByDirection = variant { Asc; Desc };
 type SubmitRequestResponse = record {
   privileges : RequestCallerPrivilegesDTO;
   request : RequestDTO;
@@ -853,19 +841,17 @@ type SystemAction = variant {
   SystemInfo;
   Capabilities;
 };
-type SystemInfo = record {
-  disaster_recovery : opt DisasterRecovery;
-  upgrader_cycles : opt nat64;
+type SystemInfoMinimal = record {
   name : text;
   last_upgrade_timestamp : text;
   raw_rand_successful : bool;
   version : text;
   cycles : nat64;
   upgrader_id : principal;
-  cycle_obtain_strategy : CycleObtainStrategy;
+  cycle_obtain_strategy : CycleObtainStrategyMinimal;
 };
-type SystemInfoResponse = record {
-  system_info : SystemInfo;
+type SystemInfoResponseMinimal = record {
+  system_info : SystemInfoMinimal;
   station_id : principal;
 };
 type TokenInfo = record { chain : text; canister_id : text; symbol : text };
@@ -1191,10 +1177,15 @@ service : () -> {
       vec record { principal; principal },
     ) query;
   list_all_orbit_stations : () -> (vec record { principal; principal }) query;
-  list_orbit_accounts : (principal, opt text, opt nat64, opt nat64) -> (
-      Result_33,
-    );
-  list_orbit_canisters : (principal, ListExternalCanistersInput) -> (Result_34);
+  list_orbit_accounts : (principal, text, nat16, nat64) -> (Result_33);
+  list_orbit_canisters : (
+      principal,
+      vec principal,
+      vec text,
+      vec ExternalCanisterState,
+      nat16,
+      nat64,
+    ) -> (Result_34);
   // List all requests from Orbit Station with domain filtering
   // 
   // This method acts as an admin proxy, allowing DAOPad to query
