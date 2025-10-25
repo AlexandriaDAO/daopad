@@ -20,11 +20,10 @@ export default function CanistersTab({ token, stationId, identity }) {
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [selectedCanisterId, setSelectedCanisterId] = useState(null);
   const [filters, setFilters] = useState({
-    paginate: [{ offset: [], limit: [20] }],
-    canister_ids: [],
-    labels: [],
-    states: [],
-    sort_by: []
+    canister_ids: [],  // Vec<Principal>
+    labels: [],  // Vec<String>
+    states: [],  // Vec<ExternalCanisterState>
+    paginate: { offset: 0, limit: 20 }  // PaginationInputMinimal struct
   });
 
   useEffect(() => {

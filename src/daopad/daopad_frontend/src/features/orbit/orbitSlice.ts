@@ -44,7 +44,7 @@ export const fetchOrbitRequests = createAsyncThunk(
         created_to: filters.created_to || null,
         expiration_from: filters.expiration_from || null,
         expiration_to: filters.expiration_to || null,
-        sort_by: filters.sort_by || { field: 'ExpirationDt', direction: 'Asc' },
+        // sort_by removed - backend uses () (unit type) for Candid 0.10.18 compatibility
         page: filters.page || 0,
         limit: filters.limit || 20,
       };
@@ -78,10 +78,12 @@ export const fetchOrbitAccounts = createAsyncThunk(
         const processedAccounts = accounts.map(account => ({
           ...account,
           assets: (account.assets || []).map(accountAsset => {
-            // Handle balance conversion safely
-            let balanceValue = 0n;
-            if (accountAsset.balance && accountAsset.balance[0]) {
-              const bal = accountAsset.balance[0];
+            // AccountAssetWithBalance has direct balance object (non-optional)
+            // backend returns: { asset_id: "...", balance: { account_id, balance, decimals, ... } }
+            if (accountAsset.balance) {
+              const bal = accountAsset.balance;
+              let balanceValue = 0n;
+
               try {
                 if (typeof bal.balance === 'bigint') {
                   balanceValue = bal.balance;
@@ -106,7 +108,7 @@ export const fetchOrbitAccounts = createAsyncThunk(
               };
             }
 
-            // No balance data available
+            // No balance data available (shouldn't happen with new backend)
             return {
               asset_id: accountAsset.asset_id,
               balance: 0n,
