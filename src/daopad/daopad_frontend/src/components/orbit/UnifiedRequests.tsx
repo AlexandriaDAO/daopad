@@ -28,7 +28,7 @@ const UnifiedRequests = ({ tokenId, identity }) => {
     created_to: null,
     expiration_from: null,
     expiration_to: null,
-    sort_by: { field: 'ExpirationDt', direction: 'Asc' },  // Earliest expiration first
+    sort_by: null,  // Temporarily disabled - fixing Candid encoding issue
     only_approvable: false,
     page: 0,
     limit: 20
@@ -90,9 +90,7 @@ const UnifiedRequests = ({ tokenId, identity }) => {
           limit: [filters.limit],
           offset: filters.page > 0 ? [BigInt(filters.page * filters.limit)] : []
         }],
-        sort_by: filters.sort_by ? [{
-          [filters.sort_by.field]: filters.sort_by.direction === 'Asc' ? { Asc: null } : { Desc: null }
-        }] : [],
+        sort_by: null,  // Backend expects null type, not optional
         only_approvable: filters.only_approvable,
         with_evaluation_results: false,
         deduplication_keys: [],

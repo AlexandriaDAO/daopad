@@ -176,6 +176,33 @@ test.describe('Activity Tab - Anonymous User Access', () => {
     expect(authErrors).toHaveLength(0);
   });
 
+  test('should not have Candid encoding errors in sort_by field', async ({ page }) => {
+    const consoleErrors: string[] = [];
+
+    page.on('console', msg => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+
+    await page.goto(ACTIVITY_URL);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(3000);
+
+    // Check for Candid encoding errors related to sort_by
+    const candidErrors = consoleErrors.filter(e =>
+      e.includes('Invalid null argument') ||
+      e.includes('sort_by') ||
+      e.includes('Invalid record')
+    );
+
+    if (candidErrors.length > 0) {
+      console.error('Candid encoding errors found:', candidErrors);
+    }
+
+    expect(candidErrors).toHaveLength(0);
+  });
+
   test('should render page content within reasonable time', async ({ page }) => {
     const startTime = Date.now();
 
