@@ -40,15 +40,18 @@ function AppRoute() {
   const { login, identity } = useIdentity();
   const logout = useLogout();
 
-  // Check authentication status on mount
+  // Check authentication status on mount and when identity changes
   useEffect(() => {
+    console.log('[AppRoute] Auth useEffect triggered, identity:', !!identity);
     if (identity) {
       const principalText = identity.getPrincipal().toString();
+      console.log('[AppRoute] User authenticated:', principalText);
       dispatch(setAuthSuccess(principalText));
       // Fetch balances when authenticated
       dispatch(fetchBalances(identity));
       checkKongLockerCanister();
     } else {
+      console.log('[AppRoute] No identity, clearing auth state');
       dispatch(clearAuth());
       dispatch(clearBalances());
       dispatch(clearDaoState());
@@ -110,20 +113,30 @@ function AppRoute() {
   }, [isAuthenticated, dispatch]);
 
   const checkKongLockerCanister = async () => {
-    if (!identity) return;
+    console.log('[AppRoute] checkKongLockerCanister called, identity:', !!identity);
+    if (!identity) {
+      console.log('[AppRoute] No identity, skipping Kong Locker check');
+      return;
+    }
 
     setIsCheckingKongLocker(true);
     try {
       const kongLockerService = getKongLockerService(identity);
+      console.log('[AppRoute] Calling getMyCanister...');
       const result = await kongLockerService.getMyCanister();
+
+      console.log('[AppRoute] Kong Locker result:', result);
 
       if (result.success && result.data) {
         // Convert Principal object to string
         const canisterString = typeof result.data === 'string' ? result.data : result.data.toString();
+        console.log('[AppRoute] Setting Kong Locker canister:', canisterString);
         dispatch(setKongLockerCanister(canisterString));
+      } else {
+        console.log('[AppRoute] No Kong Locker data in result');
       }
     } catch (err) {
-      console.error('Error checking Kong Locker canister:', err);
+      console.error('[AppRoute] Error checking Kong Locker canister:', err);
     } finally {
       setIsCheckingKongLocker(false);
     }
@@ -133,6 +146,11 @@ function AppRoute() {
     dispatch(setAuthLoading(true));
     try {
       await login();
+      // CRITICAL: Check Kong Locker after successful login
+      // The identity won't be available immediately, so wait a bit
+      setTimeout(() => {
+        checkKongLockerCanister();
+      }, 500);
     } catch (error) {
       console.error('Login failed:', error);
     } finally {
