@@ -78,7 +78,7 @@ export function Component() {
 ```markdown
 ## Playwright Testing
 
-**See**: `PLAYWRIGHT_TESTING_GUIDE.md` section "For Plan Writers"
+**See**: `PLAYWRIGHT_TESTING_GUIDE_CONDENSED.md` section "For Plan Writers"
 
 **Required in every frontend plan**:
 1. Manual browser verification workflow (BEFORE Playwright)
@@ -87,7 +87,7 @@ export function Component() {
 4. Test file template with `createDataVerifier()`
 5. Iteration loop with console error checking
 
-**Copy the "Mandatory Plan Template" from PLAYWRIGHT_TESTING_GUIDE.md into your plan.**
+**Copy the "Mandatory Plan Template" from PLAYWRIGHT_TESTING_GUIDE_CONDENSED.md into your plan.**
 
 DO NOT write custom testing sections - use the standardized template from the guide.
 ```

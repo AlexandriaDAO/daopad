@@ -48,7 +48,7 @@ project_root/
 
 ### Playwright E2E Testing
 
-**CRITICAL**: Read `PLAYWRIGHT_TESTING_GUIDE.md` before writing or modifying E2E tests.
+**CRITICAL**: Read `PLAYWRIGHT_TESTING_GUIDE_CONDENSED.md` before writing or modifying E2E tests.
 
 **Key Principles:**
 - ✅ Tests verify **backend-to-frontend data flow** (IC canister → Redux → UI)
@@ -71,18 +71,6 @@ npx playwright test e2e/feature.spec.ts
 # 4. If tests fail: analyze artifacts, form hypothesis, fix, GOTO step 2
 # 5. If tests pass: commit, create PR, SUCCESS ✅
 ```
-
-**Test Coverage:**
-- Treasury integration (`e2e/treasury.spec.ts`) - Orbit Station data flow
-- Public dashboard (`e2e/app-route.spec.ts`) - Anonymous user data loading
-- Proposals (TODO) - CRUD + voting workflow
-- Kong Locker integration (TODO) - Voting power queries
-
-See `PLAYWRIGHT_TESTING_GUIDE.md` for comprehensive guidance on:
-- Common failure patterns and how to avoid them
-- What to capture (network requests, Redux actions, console errors)
-- How to debug when tests fail
-- Real-world examples from PRs #85 and #86
 
 ## 🏗️ Design Principles
 
