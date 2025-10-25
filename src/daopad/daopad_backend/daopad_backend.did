@@ -1086,7 +1086,8 @@ service : () -> {
   edit_treasury_asset : (principal, text, opt text, opt vec AssetMetadata) -> (
       Result,
     );
-  // Ensure a proposal exists for an Orbit request (for backwards compatibility)
+  // Forward proposal creation to admin canister (where voting actually happens)
+  // Backend creates Orbit requests, but admin handles all voting and approvals
   ensure_proposal_for_request : (principal, text, text) -> (Result_8);
   fetch_orbit_account_balances : (principal, vec text) -> (Result_9);
   fund_orbit_canister_request : (
@@ -1135,6 +1136,8 @@ service : () -> {
   get_orbit_station_for_token : (principal) -> (opt principal) query;
   get_orbit_system_info : (principal) -> (Result_23);
   // Get a specific proposal
+  // Note: Proposals now live in admin canister - frontend should query admin directly
+  // This method returns None to indicate proposals are in admin, not backend
   get_proposal : (principal, text) -> (opt UnifiedProposal) query;
   get_proposal_config : (principal, ProposalType) -> (Result_24) query;
   // Get detailed request policies information with resolved rule names

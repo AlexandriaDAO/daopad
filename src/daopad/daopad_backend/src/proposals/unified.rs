@@ -549,17 +549,16 @@ pub async fn create_orbit_request_with_proposal(
 }
 
 /// Get a specific proposal
+/// Note: Proposals now live in admin canister - frontend should query admin directly
+/// This method returns None to indicate proposals are in admin, not backend
 #[query]
 pub fn get_proposal(
-    token_id: Principal,
-    orbit_request_id: String,
+    _token_id: Principal,
+    _orbit_request_id: String,
 ) -> Option<UnifiedProposal> {
-    UNIFIED_PROPOSALS.with(|proposals| {
-        proposals
-            .borrow()
-            .get(&(StorablePrincipal(token_id), orbit_request_id))
-            .cloned()
-    })
+    // Proposals stored in admin canister, not backend
+    // Frontend should query admin canister directly for proposal data
+    None
 }
 
 /// List all active proposals for a token
@@ -618,54 +617,35 @@ pub fn get_user_vote(
     })
 }
 
-/// Ensure a proposal exists for an Orbit request (for backwards compatibility)
+/// Forward proposal creation to admin canister (where voting actually happens)
+/// Backend creates Orbit requests, but admin handles all voting and approvals
 #[update]
 pub async fn ensure_proposal_for_request(
     token_id: Principal,
     orbit_request_id: String,
     request_type_str: String,
 ) -> Result<ProposalId, ProposalError> {
-    let caller = ic_cdk::caller();
-    let now = time();
+    use crate::storage::state::ADMIN_CANISTER_ID;
 
-    // Get total voting power BEFORE taking the borrow
-    let total_voting_power = get_total_voting_power_for_token(token_id).await?;
+    let admin_principal = ADMIN_CANISTER_ID.with(|id| {
+        id.borrow()
+            .ok_or(ProposalError::Custom("Admin canister not configured".to_string()))
+    })?;
 
-    // ATOMIC: Check-and-insert within single borrow scope
-    UNIFIED_PROPOSALS.with(|proposals| {
-        let mut map = proposals.borrow_mut();
-        let key = (StorablePrincipal(token_id), orbit_request_id.clone());
+    let result: Result<(Result<ProposalId, ProposalError>,), _> = ic_cdk::call(
+        admin_principal,
+        "ensure_proposal_for_request",
+        (token_id, orbit_request_id, request_type_str)
+    ).await;
 
-        // If exists, return existing ID
-        if let Some(existing) = map.get(&key) {
-            return Ok(existing.id);
-        }
-
-        // Otherwise create new proposal atomically
-        let proposal_id = ProposalId::new();
-        let operation_type = OrbitOperationType::from_string(&request_type_str);
-        let duration_hours = operation_type.voting_duration_hours();
-        let duration_nanos = duration_hours * 3600 * 1_000_000_000;
-
-        let proposal = UnifiedProposal {
-            id: proposal_id,
-            token_canister_id: token_id,
-            orbit_request_id: orbit_request_id.clone(),
-            operation_type,
-            proposer: caller,
-            created_at: now,
-            expires_at: now + duration_nanos,
-            yes_votes: 0,
-            no_votes: 0,
-            total_voting_power,
-            voter_count: 0,
-            status: ProposalStatus::Active,
-            transfer_details: None,
-        };
-
-        map.insert(key, proposal);
-        Ok(proposal_id)
-    })
+    match result {
+        Ok((Ok(proposal_id),)) => Ok(proposal_id),
+        Ok((Err(e),)) => Err(e),
+        Err((code, msg)) => Err(ProposalError::IcCallFailed {
+            code: code as i32,
+            message: msg,
+        }),
+    }
 }
 
 // ============================================================================

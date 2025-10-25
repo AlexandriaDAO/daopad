@@ -5,6 +5,7 @@ use crate::storage::memory::{
     ORBIT_STATIONS_MEM_ID, STATION_TO_TOKEN_MEM_ID,
 };
 use crate::types::{AgreementSnapshot, StorablePrincipal, VotingThresholds};
+use candid::Principal;
 use ic_stable_structures::StableBTreeMap;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -76,4 +77,11 @@ thread_local! {
     // Legacy vote tracking (kept for orbit_link.rs compatibility)
     // TODO: Migrate orbit_link.rs to use UNIFIED_PROPOSAL_VOTES
     pub static PROPOSAL_VOTES: RefCell<BTreeMap<(ProposalId, StorablePrincipal), VoteChoice>> = RefCell::new(BTreeMap::new());
+
+    /// Admin canister principal for proposal delegation
+    /// Backend creates Orbit requests but admin handles voting and approvals
+    pub static ADMIN_CANISTER_ID: RefCell<Option<Principal>> = RefCell::new(
+        // Hard-coded admin canister ID (odkrm-viaaa-aaaap-qp2oq-cai)
+        Some(Principal::from_text("odkrm-viaaa-aaaap-qp2oq-cai").unwrap())
+    );
 }

@@ -3,70 +3,6 @@ import { useAuth } from '../providers/AuthProvider/IIProvider';
 import { getProposalService } from '../services/backend';
 import { Principal } from '@dfinity/principal';
 
-// Helper: Map operation type string to enum variant
-// MUST match backend's infer_request_type() at orbit_requests.rs:303-361
-function inferRequestType(operationType) {
-  const typeMap = {
-    // Treasury (3)
-    'Transfer': { Transfer: null },
-    'AddAccount': { AddAccount: null },
-    'EditAccount': { EditAccount: null },
-
-    // Users (3)
-    'AddUser': { AddUser: null },
-    'EditUser': { EditUser: null },
-    'RemoveUser': { RemoveUser: null },
-
-    // Groups (3)
-    'AddUserGroup': { AddUserGroup: null },
-    'EditUserGroup': { EditUserGroup: null },
-    'RemoveUserGroup': { RemoveUserGroup: null },
-
-    // Canisters (9)
-    'CreateExternalCanister': { CreateExternalCanister: null },
-    'ConfigureExternalCanister': { ConfigureExternalCanister: null },
-    'ChangeExternalCanister': { ChangeExternalCanister: null },
-    'CallExternalCanister': { CallExternalCanister: null },
-    'FundExternalCanister': { FundExternalCanister: null },
-    'MonitorExternalCanister': { MonitorExternalCanister: null },
-    'SnapshotExternalCanister': { SnapshotExternalCanister: null },
-    'RestoreExternalCanister': { RestoreExternalCanister: null },
-    'PruneExternalCanister': { PruneExternalCanister: null },
-
-    // System (4)
-    'SystemUpgrade': { SystemUpgrade: null },
-    'SystemRestore': { SystemRestore: null },
-    'SetDisasterRecovery': { SetDisasterRecovery: null },
-    'ManageSystemInfo': { ManageSystemInfo: null },
-
-    // Governance (4)
-    'EditPermission': { EditPermission: null },
-    'AddRequestPolicy': { AddRequestPolicy: null },
-    'EditRequestPolicy': { EditRequestPolicy: null },
-    'RemoveRequestPolicy': { RemoveRequestPolicy: null },
-
-    // Assets (3)
-    'AddAsset': { AddAsset: null },
-    'EditAsset': { EditAsset: null },
-    'RemoveAsset': { RemoveAsset: null },
-
-    // Rules (3)
-    'AddNamedRule': { AddNamedRule: null },
-    'EditNamedRule': { EditNamedRule: null },
-    'RemoveNamedRule': { RemoveNamedRule: null },
-
-    // Address Book (3)
-    'AddAddressBookEntry': { AddAddressBookEntry: null },
-    'EditAddressBookEntry': { EditAddressBookEntry: null },
-    'RemoveAddressBookEntry': { RemoveAddressBookEntry: null },
-
-    // Handle Unknown as a fallback type - default to Transfer for now
-    'Unknown': { Transfer: null },
-  };
-
-  return typeMap[operationType] || { Other: operationType };
-}
-
 export function useProposal(tokenId, orbitRequestId, operationType) {
   const { identity } = useAuth();
   const [proposal, setProposal] = useState(null);
@@ -172,14 +108,16 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
       const proposalService = getProposalService(identity);
       const actor = await proposalService.getActor();
 
-      // Infer request type from operation string
-      const requestType = inferRequestType(operationType);
-      console.log('[useProposal] Request type:', requestType);
+      // Backend expects string (e.g., "Transfer", "EditAccount")
+      // operationType is already a string, so pass it directly
+      const requestTypeString = operationType;
+      console.log('[useProposal] Request type string:', requestTypeString);
 
+      // Backend now forwards to admin canister
       const result = await actor.ensure_proposal_for_request(
         Principal.fromText(tokenId),
         orbitRequestId,
-        requestType
+        requestTypeString  // Pass string, not variant!
       );
 
       console.log('[useProposal] Proposal created:', result);
