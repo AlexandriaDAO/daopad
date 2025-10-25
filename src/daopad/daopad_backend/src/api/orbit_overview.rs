@@ -247,11 +247,21 @@ fn calculate_treasury_total(
     // Sum only ICP balances (filter by symbol, not decimals)
     let mut total_icp_e8s = 0u64;
 
-    // NOTE: AccountAssetMinimal doesn't have balance field
-    // TODO: Fetch balances separately using fetch_account_balances
-    // For now, returning zero total (this affects the overview tab ICP balance display)
-    for _account in accounts {
-        // Skipping balance calculation - need to integrate fetch_account_balances
+    // NOTE: Balance data is now included in AccountAsset.balance (Option<AccountBalance>)
+    // list_accounts returns balance data embedded in each asset
+    for account in accounts {
+        for asset in &account.assets {
+            // Check if this asset is ICP by looking up its symbol
+            if let Some(symbol) = asset_map.get(&asset.asset_id) {
+                if symbol == "ICP" {
+                    // Extract balance from Option<AccountBalance>
+                    if let Some(balance_data) = &asset.balance {
+                        let balance = nat_to_u64(&balance_data.balance);
+                        total_icp_e8s = total_icp_e8s.saturating_add(balance);
+                    }
+                }
+            }
+        }
     }
 
     (total_icp_e8s, account_count)

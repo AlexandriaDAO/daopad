@@ -392,14 +392,17 @@ pub async fn get_treasury_management_data(
         let can_edit = priv_info.map_or(false, |p| p.can_edit);
 
         // Format assets with balances
-        // NOTE: AccountAssetMinimal doesn't have balance field - need to fetch separately
-        // For now, returning zero balance (TODO: integrate fetch_account_balances)
+        // NOTE: Balance data is now included in AccountAsset.balance (Option<AccountBalance>)
+        // list_accounts returns balance data embedded in each asset
         let mut asset_balances = Vec::new();
         for account_asset in &account.assets {
             if let Some(asset_info) = asset_map.get(&account_asset.asset_id) {
-                let balance_nat = candid::Nat::from(0u64);  // TODO: Fetch actual balance
+                // Extract balance from Option<AccountBalance>
+                let balance_u64 = account_asset.balance
+                    .as_ref()
+                    .map(|b| nat_to_u64(&b.balance))
+                    .unwrap_or(0);
 
-                let balance_u64 = nat_to_u64(&balance_nat);
                 let balance_formatted = format_balance(balance_u64, asset_info.decimals);
 
                 asset_balances.push(AssetBalanceInfo {
