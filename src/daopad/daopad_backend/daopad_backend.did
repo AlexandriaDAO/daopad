@@ -1086,8 +1086,10 @@ service : () -> {
   edit_treasury_asset : (principal, text, opt text, opt vec AssetMetadata) -> (
       Result,
     );
-  // Forward proposal creation to admin canister (where voting actually happens)
-  // Backend creates Orbit requests, but admin handles all voting and approvals
+  // Ensure a proposal exists for an Orbit request
+  // NOTE: This is a NO-OP - we don't store proposals, Orbit does!
+  // Proposals are stored in Orbit Station, vote tracking happens in admin canister
+  // Frontend should call admin canister directly for voting operations
   ensure_proposal_for_request : (principal, text, text) -> (Result_8);
   fetch_orbit_account_balances : (principal, vec text) -> (Result_9);
   fund_orbit_canister_request : (

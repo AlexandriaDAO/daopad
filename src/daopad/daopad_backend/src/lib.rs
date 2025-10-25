@@ -56,15 +56,11 @@ pub use types::{AgreementSnapshot, TokenInfo, VotingThresholds};
 
 #[init]
 fn init() {
-    // Initialize admin canister ID for proposal delegation
-    storage::state::initialize_admin_canister_id();
     ic_cdk::println!("DAOPad backend initialized");
 }
 
 #[post_upgrade]
 fn post_upgrade() {
-    // Re-initialize admin canister ID after upgrade
-    storage::state::initialize_admin_canister_id();
     ic_cdk::println!("DAOPad backend upgraded");
 }
 

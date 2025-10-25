@@ -77,22 +77,4 @@ thread_local! {
     // Legacy vote tracking (kept for orbit_link.rs compatibility)
     // TODO: Migrate orbit_link.rs to use UNIFIED_PROPOSAL_VOTES
     pub static PROPOSAL_VOTES: RefCell<BTreeMap<(ProposalId, StorablePrincipal), VoteChoice>> = RefCell::new(BTreeMap::new());
-
-    /// Admin canister principal for proposal delegation
-    /// Backend creates Orbit requests but admin handles voting and approvals
-    /// Initialized in init() to avoid panics during module loading
-    pub static ADMIN_CANISTER_ID: RefCell<Option<Principal>> = RefCell::new(None);
-}
-
-/// Initialize admin canister ID at startup
-/// Called by init() and post_upgrade()
-pub fn initialize_admin_canister_id() {
-    // Hard-coded admin canister ID (odkrm-viaaa-aaaap-qp2oq-cai)
-    if let Ok(admin_principal) = Principal::from_text("odkrm-viaaa-aaaap-qp2oq-cai") {
-        ADMIN_CANISTER_ID.with(|id| {
-            *id.borrow_mut() = Some(admin_principal);
-        });
-    } else {
-        ic_cdk::trap("Failed to initialize admin canister ID - invalid principal");
-    }
 }

@@ -599,35 +599,21 @@ pub fn get_user_vote(
     None
 }
 
-/// Forward proposal creation to admin canister (where voting actually happens)
-/// Backend creates Orbit requests, but admin handles all voting and approvals
+/// Ensure a proposal exists for an Orbit request
+/// NOTE: This is a NO-OP - we don't store proposals, Orbit does!
+/// Proposals are stored in Orbit Station, vote tracking happens in admin canister
+/// Frontend should call admin canister directly for voting operations
 #[update]
 pub async fn ensure_proposal_for_request(
-    token_id: Principal,
-    orbit_request_id: String,
-    request_type_str: String,
+    _token_id: Principal,
+    _orbit_request_id: String,
+    _request_type_str: String,
 ) -> Result<ProposalId, ProposalError> {
-    use crate::storage::state::ADMIN_CANISTER_ID;
-
-    let admin_principal = ADMIN_CANISTER_ID.with(|id| {
-        id.borrow()
-            .ok_or(ProposalError::Custom("Admin canister not configured".to_string()))
-    })?;
-
-    let result: Result<(Result<ProposalId, ProposalError>,), _> = ic_cdk::call(
-        admin_principal,
-        "ensure_proposal_for_request",
-        (token_id, orbit_request_id, request_type_str)
-    ).await;
-
-    match result {
-        Ok((Ok(proposal_id),)) => Ok(proposal_id),
-        Ok((Err(e),)) => Err(e),
-        Err((code, msg)) => Err(ProposalError::IcCallFailed {
-            code: code as i32,
-            message: msg,
-        }),
-    }
+    // Proposals are stored in Orbit, not here
+    // Return a dummy ID to satisfy frontend expectations
+    // Frontend will query Orbit directly for request details
+    // and call admin directly for voting
+    Ok(ProposalId(0))
 }
 
 // ============================================================================
