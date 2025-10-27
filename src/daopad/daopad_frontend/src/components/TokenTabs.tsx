@@ -8,6 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { Token, VotingPower, LPPosition } from '../types';
 
 interface TokenTabsProps {
@@ -21,6 +25,11 @@ const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
   const [tokenVotingPowers, setTokenVotingPowers] = useState<Record<string, number>>({});
   const [tokenStations, setTokenStations] = useState<Record<string, string>>({});  // tokenId -> stationId mapping
   const [userLPPositions, setUserLPPositions] = useState<LPPosition[]>([]);
+  const [showLinkDialog, setShowLinkDialog] = useState<boolean>(false);
+  const [linkTokenId, setLinkTokenId] = useState<string>('');
+  const [linkStationId, setLinkStationId] = useState<string>('');
+  const [linkError, setLinkError] = useState<string>('');
+  const [linking, setLinking] = useState<boolean>(false);
 
   useEffect(() => {
     loadTokensAndPowers();
@@ -109,6 +118,55 @@ const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
     }
   };
 
+  const handleLinkStation = async () => {
+    if (!identity) {
+      setLinkError('Identity required');
+      return;
+    }
+
+    if (!linkTokenId.trim() || !linkStationId.trim()) {
+      setLinkError('Both token ID and station ID are required');
+      return;
+    }
+
+    // Validate principals
+    try {
+      Principal.fromText(linkTokenId.trim());
+      Principal.fromText(linkStationId.trim());
+    } catch (err) {
+      setLinkError('Invalid principal format');
+      return;
+    }
+
+    setLinking(true);
+    setLinkError('');
+
+    try {
+      const proposalService = getProposalService(identity);
+      const tokenPrincipal = Principal.fromText(linkTokenId.trim());
+      const stationPrincipal = Principal.fromText(linkStationId.trim());
+
+      const result = await proposalService.proposeOrbitStationLink(tokenPrincipal, stationPrincipal);
+
+      if (result.success) {
+        // Refresh the token list
+        await loadTokensAndPowers();
+        // Close dialog
+        setShowLinkDialog(false);
+        setLinkTokenId('');
+        setLinkStationId('');
+        setLinkError('');
+      } else {
+        setLinkError(result.error || 'Failed to create proposal');
+      }
+    } catch (err) {
+      console.error('Error creating station link proposal:', err);
+      setLinkError(err.message || 'An error occurred');
+    } finally {
+      setLinking(false);
+    }
+  };
+
   const showOrbitDebugPanels = import.meta.env.VITE_SHOW_ORBIT_DEBUG === 'true';
 
   const OrbitStationTest = useMemo(() => {
@@ -182,8 +240,18 @@ const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <h2 className="text-2xl font-display text-executive-ivory tracking-wide">Your DAOs</h2>
-        <div className="h-px bg-executive-gold w-16"></div>
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-display text-executive-ivory tracking-wide">Your DAOs</h2>
+            <div className="h-px bg-executive-gold w-16"></div>
+          </div>
+          <Button
+            onClick={() => setShowLinkDialog(true)}
+            className="bg-executive-gold text-executive-charcoal hover:bg-executive-goldLight"
+          >
+            Link Another DAO
+          </Button>
+        </div>
       </div>
 
       {showOrbitDebugPanels && OrbitStationTest && (
@@ -248,6 +316,77 @@ const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
           );
         })}
       </div>
+
+      {/* Link Station Dialog */}
+      <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
+        <DialogContent className="bg-executive-darkGray border-executive-gold/20">
+          <DialogHeader>
+            <DialogTitle className="text-executive-ivory">Link Orbit Station to Token</DialogTitle>
+            <DialogDescription className="text-executive-lightGray">
+              Create a governance proposal to link an Orbit Station to a token.
+              You need at least 10,000 VP (≈$100 in LP value) in the token to propose.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="token-id" className="text-executive-lightGray">Token Canister ID</Label>
+              <Input
+                id="token-id"
+                value={linkTokenId}
+                onChange={(e) => setLinkTokenId(e.target.value)}
+                placeholder="e.g., ryjl3-tyaaa-aaaaa-aaaba-cai"
+                className="bg-executive-mediumGray border-executive-gold/30 text-executive-ivory"
+              />
+              <p className="text-xs text-executive-lightGray/60 mt-1">
+                The token you want to use for voting power
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="station-id" className="text-executive-lightGray">Orbit Station Canister ID</Label>
+              <Input
+                id="station-id"
+                value={linkStationId}
+                onChange={(e) => setLinkStationId(e.target.value)}
+                placeholder="e.g., fec7w-zyaaa-aaaaa-qaffq-cai"
+                className="bg-executive-mediumGray border-executive-gold/30 text-executive-ivory"
+              />
+              <p className="text-xs text-executive-lightGray/60 mt-1">
+                The Orbit Station to link for DAO governance
+              </p>
+            </div>
+
+            {linkError && (
+              <Alert variant="destructive">
+                <AlertDescription>{linkError}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowLinkDialog(false);
+                setLinkError('');
+                setLinkTokenId('');
+                setLinkStationId('');
+              }}
+              className="border-executive-gold/30 text-executive-lightGray hover:bg-executive-gold/10"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleLinkStation}
+              disabled={linking || !linkTokenId.trim() || !linkStationId.trim()}
+              className="bg-executive-gold text-executive-charcoal hover:bg-executive-goldLight"
+            >
+              {linking ? 'Creating Proposal...' : 'Create Proposal'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
