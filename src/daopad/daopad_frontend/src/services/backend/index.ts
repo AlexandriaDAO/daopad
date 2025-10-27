@@ -29,6 +29,7 @@ export { OrbitGovernanceService, getOrbitGovernanceService } from './orbit/gover
 export { OrbitUserService, getOrbitUserService } from './orbit/users/OrbitUserService';
 export { OrbitAgreementService, getOrbitAgreementService } from './OrbitAgreementService';
 export { OrbitPermissionService } from './orbit/permissions/OrbitPermissionService';
+export { AdminService, getAdminService } from '../admin/AdminService';
 
 // Re-export base and utilities for custom extensions
 export { BackendServiceBase } from './base/BackendServiceBase';

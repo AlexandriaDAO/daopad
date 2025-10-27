@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useIdentity } from '@/hooks/useIdentity';
 import { useStationService } from '@/hooks/useStationService';
 import { useActiveStation } from '@/hooks/useActiveStation';
-import { getProposalService } from '@/services';
+import { getAdminService, getProposalService } from '@/services';
 import { Principal } from '@dfinity/principal';
 import { DialogLayout } from '@/components/shared/DialogLayout';
 import { Button } from '@/components/ui/button';
@@ -155,42 +155,37 @@ export function RequestDialog({ open, requestId, tokenId, onClose, onApproved })
     fetchUserVotingPower();
   }, [fetchUserVotingPower]);
 
-  // Vote on request (liquid democracy)
+  // Vote on request (liquid democracy) via admin canister
   const handleVote = async (vote) => {
     const setLoading = vote ? setIsApproving : setIsRejecting;
     setLoading(true);
 
     try {
-      const daopadBackend = getProposalService(identity);
-
       // Convert tokenId to Principal if it's a string
       const tokenPrincipal = typeof tokenId === 'string'
         ? Principal.fromText(tokenId)
         : tokenId;
 
-      // Call backend voting method
-      const result = await daopadBackend.voteOnOrbitRequest(
-        tokenPrincipal,
+      // Vote via admin canister
+      const adminService = getAdminService(identity);
+      await adminService.voteOnProposal(
+        tokenPrincipal.toString(),
         requestId,
         vote
       );
 
-      if (result.success) {
-        toast.success(`Vote ${vote ? 'Yes' : 'No'} recorded`, {
-          description: 'Your vote has been counted. Refreshing proposal data...'
-        });
+      toast.success(`Vote ${vote ? 'Yes' : 'No'} recorded`, {
+        description: 'Your vote has been counted. Refreshing proposal data...'
+      });
 
-        // Refresh both request and proposal data
-        await Promise.all([
-          fetchRequest(),
-          fetchProposal()
-        ]);
+      // Refresh both request and proposal data
+      await Promise.all([
+        fetchRequest(),
+        fetchProposal()
+      ]);
 
-        // Notify parent component
-        if (onApproved) onApproved();
-      } else {
-        throw new Error(result.error || 'Failed to vote');
-      }
+      // Notify parent component
+      if (onApproved) onApproved();
     } catch (error) {
       console.error('Vote error:', error);
 
