@@ -311,36 +311,44 @@ const UnifiedRequests = ({ tokenId, identity }) => {
           </div>
         </div>
 
-        {/* Stats bar */}
+        {/* Stats bar with quick filter tabs */}
         <div className="flex justify-between items-center py-2 border-y">
           <div className="flex gap-4 items-center">
-            {/* Stats */}
+            {/* Stats - contextual based on current filter */}
+            <div className="text-sm">
+              <span className="font-semibold">{requests.length}</span>
+              <span className="text-muted-foreground"> showing</span>
+            </div>
             <div className="text-sm">
               <span className="font-semibold">{pagination.total}</span>
-              <span className="text-muted-foreground"> total</span>
-            </div>
-            <div className="text-sm">
-              <span className="font-semibold text-yellow-600">
-                {requests.filter(r => r.status === 'Created' || r.status === 'Scheduled').length}
-              </span>
-              <span className="text-muted-foreground"> pending</span>
+              <span className="text-muted-foreground"> total in filter</span>
             </div>
 
-            {/* Quick filter buttons */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleStatusChange(['Created', 'Scheduled'])}
-            >
-              Pending Only
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleStatusChange(['Completed', 'Rejected', 'Cancelled', 'Failed'])}
-            >
-              Resolved Only
-            </Button>
+            {/* Quick filter tabs with active state */}
+            <div className="flex gap-1 ml-4 border rounded-md p-1">
+              <Button
+                variant={
+                  JSON.stringify(filters.statuses.sort()) === JSON.stringify(['Created', 'Scheduled'].sort())
+                    ? 'default'
+                    : 'ghost'
+                }
+                size="sm"
+                onClick={() => handleStatusChange(['Created', 'Scheduled'])}
+              >
+                Pending Only
+              </Button>
+              <Button
+                variant={
+                  JSON.stringify(filters.statuses.sort()) === JSON.stringify(['Cancelled', 'Completed', 'Failed', 'Rejected'].sort())
+                    ? 'default'
+                    : 'ghost'
+                }
+                size="sm"
+                onClick={() => handleStatusChange(['Completed', 'Rejected', 'Cancelled', 'Failed'])}
+              >
+                Resolved Only
+              </Button>
+            </div>
           </div>
         </div>
 
