@@ -113,41 +113,8 @@ const UnifiedRequests = ({ tokenId, identity }) => {
           expires_at: typeof request.expires_at === 'bigint' ? Number(request.expires_at) : request.expires_at,
         }));
 
-        // Also fetch treasury proposal
-        try {
-          const treasuryResult = await backend.getTreasuryProposal(Principal.fromText(tokenId));
-          if (treasuryResult.success && treasuryResult.data) {
-            setTreasuryProposal(treasuryResult.data);
-
-            // Extract status from variant object (backend returns { Active: null } not string)
-            const statusVariant = treasuryResult.data.status;
-            const statusKey = typeof statusVariant === 'object' && statusVariant !== null
-              ? Object.keys(statusVariant)[0]
-              : statusVariant;
-
-            // Convert proposal to request-like format for display
-            // Convert BigInt values to numbers
-            const proposalAsRequest = {
-              id: treasuryResult.data.orbit_request_id,
-              title: `Treasury Transfer Proposal`,
-              status: statusKey === 'Active' ? 'Created' : statusKey,
-              operation: { Transfer: null },
-              created_at: typeof treasuryResult.data.created_at === 'bigint' ? Number(treasuryResult.data.created_at) : treasuryResult.data.created_at,
-              expires_at: typeof treasuryResult.data.expires_at === 'bigint' ? Number(treasuryResult.data.expires_at) : treasuryResult.data.expires_at,
-              yes_votes: typeof treasuryResult.data.yes_votes === 'bigint' ? Number(treasuryResult.data.yes_votes) : treasuryResult.data.yes_votes,
-              no_votes: typeof treasuryResult.data.no_votes === 'bigint' ? Number(treasuryResult.data.no_votes) : treasuryResult.data.no_votes,
-              total_voting_power: typeof treasuryResult.data.total_voting_power === 'bigint' ? Number(treasuryResult.data.total_voting_power) : treasuryResult.data.total_voting_power,
-              is_treasury_proposal: true,
-              proposal_id: treasuryResult.data.id
-            };
-
-            // Prepend to requests list
-            allRequests = [proposalAsRequest, ...allRequests];
-          }
-        } catch (err) {
-          console.warn('Failed to fetch treasury proposal:', err);
-          // Don't fail the whole fetch if treasury proposal fails
-        }
+        // ✅ REMOVED: Treasury proposal fetch - unified requests already include treasury operations
+        // No separate fetch needed - list_requests returns all operation types including Transfer
 
         setRequests(allRequests);
         setPagination({

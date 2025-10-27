@@ -172,14 +172,13 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
       const proposalService = getProposalService(identity);
       const actor = await proposalService.getActor();
 
-      // Infer request type from operation string
-      const requestType = inferRequestType(operationType);
-      console.log('[useProposal] Request type:', requestType);
+      // Pass operation type as STRING, not object
+      console.log('[useProposal] Creating proposal for operation:', operationType);
 
       const result = await actor.ensure_proposal_for_request(
         Principal.fromText(tokenId),
         orbitRequestId,
-        requestType
+        operationType  // ✅ Pass string directly: "EditAccount", "Transfer", etc.
       );
 
       console.log('[useProposal] Proposal created:', result);
