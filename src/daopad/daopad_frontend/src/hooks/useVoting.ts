@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../providers/AuthProvider/IIProvider';
-import { getKongLockerService, getProposalService } from '../services/backend';
+import { getKongLockerService, getProposalService, getAdminService } from '../services/backend';
 import { Principal } from '@dfinity/principal';
 
 export function useVoting(tokenId) {
@@ -44,10 +44,20 @@ export function useVoting(tokenId) {
 
     setVoting(true);
     try {
-      const proposalService = getProposalService(identity);
-      // Use voteOnOrbitRequest instead of vote (which is for regular proposals)
-      // voteChoice should be a boolean: true for yes, false for no
-      const result = await proposalService.voteOnOrbitRequest(tokenId, orbitRequestId, voteChoice);
+      // Try admin canister first (migration path), fallback to backend
+      const adminService = getAdminService(identity);
+      let result;
+
+      try {
+        await adminService.voteOnProposal(tokenId, orbitRequestId, voteChoice);
+        result = { success: true };
+      } catch (adminError) {
+        console.warn('[useVoting] Admin vote failed, trying backend fallback:', adminError);
+        const proposalService = getProposalService(identity);
+        // Use voteOnOrbitRequest instead of vote (which is for regular proposals)
+        // voteChoice should be a boolean: true for yes, false for no
+        result = await proposalService.voteOnOrbitRequest(tokenId, orbitRequestId, voteChoice);
+      }
 
       if (!result.success) {
         // Parse specific error types - ensure error is a string

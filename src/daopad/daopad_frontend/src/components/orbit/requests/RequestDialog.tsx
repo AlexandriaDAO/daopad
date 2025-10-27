@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useIdentity } from '@/hooks/useIdentity';
 import { useStationService } from '@/hooks/useStationService';
 import { useActiveStation } from '@/hooks/useActiveStation';
-import { getProposalService } from '@/services';
+import { getProposalService, getAdminService } from '@/services';
 import { Principal } from '@dfinity/principal';
 import { DialogLayout } from '@/components/shared/DialogLayout';
 import { Button } from '@/components/ui/button';
@@ -161,36 +161,50 @@ export function RequestDialog({ open, requestId, tokenId, onClose, onApproved })
     setLoading(true);
 
     try {
-      const daopadBackend = getProposalService(identity);
-
       // Convert tokenId to Principal if it's a string
       const tokenPrincipal = typeof tokenId === 'string'
         ? Principal.fromText(tokenId)
         : tokenId;
 
-      // Call backend voting method
-      const result = await daopadBackend.voteOnOrbitRequest(
-        tokenPrincipal,
-        requestId,
-        vote
-      );
+      // Try admin canister first (migration path), fallback to backend
+      try {
+        const adminService = getAdminService(identity);
+        await adminService.voteOnProposal(
+          tokenPrincipal.toString(),
+          requestId,
+          vote
+        );
 
-      if (result.success) {
-        toast.success(`Vote ${vote ? 'Yes' : 'No'} recorded`, {
+        toast.success(`Vote ${vote ? 'Yes' : 'No'} recorded via admin`, {
           description: 'Your vote has been counted. Refreshing proposal data...'
         });
+      } catch (adminError) {
+        console.warn('[RequestDialog] Admin vote failed, trying backend fallback:', adminError);
 
-        // Refresh both request and proposal data
-        await Promise.all([
-          fetchRequest(),
-          fetchProposal()
-        ]);
+        const daopadBackend = getProposalService(identity);
+        const result = await daopadBackend.voteOnOrbitRequest(
+          tokenPrincipal,
+          requestId,
+          vote
+        );
 
-        // Notify parent component
-        if (onApproved) onApproved();
-      } else {
-        throw new Error(result.error || 'Failed to vote');
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to vote');
+        }
+
+        toast.success(`Vote ${vote ? 'Yes' : 'No'} recorded via backend`, {
+          description: 'Your vote has been counted. Refreshing proposal data...'
+        });
       }
+
+      // Refresh both request and proposal data
+      await Promise.all([
+        fetchRequest(),
+        fetchProposal()
+      ]);
+
+      // Notify parent component
+      if (onApproved) onApproved();
     } catch (error) {
       console.error('Vote error:', error);
 
