@@ -2,14 +2,14 @@ use candid::{Nat, Principal, CandidType, Deserialize};
 use ic_cdk::update;
 use std::collections::HashMap;
 use crate::storage::state::{
-    TOKEN_ORBIT_STATIONS, ORBIT_PROPOSALS
+    TOKEN_ORBIT_STATIONS, UNIFIED_PROPOSALS, ORBIT_PROPOSALS
 };
 use crate::types::StorablePrincipal;
 use crate::types::orbit::{
-    ListAccountsInput, ListAccountsResult,
+    ListAccountsInput, ListAccountsResultMinimal,  // Use minimal (no Option<RequestPolicyRule>)
     ListUsersInput, ListUsersResult,
-    SystemInfoResult, SystemInfo,
-    UserDTO, Account,
+    SystemInfoResultMinimal, SystemInfoMinimal,  // Use minimal (no Option<T> fields)
+    UserDTO, AccountMinimal,  // Use minimal account type
 };
 use crate::proposals::types::ProposalStatus;
 use crate::api::orbit_accounts::{Asset, ListAssetsInput, ListAssetsResult};
@@ -97,6 +97,15 @@ pub async fn get_dao_overview(
 fn count_active_proposals(token_id: Principal) -> u64 {
     let mut count = 0u64;
 
+    // Unified proposals (all types)
+    UNIFIED_PROPOSALS.with(|proposals| {
+        count += proposals.borrow()
+            .iter()
+            .filter(|((token, _), p)| token.0 == token_id && p.status == ProposalStatus::Active)
+            .count() as u64;
+    });
+
+    // Orbit link proposals (one per token)
     ORBIT_PROPOSALS.with(|proposals| {
         if let Some(p) = proposals.borrow().get(&StorablePrincipal(token_id)) {
             if p.status == crate::proposals::orbit_link::ProposalStatus::Active {
@@ -109,8 +118,24 @@ fn count_active_proposals(token_id: Principal) -> u64 {
 }
 
 /// Count recent proposals (within specified days)
-fn count_recent_proposals(_token_id: Principal, _days: u64) -> u64 {
-    0
+fn count_recent_proposals(token_id: Principal, days: u64) -> u64 {
+    let now = ic_cdk::api::time();
+    let threshold = now.saturating_sub(days * 24 * 60 * 60 * 1_000_000_000);
+
+    let mut count = 0u64;
+
+    // Unified proposals (all types)
+    UNIFIED_PROPOSALS.with(|proposals| {
+        count += proposals.borrow()
+            .iter()
+            .filter(|((token, _), p)| token.0 == token_id && p.created_at >= threshold)
+            .count() as u64;
+    });
+
+    // Note: OrbitLinkProposal doesn't have created_at field currently
+    // If needed, this can be added to the struct
+
+    count
 }
 
 // ============================================================================
@@ -118,18 +143,18 @@ fn count_recent_proposals(_token_id: Principal, _days: u64) -> u64 {
 // ============================================================================
 
 /// List all accounts in Orbit Station (admin-level access)
-async fn list_accounts_call(station_id: Principal) -> Result<Vec<Account>, String> {
+async fn list_accounts_call(station_id: Principal) -> Result<Vec<AccountMinimal>, String> {
     let input = ListAccountsInput {
         search_term: None,
         paginate: None,
     };
 
-    let result: Result<(ListAccountsResult,), _> =
+    let result: Result<(ListAccountsResultMinimal,), _> =
         ic_cdk::call(station_id, "list_accounts", (input,)).await;
 
     match result {
-        Ok((ListAccountsResult::Ok { accounts, .. },)) => Ok(accounts),
-        Ok((ListAccountsResult::Err(e),)) => {
+        Ok((ListAccountsResultMinimal::Ok { accounts, .. },)) => Ok(accounts),
+        Ok((ListAccountsResultMinimal::Err(e),)) => {
             Err(format!("List accounts error: {:?}", e))
         }
         Err((code, msg)) => {
@@ -162,13 +187,13 @@ async fn list_users_call(station_id: Principal) -> Result<Vec<UserDTO>, String> 
 }
 
 /// Get system info from Orbit Station
-async fn system_info_call(station_id: Principal) -> Result<SystemInfo, String> {
-    let result: Result<(SystemInfoResult,), _> =
+async fn system_info_call(station_id: Principal) -> Result<SystemInfoMinimal, String> {
+    let result: Result<(SystemInfoResultMinimal,), _> =
         ic_cdk::call(station_id, "system_info", ()).await;
 
     match result {
-        Ok((SystemInfoResult::Ok { system },)) => Ok(system),
-        Ok((SystemInfoResult::Err(e),)) => {
+        Ok((SystemInfoResultMinimal::Ok { system },)) => Ok(system),
+        Ok((SystemInfoResultMinimal::Err(e),)) => {
             Err(format!("System info error: {:?}", e))
         }
         Err((code, msg)) => {
@@ -202,7 +227,7 @@ async fn list_assets_call(station_id: Principal) -> Result<Vec<Asset>, String> {
 /// Calculate total ICP balance and account count
 /// Filters assets by symbol == "ICP" to avoid summing non-ICP tokens
 fn calculate_treasury_total(
-    accounts_result: &Result<Vec<Account>, String>,
+    accounts_result: &Result<Vec<AccountMinimal>, String>,
     assets_result: &Result<Vec<Asset>, String>
 ) -> (u64, u64) {
     let Ok(accounts) = accounts_result else {
@@ -222,14 +247,17 @@ fn calculate_treasury_total(
     // Sum only ICP balances (filter by symbol, not decimals)
     let mut total_icp_e8s = 0u64;
 
+    // NOTE: Balance data is now included in AccountAsset.balance (Option<AccountBalance>)
+    // list_accounts returns balance data embedded in each asset
     for account in accounts {
-        for account_asset in &account.assets {
-            // Check if this asset is ICP by symbol
-            if let Some(symbol) = asset_map.get(&account_asset.asset_id) {
+        for asset in &account.assets {
+            // Check if this asset is ICP by looking up its symbol
+            if let Some(symbol) = asset_map.get(&asset.asset_id) {
                 if symbol == "ICP" {
-                    if let Some(balance) = &account_asset.balance {
-                        let balance_u64 = nat_to_u64(&balance.balance);
-                        total_icp_e8s = total_icp_e8s.saturating_add(balance_u64);
+                    // Extract balance from Option<AccountBalance>
+                    if let Some(balance_data) = &asset.balance {
+                        let balance = nat_to_u64(&balance_data.balance);
+                        total_icp_e8s = total_icp_e8s.saturating_add(balance);
                     }
                 }
             }

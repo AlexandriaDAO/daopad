@@ -176,6 +176,33 @@ test.describe('Activity Tab - Anonymous User Access', () => {
     expect(authErrors).toHaveLength(0);
   });
 
+  test('should not have Candid encoding errors in sort_by field', async ({ page }) => {
+    const consoleErrors: string[] = [];
+
+    page.on('console', msg => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+
+    await page.goto(ACTIVITY_URL);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(3000);
+
+    // Check for Candid encoding errors related to sort_by
+    const candidErrors = consoleErrors.filter(e =>
+      e.includes('Invalid null argument') ||
+      e.includes('sort_by') ||
+      e.includes('Invalid record')
+    );
+
+    if (candidErrors.length > 0) {
+      console.error('Candid encoding errors found:', candidErrors);
+    }
+
+    expect(candidErrors).toHaveLength(0);
+  });
+
   test('should render page content within reasonable time', async ({ page }) => {
     const startTime = Date.now();
 
@@ -185,8 +212,8 @@ test.describe('Activity Tab - Anonymous User Access', () => {
     const loadTime = Date.now() - startTime;
     console.log(`Page loaded in ${loadTime}ms`);
 
-    // Should load in under 10 seconds even on slow connections
-    expect(loadTime).toBeLessThan(10000);
+    // Should load in under 20 seconds accounting for IC canister call latency
+    expect(loadTime).toBeLessThan(20000);
 
     // Page should have basic structure
     const bodyContent = await page.locator('body').textContent();
@@ -199,7 +226,7 @@ test.describe('Activity Tab - Data Validation', () => {
   test('should handle vote counts as regular numbers', async ({ page }) => {
     await page.goto(ACTIVITY_URL);
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(15000);
 
     // Check if any vote count elements exist
     const voteCountElements = await page.locator('[data-testid*="vote"]').allTextContents();

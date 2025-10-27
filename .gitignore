@@ -26,6 +26,7 @@ dist/
 
 # E2E test artifacts
 .auth/
+!.auth/.gitkeep
 **/test-results/
 **/playwright-report/
 

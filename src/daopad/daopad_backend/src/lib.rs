@@ -6,24 +6,40 @@ mod types;
 
 use candid::{Nat, Principal};
 use ic_cdk::init;
+use crate::types::{AccountMinimalWithBalances, AccountAssetWithBalance};
 
 pub use api::*;
 pub use api::orbit_overview::DaoOverviewStats;
 pub use proposals::orbit_link::{OrbitLinkProposal, ProposalStatus};
 pub use proposals::{
+    // Unified voting system exports
+    vote_on_proposal,                      // Single voting endpoint
+    create_orbit_request_with_proposal,    // Single creation endpoint
+    get_proposal,                          // Single query
+    list_unified_proposals,                // Single list
+    ensure_proposal_for_request,           // For backwards compatibility
+    has_user_voted,
+    get_user_vote,
+    OrbitOperation,
+    UnifiedProposal,
+
+    // Types
     OrbitRequestProposal, OrbitRequestType, ProposalError, ProposalId, ProposalType,
     TransferDetails, TreasuryProposal, VoteChoice,
 };
 pub use types::orbit::{
-    Account, AccountBalance, ListAccountsResult,
-    PaginationInput, Resource, SystemInfoResponse,
+    Account, AccountBalance, AccountMinimal,  // Added AccountMinimal
+    // Minimal types (no Option<T> for Candid 0.10.18 compatibility)
+    SystemInfoResponseMinimal, ListAccountsResultMinimal,
+    PaginationInputMinimal, ListExternalCanistersInputMinimal,  // Added ListExternalCanistersInputMinimal
+    Resource,
     // User types
     UserDTO, UserGroup,
     // External canister types
     ChangeExternalCanisterOperationInput, ConfigureExternalCanisterOperationInput,
     CreateExternalCanisterOperationInput, ExternalCanister, ExternalCanisterCallerMethodCallInput,
-    ExternalCanisterIdInput, FundExternalCanisterOperationInput, GetExternalCanisterInput,
-    GetExternalCanisterResult, ListExternalCanistersInput, ListExternalCanistersResult,
+    ExternalCanisterIdInput, ExternalCanisterState, FundExternalCanisterOperationInput, GetExternalCanisterInput,
+    GetExternalCanisterResult, ListExternalCanistersResult,
     MonitorExternalCanisterOperationInput, PruneExternalCanisterOperationInput,
     RestoreExternalCanisterOperationInput, SnapshotExternalCanisterOperationInput,
     SubmitRequestInput, SubmitRequestResult,

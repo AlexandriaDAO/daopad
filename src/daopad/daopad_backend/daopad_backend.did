@@ -15,6 +15,10 @@ type AccountAssetInfo = record {
   assets : vec AssetBalanceInfo;
   account_name : text;
 };
+type AccountAssetWithBalance = record {
+  balance : AccountBalance;
+  asset_id : text;
+};
 type AccountBalance = record {
   account_id : text;
   decimals : nat32;
@@ -27,6 +31,24 @@ type AccountCallerPrivileges = record {
   id : text;
   can_transfer : bool;
   can_edit : bool;
+};
+type AccountMinimal = record {
+  id : text;
+  metadata : vec AssetMetadata;
+  name : text;
+  assets : vec AccountAsset;
+  addresses : vec AccountAddress;
+  last_modification_timestamp : text;
+};
+type AccountMinimalWithBalances = record {
+  id : text;
+  configs_request_policy : opt RequestPolicyRule;
+  metadata : vec AssetMetadata;
+  name : text;
+  assets : vec AccountAssetWithBalance;
+  addresses : vec AccountAddress;
+  transfer_request_policy : opt RequestPolicyRule;
+  last_modification_timestamp : text;
 };
 type AccountWithAssets = record {
   assets : vec AssetWithBalance;
@@ -103,6 +125,7 @@ type AssetBalanceInfo_1 = record {
   balance_formatted : text;
   symbol : text;
 };
+type AssetDetails = record { decimals : nat8; name : text; symbol : text };
 type AssetMetadata = record { key : text; value : text };
 type AssetWithBalance = record { balance : opt AccountBalance; asset : Asset };
 type AuthScope = variant { Authenticated; Public; Restricted };
@@ -193,13 +216,10 @@ type CreateRequestInput = record {
   summary : opt text;
   operation : RequestOperationInput;
 };
-type CycleObtainStrategy = variant {
+type CycleObtainStrategyMinimal = variant {
   Disabled;
-  MintFromNativeToken : record { account_id : text; account_name : opt text };
-  WithdrawFromCyclesLedger : record {
-    account_id : text;
-    account_name : opt text;
-  };
+  MintFromNativeToken : record { account_id : text };
+  WithdrawFromCyclesLedger : record { account_id : text };
 };
 type DaoOverviewStats = record {
   treasury_total_icp : nat64;
@@ -209,14 +229,6 @@ type DaoOverviewStats = record {
   station_id : opt principal;
   member_count : nat64;
   station_name : opt text;
-};
-type DisasterRecovery = record {
-  user_group_name : opt text;
-  committee : DisasterRecoveryCommittee;
-};
-type DisasterRecoveryCommittee = record {
-  user_group_id : text;
-  quorum : nat16;
 };
 type EditAddressBookEntryOperationInput = record {
   labels : opt vec text;
@@ -344,12 +356,11 @@ type GovernanceStats = record {
   total_proposals : nat64;
 };
 type IdListSpecifier = variant { Any; Ids : vec text };
-type ListAccountsResult = variant {
+type ListAccountsResultMinimal = variant {
   Ok : record {
     total : nat64;
     privileges : vec AccountCallerPrivileges;
-    accounts : vec Account;
-    next_offset : opt nat64;
+    accounts : vec AccountMinimal;
   };
   Err : Error;
 };
@@ -376,12 +387,11 @@ type ListAssetsResult = variant {
   Ok : record { assets : vec Asset };
   Err : Error;
 };
-type ListExternalCanistersInput = record {
-  sort_by : opt ListExternalCanistersSortInput;
-  states : opt vec ExternalCanisterState;
-  canister_ids : opt vec principal;
-  labels : opt vec text;
-  paginate : opt PaginationInput;
+type ListExternalCanistersInputMinimal = record {
+  states : vec ExternalCanisterState;
+  canister_ids : vec principal;
+  labels : vec text;
+  paginate : PaginationInputMinimal;
 };
 type ListExternalCanistersResult = variant {
   Ok : record {
@@ -392,17 +402,13 @@ type ListExternalCanistersResult = variant {
   };
   Err : Error;
 };
-type ListExternalCanistersSortInput = record {
-  field : text;
-  direction : SortDirection;
-};
 type ListOrbitRequestsResponse = record {
   total : nat64;
   requests : vec OrbitRequestSummary;
   next_offset : opt nat64;
 };
 type ListRequestsInput = record {
-  sort_by : opt ListRequestsSortBy;
+  sort_by : null;
   deduplication_keys : opt vec text;
   with_evaluation_results : bool;
   expiration_from_dt : opt text;
@@ -452,11 +458,6 @@ type ListRequestsOperationType = variant {
   AddNamedRule;
   RestoreExternalCanister : opt principal;
   AddAccount;
-};
-type ListRequestsSortBy = variant {
-  ExpirationDt : SortDirection;
-  LastModificationDt : SortDirection;
-  CreatedAt : SortDirection;
 };
 type LogVisibility = variant { controllers; public };
 type MonitorExternalCanisterKind = variant { Start : MonitoringConfig; Stop };
@@ -509,19 +510,49 @@ type OrbitLinkProposal = record {
   no_votes : nat64;
   expires_at : nat64;
 };
-type OrbitRequestProposal = record {
-  id : nat64;
-  status : ProposalStatus_1;
-  request_type : OrbitRequestType;
-  yes_votes : nat64;
-  created_at : nat64;
-  token_canister_id : principal;
-  orbit_request_id : text;
-  proposer : principal;
-  voter_count : nat32;
-  total_voting_power : nat64;
-  no_votes : nat64;
-  expires_at : nat64;
+type OrbitOperation = variant {
+  AddAsset : record { asset : AssetDetails };
+  EditUser : record { groups : vec text; name : opt text; user_id : text };
+  Transfer : TransferDetails;
+  RemoveAdmin : record { user_name : text; user_id : text };
+};
+type OrbitOperationType = variant {
+  RemoveAsset;
+  AddUserGroup;
+  EditPermission;
+  SnapshotExternalCanister;
+  PruneExternalCanister;
+  EditNamedRule;
+  ConfigureExternalCanister;
+  ChangeExternalCanister;
+  MonitorExternalCanister;
+  AddUser;
+  EditAsset;
+  EditUserGroup;
+  SetDisasterRecovery;
+  EditRequestPolicy;
+  RemoveRequestPolicy;
+  AddAsset;
+  SystemUpgrade;
+  RemoveAddressBookEntry;
+  SystemRestore;
+  CreateExternalCanister;
+  EditAddressBookEntry;
+  FundExternalCanister;
+  EditUser;
+  ManageSystemInfo;
+  Transfer;
+  EditAccount;
+  AddAddressBookEntry;
+  RemoveUser;
+  Other : text;
+  AddRequestPolicy;
+  RemoveNamedRule;
+  RemoveUserGroup;
+  CallExternalCanister;
+  AddNamedRule;
+  RestoreExternalCanister;
+  AddAccount;
 };
 type OrbitRequestSummary = record {
   id : text;
@@ -575,6 +606,7 @@ type OrbitRequestType = variant {
   AddAccount;
 };
 type PaginationInput = record { offset : opt nat64; limit : opt nat64 };
+type PaginationInputMinimal = record { offset : nat64; limit : nat16 };
 type PaginationInput_1 = record { offset : opt nat64; limit : opt nat16 };
 type Permission = record { resource : Resource; allow : Allow };
 type PermissionAction = variant { Read; Update };
@@ -764,18 +796,18 @@ type Result_2 = variant { Ok : vec SecurityCheck; Err : text };
 type Result_20 = variant { Ok : nat64; Err : text };
 type Result_21 = variant { Ok : GetExternalCanisterResult; Err : text };
 type Result_22 = variant { Ok : vec SimpleRequest; Err : text };
-type Result_23 = variant { Ok : SystemInfoResponse; Err : text };
+type Result_23 = variant { Ok : SystemInfoResponseMinimal; Err : text };
 type Result_24 = variant { Ok : ProposalConfig; Err : text };
 type Result_25 = variant { Ok : RequestPoliciesDetails; Err : text };
 type Result_26 = variant { Ok : Permission; Err : text };
 type Result_27 = variant { Ok : Account; Err : text };
-type Result_28 = variant { Ok : vec Account; Err : text };
+type Result_28 = variant { Ok : vec AccountMinimalWithBalances; Err : text };
 type Result_29 = variant { Ok : TreasuryManagementData; Err : text };
 type Result_3 = variant { Ok : BackendStatusCheck; Err : text };
 type Result_30 = variant { Ok : vec OrbitRequestSummary; Err : text };
 type Result_31 = variant { Ok : VotingThresholds; Err : text };
 type Result_32 = variant { Ok : bool; Err : text };
-type Result_33 = variant { Ok : ListAccountsResult; Err : text };
+type Result_33 = variant { Ok : ListAccountsResultMinimal; Err : text };
 type Result_34 = variant { Ok : ListExternalCanistersResult; Err : text };
 type Result_35 = variant { Ok : ListOrbitRequestsResponse; Err : text };
 type Result_36 = variant { Ok : vec UserDTO; Err : text };
@@ -787,9 +819,9 @@ type Result_40 = variant { Ok : EnhancedSecurityDashboard; Err : text };
 type Result_41 = variant { Ok; Err : text };
 type Result_42 = variant { Ok; Err : ProposalError };
 type Result_5 = variant { Ok : vec text; Err : text };
-type Result_6 = variant { Ok : CreateAccountResponse; Err : text };
-type Result_7 = variant { Ok : nat64; Err : ProposalError };
-type Result_8 = variant { Ok : nat64; Err : text };
+type Result_6 = variant { Ok : text; Err : ProposalError };
+type Result_7 = variant { Ok : CreateAccountResponse; Err : text };
+type Result_8 = variant { Ok : nat64; Err : ProposalError };
 type Result_9 = variant { Ok : vec opt AccountBalance; Err : text };
 type SecurityCheck = record {
   status : CheckStatus;
@@ -807,7 +839,6 @@ type SnapshotExternalCanisterOperationInput = record {
   force : bool;
   external_canister_id : text;
 };
-type SortDirection = variant { Asc; Desc };
 type SubmitRequestResponse = record {
   privileges : RequestCallerPrivilegesDTO;
   request : RequestDTO;
@@ -822,19 +853,17 @@ type SystemAction = variant {
   SystemInfo;
   Capabilities;
 };
-type SystemInfo = record {
-  disaster_recovery : opt DisasterRecovery;
-  upgrader_cycles : opt nat64;
+type SystemInfoMinimal = record {
   name : text;
   last_upgrade_timestamp : text;
   raw_rand_successful : bool;
   version : text;
   cycles : nat64;
   upgrader_id : principal;
-  cycle_obtain_strategy : CycleObtainStrategy;
+  cycle_obtain_strategy : CycleObtainStrategyMinimal;
 };
-type SystemInfoResponse = record {
-  system_info : SystemInfo;
+type SystemInfoResponseMinimal = record {
+  system_info : SystemInfoMinimal;
   station_id : principal;
 };
 type TokenInfo = record { chain : text; canister_id : text; symbol : text };
@@ -882,6 +911,21 @@ type TreasuryProposal = record {
   no_votes : nat64;
   expires_at : nat64;
   proposal_type : ProposalType;
+};
+type UnifiedProposal = record {
+  id : nat64;
+  status : ProposalStatus_1;
+  yes_votes : nat64;
+  operation_type : OrbitRequestType;
+  created_at : nat64;
+  token_canister_id : principal;
+  orbit_request_id : text;
+  proposer : principal;
+  voter_count : nat32;
+  total_voting_power : nat64;
+  no_votes : nat64;
+  expires_at : nat64;
+  transfer_details : opt TransferDetails;
 };
 type UpgradeExternalCanisterInput = record {
   arg : opt blob;
@@ -1011,6 +1055,10 @@ service : () -> {
       text,
       opt text,
     ) -> (Result_1);
+  // Create any Orbit request with auto-proposal
+  create_orbit_request_with_proposal : (principal, OrbitOperation) -> (
+      Result_6,
+    );
   create_orbit_treasury_account : (principal, text, opt text) -> (Result);
   // Create EditUser request to remove user from admin group
   // Request goes through DAO voting system before execution
@@ -1030,30 +1078,16 @@ service : () -> {
       opt text,
       principal,
     ) -> (Result);
-  create_treasury_account : (principal, CreateAccountConfig) -> (Result_6);
-  // Create a treasury transfer proposal
-  // 
-  // This creates:
-  // 1. An Orbit request (in pending state)
-  // 2. A DAOPad proposal for voting
-  // 
-  // Users vote on the DAOPad proposal, and when threshold is reached,
-  // the backend approves the Orbit request.
+  create_treasury_account : (principal, CreateAccountConfig) -> (Result_7);
+  // DEPRECATED: Use create_orbit_request_with_proposal from unified.rs
   create_treasury_transfer_proposal : (principal, TransferDetails) -> (
-      Result_7,
+      Result_8,
     );
   edit_treasury_asset : (principal, text, opt text, opt vec AssetMetadata) -> (
       Result,
     );
-  // Ensure a proposal exists for an Orbit request
-  ensure_proposal_for_request : (principal, text, OrbitRequestType) -> (
-      Result_7,
-    );
-  // Auto-create proposals for multiple requests (bulk operation)
-  // Used by list_orbit_requests to ensure all requests have proposals
-  ensure_proposals_for_requests : (principal, vec record { text; text }) -> (
-      vec Result_8,
-    );
+  // Ensure a proposal exists for an Orbit request (for backwards compatibility)
+  ensure_proposal_for_request : (principal, text, text) -> (Result_8);
   fetch_orbit_account_balances : (principal, vec text) -> (Result_9);
   fund_orbit_canister_request : (
       principal,
@@ -1096,13 +1130,12 @@ service : () -> {
   get_my_locked_tokens : () -> (Result_19);
   get_my_voting_power_for_token : (principal) -> (Result_20);
   get_orbit_canister : (principal, principal) -> (Result_21);
-  get_orbit_request_proposal : (principal, text) -> (
-      opt OrbitRequestProposal,
-    ) query;
   // EXPERIMENTAL: Ultra-simple request fetching - returns basic info only
   get_orbit_requests_simple : () -> (Result_22);
   get_orbit_station_for_token : (principal) -> (opt principal) query;
   get_orbit_system_info : (principal) -> (Result_23);
+  // Get a specific proposal
+  get_proposal : (principal, text) -> (opt UnifiedProposal) query;
   get_proposal_config : (principal, ProposalType) -> (Result_24) query;
   // Get detailed request policies information with resolved rule names
   // 
@@ -1135,20 +1168,17 @@ service : () -> {
   // - Address book entries (authorized recipients)
   // - Backend privilege summary
   get_treasury_management_data : (principal) -> (Result_29);
+  // DEPRECATED: Use get_proposal from unified.rs
   get_treasury_proposal : (principal) -> (opt TreasuryProposal) query;
   get_user_pending_requests : (principal, principal) -> (Result_30);
-  // Get the user's vote on an Orbit request (for UI display)
-  get_user_vote_on_orbit_request : (principal, principal, text) -> (
-      opt VoteChoice,
-    ) query;
+  // Get the user's vote on a proposal
+  get_user_vote : (principal, principal, text) -> (opt VoteChoice) query;
   get_voting_thresholds : (principal) -> (Result_31) query;
   has_proposal_passed : (principal, ProposalType, nat64, nat64, nat64) -> (
       Result_32,
     ) query;
-  // Check if a user has voted on an Orbit request proposal
-  has_user_voted_on_orbit_request : (principal, principal, text) -> (
-      bool,
-    ) query;
+  // Check if a user has voted on a proposal
+  has_user_voted : (principal, principal, text) -> (bool) query;
   health_check : () -> (text) query;
   initialize_default_thresholds : (principal) -> (Result);
   list_active_proposals : () -> (vec OrbitLinkProposal) query;
@@ -1159,13 +1189,10 @@ service : () -> {
       vec record { principal; principal },
     ) query;
   list_all_orbit_stations : () -> (vec record { principal; principal }) query;
-  list_orbit_accounts : (principal, opt text, opt nat64, opt nat64) -> (
-      Result_33,
+  list_orbit_accounts : (principal, text, nat16, nat64) -> (Result_33);
+  list_orbit_canisters : (principal, ListExternalCanistersInputMinimal) -> (
+      Result_34,
     );
-  list_orbit_canisters : (principal, ListExternalCanistersInput) -> (Result_34);
-  list_orbit_request_proposals : (principal) -> (
-      vec OrbitRequestProposal,
-    ) query;
   // List all requests from Orbit Station with domain filtering
   // 
   // This method acts as an admin proxy, allowing DAOPad to query
@@ -1189,6 +1216,8 @@ service : () -> {
   // acts as an admin proxy to fetch user groups on behalf of frontend users.
   list_station_user_groups : (principal) -> (Result_39);
   list_treasury_assets : (principal) -> (Result_37);
+  // List all active proposals for a token
+  list_unified_proposals : (principal) -> (vec UnifiedProposal) query;
   monitor_orbit_canister_request : (
       principal,
       MonitorExternalCanisterOperationInput,
@@ -1218,6 +1247,13 @@ service : () -> {
     ) -> (Result_1);
   regenerate_agreement_snapshot : (principal, principal) -> (Result_12);
   register_with_kong_locker : (principal) -> (Result);
+  // Remove dangerous permission from Operator group
+  // 
+  // This specialized function removes the Operator group (UUID: 00000000-0000-4000-8000-000000000001)
+  // from a specific permission. It automatically creates a governance proposal for the change.
+  // 
+  // Returns the request ID if successful.
+  remove_permission_from_operator_group : (principal, Resource) -> (Result);
   remove_treasury_asset : (principal, text) -> (Result);
   restore_orbit_canister_request : (
       principal,
@@ -1235,10 +1271,8 @@ service : () -> {
   unregister_kong_locker : () -> (Result);
   validate_account_name : (principal, text) -> (Result_32);
   vote_on_orbit_proposal : (nat64, bool) -> (Result_41);
-  // Vote on ANY Orbit request
-  vote_on_orbit_request : (principal, text, bool) -> (Result_42);
-  // Vote on a treasury proposal
-  // 
-  // Voting is handled by admin canister.
+  // Single voting endpoint for ALL Orbit operations
+  vote_on_proposal : (principal, text, bool) -> (Result_42);
+  // DEPRECATED: Use vote_on_proposal from unified.rs
   vote_on_treasury_proposal : (nat64, bool) -> (Result_42);
 }

@@ -53,6 +53,202 @@ test-results/treasury-failure-1234.png  ← Visual proof of issue
 
 ---
 
+## 🚨 CRITICAL: Reading Playwright Output (AGENTS READ THIS!)
+
+**The #1 agent failure**: Running Playwright tests but never reading the console errors it captured.
+
+### What's Going Wrong
+
+**Bad Agent Pattern** (happens in EVERY failed PR):
+```bash
+# Agent runs test
+npx playwright test 2>&1 | tee /tmp/playwright-output.log
+
+# Agent waits for completion
+sleep 120
+
+# Agent checks only the SUMMARY
+tail -100 /tmp/playwright-output.log | grep "passed\|failed"
+# Output: "41 passed, 21 failed"
+
+# Agent's response: "Tests failed, let me try fixing something"
+# Agent makes a guess about what's broken
+# Agent deploys new fix
+# Agent runs tests again
+# Same failures persist
+
+# User: "Did you see this console error?" [pastes error]
+# Agent: "Oh! I didn't know about that error!"
+# THE ERROR WAS ALREADY IN THE LOG FILE!
+```
+
+**Why This Is Catastrophic**:
+- Playwright captures ALL console errors (Candid panics, TypeErrors, etc.)
+- These errors explain EXACTLY what's broken
+- Agents run the tests but never read the captured errors
+- Users have to manually browse, find errors, copy-paste them
+- Defeats the entire purpose of automated testing
+
+### What You MUST Do Instead
+
+**MANDATORY Post-Test Analysis** (DO NOT SKIP):
+
+```bash
+# 1. Run tests with timestamped log
+LOG_FILE="/tmp/playwright-$(date +%s).log"
+cd daopad_frontend
+npx playwright test 2>&1 | tee $LOG_FILE
+
+# 2. WAIT for completion (see "Never Kill Tests Early" section)
+# Let it finish even if tests timeout
+
+# 3. IMMEDIATELY read console errors (BEFORE doing anything else)
+echo "=== READING CONSOLE ERRORS FROM PLAYWRIGHT ==="
+grep -B5 -A20 "Browser Console Error" $LOG_FILE | tee /tmp/console-errors.txt
+
+# 4. READ what the errors say (DO NOT SKIP)
+cat /tmp/console-errors.txt
+
+# 5. Extract specific error patterns
+echo "=== CANDID DESERIALIZATION ERRORS ==="
+grep -A5 "Not a valid visitor" $LOG_FILE
+
+echo "=== WHICH BACKEND METHODS FAILED ==="
+grep "Method:" $LOG_FILE | sed 's/.*Method: \([^ ]*\).*/\1/' | sort -u
+
+echo "=== WHICH TYPES ARE PROBLEMATIC ==="
+grep "TypeId.*name:" $LOG_FILE | sed 's/.*name: "\([^"]*\)".*/\1/' | sort -u
+
+# 6. Create comprehensive fix list
+# Example output you should see:
+#   - list_orbit_requests (Option<Vec<RequestStatusCode>>)
+#   - get_orbit_system_info (Option<DisasterRecovery>, Option<u64>)
+#   - list_orbit_canisters (Option<PaginationInput>)
+#   - get_treasury_accounts (Option<RequestPolicyRule>)
+
+# 7. ONLY NOW make fixes (addressing ALL errors found)
+```
+
+### Real Example: 5-Iteration Waste That Should Have Been 1
+
+**What Actually Happened** (from recent PR):
+```
+Iteration 1: Agent fixes ListRequestsSortBy → Deploys → Tests run → "21 failed"
+  → Agent: "Let me try another fix"
+  → User: "Did you see the RequestPolicyRule error?" [pastes]
+  → Agent: "Oh no, I didn't know about that!"
+
+Iteration 2: Agent fixes RequestPolicyRule → Deploys → Tests run → "21 failed"
+  → Agent: "Hmm, still failing"
+  → User: "What about DisasterRecovery error?" [pastes]
+  → Agent: "I see it now!"
+
+Iteration 3: Agent fixes DisasterRecovery → Deploys → Tests run → "21 failed"
+  → User: "And Option<u64> error?" [pastes]
+  → Agent: "Didn't know Option<primitive> also fails!"
+
+Iteration 4: Agent fixes Option<u64> → Deploys → Tests run → "21 failed"
+  → User: "And PaginationInput error?" [pastes]
+  → Agent: "..."
+
+Total: 5 deploys, 4+ hours, user frustration
+```
+
+**What SHOULD Have Happened**:
+```
+Iteration 1:
+  → Agent runs tests
+  → Agent reads Playwright output: grep -A20 "Browser Console Error"
+  → Agent sees ALL 5 error types at once:
+      1. Option<Vec<RequestStatusCode>>
+      2. Option<RequestPolicyRule>
+      3. Option<DisasterRecovery>
+      4. Option<u64>
+      5. Option<PaginationInput>
+  → Agent fixes ALL 5 together
+  → Agent deploys once
+  → Agent verifies: grep "Browser Console Error" returns NOTHING
+  → Agent: "All console errors resolved, tests passing"
+
+Total: 1 deploy, 20 minutes, user happy
+```
+
+### The Errors User Pastes Are Already In Your Logs!
+
+When user pastes this:
+```
+Failed to fetch requests: AgentError: Call failed:
+  Canister: lwsav-iiaaa-aaaap-qp2qq-cai
+  Method: list_orbit_requests (update)
+  "Reject message": "Panicked at 'Not a valid visitor: TypeId { id: 74,
+  name: \"serde_core::de::impls::OptionVisitor<alloc::vec::Vec<...>>\" }'"
+```
+
+**This exact text was in `/tmp/playwright-output.log`!** You just didn't read it.
+
+### Mandatory Workflow for EVERY Playwright Run
+
+```
+1. Run Playwright → Wait for completion
+2. Read console errors from log → Create error list
+3. Verify you have ALL errors → Not just first one
+4. Form comprehensive fix → Address all errors together
+5. Deploy once → Test once → Verify all resolved
+```
+
+**DO NOT:**
+- ❌ Run tests and check only pass/fail counts
+- ❌ Make incremental fixes based on guesses
+- ❌ Wait for user to find and paste errors
+- ❌ Say "I'm surprised by that error" when it was in your logs
+
+### How to Know You Did This Right
+
+**Bad outcome** (you did it wrong):
+- User has to paste console errors to you
+- You say "I didn't know about that error"
+- Multiple deploy iterations fixing one error at a time
+
+**Good outcome** (you did it right):
+- You read the log file and found all errors yourself
+- You present a list: "Found 5 distinct Candid errors affecting these methods..."
+- You make one comprehensive fix addressing all errors
+- One deployment, all errors resolved
+
+### Integration with Test-Driven Iteration
+
+After EVERY test run in your iteration loop:
+
+```python
+for iteration in range(1, 6):
+    # Deploy
+    run("./deploy.sh --network ic")
+
+    # Test
+    log_file = f"/tmp/playwright-iter-{iteration}.log"
+    run(f"npx playwright test 2>&1 | tee {log_file}")
+
+    # MANDATORY: Read errors (DO NOT SKIP)
+    console_errors = run(f"grep -A20 'Browser Console Error' {log_file}")
+
+    if not console_errors:
+        print("✅ No console errors! Tests should pass.")
+        break
+
+    # Parse errors
+    candid_errors = parse_candid_errors(console_errors)
+    print(f"Found {len(candid_errors)} distinct Candid errors:")
+    for error in candid_errors:
+        print(f"  - {error.method}: {error.type_name}")
+
+    # Fix ALL errors found
+    fix_all_errors(candid_errors)
+
+    # Continue loop
+```
+
+---
+
 ## ⚠️ CRITICAL LIMITATION: Internet Identity Authentication
 
 **Playwright CANNOT automate Internet Identity authentication in this project.**

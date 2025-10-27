@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { existsSync } from 'node:fs';
 
 // NOTE: II authentication requires IndexedDB (not capturable by storageState)
 // For authenticated tests: Login once manually, II delegation persists in browser
@@ -6,10 +7,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
-  fullyParallel: false,
+  // Parallelization configured at project level - see projects below
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1,
+  workers: process.env.CI ? 2 : 4, // 2 workers in CI to avoid rate limits, 4 locally
   reporter: [
     ['html'],
     ['list'],
@@ -25,13 +26,42 @@ export default defineConfig({
 
   projects: [
     {
-      name: 'chromium',
+      name: 'anonymous-parallel',
+      testMatch: [
+        '**/activity.spec.ts',
+        '**/agreement.spec.ts',
+        '**/app-route.spec.ts',
+        '**/dao-header.spec.ts',
+        '**/debug-page-load.spec.ts',
+        '**/minimal-smoke.spec.ts',
+        '**/settings.spec.ts'
+      ],
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {
           args: ['--enable-logging', '--v=1']
         }
       },
+      fullyParallel: true,
+    },
+    {
+      name: 'authenticated-serial',
+      testMatch: [
+        '**/treasury*.spec.ts',
+        '**/canisters.spec.ts',
+        '**/manual-auth-setup.spec.ts'
+      ],
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: {
+          args: ['--enable-logging', '--v=1']
+        },
+        // Use storage state only if auth file exists
+        ...(existsSync('.auth/user.json')
+          ? { storageState: '.auth/user.json' }
+          : {}),
+      },
+      fullyParallel: false, // Serial execution for auth tests (IndexedDB limitation)
     },
   ],
 

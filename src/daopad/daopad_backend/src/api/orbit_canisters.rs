@@ -11,7 +11,9 @@ use crate::types::orbit::{
     ChangeExternalCanisterOperationInput, ConfigureExternalCanisterOperationInput,
     CreateExternalCanisterOperationInput, ExternalCanisterCallerMethodCallInput,
     FundExternalCanisterOperationInput, GetExternalCanisterResult,
-    ListExternalCanistersInput, ListExternalCanistersResult,
+    ListExternalCanistersResult,
+    // Minimal types (no Option<T>)
+    ListExternalCanistersInputMinimal, PaginationInputMinimal, ExternalCanisterState,
     MonitorExternalCanisterOperationInput, PruneExternalCanisterOperationInput,
     RestoreExternalCanisterOperationInput, SnapshotExternalCanisterOperationInput,
     SubmitRequestResult,
@@ -22,24 +24,16 @@ use crate::types::orbit::{
 #[ic_cdk::update]
 async fn list_orbit_canisters(
     token_canister_id: Principal,
-    filters: ListExternalCanistersInput,
+    filters: ListExternalCanistersInputMinimal,  // Single struct param (matches frontend)
 ) -> Result<ListExternalCanistersResult, String> {
     let station_id = get_orbit_station_for_token(token_canister_id)
         .ok_or_else(|| "No Orbit Station linked to this token".to_string())?;
 
-    // All fields must be present for Orbit with correct names
-    let request = ListExternalCanistersInput {
-        canister_ids: filters.canister_ids,
-        labels: filters.labels,
-        states: filters.states,
-        paginate: filters.paginate,
-        sort_by: filters.sort_by,
-    };
-
+    // Use filters directly (already in correct format)
     let result: CallResult<(ListExternalCanistersResult,)> = call(
         station_id,
         "list_external_canisters",
-        (request,),
+        (filters,),
     )
     .await;
 

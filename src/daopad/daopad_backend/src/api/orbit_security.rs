@@ -8,11 +8,13 @@ use crate::types::orbit::{
     ListRequestPoliciesResult, RequestPolicyRule,
     ResourceAction, ExternalCanisterAction, SystemAction, UserAction,
     PermissionAction,
-    SystemInfoResult,
-    PaginationInput,
+    // Minimal types (no Option<T>)
+    SystemInfoResultMinimal,
+    PaginationInput, PaginationInputMinimal,
     RequestPoliciesDetails, RequestPolicyInfo, RequestSpecifier,
     ListNamedRulesResult, ListNamedRulesInput, NamedRule,
-    Account, ListAccountsInput, ListAccountsResult,
+    Account, AccountMinimal,
+    ListAccountsInputMinimal, ListAccountsResultMinimal,
 };
 
 const ADMIN_GROUP_ID: &str = "00000000-0000-4000-8000-000000000000";
@@ -335,14 +337,14 @@ async fn fetch_policies(station_id: Principal) -> Result<Vec<crate::types::orbit
     }
 }
 
-async fn fetch_system_info(station_id: Principal) -> Result<crate::types::orbit::SystemInfo, String> {
-    let result: (SystemInfoResult,) = ic_cdk::call(station_id, "system_info", ())
+async fn fetch_system_info(station_id: Principal) -> Result<crate::types::orbit::SystemInfoMinimal, String> {
+    let result: (SystemInfoResultMinimal,) = ic_cdk::call(station_id, "system_info", ())
         .await
         .map_err(|e| format!("Failed to get system info: {:?}", e))?;
 
     match result.0 {
-        SystemInfoResult::Ok { system } => Ok(system),
-        SystemInfoResult::Err(e) => Err(format!("Orbit returned error: {}", e)),
+        SystemInfoResultMinimal::Ok { system } => Ok(system),
+        SystemInfoResultMinimal::Err(e) => Err(format!("Orbit returned error: {}", e)),
     }
 }
 
@@ -785,7 +787,7 @@ fn check_asset_management_impl(
 // ===== CHECK CATEGORY 7: SYSTEM CONFIGURATION =====
 
 fn check_system_configuration_impl(
-    system: &crate::types::orbit::SystemInfo,
+    system: &crate::types::orbit::SystemInfoMinimal,
     permissions: &Vec<Permission>,
     user_groups: &Vec<crate::types::orbit::UserGroup>
 ) -> Vec<SecurityCheck> {
@@ -815,36 +817,19 @@ fn check_system_configuration_impl(
         "Consider restricting System.ManageSystemInfo to Admin group",
     ));
 
-    // Check disaster recovery settings
-    if let Some(dr) = &system.disaster_recovery {
-        if dr.committee.user_group_id != ADMIN_GROUP_ID || dr.committee.quorum != 1 {
-            checks.push(SecurityCheck {
-                category: "System Configuration".to_string(),
-                name: "Disaster Recovery Settings".to_string(),
-                status: CheckStatus::Warn,
-                message: "Disaster recovery not set to Admin group".to_string(),
-                severity: Some(Severity::Low),
-                details: Some(format!(
-                    "Group: {}, Quorum: {}",
-                    dr.user_group_name.as_ref().unwrap_or(&dr.committee.user_group_id),
-                    dr.committee.quorum
-                )),
-                recommendation: Some("Set disaster recovery committee to Admin group with quorum 1".to_string()),
-                related_permissions: None,
-            });
-        } else {
-            checks.push(SecurityCheck {
-                category: "System Configuration".to_string(),
-                name: "Disaster Recovery Settings".to_string(),
-                status: CheckStatus::Pass,
-                message: "Disaster recovery properly configured".to_string(),
-                severity: Some(Severity::None),
-                details: None,
-                recommendation: None,
-                related_permissions: None,
-            });
-        }
-    }
+    // SKIPPED: Disaster recovery check - field removed from SystemInfoMinimal
+    // due to Candid 0.10.18 Option<DisasterRecovery> deserialization errors
+    // TODO: Re-enable when Candid is upgraded or query separately
+    checks.push(SecurityCheck {
+        category: "System Configuration".to_string(),
+        name: "Disaster Recovery Settings".to_string(),
+        status: CheckStatus::Warn,
+        message: "Disaster recovery check unavailable (Candid limitation)".to_string(),
+        severity: Some(Severity::Low),
+        details: Some("Unable to verify disaster recovery due to Candid Option<T> limitation".to_string()),
+        recommendation: Some("Verify disaster recovery manually in Orbit UI".to_string()),
+        related_permissions: None,
+    });
 
     checks
 }
@@ -1404,27 +1389,14 @@ pub async fn check_account_autoapproved_status(
     Ok(check_account_autoapproved_impl(&accounts))
 }
 
-fn check_account_autoapproved_impl(accounts: &Vec<Account>) -> Vec<SecurityCheck> {
+fn check_account_autoapproved_impl(accounts: &Vec<AccountMinimal>) -> Vec<SecurityCheck> {
     let mut checks = Vec::new();
 
-    // Categorize accounts
-    let mut autoapproved_accounts = Vec::new();
-    let mut non_autoapproved_accounts = Vec::new();
+    // SKIPPED: AutoApproved policy check - field removed from AccountMinimal
+    // due to Candid 0.10.18 Option<RequestPolicyRule> deserialization errors
+    // Policy checking must be done via Orbit UI until Candid is upgraded
 
-    for account in accounts {
-        match &account.transfer_request_policy {
-            Some(RequestPolicyRule::AutoApproved) => {
-                autoapproved_accounts.push(account.name.clone());
-            },
-            _ => {
-                non_autoapproved_accounts.push(account.name.clone());
-            }
-        }
-    }
-
-    // Determine status
     if accounts.is_empty() {
-        // NO accounts exist - WARNING (station needs treasury setup)
         checks.push(SecurityCheck {
             category: "Treasury Setup".to_string(),
             name: "Account AutoApproved Status".to_string(),
@@ -1433,59 +1405,30 @@ fn check_account_autoapproved_impl(accounts: &Vec<Account>) -> Vec<SecurityCheck
             severity: Some(Severity::Low),
             details: Some(
                 "Orbit Station has no accounts configured yet. \
-                 Create treasury accounts first, then configure AutoApproved policies. \
-                 Accounts can be created through the Orbit Station UI or via DAOPad.".to_string()
+                 Create treasury accounts first.".to_string()
             ),
             recommendation: Some(
-                "Create at least one treasury account in Orbit Station before configuring AutoApproved policies.".to_string()
+                "Create at least one treasury account in Orbit Station.".to_string()
             ),
-            related_permissions: None,
-        });
-    } else if non_autoapproved_accounts.is_empty() {
-        // ALL accounts configured - GOOD
-        checks.push(SecurityCheck {
-            category: "Treasury Setup".to_string(),
-            name: "Account AutoApproved Status".to_string(),
-            status: CheckStatus::Pass,
-            message: format!(
-                "All {} account(s) configured with AutoApproved policies",
-                autoapproved_accounts.len()
-            ),
-            severity: Some(Severity::None),
-            details: Some(
-                "Treasury accounts are ready for liquid democracy. \
-                 Community votes in DAOPad, backend executes approved operations. \
-                 No manual Orbit approval needed.".to_string()
-            ),
-            recommendation: None,
             related_permissions: None,
         });
     } else {
-        // SOME accounts NOT configured - CRITICAL
+        // Accounts exist but can't verify policies due to Candid limitation
         checks.push(SecurityCheck {
             category: "Treasury Setup".to_string(),
             name: "Account AutoApproved Status".to_string(),
-            status: CheckStatus::Fail,
+            status: CheckStatus::Warn,
             message: format!(
-                "{} account(s) NOT configured - treasury operations will fail",
-                non_autoapproved_accounts.len()
+                "Policy verification unavailable ({} account(s) found)",
+                accounts.len()
             ),
-            severity: Some(Severity::Critical),
-            details: Some(format!(
-                "Accounts needing setup: {}\n\n\
-                 WHY THIS MATTERS:\n\
-                 - Backend creates transfer requests after community vote passes\n\
-                 - Backend CANNOT approve its own requests (Orbit separation of duties)\n\
-                 - Without AutoApproved, requests stuck 'Pending' forever\n\
-                 - Users see failed transfers with no explanation\n\n\
-                 SECURITY NOTE:\n\
-                 This is NOT a security risk. Real governance happens in DAOPad \
-                 (50%+ vote required). AutoApproved just tells Orbit to execute \
-                 after the vote passes.",
-                non_autoapproved_accounts.join(", ")
-            )),
+            severity: Some(Severity::Low),
+            details: Some(
+                "Cannot verify AutoApproved policies due to Candid 0.10.18 Option<RequestPolicyRule> limitation. \
+                 Please verify manually in Orbit Station UI.".to_string()
+            ),
             recommendation: Some(
-                "Use the setup wizard below to configure AutoApproved policies.".to_string()
+                "Verify AutoApproved policies manually via Orbit Station UI".to_string()
             ),
             related_permissions: None,
         });
@@ -1494,22 +1437,25 @@ fn check_account_autoapproved_impl(accounts: &Vec<Account>) -> Vec<SecurityCheck
     checks
 }
 
-// Helper: Fetch accounts from Orbit Station
-async fn fetch_accounts(station_id: Principal) -> Result<Vec<Account>, String> {
-    let input = ListAccountsInput {
-        search_term: None,
-        paginate: None,
+// Helper: Fetch accounts from Orbit Station (using minimal types - no Option<T>)
+async fn fetch_accounts(station_id: Principal) -> Result<Vec<AccountMinimal>, String> {
+    let input = ListAccountsInputMinimal {
+        search_term: String::new(),
+        paginate: PaginationInputMinimal {
+            offset: 0,
+            limit: 50,
+        },
     };
 
-    let result: Result<(ListAccountsResult,), _> = ic_cdk::call(
+    let result: Result<(ListAccountsResultMinimal,), _> = ic_cdk::call(
         station_id,
         "list_accounts",
         (input,)
     ).await;
 
     match result {
-        Ok((ListAccountsResult::Ok { accounts, .. },)) => Ok(accounts),
-        Ok((ListAccountsResult::Err(e),)) => Err(format!("Orbit error: {:?}", e)),
+        Ok((ListAccountsResultMinimal::Ok { accounts, .. },)) => Ok(accounts),
+        Ok((ListAccountsResultMinimal::Err(e),)) => Err(format!("Orbit error: {:?}", e)),
         Err((code, msg)) => Err(format!("Failed to list accounts: {:?} - {}", code, msg)),
     }
 }

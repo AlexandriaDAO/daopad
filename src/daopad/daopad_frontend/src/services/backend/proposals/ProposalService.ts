@@ -133,20 +133,16 @@ export class ProposalService extends BackendServiceBase {
   }
 
   /**
-   * Get Orbit request proposal (delegates to admin canister)
-   * Admin canister tracks votes for Orbit requests
+   * Get Orbit request proposal
    */
   async getOrbitRequestProposal(tokenId, requestId) {
     try {
-      // Import AdminService for getting proposals
-      const { getAdminService } = await import('../../admin/AdminService');
-      const adminService = getAdminService(this.identity);
-
-      // Get proposal from admin canister
-      const result = await adminService.getProposal(tokenId, requestId);
+      const actor = await this.getActor();
+      const tokenPrincipal = this.toPrincipal(tokenId);
+      const result = await actor.get_orbit_request_proposal(tokenPrincipal, requestId);
       return this.wrapOption(result);
     } catch (error) {
-      console.error('Failed to get orbit request proposal from admin:', error);
+      console.error('Failed to get orbit request proposal:', error);
       return { success: false, error: error.message };
     }
   }
@@ -182,7 +178,7 @@ export class ProposalService extends BackendServiceBase {
   }
 
   /**
-   * Vote on an Orbit request (backend handles voting now)
+   * Vote on an Orbit request (not a regular proposal)
    */
   async voteOnOrbitRequest(
     tokenId: string,
@@ -192,53 +188,22 @@ export class ProposalService extends BackendServiceBase {
     try {
       const actor = await this.getActor();
       const tokenPrincipal = this.toPrincipal(tokenId);
+      // vote is a boolean: true = yes, false = no
+      const result = await actor.vote_on_orbit_request(tokenPrincipal, orbitRequestId, vote);
 
-      console.log('[ProposalService] Submitting vote:', {
-        tokenId,
-        orbitRequestId,
-        vote,
-        tokenPrincipal: tokenPrincipal.toString()
-      });
-
-      // Call backend's vote_on_orbit_request method
-      const result = await actor.vote_on_orbit_request(
-        tokenPrincipal,
-        orbitRequestId,
-        vote
-      );
-
-      console.log('[ProposalService] Vote result:', result);
-
-      // Backend returns Result<(), ProposalError>
-      if ('Ok' in result) {
-        return { success: true };
-      } else if ('Err' in result) {
-        const error = result.Err;
-        // Parse the error to provide better feedback
-        if (error.AlreadyVoted) {
-          return {
-            success: false,
-            error: 'You have already voted on this request',
-            code: 'ALREADY_VOTED'
-          };
-        } else if (error.NoVotingPower) {
-          return {
-            success: false,
-            error: 'You have no voting power for this token',
-            code: 'NO_VOTING_POWER'
-          };
-        } else if (error.Custom) {
-          return {
-            success: false,
-            error: error.Custom,
-            code: 'CUSTOM_ERROR'
-          };
-        }
-        return { success: false, error: JSON.stringify(error) };
-      }
+      // vote_on_orbit_request returns () on success or throws an error
+      // Since it returns unit type, we just return success if no error was thrown
       return { success: true };
     } catch (error) {
       console.error('Failed to vote on orbit request:', error);
+      // Parse the error message to provide better feedback
+      if (error.message && error.message.includes('AlreadyVoted')) {
+        return {
+          success: false,
+          error: 'You have already voted on this request',
+          code: 'ALREADY_VOTED'
+        };
+      }
       return { success: false, error: error.message || error.toString() };
     }
   }

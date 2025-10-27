@@ -5,9 +5,15 @@
       "package": "daopad_backend",
       "type": "rust"
     },
+    "admin": {
+      "candid": "src/daopad/admin/admin.did",
+      "package": "admin",
+      "type": "rust"
+    },
     "daopad_frontend": {
       "dependencies": [
-        "daopad_backend"
+        "daopad_backend",
+        "admin"
       ],
       "source": [
         "src/daopad/daopad_frontend/dist"
