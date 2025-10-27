@@ -3,7 +3,7 @@ use crate::kong_locker::voting::{
 };
 use crate::proposals::types::*;
 use crate::storage::state::{
-    KONG_LOCKER_PRINCIPALS, ORBIT_REQUEST_PROPOSALS, ORBIT_REQUEST_VOTES, TOKEN_ORBIT_STATIONS,
+    KONG_LOCKER_PRINCIPALS, TOKEN_ORBIT_STATIONS,
 };
 use crate::types::StorablePrincipal;
 use candid::Principal;
@@ -26,286 +26,62 @@ fn format_orbit_error_details(error: &crate::api::orbit_requests::Error) -> Opti
 }
 
 /// Vote on ANY Orbit request (not just treasury transfers)
-/// When threshold is reached, executes immediately by approving the Orbit request.
+/// NOTE: Voting is handled by admin canister, not backend
 #[update]
 pub async fn vote_on_orbit_request(
-    token_id: Principal,
-    orbit_request_id: String,
-    vote: bool,
+    _token_id: Principal,
+    _orbit_request_id: String,
+    _vote: bool,
 ) -> Result<(), ProposalError> {
-    let voter = ic_cdk::caller();
-
-    if voter == Principal::anonymous() {
-        return Err(ProposalError::AuthRequired);
-    }
-
-    // 1. Load proposal (must exist before voting)
-    let proposal = ORBIT_REQUEST_PROPOSALS.with(|proposals| {
-        proposals
-            .borrow()
-            .get(&(StorablePrincipal(token_id), orbit_request_id.clone()))
-            .cloned()
-    });
-
-    // If no proposal exists, we can't vote (proposal must be created first)
-    let mut proposal = match proposal {
-        Some(p) => p,
-        None => {
-            return Err(ProposalError::NotFound(ProposalId(0))); // Use dummy ID for not found
-        }
-    };
-
-    // 2. Guard: Active status
-    if proposal.status != ProposalStatus::Active {
-        return Err(ProposalError::NotActive);
-    }
-
-    // 3. Guard: Not expired
-    let now = time();
-    if now > proposal.expires_at {
-        proposal.status = ProposalStatus::Expired;
-        // Clean up expired proposal
-        ORBIT_REQUEST_PROPOSALS.with(|proposals| {
-            proposals
-                .borrow_mut()
-                .remove(&(StorablePrincipal(token_id), orbit_request_id.clone()));
-        });
-        return Err(ProposalError::Expired);
-    }
-
-    // 4. Guard: Haven't voted
-    let has_voted = ORBIT_REQUEST_VOTES.with(|votes| {
-        votes
-            .borrow()
-            .contains_key(&(proposal.id, StorablePrincipal(voter)))
-    });
-
-    if has_voted {
-        return Err(ProposalError::AlreadyVoted(proposal.id));
-    }
-
-    // 5. Get voting power with detailed error handling
-    let voting_power = match get_user_voting_power_for_token(voter, token_id).await {
-        Ok(vp) => vp,
-        Err(e) if e.contains("register") => {
-            return Err(ProposalError::Custom(
-                "You need to register with Kong Locker first. Visit Settings > Kong Locker to register.".to_string()
-            ));
-        },
-        Err(e) if e.contains("Failed to get LP") => {
-            return Err(ProposalError::Custom(
-                "Kong Locker service is temporarily unavailable. Please try again in a few minutes.".to_string()
-            ));
-        },
-        Err(_) => {
-            return Err(ProposalError::Custom(
-                "You need LP tokens to vote. Lock liquidity at kong.land to get voting power.".to_string()
-            ));
-        }
-    };
-
-    if voting_power == 0 {
-        return Err(ProposalError::Custom(
-            format!("No voting power for this token. You need to provide liquidity for this token on KongSwap to participate in governance.")
-        ));
-    }
-
-    // 6. Record vote
-    if vote {
-        proposal.yes_votes += voting_power;
-    } else {
-        proposal.no_votes += voting_power;
-    }
-    proposal.voter_count += 1;
-
-    ORBIT_REQUEST_VOTES.with(|votes| {
-        votes.borrow_mut().insert(
-            (proposal.id, StorablePrincipal(voter)),
-            if vote {
-                VoteChoice::Yes
-            } else {
-                VoteChoice::No
-            },
-        );
-    });
-
-    // Add explicit logging after recording vote
-    ic_cdk::println!(
-        "Vote recorded: proposal_id={:?}, voter={}, vote={}, new_yes={}, new_no={}",
-        proposal.id, voter, if vote { "YES" } else { "NO" },
-        proposal.yes_votes, proposal.no_votes
-    );
-
-    // 7. Check threshold and execute atomically
-    // SECURITY: Recalculate total VP on each vote to prevent stale VP vulnerability
-    // Users depositing LP after proposal creation should be counted in threshold
-    let current_total_vp = get_total_voting_power_for_token(token_id).await?;
-
-    // CONSISTENCY: Match treasury.rs calculation exactly (multiplication before division)
-    // This preserves precision: 12,345 * 50 / 100 = 6,172 (correct)
-    // vs division first: 12,345 / 100 * 50 = 6,150 (loses 22 votes = 0.18% error)
-    let required_votes = (current_total_vp * DEFAULT_THRESHOLD_PERCENT as u64) / 100;
-
-    // POLICY: Strict majority (>) matches treasury.rs - requires MORE than 50%
-    // 50/50 tie does NOT execute, remains active for more votes
-    if proposal.yes_votes > required_votes {
-        // Execute immediately - approve the Orbit request
-        let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-            stations
-                .borrow()
-                .get(&StorablePrincipal(token_id))
-                .map(|s| s.0)
-                .ok_or(ProposalError::NoStationLinked(token_id))
-        })?;
-
-        approve_orbit_request_internal(station_id, &proposal.orbit_request_id).await?;
-
-        proposal.status = ProposalStatus::Executed;
-
-        // Remove from active proposals
-        ORBIT_REQUEST_PROPOSALS.with(|proposals| {
-            proposals
-                .borrow_mut()
-                .remove(&(StorablePrincipal(token_id), orbit_request_id));
-        });
-
-        ic_cdk::println!(
-            "Orbit request {:?} executed! {} yes votes > {} required",
-            proposal.id,
-            proposal.yes_votes,
-            required_votes
-        );
-    } else if proposal.no_votes >= (current_total_vp - required_votes) {
-        // POLICY: Rejected when mathematically impossible to reach threshold
-        // Matches treasury.rs:275 - uses >= for consistency
-        // When no_votes >= (total - required), max possible yes = total - no_votes <= required
-        let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-            stations
-                .borrow()
-                .get(&StorablePrincipal(token_id))
-                .map(|s| s.0)
-                .ok_or(ProposalError::NoStationLinked(token_id))
-        })?;
-
-        // Attempt to reject the Orbit request (log error but don't fail the vote)
-        if let Err(e) = reject_orbit_request_internal(station_id, &proposal.orbit_request_id).await
-        {
-            ic_cdk::println!("Warning: Failed to reject Orbit request: {:?}", e);
-        }
-
-        proposal.status = ProposalStatus::Rejected;
-
-        ORBIT_REQUEST_PROPOSALS.with(|proposals| {
-            proposals
-                .borrow_mut()
-                .remove(&(StorablePrincipal(token_id), orbit_request_id));
-        });
-
-        ic_cdk::println!("Orbit request {:?} rejected and cleaned up", proposal.id);
-    } else {
-        // Still active - update vote counts and refresh total VP
-        proposal.total_voting_power = current_total_vp;
-
-        // CRITICAL: Save the updated proposal IMMEDIATELY
-        let save_result = ORBIT_REQUEST_PROPOSALS.with(|proposals| {
-            let mut map = proposals.borrow_mut();
-            map.insert(
-                (StorablePrincipal(token_id), orbit_request_id.clone()),
-                proposal.clone()
-            );
-            // Return true to confirm save
-            true
-        });
-
-        // Add verification logging
-        ic_cdk::println!(
-            "Proposal updated: id={:?}, yes={}, no={}, saved={}",
-            proposal.id, proposal.yes_votes, proposal.no_votes, save_result
-        );
-
-        // VERIFICATION: Read back to ensure it saved
-        let verification = ORBIT_REQUEST_PROPOSALS.with(|proposals| {
-            proposals.borrow()
-                .get(&(StorablePrincipal(token_id), orbit_request_id.clone()))
-                .map(|p| (p.yes_votes, p.no_votes))
-        });
-
-        ic_cdk::println!(
-            "Verification read: votes={:?}",
-            verification
-        );
-    }
-
-    Ok(())
+    // Voting is handled by admin canister
+    // Frontend should call admin canister's vote_on_proposal directly
+    Err(ProposalError::Custom(
+        "Voting is handled by admin canister. Frontend should call admin directly.".to_string()
+    ))
 }
-
-/// Get proposal for a specific Orbit request
 #[query]
 pub fn get_orbit_request_proposal(
-    token_id: Principal,
-    orbit_request_id: String,
+    _token_id: Principal,
+    _orbit_request_id: String,
 ) -> Option<OrbitRequestProposal> {
-    ORBIT_REQUEST_PROPOSALS.with(|proposals| {
-        proposals
-            .borrow()
-            .get(&(StorablePrincipal(token_id), orbit_request_id))
-            .cloned()
-    })
+    // Proposals stored in Orbit Station, not backend
+    // Frontend should query Orbit directly for request details
+    None
 }
 
 /// Check if a user has voted on an Orbit request proposal
+/// NOTE: Vote tracking happens in admin canister, not backend
 #[query]
 pub fn has_user_voted_on_orbit_request(
-    user: Principal,
-    token_id: Principal,
-    orbit_request_id: String,
+    _user: Principal,
+    _token_id: Principal,
+    _orbit_request_id: String,
 ) -> bool {
-    // 1. Get proposal to find its ID
-    let proposal = ORBIT_REQUEST_PROPOSALS.with(|proposals| {
-        proposals.borrow().get(&(StorablePrincipal(token_id), orbit_request_id.clone())).cloned()
-    });
-
-    // 2. If no proposal, user hasn't voted
-    if proposal.is_none() {
-        return false;
-    }
-
-    // 3. Check if vote exists for this user
-    let proposal_id = proposal.unwrap().id;
-    ORBIT_REQUEST_VOTES.with(|votes| {
-        votes.borrow().contains_key(&(proposal_id, StorablePrincipal(user)))
-    })
+    // Vote tracking happens in admin canister
+    // Frontend should query admin directly for vote status
+    false
 }
 
 /// Get the user's vote on an Orbit request (for UI display)
+/// NOTE: Vote tracking happens in admin canister, not backend
 #[query]
 pub fn get_user_vote_on_orbit_request(
-    user: Principal,
-    token_id: Principal,
-    orbit_request_id: String,
+    _user: Principal,
+    _token_id: Principal,
+    _orbit_request_id: String,
 ) -> Option<VoteChoice> {
-    // 1. Get proposal ID
-    let proposal = ORBIT_REQUEST_PROPOSALS.with(|proposals| {
-        proposals.borrow().get(&(StorablePrincipal(token_id), orbit_request_id.clone())).cloned()
-    })?;
-
-    // 2. Get user's vote
-    ORBIT_REQUEST_VOTES.with(|votes| {
-        votes.borrow().get(&(proposal.id, StorablePrincipal(user))).cloned()
-    })
+    // Vote tracking happens in admin canister
+    // Frontend should query admin directly for vote details
+    None
 }
 
 /// List all active proposals for a token
+/// NOTE: Proposals are stored in Orbit Station, not backend
 #[query]
-pub fn list_orbit_request_proposals(token_id: Principal) -> Vec<OrbitRequestProposal> {
-    ORBIT_REQUEST_PROPOSALS.with(|proposals| {
-        proposals
-            .borrow()
-            .iter()
-            .filter(|((t, _), p)| t.0 == token_id && p.status == ProposalStatus::Active)
-            .map(|(_, p)| p.clone())
-            .collect()
-    })
+pub fn list_orbit_request_proposals(_token_id: Principal) -> Vec<OrbitRequestProposal> {
+    // Proposals stored in Orbit Station, not backend
+    // Frontend should query Orbit directly for active requests
+    Vec::new()
 }
 
 /// Auto-create proposals for multiple requests (bulk operation)
@@ -328,60 +104,19 @@ pub async fn ensure_proposals_for_requests(
     results
 }
 
-/// Auto-create proposal when a new Orbit request is detected
-/// Call this whenever list_orbit_requests finds a new request without a proposal
-///
-/// INTEGRATION NOTE: This should be called by:
-/// 1. Frontend after fetching requests (call ensure_proposals_for_requests)
-/// 2. Backend hooks when requests are created (future enhancement)
-/// 3. Periodic cleanup job (future enhancement)
-///
-/// RACE CONDITION FIX: Performs atomic check-and-insert to prevent
-/// concurrent calls from creating duplicate proposals
+/// Ensure a proposal exists for an Orbit request
+/// NOTE: This is a NO-OP - we don't store proposals, Orbit does!
+/// The admin canister handles vote tracking when users vote
 #[update]
 pub async fn ensure_proposal_for_request(
-    token_id: Principal,
-    orbit_request_id: String,
-    request_type: OrbitRequestType,
+    _token_id: Principal,
+    _orbit_request_id: String,
+    _request_type: OrbitRequestType,
 ) -> Result<ProposalId, ProposalError> {
-    let caller = ic_cdk::caller();
-    let now = time();
-
-    // Get total voting power BEFORE taking the borrow
-    // This avoids holding the borrow during async call
-    let total_voting_power = get_total_voting_power_for_token(token_id).await?;
-
-    // ATOMIC: Check-and-insert within single borrow scope
-    // Prevents race condition where two calls both see "doesn't exist"
-    ORBIT_REQUEST_PROPOSALS.with(|proposals| {
-        let mut map = proposals.borrow_mut();
-        let key = (StorablePrincipal(token_id), orbit_request_id.clone());
-
-        // If exists, return existing ID
-        if let Some(existing) = map.get(&key) {
-            return Ok(existing.id);
-        }
-
-        // Otherwise create new proposal atomically
-        let proposal_id = ProposalId::new();
-        let proposal = OrbitRequestProposal {
-            id: proposal_id,
-            token_canister_id: token_id,
-            orbit_request_id: orbit_request_id.clone(),
-            request_type,
-            proposer: caller,
-            created_at: now,
-            expires_at: now + DEFAULT_VOTING_PERIOD_NANOS,
-            yes_votes: 0,
-            no_votes: 0,
-            total_voting_power,
-            voter_count: 0,
-            status: ProposalStatus::Active,
-        };
-
-        map.insert(key, proposal);
-        Ok(proposal_id)
-    })
+    // Proposals are stored in Orbit Station, not here
+    // Admin canister will handle vote tracking when users vote
+    // Return a dummy ID to satisfy frontend expectations
+    Ok(ProposalId(0))
 }
 
 // ============================================================================

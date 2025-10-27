@@ -133,16 +133,20 @@ export class ProposalService extends BackendServiceBase {
   }
 
   /**
-   * Get Orbit request proposal
+   * Get Orbit request proposal (delegates to admin canister)
+   * Admin canister tracks votes for Orbit requests
    */
   async getOrbitRequestProposal(tokenId, requestId) {
     try {
-      const actor = await this.getActor();
-      const tokenPrincipal = this.toPrincipal(tokenId);
-      const result = await actor.get_orbit_request_proposal(tokenPrincipal, requestId);
+      // Import AdminService for getting proposals
+      const { getAdminService } = await import('../../admin/AdminService');
+      const adminService = getAdminService(this.identity);
+
+      // Get proposal from admin canister
+      const result = await adminService.getProposal(tokenId, requestId);
       return this.wrapOption(result);
     } catch (error) {
-      console.error('Failed to get orbit request proposal:', error);
+      console.error('Failed to get orbit request proposal from admin:', error);
       return { success: false, error: error.message };
     }
   }
@@ -178,7 +182,8 @@ export class ProposalService extends BackendServiceBase {
   }
 
   /**
-   * Vote on an Orbit request (not a regular proposal)
+   * Vote on an Orbit request (delegates to admin canister)
+   * Admin canister handles all voting logic
    */
   async voteOnOrbitRequest(
     tokenId: string,
@@ -186,16 +191,16 @@ export class ProposalService extends BackendServiceBase {
     vote: boolean
   ): Promise<{ success: boolean; error?: string; code?: string }> {
     try {
-      const actor = await this.getActor();
-      const tokenPrincipal = this.toPrincipal(tokenId);
-      // vote is a boolean: true = yes, false = no
-      const result = await actor.vote_on_orbit_request(tokenPrincipal, orbitRequestId, vote);
+      // Import AdminService for voting
+      const { getAdminService } = await import('../../admin/AdminService');
+      const adminService = getAdminService(this.identity);
 
-      // vote_on_orbit_request returns () on success or throws an error
-      // Since it returns unit type, we just return success if no error was thrown
+      // Call admin canister's vote_on_proposal method
+      await adminService.voteOnProposal(tokenId, orbitRequestId, vote);
+
       return { success: true };
     } catch (error) {
-      console.error('Failed to vote on orbit request:', error);
+      console.error('Failed to vote on orbit request via admin canister:', error);
       // Parse the error message to provide better feedback
       if (error.message && error.message.includes('AlreadyVoted')) {
         return {

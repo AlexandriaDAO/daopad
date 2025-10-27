@@ -1045,16 +1045,9 @@ service : () -> {
   edit_treasury_asset : (principal, text, opt text, opt vec AssetMetadata) -> (
       Result,
     );
-  // Auto-create proposal when a new Orbit request is detected
-  // Call this whenever list_orbit_requests finds a new request without a proposal
-  // 
-  // INTEGRATION NOTE: This should be called by:
-  // 1. Frontend after fetching requests (call ensure_proposals_for_requests)
-  // 2. Backend hooks when requests are created (future enhancement)
-  // 3. Periodic cleanup job (future enhancement)
-  // 
-  // RACE CONDITION FIX: Performs atomic check-and-insert to prevent
-  // concurrent calls from creating duplicate proposals
+  // Ensure a proposal exists for an Orbit request
+  // NOTE: This is a NO-OP - we don't store proposals, Orbit does!
+  // The admin canister handles vote tracking when users vote
   ensure_proposal_for_request : (principal, text, OrbitRequestType) -> (
       Result_7,
     );
@@ -1105,7 +1098,6 @@ service : () -> {
   get_my_locked_tokens : () -> (Result_19);
   get_my_voting_power_for_token : (principal) -> (Result_20);
   get_orbit_canister : (principal, principal) -> (Result_21);
-  // Get proposal for a specific Orbit request
   get_orbit_request_proposal : (principal, text) -> (
       opt OrbitRequestProposal,
     ) query;
@@ -1145,10 +1137,11 @@ service : () -> {
   // - Address book entries (authorized recipients)
   // - Backend privilege summary
   get_treasury_management_data : (principal) -> (Result_29);
-  // Get active proposal for a token (if any)
+  // NOTE: Treasury proposals are stored in Orbit Station, not backend
   get_treasury_proposal : (principal) -> (opt TreasuryProposal) query;
   get_user_pending_requests : (principal, principal) -> (Result_30);
   // Get the user's vote on an Orbit request (for UI display)
+  // NOTE: Vote tracking happens in admin canister, not backend
   get_user_vote_on_orbit_request : (principal, principal, text) -> (
       opt VoteChoice,
     ) query;
@@ -1157,6 +1150,7 @@ service : () -> {
       Result_32,
     ) query;
   // Check if a user has voted on an Orbit request proposal
+  // NOTE: Vote tracking happens in admin canister, not backend
   has_user_voted_on_orbit_request : (principal, principal, text) -> (
       bool,
     ) query;
@@ -1175,6 +1169,7 @@ service : () -> {
     );
   list_orbit_canisters : (principal, ListExternalCanistersInput) -> (Result_34);
   // List all active proposals for a token
+  // NOTE: Proposals are stored in Orbit Station, not backend
   list_orbit_request_proposals : (principal) -> (
       vec OrbitRequestProposal,
     ) query;
@@ -1248,7 +1243,7 @@ service : () -> {
   validate_account_name : (principal, text) -> (Result_32);
   vote_on_orbit_proposal : (nat64, bool) -> (Result_41);
   // Vote on ANY Orbit request (not just treasury transfers)
-  // When threshold is reached, executes immediately by approving the Orbit request.
+  // NOTE: Voting is handled by admin canister, not backend
   vote_on_orbit_request : (principal, text, bool) -> (Result_42);
   // Vote on a treasury proposal
   // 

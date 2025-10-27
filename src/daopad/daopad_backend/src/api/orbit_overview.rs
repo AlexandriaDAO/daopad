@@ -2,8 +2,7 @@ use candid::{Nat, Principal, CandidType, Deserialize};
 use ic_cdk::update;
 use std::collections::HashMap;
 use crate::storage::state::{
-    TOKEN_ORBIT_STATIONS, TREASURY_PROPOSALS,
-    ORBIT_REQUEST_PROPOSALS, ORBIT_PROPOSALS
+    TOKEN_ORBIT_STATIONS, ORBIT_PROPOSALS
 };
 use crate::types::StorablePrincipal;
 use crate::types::orbit::{
@@ -98,22 +97,11 @@ pub async fn get_dao_overview(
 fn count_active_proposals(token_id: Principal) -> u64 {
     let mut count = 0u64;
 
-    // Treasury proposals (one per token)
-    TREASURY_PROPOSALS.with(|proposals| {
-        if let Some(p) = proposals.borrow().get(&StorablePrincipal(token_id)) {
-            if p.status == ProposalStatus::Active {
-                count += 1;
-            }
-        }
-    });
+    // REMOVED: Treasury proposals now stored in Orbit Station
+    // Proposals are tracked in Orbit, votes tracked in admin canister
 
-    // Orbit request proposals (multiple per token, keyed by (token, request_id))
-    ORBIT_REQUEST_PROPOSALS.with(|proposals| {
-        count += proposals.borrow()
-            .iter()
-            .filter(|((token, _), p)| token.0 == token_id && p.status == ProposalStatus::Active)
-            .count() as u64;
-    });
+    // REMOVED: Orbit request proposals now stored in Orbit Station
+    // Proposals are tracked in Orbit, votes tracked in admin canister
 
     // Orbit link proposals (one per token)
     ORBIT_PROPOSALS.with(|proposals| {
@@ -134,22 +122,11 @@ fn count_recent_proposals(token_id: Principal, days: u64) -> u64 {
 
     let mut count = 0u64;
 
-    // Treasury proposals
-    TREASURY_PROPOSALS.with(|proposals| {
-        if let Some(p) = proposals.borrow().get(&StorablePrincipal(token_id)) {
-            if p.created_at >= threshold {
-                count += 1;
-            }
-        }
-    });
+    // REMOVED: Treasury proposals now stored in Orbit Station
+    // Proposals are tracked in Orbit, votes tracked in admin canister
 
-    // Orbit request proposals
-    ORBIT_REQUEST_PROPOSALS.with(|proposals| {
-        count += proposals.borrow()
-            .iter()
-            .filter(|((token, _), p)| token.0 == token_id && p.created_at >= threshold)
-            .count() as u64;
-    });
+    // REMOVED: Orbit request proposals now stored in Orbit Station
+    // Proposals are tracked in Orbit, votes tracked in admin canister
 
     // Note: OrbitLinkProposal doesn't have created_at field currently
     // If needed, this can be added to the struct
