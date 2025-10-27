@@ -133,13 +133,17 @@ export class ProposalService extends BackendServiceBase {
   }
 
   /**
-   * Get Orbit request proposal
+   * Get proposal for an Orbit request
+   * Uses unified proposal system - works for ALL operation types
    */
   async getOrbitRequestProposal(tokenId, requestId) {
     try {
       const actor = await this.getActor();
       const tokenPrincipal = this.toPrincipal(tokenId);
-      const result = await actor.get_orbit_request_proposal(tokenPrincipal, requestId);
+
+      // ✅ CORRECT: Use get_proposal (matches admin.did)
+      const result = await actor.get_proposal(tokenPrincipal, requestId);
+
       return this.wrapOption(result);
     } catch (error) {
       console.error('Failed to get orbit request proposal:', error);
@@ -162,20 +166,8 @@ export class ProposalService extends BackendServiceBase {
     }
   }
 
-  /**
-   * Get treasury transfer proposal for a token
-   */
-  async getTreasuryProposal(tokenId) {
-    try {
-      const actor = await this.getActor();
-      const tokenPrincipal = this.toPrincipal(tokenId);
-      const result = await actor.get_treasury_proposal(tokenPrincipal);
-      return this.wrapOption(result);
-    } catch (error) {
-      console.error('Failed to get treasury proposal:', error);
-      return { success: false, error: error.message };
-    }
-  }
+  // ✅ REMOVED getTreasuryProposal - unified proposals handle all types
+  // No separate method needed - getOrbitRequestProposal works for treasury too
 
 }
 
