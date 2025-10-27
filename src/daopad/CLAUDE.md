@@ -8,6 +8,10 @@
 **⚠️ CRITICAL: Always deploy to mainnet using `./deploy.sh --network ic` after making ANY changes. There is no local testing environment - all testing happens on mainnet. This ensures both frontend and backend stay in sync.**
 
 
+## 🏛️ Two-Canister Architecture
+
+**Critical Design** (PR #115): DAOPad uses TWO canisters to comply with Orbit Station's separation of duties requirement that proposal creators cannot approve their own requests. **Backend** (operator role) creates Orbit requests and returns `request_id` to frontend, while **Admin** (admin role) handles community voting via Kong Locker voting power and approves requests after vote thresholds pass. This clean separation ensures the security-intensive operations (approvals, treasury transfers, permission changes) live in the simpler Admin canister, while Backend remains a stateless operator that never approves anything. Frontend orchestrates the flow: user action → backend.create_request() → admin.create_proposal() → community votes → admin approves when threshold reached.
+
 ## 📁 Repository Structure
 
 ```
@@ -26,7 +30,8 @@ project_root/
     └── daopad/          # YOU ARE HERE - Primary development
         ├── CLAUDE.md    # This file - Main documentation
         ├── deploy.sh    # USE THIS for deployments
-        ├── daopad_backend/
+        ├── admin/       # Admin canister (voting + approval)
+        ├── daopad_backend/  # Backend canister (request creation only)
         ├── daopad_frontend/
         └── orbit_station/
 ```
@@ -48,13 +53,9 @@ project_root/
 
 ### Playwright E2E Testing
 
-**CRITICAL**: Read `PLAYWRIGHT_TESTING_GUIDE_CONDENSED.md` before writing or modifying E2E tests.
+Use `PLAYWRIGHT_TESTING_GUIDE_CONDENSED.md` before writing or modifying E2E tests.
 
-**Key Principles:**
-- ✅ Tests verify **backend-to-frontend data flow** (IC canister → Redux → UI)
-- ✅ Tests run against **deployed mainnet code** (not local changes)
-- ✅ Deploy → Test → Iterate workflow (tests passing = actual success)
-- ❌ DON'T write surface-level tests (element existence gives false confidence)
+Note: Playwrite tests only work in areas that don't require authentication. Don't even try because Playwrite's not compatable with ICP Auth.
 
 **Workflow:**
 ```bash
@@ -72,44 +73,12 @@ npx playwright test e2e/feature.spec.ts
 # 5. If tests pass: commit, create PR, SUCCESS ✅
 ```
 
-## 🏗️ Design Principles
-
-### Minimal Storage Principle
-**Decision**: The ONLY thing we store is the "token_canister_id":"orbit_station_id" mapping. Everything else is dynamically queried and mdoified through Orbit's Core logic. In this way we can freely upgrade and modify on mainnet with breaking changes without fear of data loss. The only data we need to keep is in the daopad_backend is what tokens map to what orbit stations.
-
-#### Why Minimal Storage:
-1. **Upgrade Safety**: Once data is in stable storage, removing it requires complex migrations
-2. **IC Best Practice**: Cross-canister queries in update calls work fine
-3. **Maintenance**: Less code, less bugs, less to maintain
-4. **Flexibility**: Can change what we display without backend changes
-
-Don't optimize for speed in the frontend. It's perfectly fine if the frontend is slow because it uses inter-canister calls. For now we just want to ensure modular functionality and maximum robustness.
-
-#### Implementation Pattern:
-```javascript
-// Frontend handles minimal data gracefully
-if (result.success && result.data) {
-    setOrbitStation({
-        station_id: result.data,  // Only what we got
-        name: `${token.symbol} Treasury`  // Derive what we can
-    });
-}
-```
-
 ### Don't worry about Backwards Compatability
 
-Since we're not storing anything, we can't break anything. Also this product isn't live so be liberal about edits. The goal is not to preserve anything, but constantly be removing all bloat and tech debt. Never worry about backwards compatability at the expense of optimization.
+Since Orbit handles the heavy storage and upadate tasks, we can't break anything. Also this product isn't live so be liberal about edits. The goal is not to preserve anything, but constantly be removing all bloat and tech debt. Never worry about backwards compatability at the expense of optimization.
 
 ### 🗳️ Governance Architecture: Liquid Voting, Not Role-Based
 
-**Core Principle**: Orbit Station is the **execution engine**, NOT the governance layer. Real voting happens in DAOPad using Kong Locker voting power.
-
-#### The Problem We're Solving:
-- ❌ Orbit's built-in voting: Static user roles (Quorum of 3 admins, 50% of group, etc.)
-- ❌ Traditional DAOs: Growing role bloat, human admins creating roles "for show"
-- ❌ Fake decentralization: Vote count, not voting weight
-
-#### Our Solution:
 ```
 Proposal Created
     ↓
@@ -123,201 +92,33 @@ Orbit Station Executes (AutoApproved policy)
 ```
 
 #### Implementation:
-1. **Orbit Station Setup**: Set policy to `AutoApproved` or `Quorum(backend_only, 1)`
-   - Backend is the ONLY admin/user in Orbit
-   - No user roles, no permission complexity
-   - Orbit is just a secure treasury execution engine
+1. **Orbit Station Setup**: 
+   - 'Admin' canister is the made an admin by existing station members in order to unlock all our features.
+   - 'daopad_backend' canister needs to have sufficient rights to create proposals, which are generally covered by an operator role.
+   - No user roles needed. It's less permission complexity.
 
 2. **DAOPad Governance Layer**:
-   - Store proposals in DAOPad backend
-   - Track votes weighted by Kong Locker voting power (locked LP value)
+   - Admin canister tracks votes weighted by Kong Locker voting power (locked LP value)
    - Simple threshold: `sum(votes_for) >= (total_voting_power × threshold_percentage)`
-   - When threshold reached, backend submits approval to Orbit
-
-3. **What We DON'T Build**:
-   - ❌ No Orbit user management
-   - ❌ No role/permission systems
-   - ❌ No complex policy evaluation
-   - ❌ No mirroring Orbit's request state
+   - When threshold reached, admin canister approves the proposal on Orbit
 
 **Result**: Liquid democracy based on locked liquidity, not infinite static user roles. Voting power changes with LP token value - real skin in the game.
-
-#### How to Transition an Orbit Station to DAOPad Control
-
-**The Critical Nuance**: Orbit's separation of duties prevents request creators from approving their own requests. Since DAOPad backend creates requests (transfers, canister calls, etc.), it cannot approve them UNLESS the account has an `AutoApproved` policy.
-
-**Required Setup** (done via Settings > Security tab):
-1. **Remove all human admins/operators** - Backend must be the ONLY user in Admin group
-2. **Enable AutoApproved policies** - Each treasury account needs `AutoApproved` policy
-   - Without this: Backend creates requests but they sit "Pending" forever (separation of duties)
-   - With AutoApproved: Requests execute immediately after community vote passes
-3. **Restrict permissions** - Only Admin group should have Account.Transfer, User.Create, etc.
-
-**Why AutoApproved is Safe**:
-- Real governance = Community vote in DAOPad (50%+ voting power required)
-- Orbit's AutoApproved just executes AFTER the vote passes
-- Without human admins, only backend (controlled by code) can create requests
-- Backend only creates requests when community votes succeed
-
-**Expected Security Dashboard Results**:
-- 🔴 Before setup: "NOT A DAO - 8 critical issues"
-- 🟢 After setup: "100% Decentralized - Ready for community governance"
-- Security checks verify: backend is sole admin, AutoApproved enabled, permissions locked down
-
-**What Users See**: Settings > Security tab shows blue "AutoApproved Setup Required" card → Click "Configure AutoApproved" → Requests created → Approve in Orbit UI (one-time) → Future operations execute automatically after community votes.
-
-### LLC Operating Agreement Tab
-The 1st tab in Token Dashboard generates a Wyoming DAO LLC-compliant Operating Agreement from on-chain data. The smart contracts ARE the agreement - they execute the rules deterministically, and the document just describes the current state. This allows DAOs to become legal LLCs while maintaining that code is law.
-
-### Orbit Station Query Strategy
-
-#### The Challenge:
-Orbit Station restricts many queries to admin/member roles only. Public users cannot query:
-- Treasury balance
-- Pending proposals
-- Member list
-- Transaction history
-- Most operational data
-
-#### Our Approach:
-
-**Backend as Admin Proxy**
-Since DAOPad backend is the Orbit Station admin, it can query protected data on behalf of users.
-
-```rust
-// Backend (admin) can query protected Orbit data
-#[update]  // Must be update, not query
-async fn get_treasury_balance(token_id: Principal) -> Result<Balance> {
-    let station_id = get_station_for_token(token_id)?;
-    // Backend has admin rights to query
-    orbit_station.get_balance(station_id).await
-}
-```
-
-**Design Considerations:**
-
-1. **Query vs Update Trade-off**
-   - Orbit queries must happen in update calls (not query methods)
-   - Slightly slower but enables admin-level access
-   - Users get data they couldn't access directly
-
-2. **No Caching Policy**
-   - No caching at this stage - keeping it clean and simple
-   - Fresh data on every request
-   - Code simplicity > user experience optimization
-   - Can always add caching later if truly needed
-
-3. **Frontend Fallbacks**
-   - If backend query fails, show minimal UI
-   - Link to Orbit Station for users to check directly
-   - Progressive enhancement as data becomes available
-
-4. **Future Options**
-   - Could make users members automatically (100+ VP)
-   - Then they could query Orbit directly
-   - But adds complexity to member management
-
-## ⚠️ Critical Limitations
-
-### Query Method Restriction (IC Platform Limitation)
-```rust
-// ❌ DOESN'T WORK - Query methods can't call other queries
-#[query]
-async fn get_orbit_data() -> Result<Data> {
-    orbit_station.list_requests().await // FAILS!
-}
-
-// ✅ WORKS - Update methods can call anything
-#[update]
-async fn execute_orbit_action() -> Result<()> {
-    orbit_station.execute_request().await // Works!
-}
-```
 
 ## 📦 Canister IDs
 
 | Component | Canister ID | URL |
 |-----------|-------------|-----|
-| DAOPad Backend | `lwsav-iiaaa-aaaap-qp2qq-cai` | - |
-| DAOPad Frontend | `l7rlj-6aaaa-aaaaa-qaffq-cai` | https://l7rlj-6aaaa-aaaaa-qaffq-cai.icp0.io |
+| admin |
+`odkrm-viaaa-aaaap-qp2oq-cai` | - |
+| daopad_backend | `lwsav-iiaaa-aaaap-qp2qq-cai` | - |
+| daopad_frontend | `l7rlj-6aaaa-aaaaa-qaffq-cai` | https://l7rlj-6aaaa-aaaaa-qaffq-cai.icp0.io |
 | Orbit Station | `fec7w-zyaaa-aaaaa-qaffq-cai` | External |
 | Kong Locker | `eazgb-giaaa-aaaap-qqc2q-cai` | Reference only |
 
-## 🔴 Common Issues
-
-| Issue | Solution |
-|-------|----------|
-| "Backend not authorized" | Register backend principal in Orbit Station |
-| "Invalid candid decode" | Run candid-extractor after Rust changes |
-| "Query calling query" | Use update method or direct frontend call |
-| Need Kong Locker data | Read `../../kong-locker-reference/CLAUDE.md` for API info |
-| Wrong deploy script | Use `./deploy.sh` from THIS directory |
-| **"is not a function" error** | **CRITICAL: See Declaration Sync Bug section below** |
-| "Invalid principal argument" | Frontend must convert strings to Principal using `Principal.fromText()` before passing to backend |
-| Actor is null/undefined | DAOPadBackendService requires `await service.getActor()`, not `service.actor` |
-| "can't convert BigInt to number" | Backend returns `nat64` as BigInt - convert at source: `typeof value === 'bigint' ? Number(value) : value` |
-
-## 🔒 Universal Governance Requirement
-
-**CRITICAL**: Every backend function that modifies Orbit Station state MUST create a DAOPad proposal for community voting.
-
-### The Mandatory Pattern
-
-All Orbit operations follow this two-step pattern:
-1. Create Orbit request (stored in Orbit Station)
-2. Auto-create DAOPad proposal (enables community voting)
-
-```rust
-// Example: Admin removal in orbit_users.rs
-match result.0 {
-    CreateRequestResult::Ok(response) => {
-        let request_id = response.request.id;
-
-        // CRITICAL: Auto-create proposal for governance
-        use crate::proposals::{ensure_proposal_for_request, OrbitRequestType};
-
-        match ensure_proposal_for_request(
-            token_canister_id,
-            request_id.clone(),
-            OrbitRequestType::EditUser,  // Maps to 50% threshold
-        ).await {
-            Ok(proposal_id) => Ok(request_id),
-            Err(e) => Err(format!("GOVERNANCE VIOLATION: {...}"))
-        }
-    }
-}
-```
-
 ### Governance Rules
 
-1. **Backend is sole admin** - No other users in Orbit Station admin group
-2. **All operations create proposals** - Via `ensure_proposal_for_request()`
-3. **Risk-based voting thresholds**:
-   - System operations (SystemUpgrade, SystemRestore): **90%**
-   - Treasury operations (Transfer, AddAccount, EditAccount): **75%**
-   - Governance changes (EditPermission, AddRequestPolicy): **70%**
-   - Canister operations (CreateExternalCanister, CallExternalCanister): **60%**
-   - User management (AddUser, EditUser, RemoveUser): **50%**
-   - Asset management (AddAsset, EditAsset): **40%**
-   - Address book (AddAddressBookEntry): **30%**
-4. **No bypassing** - Direct Orbit calls without proposals violate governance
-5. **Complete coverage** - All 33 Orbit operation types mapped in `OrbitRequestType` enum
-
-### Implementation Files
-
-- **Type definitions**: `daopad_backend/src/proposals/types.rs`
-  - `OrbitRequestType` enum with all 33 operations
-  - `voting_threshold()` method for risk-based thresholds
-  - `voting_duration_hours()` method for deliberation periods
-
-- **Proposal creation**: `daopad_backend/src/proposals/orbit_requests.rs`
-  - `ensure_proposal_for_request()` - Auto-create proposals
-  - `infer_request_type()` - Map operation strings to types
-  - `vote_on_orbit_request()` - Community voting logic
-
-- **Example usage**: `daopad_backend/src/api/orbit_users.rs`
-  - Admin removal properly creates proposals
-  - Pattern for other operations to follow
+1. Admin canister can approve or reject any requests in accordance with it's quorum voting rules for a given proposal, but cannot create any requests.
+2. daopad_backend canister can create requests in orbit, but never approve or reject them.
 
 ### Why This Architecture
 
@@ -326,39 +127,6 @@ match result.0 {
 - **Liquid democracy**: Voting power changes with token value
 - **Complete coverage**: Every Orbit operation requires community approval
 - **Type safety**: Enum ensures all operations have defined thresholds
-
-### Adding New Operations
-
-When adding a new Orbit operation handler:
-
-1. Add operation to `OrbitRequestType` enum if not present
-2. Update `infer_request_type()` mapping
-3. Create Orbit request in your handler
-4. Call `ensure_proposal_for_request()` with appropriate type
-5. Return error if proposal creation fails (governance violation)
-
-Example:
-```rust
-#[update]
-pub async fn create_treasury_transfer(
-    token_id: Principal,
-    amount: u64,
-    recipient: String
-) -> Result<String, String> {
-    // 1. Create Orbit request
-    let request_id = create_orbit_transfer_request(...).await?;
-
-    // 2. Auto-create proposal (MANDATORY)
-    ensure_proposal_for_request(
-        token_id,
-        request_id.clone(),
-        OrbitRequestType::Transfer  // 75% threshold
-    ).await
-    .map_err(|e| format!("Governance required: {:?}", e))?;
-
-    Ok(request_id)
-}
-```
 
 ## 🚨 CRITICAL: Declaration Sync Bug
 
