@@ -2,8 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { Principal } from '@dfinity/principal';
 import type { Identity } from '@dfinity/agent';
-import { OrbitStationService } from '../services/backend';
-import { getProposalService } from '../services/backend';
+import { OrbitStationService, getAdminService } from '../services/backend';
 import ProposalCard from './ProposalCard';
 import ProposalDetailsModal from './ProposalDetailsModal';
 import { Button } from '@/components/ui/button';
@@ -167,9 +166,9 @@ const DaoProposals: React.FC<DaoProposalsProps> = ({ identity, dao }) => {
     setVotingLoading(prev => ({ ...prev, [proposalId]: vote ? 'approving' : 'rejecting' }));
 
     try {
-      const daopadService = getProposalService(identity);
-      // Use voting method instead of direct approval
-      const result = await daopadService.voteOnOrbitRequest(dao.token_canister, proposalId, vote);
+      const adminService = getAdminService(identity);
+      await adminService.voteOnProposal(dao.token_canister.toString(), proposalId, vote);
+      const result = { success: true };
 
       if (result.success) {
         // Set success state briefly

@@ -1,16 +1,10 @@
-// Unified voting system for ALL Orbit operations
-// Replaces both treasury.rs and orbit_requests.rs
-
-use crate::kong_locker::voting::{
-    calculate_voting_power_for_token, get_user_voting_power_for_token,
-};
-use crate::storage::state::{
-    KONG_LOCKER_PRINCIPALS, TOKEN_ORBIT_STATIONS, UNIFIED_PROPOSALS, UNIFIED_PROPOSAL_VOTES,
-};
+use crate::kong_locker::voting::{calculate_voting_power_for_token, get_user_voting_power_for_token};
+use crate::storage::state::{KONG_LOCKER_PRINCIPALS, TOKEN_ORBIT_STATIONS};
 use crate::types::StorablePrincipal;
 use candid::{CandidType, Deserialize, Nat, Principal};
-use ic_cdk::api::time;
-use ic_cdk::{query, update};
+use ic_cdk::update;
+
+const ADMIN_CANISTER_ID: &str = "odkrm-viaaa-aaaap-qp2oq-cai";
 
 // Constants
 const MINIMUM_VP_FOR_PROPOSAL: u64 = 10_000; // Same as orbit link proposals
@@ -234,200 +228,6 @@ impl OrbitOperationType {
 
 use crate::proposals::types::{ProposalError, ProposalId, ProposalStatus, VoteChoice};
 
-/// Single voting endpoint for ALL Orbit operations
-#[update]
-pub async fn vote_on_proposal(
-    token_id: Principal,
-    orbit_request_id: String,
-    vote: bool,
-) -> Result<(), ProposalError> {
-    let voter = ic_cdk::caller();
-
-    // 1. Check auth
-    if voter == Principal::anonymous() {
-        return Err(ProposalError::AuthRequired);
-    }
-
-    // 2. Get proposal
-    let mut proposal = UNIFIED_PROPOSALS.with(|proposals| {
-        proposals
-            .borrow()
-            .get(&(StorablePrincipal(token_id), orbit_request_id.clone()))
-            .cloned()
-            .ok_or(ProposalError::NotFound(ProposalId(0)))
-    })?;
-
-    // 3. Check status
-    if proposal.status != ProposalStatus::Active {
-        return Err(ProposalError::NotActive);
-    }
-
-    // 4. Check expiry
-    let now = time();
-    if now > proposal.expires_at {
-        proposal.status = ProposalStatus::Expired;
-        let proposal_id = proposal.id;
-        UNIFIED_PROPOSALS.with(|proposals| {
-            proposals
-                .borrow_mut()
-                .remove(&(StorablePrincipal(token_id), orbit_request_id.clone()));
-        });
-
-        // Clean up all votes for this expired proposal to prevent memory leak
-        UNIFIED_PROPOSAL_VOTES.with(|votes| {
-            let mut votes_map = votes.borrow_mut();
-            votes_map.retain(|(pid, _), _| *pid != proposal_id);
-        });
-
-        return Err(ProposalError::Expired);
-    }
-
-    // 5. Check double-vote
-    let has_voted = UNIFIED_PROPOSAL_VOTES.with(|votes| {
-        votes
-            .borrow()
-            .contains_key(&(proposal.id, StorablePrincipal(voter)))
-    });
-
-    if has_voted {
-        return Err(ProposalError::AlreadyVoted(proposal.id));
-    }
-
-    // 6. Get voting power
-    let voting_power = match get_user_voting_power_for_token(voter, token_id).await {
-        Ok(vp) => vp,
-        Err(e) if e.contains("register") => {
-            return Err(ProposalError::Custom(
-                "You need to register with Kong Locker first. Visit Settings > Kong Locker to register.".to_string()
-            ));
-        },
-        Err(_) => {
-            return Err(ProposalError::Custom(
-                "You need LP tokens to vote. Lock liquidity at kong.land to get voting power.".to_string()
-            ));
-        }
-    };
-
-    if voting_power == 0 {
-        return Err(ProposalError::NoVotingPower);
-    }
-
-    // 7. Record vote
-    if vote {
-        proposal.yes_votes += voting_power;
-    } else {
-        proposal.no_votes += voting_power;
-    }
-    proposal.voter_count += 1;
-
-    UNIFIED_PROPOSAL_VOTES.with(|votes| {
-        votes.borrow_mut().insert(
-            (proposal.id, StorablePrincipal(voter)),
-            if vote {
-                VoteChoice::Yes
-            } else {
-                VoteChoice::No
-            },
-        );
-    });
-
-    ic_cdk::println!(
-        "Vote recorded: proposal_id={:?}, voter={}, vote={}, new_yes={}, new_no={}",
-        proposal.id, voter, if vote { "YES" } else { "NO" },
-        proposal.yes_votes, proposal.no_votes
-    );
-
-    // 8. Check threshold (varies by operation type)
-    // Recalculate total VP on each vote for security
-    let current_total_vp = get_total_voting_power_for_token(token_id).await?;
-    let threshold = proposal.operation_type.voting_threshold();
-    let required_votes = (current_total_vp * threshold as u64) / 100;
-
-    if proposal.yes_votes > required_votes {
-        // Get station ID
-        let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-            stations
-                .borrow()
-                .get(&StorablePrincipal(token_id))
-                .map(|s| s.0)
-                .ok_or(ProposalError::NoStationLinked(token_id))
-        })?;
-
-        // Single approval function
-        approve_orbit_request(station_id, &proposal.orbit_request_id).await?;
-        proposal.status = ProposalStatus::Executed;
-        let proposal_id = proposal.id;
-
-        // Remove from active proposals
-        UNIFIED_PROPOSALS.with(|proposals| {
-            proposals
-                .borrow_mut()
-                .remove(&(StorablePrincipal(token_id), orbit_request_id.clone()));
-        });
-
-        // Clean up all votes for this executed proposal to prevent memory leak
-        UNIFIED_PROPOSAL_VOTES.with(|votes| {
-            let mut votes_map = votes.borrow_mut();
-            votes_map.retain(|(pid, _), _| *pid != proposal_id);
-        });
-
-        ic_cdk::println!(
-            "Proposal {:?} executed! {} yes votes > {} required",
-            proposal.id,
-            proposal.yes_votes,
-            required_votes
-        );
-    } else if proposal.no_votes > (current_total_vp - required_votes) {
-        // Rejected - impossible to reach threshold
-        let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-            stations
-                .borrow()
-                .get(&StorablePrincipal(token_id))
-                .map(|s| s.0)
-                .ok_or(ProposalError::NoStationLinked(token_id))
-        })?;
-
-        // Attempt to reject the Orbit request
-        if let Err(e) = reject_orbit_request(station_id, &proposal.orbit_request_id).await {
-            ic_cdk::println!("Warning: Failed to reject Orbit request: {:?}", e);
-        }
-
-        proposal.status = ProposalStatus::Rejected;
-        let proposal_id = proposal.id;
-
-        UNIFIED_PROPOSALS.with(|proposals| {
-            proposals
-                .borrow_mut()
-                .remove(&(StorablePrincipal(token_id), orbit_request_id));
-        });
-
-        // Clean up all votes for this rejected proposal to prevent memory leak
-        UNIFIED_PROPOSAL_VOTES.with(|votes| {
-            let mut votes_map = votes.borrow_mut();
-            votes_map.retain(|(pid, _), _| *pid != proposal_id);
-        });
-
-        ic_cdk::println!("Proposal {:?} rejected and cleaned up", proposal_id);
-    } else {
-        // Still active - update vote counts and refresh total VP
-        proposal.total_voting_power = current_total_vp;
-
-        UNIFIED_PROPOSALS.with(|proposals| {
-            proposals.borrow_mut().insert(
-                (StorablePrincipal(token_id), orbit_request_id.clone()),
-                proposal.clone()
-            );
-        });
-
-        ic_cdk::println!(
-            "Proposal updated: id={:?}, yes={}, no={}",
-            proposal.id, proposal.yes_votes, proposal.no_votes
-        );
-    }
-
-    Ok(())
-}
-
 /// Enum for all possible Orbit operations
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub enum OrbitOperation {
@@ -513,159 +313,51 @@ pub async fn create_orbit_request_with_proposal(
         },
     };
 
-    // 4. Get total voting power
-    let total_voting_power = get_total_voting_power_for_token(token_id).await?;
+    // 4. Create proposal in admin canister
+    let operation_type_str = match &operation {
+        OrbitOperation::Transfer(_) => "Transfer",
+        OrbitOperation::EditUser { .. } => "EditUser",
+        OrbitOperation::AddAsset { .. } => "AddAsset",
+        OrbitOperation::RemoveAdmin { .. } => "EditUser",
+    }.to_string();
 
-    // 5. Create unified proposal
-    let operation_type = operation.to_type();
-    let duration_hours = operation_type.voting_duration_hours();
-    let duration_nanos = duration_hours * 3600 * 1_000_000_000;
+    let admin_principal = Principal::from_text(ADMIN_CANISTER_ID)
+        .map_err(|e| ProposalError::Custom(format!("Invalid admin canister ID: {}", e)))?;
 
-    let proposal = UnifiedProposal {
-        id: ProposalId::new(),
-        token_canister_id: token_id,
-        orbit_request_id: orbit_request_id.clone(),
-        operation_type,
-        proposer: caller,
-        created_at: time(),
-        expires_at: time() + duration_nanos,
-        yes_votes: 0,
-        no_votes: 0,
-        total_voting_power,
-        voter_count: 0,
-        status: ProposalStatus::Active,
-        transfer_details: operation.transfer_details(),
-    };
+    let result: Result<(Result<String, String>,), _> = ic_cdk::call(
+        admin_principal,
+        "create_proposal",
+        (token_id, orbit_request_id.clone(), operation_type_str)
+    ).await;
 
-    // 6. Store proposal
-    UNIFIED_PROPOSALS.with(|proposals| {
-        proposals.borrow_mut().insert(
-            (StorablePrincipal(token_id), orbit_request_id.clone()),
-            proposal
-        );
-    });
-
-    Ok(orbit_request_id)
-}
-
-/// Get a specific proposal
-#[query]
-pub fn get_proposal(
-    token_id: Principal,
-    orbit_request_id: String,
-) -> Option<UnifiedProposal> {
-    UNIFIED_PROPOSALS.with(|proposals| {
-        proposals
-            .borrow()
-            .get(&(StorablePrincipal(token_id), orbit_request_id))
-            .cloned()
-    })
-}
-
-/// List all active proposals for a token
-#[query]
-pub fn list_unified_proposals(token_id: Principal) -> Vec<UnifiedProposal> {
-    UNIFIED_PROPOSALS.with(|proposals| {
-        proposals
-            .borrow()
-            .iter()
-            .filter(|((t, _), p)| t.0 == token_id && p.status == ProposalStatus::Active)
-            .map(|(_, p)| p.clone())
-            .collect()
-    })
-}
-
-/// Check if a user has voted on a proposal
-#[query]
-pub fn has_user_voted(
-    user: Principal,
-    token_id: Principal,
-    orbit_request_id: String,
-) -> bool {
-    // Get proposal to find its ID
-    let proposal = UNIFIED_PROPOSALS.with(|proposals| {
-        proposals
-            .borrow()
-            .get(&(StorablePrincipal(token_id), orbit_request_id))
-            .cloned()
-    });
-
-    if let Some(p) = proposal {
-        UNIFIED_PROPOSAL_VOTES.with(|votes| {
-            votes.borrow().contains_key(&(p.id, StorablePrincipal(user)))
-        })
-    } else {
-        false
+    match result {
+        Ok((Ok(_),)) => Ok(orbit_request_id),
+        Ok((Err(e),)) => Err(ProposalError::Custom(format!("Admin proposal creation failed: {}", e))),
+        Err((code, msg)) => Err(ProposalError::Custom(format!("Admin call failed: {:?} - {}", code, msg))),
     }
 }
 
-/// Get the user's vote on a proposal
-#[query]
-pub fn get_user_vote(
-    user: Principal,
-    token_id: Principal,
-    orbit_request_id: String,
-) -> Option<VoteChoice> {
-    let proposal = UNIFIED_PROPOSALS.with(|proposals| {
-        proposals
-            .borrow()
-            .get(&(StorablePrincipal(token_id), orbit_request_id))
-            .cloned()
-    })?;
-
-    UNIFIED_PROPOSAL_VOTES.with(|votes| {
-        votes.borrow().get(&(proposal.id, StorablePrincipal(user))).cloned()
-    })
-}
-
-/// Ensure a proposal exists for an Orbit request (for backwards compatibility)
+/// Create proposal in admin canister for an Orbit request
 #[update]
 pub async fn ensure_proposal_for_request(
     token_id: Principal,
     orbit_request_id: String,
     request_type_str: String,
-) -> Result<ProposalId, ProposalError> {
-    let caller = ic_cdk::caller();
-    let now = time();
+) -> Result<String, ProposalError> {
+    let admin_principal = Principal::from_text(ADMIN_CANISTER_ID)
+        .map_err(|e| ProposalError::Custom(format!("Invalid admin canister ID: {}", e)))?;
 
-    // Get total voting power BEFORE taking the borrow
-    let total_voting_power = get_total_voting_power_for_token(token_id).await?;
+    let result: Result<(Result<String, String>,), _> = ic_cdk::call(
+        admin_principal,
+        "create_proposal",
+        (token_id, orbit_request_id, request_type_str)
+    ).await;
 
-    // ATOMIC: Check-and-insert within single borrow scope
-    UNIFIED_PROPOSALS.with(|proposals| {
-        let mut map = proposals.borrow_mut();
-        let key = (StorablePrincipal(token_id), orbit_request_id.clone());
-
-        // If exists, return existing ID
-        if let Some(existing) = map.get(&key) {
-            return Ok(existing.id);
-        }
-
-        // Otherwise create new proposal atomically
-        let proposal_id = ProposalId::new();
-        let operation_type = OrbitOperationType::from_string(&request_type_str);
-        let duration_hours = operation_type.voting_duration_hours();
-        let duration_nanos = duration_hours * 3600 * 1_000_000_000;
-
-        let proposal = UnifiedProposal {
-            id: proposal_id,
-            token_canister_id: token_id,
-            orbit_request_id: orbit_request_id.clone(),
-            operation_type,
-            proposer: caller,
-            created_at: now,
-            expires_at: now + duration_nanos,
-            yes_votes: 0,
-            no_votes: 0,
-            total_voting_power,
-            voter_count: 0,
-            status: ProposalStatus::Active,
-            transfer_details: None,
-        };
-
-        map.insert(key, proposal);
-        Ok(proposal_id)
-    })
+    match result {
+        Ok((Ok(proposal_id),)) => Ok(proposal_id),
+        Ok((Err(e),)) => Err(ProposalError::Custom(e)),
+        Err((code, msg)) => Err(ProposalError::Custom(format!("Admin call failed: {:?} - {}", code, msg))),
+    }
 }
 
 // ============================================================================

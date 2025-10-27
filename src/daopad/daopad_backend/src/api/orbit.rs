@@ -245,8 +245,7 @@ pub async fn create_transfer_request(
     memo: Option<String>,
     token_id: Principal,
 ) -> Result<String, String> {
-    // Route all transfer requests through the proposal system
-    use crate::proposals::treasury::{TransferDetails, create_treasury_transfer_proposal};
+    use crate::proposals::unified::{TransferDetails, OrbitOperation};
 
     let transfer_details = TransferDetails {
         from_account_id,
@@ -258,10 +257,12 @@ pub async fn create_transfer_request(
         description: "Transfer requested via DAOPad".to_string(),
     };
 
-    // Call the proposal creation (it handles VP checks, Orbit request, etc.)
-    match create_treasury_transfer_proposal(token_id, transfer_details).await {
-        Ok(proposal_id) => Ok(format!("Proposal created: {:?}", proposal_id)),
-        Err(e) => Err(format!("Failed to create proposal: {:?}", e))
+    match crate::proposals::unified::create_orbit_request_with_proposal(
+        token_id,
+        OrbitOperation::Transfer(transfer_details)
+    ).await {
+        Ok(request_id) => Ok(request_id),
+        Err(e) => Err(format!("Failed to create transfer request: {:?}", e))
     }
 }
 

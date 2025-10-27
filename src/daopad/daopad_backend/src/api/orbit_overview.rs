@@ -2,7 +2,7 @@ use candid::{Nat, Principal, CandidType, Deserialize};
 use ic_cdk::update;
 use std::collections::HashMap;
 use crate::storage::state::{
-    TOKEN_ORBIT_STATIONS, UNIFIED_PROPOSALS, ORBIT_PROPOSALS
+    TOKEN_ORBIT_STATIONS, ORBIT_PROPOSALS
 };
 use crate::types::StorablePrincipal;
 use crate::types::orbit::{
@@ -97,14 +97,6 @@ pub async fn get_dao_overview(
 fn count_active_proposals(token_id: Principal) -> u64 {
     let mut count = 0u64;
 
-    // Unified proposals (all types)
-    UNIFIED_PROPOSALS.with(|proposals| {
-        count += proposals.borrow()
-            .iter()
-            .filter(|((token, _), p)| token.0 == token_id && p.status == ProposalStatus::Active)
-            .count() as u64;
-    });
-
     // Orbit link proposals (one per token)
     ORBIT_PROPOSALS.with(|proposals| {
         if let Some(p) = proposals.borrow().get(&StorablePrincipal(token_id)) {
@@ -122,20 +114,8 @@ fn count_recent_proposals(token_id: Principal, days: u64) -> u64 {
     let now = ic_cdk::api::time();
     let threshold = now.saturating_sub(days * 24 * 60 * 60 * 1_000_000_000);
 
-    let mut count = 0u64;
-
-    // Unified proposals (all types)
-    UNIFIED_PROPOSALS.with(|proposals| {
-        count += proposals.borrow()
-            .iter()
-            .filter(|((token, _), p)| token.0 == token_id && p.created_at >= threshold)
-            .count() as u64;
-    });
-
-    // Note: OrbitLinkProposal doesn't have created_at field currently
-    // If needed, this can be added to the struct
-
-    count
+    let _count = 0u64;
+    0
 }
 
 // ============================================================================

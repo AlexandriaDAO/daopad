@@ -8,22 +8,25 @@
 **⚠️ CRITICAL: Always deploy to mainnet using `./deploy.sh --network ic` after making ANY changes. There is no local testing environment - all testing happens on mainnet. This ensures both frontend and backend stay in sync.**
 
 
-## 🏛️ Two-Canister Architecture (Transitional State)
+## 🏛️ Two-Canister Architecture
 
-**Current Implementation**: DAOPad has deployed TWO canisters to comply with Orbit Station's separation of duties requirement:
+DAOPad uses TWO canisters to comply with Orbit Station's separation of duties:
 
-- **Backend** (`daopad_backend`): Creates Orbit requests + Currently handles voting via unified proposal system
-- **Admin** (`admin`): Deployed with full voting capability, ready for migration but not yet the primary voting path
+- **Backend** (`daopad_backend`): Creates Orbit requests only (operator role)
+- **Admin** (`admin`): Handles ALL voting and approvals (admin role)
 
-**Intended Architecture**: Backend creates requests only (operator role), Admin handles ALL community voting via Kong Locker voting power and approves requests after thresholds pass (admin role). This clean separation ensures security-intensive operations (approvals, treasury transfers) are isolated in the Admin canister.
+**Flow**:
+```
+User Action → Backend creates request → Returns request_id
+           ↓
+Admin auto-creates proposal for community vote
+           ↓
+Users vote via Admin (weighted by Kong Locker VP)
+           ↓
+Threshold reached → Admin approves in Orbit Station
+```
 
-**Migration Status**:
-- ✅ Admin canister deployed (`odkrm-viaaa-aaaap-qp2oq-cai`) with complete voting functionality
-- ✅ Backend has unified voting system (fully functional)
-- ⏳ Frontend currently calls backend for voting (uses `daopad_backend/src/proposals/unified.rs`)
-- 🎯 Next step: Migrate frontend to call admin canister for all voting operations
-
-**Why the transition**: Backend voting works but violates separation of duties. Admin canister ensures the entity creating requests (backend) cannot approve them, improving security.
+**Key Principle**: The canister that creates requests (backend) CANNOT approve them. Only admin canister approves after community vote passes.
 
 ## 📁 Repository Structure
 
@@ -90,122 +93,33 @@ npx playwright test e2e/feature.spec.ts
 
 Since Orbit handles the heavy storage and upadate tasks, we can't break anything. Also this product isn't live so be liberal about edits. The goal is not to preserve anything, but constantly be removing all bloat and tech debt. Never worry about backwards compatability at the expense of optimization.
 
-### 🗳️ Governance Architecture: Liquid Voting, Not Role-Based
+### 🗳️ Governance: Liquid Voting
 
-**Current Flow** (Backend voting - transitional):
-```
-User Action (Frontend)
-    ↓
-Backend creates Orbit request
-    ↓
-Backend auto-creates proposal (unified.rs)
-    ↓
-Users Vote via Backend (weighted by Kong Locker VP)
-    ↓
-Vote Threshold Reached?
-    ↓ YES (future: backend calls admin to approve)
-Backend Submits to Orbit Station
-    ↓
-Orbit Station Executes (AutoApproved policy)
-```
+**Voting Power**: Based on Kong Locker (locked LP tokens), not static roles
+- Voting power = USD value of locked LP × 100
+- Changes dynamically with token value
+- Real skin in the game
 
-**Intended Flow** (Admin canister - not yet active):
-```
-User Action (Frontend)
-    ↓
-Backend creates Orbit request (returns request_id)
-    ↓
-Frontend calls Admin.create_proposal(request_id)
-    ↓
-Users Vote via Admin (weighted by Kong Locker VP)
-    ↓
-Vote Threshold Reached?
-    ↓ YES
-Admin Approves in Orbit Station
-    ↓
-Orbit Station Executes (AutoApproved policy)
-```
+**Orbit Station Setup**:
+- Admin canister must be added as admin in Orbit Station
+- Backend has operator role (can create requests only)
+- No user roles needed - backend + admin handle everything
 
-#### Current Implementation:
-1. **Orbit Station Setup**:
-   - Admin canister (`odkrm-viaaa-aaaap-qp2oq-cai`) must be added as admin in Orbit Station
-   - Backend canister (`lwsav-iiaaa-aaaap-qp2qq-cai`) has operator role to create requests
-   - No user roles needed in Orbit - less permission complexity
-
-2. **Voting System** (Transitional):
-   - **Current**: Backend's `unified.rs` tracks votes and proposals
-   - **Intended**: Admin canister tracks everything, backend only creates requests
-   - Both use Kong Locker voting power (locked LP value)
-   - Simple threshold: `sum(votes_for) >= (total_voting_power × threshold_percentage)`
-
-**Result**: Liquid democracy based on locked liquidity, not infinite static user roles. Voting power changes with LP token value - real skin in the game.
+**Thresholds**: Risk-based voting requirements
+- System operations: 90%
+- Treasury operations: 75%
+- Governance changes: 70%
+- User management: 50%
 
 ## 📦 Canister IDs
 
-| Component | Canister ID | Status | URL |
-|-----------|-------------|--------|-----|
-| **admin** | `odkrm-viaaa-aaaap-qp2oq-cai` | ✅ Deployed (voting ready) | - |
-| **daopad_backend** | `lwsav-iiaaa-aaaap-qp2qq-cai` | ✅ Active (creates + votes) | - |
-| **daopad_frontend** | `l7rlj-6aaaa-aaaaa-qaffq-cai` | ✅ Active | https://l7rlj-6aaaa-aaaaa-qaffq-cai.icp0.io |
-| Orbit Station (Test) | `fec7w-zyaaa-aaaaa-qaffq-cai` | Reference | https://fec7w-zyaaa-aaaaa-qaffq-cai.icp0.io |
-| Kong Locker | `eazgb-giaaa-aaaap-qqc2q-cai` | Reference only | - |
-
-### Governance Rules
-
-**Current State** (Backend Voting):
-1. ✅ `daopad_backend` creates Orbit requests (operator role)
-2. ✅ `daopad_backend` handles voting via `unified.rs`
-3. ⏳ `admin` deployed but not yet handling voting
-
-**Intended State** (Admin Voting - Migration Target):
-1. ✅ `daopad_backend` creates Orbit requests ONLY (operator role)
-2. ✅ `admin` handles ALL voting and approval (admin role)
-3. ✅ Clean separation: request creator ≠ request approver
-
-### Why This Architecture
-
-- **True decentralization**: Voting power from locked LP tokens (Kong Locker)
-- **No role bloat**: One admin (backend) instead of complex permission matrix
-- **Liquid democracy**: Voting power changes with token value
-- **Complete coverage**: Every Orbit operation requires community approval
-- **Type safety**: Enum ensures all operations have defined thresholds
-
-## 🔄 Migration to Admin Canister (TODO)
-
-**Current Challenge**: Frontend uses backend's voting system, which works but doesn't fully separate duties.
-
-### Migration Checklist:
-
-**Phase 1: Preparation** ✅ Complete
-- [x] Admin canister deployed with voting capability
-- [x] Admin has Kong Locker integration
-- [x] Admin can track proposals and votes
-- [x] Admin can approve/reject Orbit requests
-
-**Phase 2: Frontend Integration** ⏳ In Progress
-- [ ] Update frontend to call admin for `create_proposal()`
-- [ ] Update frontend to call admin for `vote_on_proposal()`
-- [ ] Update frontend to query admin for vote status
-- [ ] Update frontend to query admin for proposal details
-
-**Phase 3: Backend Cleanup** 🎯 Future
-- [ ] Remove voting logic from backend's `unified.rs`
-- [ ] Backend only creates Orbit requests and returns `request_id`
-- [ ] Backend proxies create_proposal to admin canister
-- [ ] Remove UNIFIED_PROPOSALS from backend storage
-
-**Phase 4: Testing & Deployment**
-- [ ] Test vote persistence with admin canister
-- [ ] Verify separation of duties
-- [ ] Deploy to mainnet
-- [ ] Monitor for issues
-
-### Migration Benefits:
-
-- **True separation of duties**: Request creator ≠ approver (Orbit Station requirement)
-- **Simpler backend**: Remove all voting logic, just creates requests
-- **Isolated security**: All approval authority in one admin canister
-- **Cleaner architecture**: Each canister has single responsibility
+| Component | Canister ID | URL |
+|-----------|-------------|-----|
+| **Admin** | `odkrm-viaaa-aaaap-qp2oq-cai` | - |
+| **Backend** | `lwsav-iiaaa-aaaap-qp2qq-cai` | - |
+| **Frontend** | `l7rlj-6aaaa-aaaaa-qaffq-cai` | https://l7rlj-6aaaa-aaaaa-qaffq-cai.icp0.io |
+| Orbit Station (Test) | `fec7w-zyaaa-aaaaa-qaffq-cai` | https://fec7w-zyaaa-aaaaa-qaffq-cai.icp0.io |
+| Kong Locker | `eazgb-giaaa-aaaap-qqc2q-cai` | Reference |
 
 ## 🚨 CRITICAL: Declaration Sync Bug
 
