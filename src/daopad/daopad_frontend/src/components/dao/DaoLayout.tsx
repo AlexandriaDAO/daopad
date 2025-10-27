@@ -24,10 +24,10 @@ export default function DaoLayout({
   const location = useLocation();
   const pathParts = location.pathname.split('/');
   const currentTab = pathParts[pathParts.length - 1];
-  const tokenId = token.canister_id;
+  const stationId = orbitStation?.station_id;  // Use station ID for routing
 
-  // Determine if we're on the overview (base DAO route)
-  const isOverview = pathParts.length === 3 || currentTab === tokenId;
+  // Determine if we're on the overview (base station route)
+  const isOverview = pathParts.length === 2 || currentTab === stationId;
 
   return (
     <div className="min-h-screen bg-executive-charcoal text-executive-lightGray">
@@ -96,22 +96,22 @@ export default function DaoLayout({
           {/* Mobile: Scrollable tabs | Desktop: Flex wrap */}
           <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
             <div className="inline-flex sm:flex sm:flex-wrap gap-1 min-w-full sm:min-w-0">
-              <TabButton to={`/dao/${tokenId}`} active={isOverview}>
+              <TabButton to={`/${stationId}`} active={isOverview}>
                 Overview
               </TabButton>
-              <TabButton to={`/dao/${tokenId}/agreement`} active={currentTab === 'agreement'}>
+              <TabButton to={`/${stationId}/agreement`} active={currentTab === 'agreement'}>
                 Agreement
               </TabButton>
-              <TabButton to={`/dao/${tokenId}/treasury`} active={currentTab === 'treasury'}>
+              <TabButton to={`/${stationId}/treasury`} active={currentTab === 'treasury'}>
                 Treasury
               </TabButton>
-              <TabButton to={`/dao/${tokenId}/activity`} active={currentTab === 'activity'}>
+              <TabButton to={`/${stationId}/activity`} active={currentTab === 'activity'}>
                 Activity
               </TabButton>
-              <TabButton to={`/dao/${tokenId}/canisters`} active={currentTab === 'canisters'}>
+              <TabButton to={`/${stationId}/canisters`} active={currentTab === 'canisters'}>
                 Canisters
               </TabButton>
-              <TabButton to={`/dao/${tokenId}/settings`} active={currentTab === 'settings'}>
+              <TabButton to={`/${stationId}/settings`} active={currentTab === 'settings'}>
                 Settings
               </TabButton>
             </div>

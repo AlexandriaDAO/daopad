@@ -8,79 +8,85 @@ import { FallbackLoader } from '../components/ui/fallback-loader';
 import { useVoting } from '../hooks/useVoting';
 
 export default function DaoRoute() {
-  const { tokenId } = useParams();
+  const { stationId } = useParams();  // Changed from tokenId to stationId
   const { identity, isAuthenticated } = useSelector((state: any) => state.auth);
   const [token, setToken] = useState<any>(null);
+  const [tokenId, setTokenId] = useState<string | null>(null);  // Store token ID internally
   const [loading, setLoading] = useState(true);
   const [orbitStation, setOrbitStation] = useState<any>(null);
   const [overviewStats, setOverviewStats] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch voting power using existing hook
+  // Fetch voting power using existing hook (once we have token ID)
   const { userVotingPower, loadingVP, fetchVotingPower } = useVoting(tokenId);
 
   useEffect(() => {
-    async function loadToken() {
-      if (!tokenId) {
-        setError('No token ID provided');
+    async function loadStation() {
+      if (!stationId) {
+        setError('No station ID provided');
         setLoading(false);
         return;
       }
 
       try {
         const tokenService = getTokenService(identity);
-        let principal: Principal;
+        let stationPrincipal: Principal;
 
         try {
-          principal = Principal.fromText(tokenId);
+          stationPrincipal = Principal.fromText(stationId);
         } catch (e) {
-          console.error('[DaoRoute] Invalid principal:', tokenId, e);
-          setError('Invalid token ID format');
+          console.error('[DaoRoute] Invalid station principal:', stationId, e);
+          setError('Invalid station ID format');
           setLoading(false);
           return;
         }
 
-        // PARALLEL DATA FETCHING (critical performance optimization)
-        // Fetch all data simultaneously instead of sequentially
-        const [stationResult, metadataResult, overviewResult] = await Promise.all([
-          // 1. Station info (works for both authenticated and anonymous)
-          tokenService.getStationForToken(principal).catch(e => {
-            console.warn('[DaoRoute] Station fetch failed:', e);
-            return { success: false, error: e };
-          }),
+        // 1. First get token ID from station ID (reverse lookup)
+        const tokenResult = await tokenService.getTokenForStation(stationPrincipal).catch(e => {
+          console.warn('[DaoRoute] Token lookup failed:', e);
+          return { success: false, error: e };
+        });
 
-          // 2. Token metadata (only if authenticated)
+        if (!tokenResult.success || !tokenResult.data) {
+          console.error('[DaoRoute] No token found for station:', stationId);
+          setError('Station not linked to any token');
+          setLoading(false);
+          return;
+        }
+
+        const resolvedTokenId = tokenResult.data.toString();
+        setTokenId(resolvedTokenId);
+        const tokenPrincipal = Principal.fromText(resolvedTokenId);
+
+        // 2. PARALLEL DATA FETCHING (critical performance optimization)
+        // Fetch all data simultaneously now that we have token ID
+        const [metadataResult, overviewResult] = await Promise.all([
+          // Token metadata (only if authenticated)
           isAuthenticated && identity
-            ? tokenService.getTokenMetadata(principal).catch(e => {
+            ? tokenService.getTokenMetadata(tokenPrincipal).catch(e => {
                 console.warn('[DaoRoute] Metadata fetch failed:', e);
                 return { success: false, error: e };
               })
             : Promise.resolve({ success: false }),
 
-          // 3. Overview stats (NEW - works for anonymous)
-          tokenService.getDaoOverview(principal).catch(e => {
+          // Overview stats (works for anonymous)
+          tokenService.getDaoOverview(tokenPrincipal).catch(e => {
             console.warn('[DaoRoute] Overview fetch failed:', e);
             return { success: false, error: e };
           }),
         ]);
 
         console.log('[DaoRoute] Parallel fetch results:', {
-          station: stationResult,
+          token: resolvedTokenId,
           metadata: metadataResult,
           overview: overviewResult
         });
 
-        // Process station info
-        if (stationResult.success && stationResult.data) {
-          const stationId = typeof stationResult.data === 'string'
-            ? stationResult.data
-            : stationResult.data.toString();
-
-          setOrbitStation({
-            station_id: stationId,
-            name: `${tokenId} Treasury`
-          });
-        }
+        // Process station info (we already have it)
+        setOrbitStation({
+          station_id: stationId,
+          name: `${stationId.slice(0, 8)} Treasury`
+        });
 
         // Process overview stats
         if (overviewResult.success && overviewResult.data) {
@@ -90,34 +96,34 @@ export default function DaoRoute() {
         // Process token metadata
         if (metadataResult.success && metadataResult.data) {
           // Use real metadata with defensive checks for malformed data
-          const symbol = metadataResult.data.symbol?.trim() || tokenId.slice(0, 8).toUpperCase();
-          const name = metadataResult.data.name?.trim() || `${symbol} DAO`;
+          const symbol = metadataResult.data.symbol?.trim() || resolvedTokenId.slice(0, 8).toUpperCase();
+          const name = metadataResult.data.name?.trim() || `${symbol} Treasury`;
 
           setToken({
-            canister_id: tokenId,
+            canister_id: resolvedTokenId,
             symbol,
             name: name.slice(0, 100) // Limit to 100 chars to prevent UI issues
           });
         } else {
           // Fallback for anonymous or failed metadata (clearer format)
-          const shortId = tokenId.slice(0, 8);
+          const shortId = resolvedTokenId.slice(0, 8);
           setToken({
-            canister_id: tokenId,
+            canister_id: resolvedTokenId,
             symbol: shortId.toUpperCase(),
-            name: `${shortId.toUpperCase()} DAO`
+            name: `${shortId.toUpperCase()} Treasury`
           });
         }
 
         setLoading(false);
       } catch (e) {
-        console.error('[DaoRoute] Error loading token:', e);
-        setError('Failed to load token data');
+        console.error('[DaoRoute] Error loading station:', e);
+        setError('Failed to load station data');
         setLoading(false);
       }
     }
 
-    loadToken();
-  }, [tokenId, identity, isAuthenticated]);
+    loadStation();
+  }, [stationId, identity, isAuthenticated]);
 
   if (loading) {
     return <FallbackLoader />;

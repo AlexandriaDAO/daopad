@@ -5,10 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 
 interface TreasuryShowcaseProps {
-  onSelectToken?: (tokenId: string) => void;
+  onSelectStation?: (stationId: string) => void;
 }
 
-const TreasuryShowcase: React.FC<TreasuryShowcaseProps> = ({ onSelectToken }) => {
+const TreasuryShowcase: React.FC<TreasuryShowcaseProps> = ({ onSelectStation }) => {
   const treasuries = useSelector(state => state.dao.publicDashboard.treasuries);
   const [searchTerm, setSearchTerm] = useState('');
   const hasPartialData = useSelector(state => state.dao.publicDashboard.hasPartialData);
@@ -63,12 +63,12 @@ const TreasuryShowcase: React.FC<TreasuryShowcaseProps> = ({ onSelectToken }) =>
                           hover:bg-executive-darkGray/50 transition-colors
                           cursor-pointer"
                 data-testid="treasury-item"
-                onClick={() => onSelectToken?.(tokenId)}
+                onClick={() => onSelectStation?.(stationId)}
                 role="button"
                 tabIndex={0}
                 onKeyPress={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
-                    onSelectToken?.(tokenId);
+                    onSelectStation?.(stationId);
                   }
                 }}
               >

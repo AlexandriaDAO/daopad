@@ -5,11 +5,11 @@ import AgreementDocument from '../components/operating-agreement/AgreementDocume
 import { BackendServiceBase } from '../services/backend';
 
 export default function OperatingAgreement() {
-    const { stationId } = useParams();  // Get station ID from URL
+    const { stationId } = useParams();  // Get station ID from URL (only reliable identifier)
     const [searchParams] = useSearchParams();
-    const tokenSymbol = searchParams.get('token') || 'TOKEN';
 
     const [agreementData, setAgreementData] = useState(null);
+    const [tokenSymbol, setTokenSymbol] = useState('DAO');  // Default until loaded
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -23,12 +23,26 @@ export default function OperatingAgreement() {
                     Principal.fromText(stationId)
                 );
 
-                if ('ok' in result) {
+                if ('Ok' in result) {
                     // Parse JSON data from snapshot
-                    const data = JSON.parse(result.ok.data);
+                    const data = JSON.parse(result.Ok.data);
                     setAgreementData(data);
-                } else if ('err' in result) {
-                    setError(result.err);
+
+                    // Extract token symbol from treasury accounts if available
+                    // Look for the first non-ICP asset symbol as the DAO token
+                    const tokenAsset = data?.treasury?.accounts
+                        ?.flatMap(acc => acc.assets || [])
+                        .find(asset => asset.symbol && asset.symbol !== 'ICP');
+
+                    if (tokenAsset?.symbol) {
+                        setTokenSymbol(tokenAsset.symbol);
+                    }
+                    // Otherwise check query param as fallback (for backwards compatibility)
+                    else if (searchParams.get('token')) {
+                        setTokenSymbol(searchParams.get('token'));
+                    }
+                } else if ('Err' in result) {
+                    setError(result.Err);
                 } else {
                     setError('Agreement not found');
                 }
@@ -43,7 +57,7 @@ export default function OperatingAgreement() {
         if (stationId) {
             fetchAgreement();
         }
-    }, [stationId]);
+    }, [stationId, searchParams]);
 
     if (loading) {
         return (

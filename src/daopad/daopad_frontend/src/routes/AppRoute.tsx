@@ -271,7 +271,7 @@ function AppRoute() {
 
           {/* Treasury showcase */}
           <section>
-            <TreasuryShowcase onSelectToken={(tokenId) => navigate(`/dao/${tokenId}`)} />
+            <TreasuryShowcase onSelectStation={(stationId) => navigate(`/${stationId}`)} />
           </section>
         </div>
       )}

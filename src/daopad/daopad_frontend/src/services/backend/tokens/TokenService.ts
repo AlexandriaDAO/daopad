@@ -52,6 +52,21 @@ export class TokenService extends BackendServiceBase {
   }
 
   /**
+   * Get token ID for a given station ID (reverse lookup)
+   */
+  async getTokenForStation(stationId) {
+    try {
+      const actor = await this.getActor();
+      const stationPrincipal = this.toPrincipal(stationId);
+      const result = await actor.get_token_for_station(stationPrincipal);
+      return this.wrapOption(result);
+    } catch (error) {
+      console.error('Failed to get token for station:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Get my locked tokens (from Kong Locker)
    */
   async getMyLockedTokens() {

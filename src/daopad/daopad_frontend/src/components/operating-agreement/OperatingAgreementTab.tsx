@@ -96,8 +96,8 @@ const OperatingAgreementTab = ({ tokenId, stationId, tokenSymbol, identity }) =>
     }
   };
 
-  // Get permanent link
-  const permanentLink = `${window.location.origin}/agreement/${stationId}?token=${tokenSymbol}`;
+  // Get permanent link (station ID only - immutable blockchain reference)
+  const permanentLink = `${window.location.origin}/agreement/${stationId}`;
 
   const copyLink = () => {
     navigator.clipboard.writeText(permanentLink);

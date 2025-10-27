@@ -27,8 +27,8 @@ function App() {
             <Route path="/app" element={<AppRoute />} />
             <Route path="/agreement/:stationId" element={<OperatingAgreement />} />
 
-            {/* Nested DAO routes */}
-            <Route path="/dao/:tokenId" element={<DaoRoute />}>
+            {/* Station routes - using station ID as primary identifier */}
+            <Route path="/:stationId" element={<DaoRoute />}>
               <Route index element={<DaoOverview />} />
               <Route path="agreement" element={<DaoAgreement />} />
               <Route path="treasury" element={<DaoTreasury />} />

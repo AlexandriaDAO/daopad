@@ -44,6 +44,18 @@ pub fn get_orbit_station_for_token(token_canister_id: Principal) -> Option<Princ
     })
 }
 
+/// Get token ID for a given station ID (reverse lookup)
+#[query]
+pub fn get_token_for_station(station_id: Principal) -> Option<Principal> {
+    use crate::storage::state::STATION_TO_TOKEN;
+    STATION_TO_TOKEN.with(|mapping| {
+        mapping
+            .borrow()
+            .get(&StorablePrincipal(station_id))
+            .map(|t| t.0)
+    })
+}
+
 #[query]
 pub fn list_all_orbit_stations() -> Vec<(Principal, Principal)> {
     TOKEN_ORBIT_STATIONS.with(|stations| {

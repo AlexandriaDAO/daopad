@@ -19,6 +19,7 @@ const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
   const [tokenVotingPowers, setTokenVotingPowers] = useState<Record<string, number>>({});
+  const [tokenStations, setTokenStations] = useState<Record<string, string>>({});  // tokenId -> stationId mapping
   const [userLPPositions, setUserLPPositions] = useState<LPPosition[]>([]);
 
   useEffect(() => {
@@ -65,8 +66,9 @@ const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
         setUserLPPositions(positions);
       }
 
-      // Get voting power per token directly from backend
+      // Get voting power and station ID per token directly from backend
       const votingPowers: Record<string, number> = {};
+      const stations: Record<string, string> = {};
       for (const token of lockedTokens) {
         try {
           const vpResult = await tokenService.getMyVotingPowerForToken(token.canister_id);
@@ -75,6 +77,12 @@ const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
           } else {
             votingPowers[token.canister_id] = 0;
           }
+
+          // Get station ID for this token
+          const stationResult = await tokenService.getStationForToken(token.canister_id);
+          if (stationResult.success && stationResult.data) {
+            stations[token.canister_id] = stationResult.data.toString();
+          }
         } catch (err) {
           console.error(`Failed to get voting power for ${token.symbol}:`, err);
           votingPowers[token.canister_id] = 0;
@@ -82,6 +90,7 @@ const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
       }
 
       setTokenVotingPowers(votingPowers);
+      setTokenStations(stations);
 
       // Sort tokens by voting power (highest first)
       const sortedTokens = [...lockedTokens].sort((a, b) => {
@@ -193,19 +202,23 @@ const TokenTabs: React.FC<TokenTabsProps> = ({ identity }) => {
         </Suspense>
       )}
 
-      {/* Grid of token cards linking to DAO routes */}
+      {/* Grid of token cards linking to station routes */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         {tokens.map(token => {
           const votingPower = tokenVotingPowers[token.canister_id] || 0;
+          const stationId = tokenStations[token.canister_id];
           const lpCount = userLPPositions.filter(pos =>
             pos.address_0 === token.canister_id ||
             pos.address_1 === token.canister_id
           ).length;
 
+          // Skip tokens without a station (not set up yet)
+          if (!stationId) return null;
+
           return (
             <Link
               key={token.canister_id}
-              to={`/dao/${token.canister_id}`}
+              to={`/${stationId}`}
               className="block"
             >
               <Card className="bg-executive-darkGray border-executive-mediumGray hover:border-executive-gold transition-colors h-full">
