@@ -98,18 +98,11 @@ Since Orbit handles the heavy storage and upadate tasks, we can't break anything
 **Voting Power**: Based on Kong Locker (locked LP tokens), not static roles
 - Voting power = USD value of locked LP × 100
 - Changes dynamically with token value
-- Real skin in the game
 
 **Orbit Station Setup**:
 - Admin canister must be added as admin in Orbit Station
 - Backend has operator role (can create requests only)
 - No user roles needed - backend + admin handle everything
-
-**Thresholds**: Risk-based voting requirements
-- System operations: 90%
-- Treasury operations: 75%
-- Governance changes: 70%
-- User management: 50%
 
 ## 📦 Canister IDs
 
