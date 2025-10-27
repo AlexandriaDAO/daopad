@@ -1,11 +1,9 @@
 // Unified voting system for ALL Orbit operations
 // Admin canister version - handles voting and approval only
 
-use crate::kong_locker::voting::{
-    calculate_voting_power_for_token, get_user_voting_power_for_token,
-};
+use crate::kong_locker::voting::get_user_voting_power_for_token;
 use crate::storage::state::{
-    KONG_LOCKER_PRINCIPALS, TOKEN_ORBIT_STATIONS, UNIFIED_PROPOSALS, UNIFIED_PROPOSAL_VOTES,
+    UNIFIED_PROPOSALS, UNIFIED_PROPOSAL_VOTES,
 };
 use crate::types::StorablePrincipal;
 use crate::proposals::types::{
@@ -29,7 +27,19 @@ pub async fn vote_on_proposal(
         return Err(ProposalError::AuthRequired);
     }
 
-    // 2. Get proposal
+    // 2. Get or create proposal (auto-create on first vote)
+    let proposal_exists = UNIFIED_PROPOSALS.with(|proposals| {
+        proposals
+            .borrow()
+            .contains_key(&(StorablePrincipal(token_id), orbit_request_id.clone()))
+    });
+
+    if !proposal_exists {
+        // Auto-create proposal - use empty string for request_type_str
+        // The ensure function will query Orbit to determine the type
+        ensure_proposal_for_request(token_id, orbit_request_id.clone(), String::new()).await?;
+    }
+
     let mut proposal = UNIFIED_PROPOSALS.with(|proposals| {
         proposals
             .borrow()
@@ -114,14 +124,20 @@ pub async fn vote_on_proposal(
     let required_votes = (current_total_vp * threshold as u64) / 100;
 
     if proposal.yes_votes > required_votes {
-        // Get station ID
-        let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-            stations
-                .borrow()
-                .get(&StorablePrincipal(token_id))
-                .map(|s| s.0)
-                .ok_or(ProposalError::NoStationLinked(token_id))
-        })?;
+        // Query backend for station ID
+        let backend_canister = Principal::from_text("lwsav-iiaaa-aaaap-qp2qq-cai")
+            .map_err(|e| ProposalError::Custom(format!("Invalid backend ID: {}", e)))?;
+
+        let station_result: Result<(Option<Principal>,), _> = ic_cdk::call(
+            backend_canister,
+            "get_orbit_station_for_token",
+            (token_id,)
+        ).await;
+
+        let station_id = station_result
+            .map_err(|e| ProposalError::Custom(format!("Failed to query backend: {:?}", e)))?
+            .0
+            .ok_or(ProposalError::NoStationLinked(token_id))?;
 
         // Approve in Orbit
         approve_orbit_request(station_id, &proposal.orbit_request_id).await?;
@@ -142,13 +158,20 @@ pub async fn vote_on_proposal(
         });
     } else if proposal.no_votes > (current_total_vp - required_votes) {
         // Rejected - impossible to reach threshold
-        let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-            stations
-                .borrow()
-                .get(&StorablePrincipal(token_id))
-                .map(|s| s.0)
-                .ok_or(ProposalError::NoStationLinked(token_id))
-        })?;
+        // Query backend for station ID
+        let backend_canister = Principal::from_text("lwsav-iiaaa-aaaap-qp2qq-cai")
+            .map_err(|e| ProposalError::Custom(format!("Invalid backend ID: {}", e)))?;
+
+        let station_result: Result<(Option<Principal>,), _> = ic_cdk::call(
+            backend_canister,
+            "get_orbit_station_for_token",
+            (token_id,)
+        ).await;
+
+        let station_id = station_result
+            .map_err(|e| ProposalError::Custom(format!("Failed to query backend: {:?}", e)))?
+            .0
+            .ok_or(ProposalError::NoStationLinked(token_id))?;
 
         // Reject in Orbit
         if let Err(e) = reject_orbit_request(station_id, &proposal.orbit_request_id).await {
@@ -374,28 +397,35 @@ async fn reject_orbit_request(
     }
 }
 
-/// Get total voting power for all registered users for a given token
+/// Get total voting power from the current proposal
+/// Since we no longer track all users, we use the snapshot from proposal creation
 async fn get_total_voting_power_for_token(token: Principal) -> Result<u64, ProposalError> {
-    let all_kong_lockers = KONG_LOCKER_PRINCIPALS.with(|principals| {
-        principals
-            .borrow()
-            .iter()
-            .map(|(_, locker)| locker.0)
-            .collect::<Vec<Principal>>()
-    });
+    // Query KongSwap for total locked value for this token
+    let kongswap_id = Principal::from_text("2ipq2-uqaaa-aaaar-qailq-cai")
+        .map_err(|e| ProposalError::Custom(format!("Invalid KongSwap ID: {}", e)))?;
 
-    let mut total_power = 0u64;
+    // Call get_all_voting_powers to get total VP across all users
+    let result: Result<(Vec<(String, u64)>,), _> = ic_cdk::call(
+        kongswap_id,
+        "get_all_voting_powers",
+        ()
+    ).await;
 
-    for kong_locker in all_kong_lockers {
-        match calculate_voting_power_for_token(kong_locker, token).await {
-            Ok(power) => total_power += power,
-            Err(_) => continue,
+    let all_powers = result
+        .map_err(|e| ProposalError::Custom(format!("Failed to get voting powers: {:?}", e)))?
+        .0;
+
+    // Find the entry for this token and return its total VP
+    let token_str = token.to_string();
+    for (token_id, vp) in all_powers {
+        if token_id == token_str {
+            if vp == 0 {
+                return Err(ProposalError::ZeroVotingPower);
+            }
+            return Ok(vp);
         }
     }
 
-    if total_power == 0 {
-        return Err(ProposalError::ZeroVotingPower);
-    }
-
-    Ok(total_power)
+    // Token not found means zero voting power
+    Err(ProposalError::ZeroVotingPower)
 }

@@ -1,5 +1,3 @@
-use crate::storage::state::KONG_LOCKER_PRINCIPALS;
-use crate::types::StorablePrincipal;
 use candid::{CandidType, Deserialize, Principal};
 use ic_cdk::call;
 
@@ -18,35 +16,24 @@ pub struct LPBalanceReply {
 
 // Note: Minimum VP checks are now handled directly in the proposal system
 
+/// Query Kong Locker directly with the user's principal
+/// No registration needed - KongSwap handles the lookup internally
 pub async fn get_user_voting_power_for_token(
     caller: Principal,
-    token_canister_id: Principal,
-) -> Result<u64, String> {
-    let kong_locker_principal = KONG_LOCKER_PRINCIPALS.with(|principals| {
-        principals
-            .borrow()
-            .get(&StorablePrincipal(caller))
-            .map(|sp| sp.0)
-            .ok_or("Must register Kong Locker canister first".to_string())
-    })?;
-
-    calculate_voting_power_for_token(kong_locker_principal, token_canister_id).await
-}
-
-pub async fn calculate_voting_power_for_token(
-    kong_locker_principal: Principal,
     token_canister_id: Principal,
 ) -> Result<u64, String> {
     let kongswap_id = Principal::from_text("2ipq2-uqaaa-aaaar-qailq-cai")
         .map_err(|e| format!("Invalid KongSwap ID: {}", e))?;
 
+    // Call user_balances with the CALLER's principal directly
+    // KongSwap queries the user's individual lock canister internally
     let user_balances_result: Result<
         (Result<Vec<UserBalancesReply>, String>,),
         (ic_cdk::api::call::RejectionCode, String),
     > = call(
         kongswap_id,
         "user_balances",
-        (kong_locker_principal.to_string(),),
+        (caller.to_string(),),
     )
     .await;
 

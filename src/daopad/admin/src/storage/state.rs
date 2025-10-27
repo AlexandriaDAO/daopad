@@ -23,19 +23,4 @@ thread_local! {
         (ProposalId, StorablePrincipal),
         VoteChoice
     >> = RefCell::new(BTreeMap::new());
-
-    // Kong Locker registration
-    // Key: User Principal → Kong Locker Principal
-    // Used to calculate voting power for each user
-    pub static KONG_LOCKER_PRINCIPALS: RefCell<BTreeMap<
-        StorablePrincipal,
-        StorablePrincipal
-    >> = RefCell::new(BTreeMap::new());
-
-    // Orbit Station mapping (needed for approval calls)
-    // Key: Token Canister ID → Orbit Station ID
-    pub static TOKEN_ORBIT_STATIONS: RefCell<BTreeMap<
-        StorablePrincipal,
-        StorablePrincipal
-    >> = RefCell::new(BTreeMap::new());
 }
