@@ -97,13 +97,6 @@ pub async fn get_dao_overview(
 fn count_active_proposals(token_id: Principal) -> u64 {
     let mut count = 0u64;
 
-    // REMOVED: Treasury proposals now stored in Orbit Station
-    // Proposals are tracked in Orbit, votes tracked in admin canister
-
-    // REMOVED: Orbit request proposals now stored in Orbit Station
-    // Proposals are tracked in Orbit, votes tracked in admin canister
-
-    // Orbit link proposals (one per token)
     ORBIT_PROPOSALS.with(|proposals| {
         if let Some(p) = proposals.borrow().get(&StorablePrincipal(token_id)) {
             if p.status == crate::proposals::orbit_link::ProposalStatus::Active {
@@ -116,22 +109,8 @@ fn count_active_proposals(token_id: Principal) -> u64 {
 }
 
 /// Count recent proposals (within specified days)
-fn count_recent_proposals(token_id: Principal, days: u64) -> u64 {
-    let now = ic_cdk::api::time();
-    let threshold = now.saturating_sub(days * 24 * 60 * 60 * 1_000_000_000);
-
-    let mut count = 0u64;
-
-    // REMOVED: Treasury proposals now stored in Orbit Station
-    // Proposals are tracked in Orbit, votes tracked in admin canister
-
-    // REMOVED: Orbit request proposals now stored in Orbit Station
-    // Proposals are tracked in Orbit, votes tracked in admin canister
-
-    // Note: OrbitLinkProposal doesn't have created_at field currently
-    // If needed, this can be added to the struct
-
-    count
+fn count_recent_proposals(_token_id: Principal, _days: u64) -> u64 {
+    0
 }
 
 // ============================================================================

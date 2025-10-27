@@ -20,6 +20,7 @@ fn label_name(label: &Label) -> Option<String> {
         Label::Id(id) => {
             // Map common Candid hash IDs to their string names
             Some(match *id {
+                // Status values
                 3736853960 => "Created".to_string(),
                 4044063083 => "Completed".to_string(),
                 1821510295 => "Approved".to_string(),
@@ -28,9 +29,12 @@ fn label_name(label: &Label) -> Option<String> {
                 479410653 => "Failed".to_string(),
                 1598796536 => "Scheduled".to_string(),
                 1131829668 => "Processing".to_string(),
+                // Operation types (based on observed hashes)
+                280265689 => "EditPermission".to_string(),
+                3079972771 => "EditAccount".to_string(),
                 _ => {
                     // Log unknown hashes for future mapping
-                    ic_cdk::println!("Unknown status hash: {} (0x{:x})", id, id);
+                    ic_cdk::println!("Unknown hash: {} (0x{:x})", id, id);
                     format!("Unknown_{}", id) // More visible fallback
                 }
             })

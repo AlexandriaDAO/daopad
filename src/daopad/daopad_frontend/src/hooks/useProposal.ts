@@ -1,48 +1,109 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../providers/AuthProvider/IIProvider';
-import { getProposalService } from '../services/backend';
-import { getAdminService } from '../services/admin/AdminService';
+import { getProposalService, BackendServiceBase } from '../services/backend';
 import { Principal } from '@dfinity/principal';
 
-// REMOVED: inferRequestType helper no longer needed
-// Admin canister handles operation type mapping directly
+// Helper function to convert operation type string to backend variant
+function convertOperationTypeToVariant(operationType) {
+  // Handle both string and object operation types
+  let opTypeString = operationType;
+
+  // If it's an object like { EditPermission: {...} }, extract the key
+  if (typeof operationType === 'object' && operationType !== null) {
+    const keys = Object.keys(operationType);
+    if (keys.length > 0) {
+      opTypeString = keys[0];
+    }
+  }
+
+  // Map operation type strings to backend enum variants
+  const typeMap = {
+    'Transfer': { Transfer: null },
+    'AddAccount': { AddAccount: null },
+    'EditAccount': { EditAccount: null },
+    'AddUser': { AddUser: null },
+    'EditUser': { EditUser: null },
+    'RemoveUser': { RemoveUser: null },
+    'AddUserGroup': { AddUserGroup: null },
+    'EditUserGroup': { EditUserGroup: null },
+    'RemoveUserGroup': { RemoveUserGroup: null },
+    'CreateExternalCanister': { CreateExternalCanister: null },
+    'ConfigureExternalCanister': { ConfigureExternalCanister: null },
+    'ChangeExternalCanister': { ChangeExternalCanister: null },
+    'CallExternalCanister': { CallExternalCanister: null },
+    'FundExternalCanister': { FundExternalCanister: null },
+    'MonitorExternalCanister': { MonitorExternalCanister: null },
+    'SnapshotExternalCanister': { SnapshotExternalCanister: null },
+    'RestoreExternalCanister': { RestoreExternalCanister: null },
+    'PruneExternalCanister': { PruneExternalCanister: null },
+    'SystemUpgrade': { SystemUpgrade: null },
+    'SystemRestore': { SystemRestore: null },
+    'SetDisasterRecovery': { SetDisasterRecovery: null },
+    'ManageSystemInfo': { ManageSystemInfo: null },
+    'EditPermission': { EditPermission: null },
+    'AddRequestPolicy': { AddRequestPolicy: null },
+    'EditRequestPolicy': { EditRequestPolicy: null },
+    'RemoveRequestPolicy': { RemoveRequestPolicy: null },
+    'AddAsset': { AddAsset: null },
+    'EditAsset': { EditAsset: null },
+    'RemoveAsset': { RemoveAsset: null },
+    'AddNamedRule': { AddNamedRule: null },
+    'EditNamedRule': { EditNamedRule: null },
+    'RemoveNamedRule': { RemoveNamedRule: null },
+    'AddAddressBookEntry': { AddAddressBookEntry: null },
+    'EditAddressBookEntry': { EditAddressBookEntry: null },
+    'RemoveAddressBookEntry': { RemoveAddressBookEntry: null },
+  };
+
+  // Return the variant or a default "Other" variant for unknown types
+  return typeMap[opTypeString] || { Other: opTypeString || 'Unknown' };
+}
 
 export function useProposal(tokenId, orbitRequestId, operationType) {
   const { identity } = useAuth();
   const [proposal, setProposal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hasVoted, setHasVoted] = useState(false);
-  const [userVote, setUserVote] = useState(null); // NEW: Track actual vote
+  const [userVote, setUserVote] = useState(null);
   const [error, setError] = useState(null);
 
-  // Check if user has voted (using admin canister)
+  // Check if user has voted (using backend directly)
   const checkVoteStatus = useCallback(async () => {
     if (!identity || !tokenId || !orbitRequestId) return;
 
     try {
-      // Use admin service for vote tracking
-      const adminService = getAdminService(identity);
+      // Use backend service for vote tracking
+      const backendService = new BackendServiceBase(identity);
+      const actor = await backendService.getActor();
 
-      // Call admin canister methods directly
-      const voted = await adminService.hasUserVoted(
-        identity.getPrincipal(),
+      // Call backend methods directly
+      console.log('[checkVoteStatus] Checking vote status for:', {
+        user: identity.getPrincipal().toString(),
         tokenId,
+        orbitRequestId
+      });
+
+      const voted = await actor.has_user_voted_on_orbit_request(
+        identity.getPrincipal(),
+        Principal.fromText(tokenId),
         orbitRequestId
       );
 
+      console.log('[checkVoteStatus] Has voted:', voted);
       setHasVoted(voted);
 
       // Get actual vote if voted
       if (voted) {
-        const vote = await adminService.getUserVote(
+        const vote = await actor.get_user_vote_on_orbit_request(
           identity.getPrincipal(),
-          tokenId,
+          Principal.fromText(tokenId),
           orbitRequestId
         );
-        setUserVote(vote); // Will be { Yes: null } or { No: null }
+        console.log('[checkVoteStatus] User vote:', vote);
+        setUserVote(vote); // Will be [{ Yes: null }] or [{ No: null }] or []
       }
     } catch (err) {
-      console.error('Failed to check vote status from admin canister:', err);
+      console.error('Failed to check vote status from backend:', err);
     }
   }, [identity, tokenId, orbitRequestId]);
 
@@ -57,26 +118,28 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
     setLoading(true);
     setError(null);
     try {
-      // Use admin service to get proposal (it tracks votes)
-      const adminService = getAdminService(identity || null);
-      const proposal = await adminService.getProposal(
-        tokenId,
+      // Use backend service to get proposal
+      const backendService = new BackendServiceBase(identity || null);
+      const actor = await backendService.getActor();
+
+      const proposal = await actor.get_orbit_request_proposal(
+        Principal.fromText(tokenId),
         orbitRequestId
       );
 
-      if (proposal) {
+      if (proposal && proposal.length > 0) {
+        const prop = proposal[0]; // Backend returns Option<T> as array
         // Convert BigInt values to numbers for display
         const processedProposal = {
-          ...proposal,
-          yes_votes: typeof proposal.yes_votes === 'bigint' ? Number(proposal.yes_votes) : proposal.yes_votes,
-          no_votes: typeof proposal.no_votes === 'bigint' ? Number(proposal.no_votes) : proposal.no_votes,
-          total_voting_power: typeof proposal.total_voting_power === 'bigint' ? Number(proposal.total_voting_power) : proposal.total_voting_power,
-          created_at: typeof proposal.created_at === 'bigint' ? Number(proposal.created_at) : proposal.created_at,
-          expires_at: typeof proposal.expires_at === 'bigint' ? Number(proposal.expires_at) : proposal.expires_at,
+          ...prop,
+          yes_votes: typeof prop.yes_votes === 'bigint' ? Number(prop.yes_votes) : prop.yes_votes,
+          no_votes: typeof prop.no_votes === 'bigint' ? Number(prop.no_votes) : prop.no_votes,
+          total_voting_power: typeof prop.total_voting_power === 'bigint' ? Number(prop.total_voting_power) : prop.total_voting_power,
+          created_at: typeof prop.created_at === 'bigint' ? Number(prop.created_at) : prop.created_at,
+          expires_at: typeof prop.expires_at === 'bigint' ? Number(prop.expires_at) : prop.expires_at,
         };
         setProposal(processedProposal);
 
-        // NEW: Check if user has voted
         await checkVoteStatus();
       } else {
         setProposal(null);
@@ -91,7 +154,7 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
     }
   }, [identity, tokenId, orbitRequestId, checkVoteStatus]);
 
-  // Auto-create proposal if it doesn't exist (admin canister ensures vote tracking)
+  // Auto-create proposal if it doesn't exist
   const ensureProposal = useCallback(async () => {
     if (!identity || !tokenId || !orbitRequestId || !operationType) {
       console.log('[useProposal] Missing required params for ensureProposal:', {
@@ -110,14 +173,17 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
         operationType
       });
 
-      // Use admin service to ensure vote tracking
-      const adminService = getAdminService(identity);
+      // Use backend service to ensure vote tracking
+      const backendService = new BackendServiceBase(identity);
+      const actor = await backendService.getActor();
 
-      // Pass operation type as string (admin will handle mapping)
-      const result = await adminService.ensureProposalForRequest(
-        tokenId,
+      // Convert operation type string to proper variant for backend
+      const requestTypeVariant = convertOperationTypeToVariant(operationType);
+
+      const result = await actor.ensure_proposal_for_request(
+        Principal.fromText(tokenId),
         orbitRequestId,
-        operationType  // Pass as string, not variant
+        requestTypeVariant
       );
 
       console.log('[useProposal] Proposal created:', result);
@@ -138,11 +204,11 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
   return {
     proposal,
     loading,
-    hasVoted, // Now properly tracked from backend
-    userVote, // NEW: Actual vote choice
+    hasVoted,
+    userVote,
     error,
     fetchProposal,
     ensureProposal,
-    checkVoteStatus // NEW: Expose for manual refresh
+    checkVoteStatus
   };
 }

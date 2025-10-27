@@ -182,8 +182,7 @@ export class ProposalService extends BackendServiceBase {
   }
 
   /**
-   * Vote on an Orbit request (delegates to admin canister)
-   * Admin canister handles all voting logic
+   * Vote on an Orbit request (backend handles voting now)
    */
   async voteOnOrbitRequest(
     tokenId: string,
@@ -191,24 +190,55 @@ export class ProposalService extends BackendServiceBase {
     vote: boolean
   ): Promise<{ success: boolean; error?: string; code?: string }> {
     try {
-      // Import AdminService for voting
-      const { getAdminService } = await import('../../admin/AdminService');
-      const adminService = getAdminService(this.identity);
+      const actor = await this.getActor();
+      const tokenPrincipal = this.toPrincipal(tokenId);
 
-      // Call admin canister's vote_on_proposal method
-      await adminService.voteOnProposal(tokenId, orbitRequestId, vote);
+      console.log('[ProposalService] Submitting vote:', {
+        tokenId,
+        orbitRequestId,
+        vote,
+        tokenPrincipal: tokenPrincipal.toString()
+      });
 
+      // Call backend's vote_on_orbit_request method
+      const result = await actor.vote_on_orbit_request(
+        tokenPrincipal,
+        orbitRequestId,
+        vote
+      );
+
+      console.log('[ProposalService] Vote result:', result);
+
+      // Backend returns Result<(), ProposalError>
+      if ('Ok' in result) {
+        return { success: true };
+      } else if ('Err' in result) {
+        const error = result.Err;
+        // Parse the error to provide better feedback
+        if (error.AlreadyVoted) {
+          return {
+            success: false,
+            error: 'You have already voted on this request',
+            code: 'ALREADY_VOTED'
+          };
+        } else if (error.NoVotingPower) {
+          return {
+            success: false,
+            error: 'You have no voting power for this token',
+            code: 'NO_VOTING_POWER'
+          };
+        } else if (error.Custom) {
+          return {
+            success: false,
+            error: error.Custom,
+            code: 'CUSTOM_ERROR'
+          };
+        }
+        return { success: false, error: JSON.stringify(error) };
+      }
       return { success: true };
     } catch (error) {
-      console.error('Failed to vote on orbit request via admin canister:', error);
-      // Parse the error message to provide better feedback
-      if (error.message && error.message.includes('AlreadyVoted')) {
-        return {
-          success: false,
-          error: 'You have already voted on this request',
-          code: 'ALREADY_VOTED'
-        };
-      }
+      console.error('Failed to vote on orbit request:', error);
       return { success: false, error: error.message || error.toString() };
     }
   }

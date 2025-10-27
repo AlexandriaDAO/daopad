@@ -1,5 +1,5 @@
 use crate::proposals::orbit_link::OrbitLinkProposal;
-// REMOVED: Unused imports - proposals stored in Orbit
+use crate::proposals::types::{VoteChoice, OrbitRequestProposal};
 use crate::storage::memory::{
     Memory, AGREEMENT_SNAPSHOTS_MEM_ID, KONG_LOCKER_PRINCIPALS_MEM_ID, MEMORY_MANAGER,
     ORBIT_STATIONS_MEM_ID, STATION_TO_TOKEN_MEM_ID,
@@ -7,7 +7,8 @@ use crate::storage::memory::{
 use crate::types::{AgreementSnapshot, StorablePrincipal, VotingThresholds};
 use ic_stable_structures::StableBTreeMap;
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
+use candid::Principal;
 
 thread_local! {
     pub static KONG_LOCKER_PRINCIPALS: RefCell<StableBTreeMap<StorablePrincipal, StorablePrincipal, Memory>> = RefCell::new(
@@ -51,17 +52,19 @@ thread_local! {
     // and we want flexibility during the DAO transition phase
     pub static VOTING_THRESHOLDS: RefCell<BTreeMap<StorablePrincipal, VotingThresholds>> = RefCell::new(BTreeMap::new());
 
-    // REMOVED: Treasury proposal storage
-    // All proposals (treasury and others) are stored in Orbit Station
-    // Backend only creates requests, admin canister tracks votes
-    //
-    // REMOVED: TREASURY_PROPOSALS - Orbit Station is source of truth
-    // REMOVED: PROPOSAL_VOTES - Admin canister handles all voting
+    // ========================================================================
+    // Orbit Request Vote Tracking (Minimal Storage)
+    // ========================================================================
 
-    // REMOVED: Orbit request proposal storage
-    // Proposals are stored in Orbit Station, not in backend
-    // Backend only creates requests, admin canister tracks votes
-    //
-    // REMOVED: ORBIT_REQUEST_PROPOSALS - Orbit Station is source of truth
-    // REMOVED: ORBIT_REQUEST_VOTES - Admin canister handles all voting
+    // Track votes for Orbit requests
+    // Key: (token_id, orbit_request_id) -> Map of voter -> VoteChoice
+    pub static ORBIT_REQUEST_VOTES: RefCell<HashMap<(Principal, String), HashMap<Principal, VoteChoice>>> = RefCell::new(HashMap::new());
+
+    // Track vote summaries for quick retrieval
+    // Key: (token_id, orbit_request_id) -> (yes_votes, no_votes, total_voting_power)
+    pub static ORBIT_REQUEST_VOTE_SUMMARIES: RefCell<HashMap<(Principal, String), (u64, u64, u64)>> = RefCell::new(HashMap::new());
+
+    // Track proposal metadata (minimal - just what we need)
+    // Key: (token_id, orbit_request_id) -> OrbitRequestProposal
+    pub static ORBIT_REQUEST_PROPOSALS: RefCell<HashMap<(Principal, String), OrbitRequestProposal>> = RefCell::new(HashMap::new());
 }

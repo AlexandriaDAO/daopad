@@ -1046,8 +1046,6 @@ service : () -> {
       Result,
     );
   // Ensure a proposal exists for an Orbit request
-  // NOTE: This is a NO-OP - we don't store proposals, Orbit does!
-  // The admin canister handles vote tracking when users vote
   ensure_proposal_for_request : (principal, text, OrbitRequestType) -> (
       Result_7,
     );
@@ -1137,11 +1135,9 @@ service : () -> {
   // - Address book entries (authorized recipients)
   // - Backend privilege summary
   get_treasury_management_data : (principal) -> (Result_29);
-  // NOTE: Treasury proposals are stored in Orbit Station, not backend
   get_treasury_proposal : (principal) -> (opt TreasuryProposal) query;
   get_user_pending_requests : (principal, principal) -> (Result_30);
   // Get the user's vote on an Orbit request (for UI display)
-  // NOTE: Vote tracking happens in admin canister, not backend
   get_user_vote_on_orbit_request : (principal, principal, text) -> (
       opt VoteChoice,
     ) query;
@@ -1150,7 +1146,6 @@ service : () -> {
       Result_32,
     ) query;
   // Check if a user has voted on an Orbit request proposal
-  // NOTE: Vote tracking happens in admin canister, not backend
   has_user_voted_on_orbit_request : (principal, principal, text) -> (
       bool,
     ) query;
@@ -1168,8 +1163,6 @@ service : () -> {
       Result_33,
     );
   list_orbit_canisters : (principal, ListExternalCanistersInput) -> (Result_34);
-  // List all active proposals for a token
-  // NOTE: Proposals are stored in Orbit Station, not backend
   list_orbit_request_proposals : (principal) -> (
       vec OrbitRequestProposal,
     ) query;
@@ -1242,12 +1235,10 @@ service : () -> {
   unregister_kong_locker : () -> (Result);
   validate_account_name : (principal, text) -> (Result_32);
   vote_on_orbit_proposal : (nat64, bool) -> (Result_41);
-  // Vote on ANY Orbit request (not just treasury transfers)
-  // NOTE: Voting is handled by admin canister, not backend
+  // Vote on ANY Orbit request
   vote_on_orbit_request : (principal, text, bool) -> (Result_42);
   // Vote on a treasury proposal
   // 
-  // When threshold is reached, executes immediately by approving the Orbit request.
-  // Follows the same pattern as orbit_link.rs vote_on_proposal.
+  // Voting is handled by admin canister.
   vote_on_treasury_proposal : (nat64, bool) -> (Result_42);
 }

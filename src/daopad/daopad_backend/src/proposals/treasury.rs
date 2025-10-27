@@ -103,11 +103,7 @@ pub async fn create_treasury_transfer_proposal(
     // 1. Validate transfer details
     validate_transfer_details(&transfer_details)?;
 
-    // REMOVED: Check for existing active proposal
-    // Proposals are stored in Orbit Station, not backend
-    // The backend just creates Orbit requests, admin canister tracks votes
-
-    // 3. Check minimum voting power requirement
+    // 2. Check minimum voting power requirement
     let proposer_power = get_user_voting_power_for_token(caller, token_canister_id)
         .await
         .map_err(|_| ProposalError::NoVotingPower)?;
@@ -128,13 +124,13 @@ pub async fn create_treasury_transfer_proposal(
             .ok_or(ProposalError::NoStationLinked(token_canister_id))
     })?;
 
-    // 5. Get total voting power (must be > 0 for proposal to be viable)
+    // 3. Get total voting power (must be > 0 for proposal to be viable)
     let total_voting_power = get_total_voting_power_for_token(token_canister_id).await?;
 
-    // 6. Create transfer request in Orbit (status: pending approval)
+    // 4. Create transfer request in Orbit (status: pending approval)
     let orbit_request_id = create_transfer_request_in_orbit(station_id, transfer_details).await?;
 
-    // 7. Create DAOPad proposal
+    // 5. Create DAOPad proposal
     let proposal_id = ProposalId::new();
     let now = time();
 
@@ -153,170 +149,24 @@ pub async fn create_treasury_transfer_proposal(
         status: ProposalStatus::Active,
     };
 
-    // REMOVED: Store proposal
-    // Proposals are stored in Orbit Station, not backend
-
     Ok(proposal_id)
 }
 
 /// Vote on a treasury proposal
 ///
-/// When threshold is reached, executes immediately by approving the Orbit request.
-/// Follows the same pattern as orbit_link.rs vote_on_proposal.
+/// Voting is handled by admin canister.
 #[update]
 pub async fn vote_on_treasury_proposal(
     _proposal_id: ProposalId,
     _vote: bool,
 ) -> Result<(), ProposalError> {
-    // Voting is handled by admin canister
-    // Frontend should call admin canister's vote_on_proposal directly
-    return Err(ProposalError::Custom(
+    Err(ProposalError::Custom(
         "Voting is handled by admin canister. Frontend should call admin directly.".to_string()
-    ));
+    ))
 }
 
-    // COMMENTED OUT: Old voting logic
-    // 1. Load proposal
-//     let (token_id, mut proposal) = TREASURY_PROPOSALS.with(|proposals| {
-//         proposals
-//             .borrow()
-//             .iter()
-//             .find(|(_, p)| p.id == proposal_id)
-//             .map(|(k, v)| (k.0, v.clone()))
-//             .ok_or(ProposalError::NotFound(proposal_id))
-//     })?;
-// 
-//     // 2. Guard: Active status
-//     if proposal.status != ProposalStatus::Active {
-//         return Err(ProposalError::NotActive);
-//     }
-// 
-//     // 3. Guard: Not expired
-//     let now = time();
-//     if now > proposal.expires_at {
-//         proposal.status = ProposalStatus::Expired;
-//         TREASURY_PROPOSALS.with(|proposals| {
-//             proposals
-//                 .borrow_mut()
-//                 .remove(&StorablePrincipal(token_id));
-//         });
-//         return Err(ProposalError::Expired);
-//     }
-// 
-//     // 4. Guard: Haven't voted
-//     let has_voted = PROPOSAL_VOTES.with(|votes| {
-//         votes
-//             .borrow()
-//             .contains_key(&(proposal_id, StorablePrincipal(voter)))
-//     });
-// 
-//     if has_voted {
-//         return Err(ProposalError::AlreadyVoted(proposal_id));
-//     }
-// 
-//     // 5. Get voting power
-//     let voting_power = get_user_voting_power_for_token(voter, token_id)
-//         .await
-//         .map_err(|_| ProposalError::NoVotingPower)?;
-// 
-//     if voting_power == 0 {
-//         return Err(ProposalError::NoVotingPower);
-//     }
-// 
-//     // 6. Record vote
-//     if vote {
-//         proposal.yes_votes += voting_power;
-//     } else {
-//         proposal.no_votes += voting_power;
-//     }
-//     proposal.voter_count += 1;
-// 
-//     PROPOSAL_VOTES.with(|votes| {
-//         votes.borrow_mut().insert(
-//             (proposal_id, StorablePrincipal(voter)),
-//             if vote {
-//                 VoteChoice::Yes
-//             } else {
-//                 VoteChoice::No
-//             },
-//         );
-//     });
-// 
-//     // 7. Check threshold and execute atomically
-//     let required_votes = (proposal.total_voting_power * DEFAULT_THRESHOLD_PERCENT as u64) / 100;
-// 
-//     if proposal.yes_votes > required_votes {
-//         // Execute immediately - approve the Orbit request
-//         let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-//             stations
-//                 .borrow()
-//                 .get(&StorablePrincipal(token_id))
-//                 .map(|s| s.0)
-//                 .ok_or(ProposalError::NoStationLinked(token_id))
-//         })?;
-// 
-//         approve_orbit_request(station_id, &proposal.orbit_request_id).await?;
-// 
-//         proposal.status = ProposalStatus::Executed;
-// 
-//         // Remove from active proposals
-//         TREASURY_PROPOSALS.with(|proposals| {
-//             proposals
-//                 .borrow_mut()
-//                 .remove(&StorablePrincipal(token_id));
-//         });
-// 
-//         ic_cdk::println!(
-//             "Proposal {:?} executed! {} yes votes > {} required",
-//             proposal_id,
-//             proposal.yes_votes,
-//             required_votes
-//         );
-//     } else if proposal.no_votes >= (proposal.total_voting_power - required_votes) {
-//         // Rejected - impossible to reach threshold even if all remaining votes are YES
-//         // When no_votes >= (total - required), max possible yes = total - no_votes <= required
-// 
-//         // Clean up Orbit request by rejecting it
-//         let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-//             stations
-//                 .borrow()
-//                 .get(&StorablePrincipal(token_id))
-//                 .map(|s| s.0)
-//                 .ok_or(ProposalError::NoStationLinked(token_id))
-//         })?;
-// 
-//         // Attempt to reject the Orbit request (log error but don't fail the vote)
-//         if let Err(e) = reject_orbit_request(station_id, &proposal.orbit_request_id).await {
-//             ic_cdk::println!("Warning: Failed to reject Orbit request: {:?}", e);
-//         }
-// 
-//         proposal.status = ProposalStatus::Rejected;
-// 
-//         TREASURY_PROPOSALS.with(|proposals| {
-//             proposals
-//                 .borrow_mut()
-//                 .remove(&StorablePrincipal(token_id));
-//         });
-// 
-//         ic_cdk::println!("Proposal {:?} rejected and Orbit request cleaned up", proposal_id);
-//     } else {
-//         // Still active - update vote counts
-//         TREASURY_PROPOSALS.with(|proposals| {
-//             proposals
-//                 .borrow_mut()
-//                 .insert(StorablePrincipal(token_id), proposal);
-//         });
-//     }
-// 
-//     Ok(())
-// }
-// 
-// /// Get active proposal for a token (if any)
-/// NOTE: Treasury proposals are stored in Orbit Station, not backend
 #[query]
 pub fn get_treasury_proposal(_token_id: Principal) -> Option<TreasuryProposal> {
-    // Treasury proposals stored in Orbit Station, not backend
-    // Frontend should query Orbit directly for treasury operations
     None
 }
 

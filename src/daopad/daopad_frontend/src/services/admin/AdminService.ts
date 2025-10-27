@@ -45,8 +45,6 @@ export class AdminService {
         await agent.fetchRootKey();
       }
 
-      // Import the admin candid interface
-      // TODO: This needs to be generated from admin canister's .did file
       const idlFactory = ({ IDL }: any) => {
         // Basic IDL for voting methods
         const VoteChoice = IDL.Variant({
