@@ -13,6 +13,7 @@ import { useVoting } from '../../hooks/useVoting';
 import RequestDomainSelector from './RequestDomainSelector';
 import { RequestList } from './requests/RequestList';
 import RequestFiltersCompact from './RequestFiltersCompact';
+import RequestStatusFilter from './RequestStatusFilter';
 import { REQUEST_DOMAIN_FILTERS, RequestDomains } from '../../utils/requestDomains';
 
 const UnifiedRequests = ({ tokenId, identity }) => {
@@ -38,7 +39,6 @@ const UnifiedRequests = ({ tokenId, identity }) => {
     page: 0,
     hasMore: false
   });
-  const [showOnlyPending, setShowOnlyPending] = useState(false);
   const [selectedRequests, setSelectedRequests] = useState([]);
 
   const { toast } = useToast();
@@ -52,8 +52,8 @@ const UnifiedRequests = ({ tokenId, identity }) => {
       tokenId,
       hasIdentity: !!identity,
       selectedDomain,
-      showOnlyPending,
-      filtersPage: filters.page
+      filtersPage: filters.page,
+      filterStatuses: filters.statuses
     });
 
     if (!tokenId) return; // ✅ Allow anonymous viewing - identity only required for voting
@@ -71,11 +71,8 @@ const UnifiedRequests = ({ tokenId, identity }) => {
       const domainFilter = REQUEST_DOMAIN_FILTERS[selectedDomain];
 
       // Prepare ListRequestsInput for backend
-      // If "Pending only" is enabled, filter to Created and Scheduled statuses
-      const activeStatuses = showOnlyPending
-        ? ['Created', 'Scheduled']
-        : filters.statuses;
-      const statusVariants = activeStatuses.map((status) => ({ [status]: null }));
+      // Use filters.statuses directly - user controls which statuses to show
+      const statusVariants = filters.statuses.map((status) => ({ [status]: null }));
 
       const listRequestsInput = {
         statuses: statusVariants.length > 0 ? [statusVariants] : [],
@@ -168,7 +165,7 @@ const UnifiedRequests = ({ tokenId, identity }) => {
     } finally {
       setLoading(false);
     }
-  }, [tokenId, identity, selectedDomain, filters, showOnlyPending]); // Removed toast from dependencies
+  }, [tokenId, identity, selectedDomain, filters]); // Removed toast from dependencies
 
   // ✅ UPDATED: Active voting replaces direct approval
   const handleVote = async (orbitRequestId, voteChoice) => {
@@ -250,7 +247,7 @@ const UnifiedRequests = ({ tokenId, identity }) => {
   useEffect(() => {
     console.log('[UnifiedRequests] Filters changed - fetching requests');
     fetchRequests();
-  }, [selectedDomain, filters.page, showOnlyPending, fetchRequests]);
+  }, [selectedDomain, filters.page, fetchRequests]);
 
   // Handle domain change
   const handleDomainChange = (domain) => {
@@ -275,6 +272,15 @@ const UnifiedRequests = ({ tokenId, identity }) => {
     }));
   };
 
+  // Handle status filter changes
+  const handleStatusChange = (newStatuses) => {
+    setFilters(prev => ({
+      ...prev,
+      statuses: newStatuses,
+      page: 0  // Reset pagination on filter change
+    }));
+  };
+
   // Handle pagination
   const handlePageChange = (newPage) => {
     setFilters(prev => ({ ...prev, page: newPage }));
@@ -291,6 +297,10 @@ const UnifiedRequests = ({ tokenId, identity }) => {
               onDomainChange={handleDomainChange}
               requestCounts={getRequestCountsByDomain(requests)}
             />
+            <RequestStatusFilter
+              selectedStatuses={filters.statuses}
+              onChange={handleStatusChange}
+            />
             <RequestFiltersCompact
               filters={filters}
               onFilterChange={handleFilterChange}
@@ -301,30 +311,44 @@ const UnifiedRequests = ({ tokenId, identity }) => {
           </div>
         </div>
 
-        {/* Stats bar */}
+        {/* Stats bar with quick filter tabs */}
         <div className="flex justify-between items-center py-2 border-y">
           <div className="flex gap-4 items-center">
-            {/* Stats */}
+            {/* Stats - contextual based on current filter */}
+            <div className="text-sm">
+              <span className="font-semibold">{requests.length}</span>
+              <span className="text-muted-foreground"> showing</span>
+            </div>
             <div className="text-sm">
               <span className="font-semibold">{pagination.total}</span>
-              <span className="text-muted-foreground"> total</span>
-            </div>
-            <div className="text-sm">
-              <span className="font-semibold text-yellow-600">
-                {requests.filter(r => r.status === 'Created' || r.status === 'Scheduled').length}
-              </span>
-              <span className="text-muted-foreground"> pending</span>
+              <span className="text-muted-foreground"> total in filter</span>
             </div>
 
-            {/* Pending only toggle */}
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showOnlyPending}
-                onChange={(e) => setShowOnlyPending(e.target.checked)}
-              />
-              <span className="text-sm">Pending only</span>
-            </label>
+            {/* Quick filter tabs with active state */}
+            <div className="flex gap-1 ml-4 border rounded-md p-1">
+              <Button
+                variant={
+                  JSON.stringify(filters.statuses.sort()) === JSON.stringify(['Created', 'Scheduled'].sort())
+                    ? 'default'
+                    : 'ghost'
+                }
+                size="sm"
+                onClick={() => handleStatusChange(['Created', 'Scheduled'])}
+              >
+                Pending Only
+              </Button>
+              <Button
+                variant={
+                  JSON.stringify(filters.statuses.sort()) === JSON.stringify(['Cancelled', 'Completed', 'Failed', 'Rejected'].sort())
+                    ? 'default'
+                    : 'ghost'
+                }
+                size="sm"
+                onClick={() => handleStatusChange(['Completed', 'Rejected', 'Cancelled', 'Failed'])}
+              >
+                Resolved Only
+              </Button>
+            </div>
           </div>
         </div>
 
