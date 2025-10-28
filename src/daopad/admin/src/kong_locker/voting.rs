@@ -5,6 +5,10 @@ use ic_cdk::call;
 const KONG_LOCKER_FACTORY_ID: &str = "eazgb-giaaa-aaaap-qqc2q-cai";
 const KONGSWAP_CANISTER_ID: &str = "2ipq2-uqaaa-aaaar-qailq-cai";
 
+// Maximum lock canisters to process per VP calculation
+// Prevents instruction limit overflow on large user bases
+const MAX_LOCK_CANISTERS: usize = 100;
+
 // UserBalancesReply type (copied from backend for Kong Locker queries)
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub enum UserBalancesReply {
@@ -134,7 +138,8 @@ pub async fn calculate_total_voting_power_for_token(
     let kongswap_id = Principal::from_text(KONGSWAP_CANISTER_ID)
         .map_err(|e| format!("Invalid KongSwap ID: {}", e))?;
 
-    for (_user, lock_canister) in lock_canisters {
+    // Limit iteration to prevent instruction overflow
+    for (_user, lock_canister) in lock_canisters.iter().take(MAX_LOCK_CANISTERS) {
         // Query KongSwap for this lock canister's LP positions
         let user_balances_result: Result<
             (Result<Vec<UserBalancesReply>, String>,),
@@ -185,6 +190,14 @@ pub async fn calculate_total_voting_power_for_token(
                 vp_to_add, lock_canister
             );
         }
+    }
+
+    // Warn if we hit the canister limit
+    if total_lock_canisters > MAX_LOCK_CANISTERS {
+        ic_cdk::println!(
+            "WARNING: Only calculated VP for first {} of {} lock canisters. Total VP may be underestimated.",
+            MAX_LOCK_CANISTERS, total_lock_canisters
+        );
     }
 
     // Check if too many calls failed (>20% failure rate)
