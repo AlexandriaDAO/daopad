@@ -6,6 +6,7 @@ import { getTokenService } from '../services/backend';
 import DaoLayout from '../components/dao/DaoLayout';
 import { FallbackLoader } from '../components/ui/fallback-loader';
 import { useVoting } from '../hooks/useVoting';
+import { useAuth } from '../providers/AuthProvider/IIProvider';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -15,6 +16,7 @@ import { Button } from '../components/ui/button';
 export default function DaoRoute() {
   const { stationId } = useParams();  // Changed from tokenId to stationId
   const { identity, isAuthenticated } = useSelector((state: any) => state.auth);
+  const { login } = useAuth();
   const [token, setToken] = useState<any>(null);
   const [tokenId, setTokenId] = useState<string | null>(null);  // Store token ID internally
   const [loading, setLoading] = useState(true);
@@ -283,11 +285,10 @@ export default function DaoRoute() {
                   You have sufficient voting power to link this token to an Orbit Station and enable DAO governance.
                 </p>
                 <button
-                  onClick={() => setShowLinkDialog(true)}
-                  disabled={!isAuthenticated}
-                  className="px-6 py-3 bg-executive-gold text-executive-charcoal hover:bg-executive-goldLight rounded font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={isAuthenticated ? () => setShowLinkDialog(true) : login}
+                  className="px-6 py-3 bg-executive-gold text-executive-charcoal hover:bg-executive-goldLight rounded font-semibold transition-colors"
                 >
-                  Link Orbit Station
+                  {isAuthenticated ? 'Link Orbit Station' : 'Login to Link Station'}
                 </button>
               </>
             ) : (
