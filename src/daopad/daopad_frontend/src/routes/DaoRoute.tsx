@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Outlet, Navigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, Outlet, Navigate, useNavigate } from 'react-router-dom';
 import { Principal } from '@dfinity/principal';
 import { getTokenService } from '../services/backend';
 import { UtilityService } from '../services/backend/utility/UtilityService';
@@ -16,6 +16,7 @@ import { Button } from '../components/ui/button';
 export default function DaoRoute() {
   const { stationId } = useParams();  // Changed from tokenId to stationId
   const { identity, isAuthenticated, login } = useAuth();
+  const navigate = useNavigate();
   const [token, setToken] = useState<any>(null);
   const [tokenId, setTokenId] = useState<string | null>(null);  // Store token ID internally
   const [loading, setLoading] = useState(true);
@@ -27,18 +28,38 @@ export default function DaoRoute() {
   const [linkError, setLinkError] = useState<string>('');
   const [linking, setLinking] = useState<boolean>(false);
 
+  // Loading guard refs to prevent redundant fetches
+  const loadedStationRef = useRef<string | null>(null);
+  const isMountedRef = useRef(false);
+
   // Fetch voting power using existing hook (once we have token ID)
   const { userVotingPower, loadingVP, fetchVotingPower } = useVoting(tokenId);
 
   const MINIMUM_VP_FOR_LINKING = 10000;
 
   useEffect(() => {
+    // Prevent double-fetch on mount (React 18 StrictMode)
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      return;
+    }
+
     async function loadStation() {
       if (!stationId) {
         setError('No station ID provided');
         setLoading(false);
         return;
       }
+
+      // Skip if we already loaded this station
+      if (loadedStationRef.current === stationId && token) {
+        console.log('[DaoRoute] Data already loaded for:', stationId);
+        return;
+      }
+
+      // Mark as loading
+      setLoading(true);
+      loadedStationRef.current = stationId;
 
       try {
         const tokenService = getTokenService(identity);
@@ -73,7 +94,7 @@ export default function DaoRoute() {
             // Token has a station, redirect to it
             const foundStationId = stationForTokenResult.data.toString();
             console.log('[DaoRoute] Found station for token, redirecting:', foundStationId);
-            window.location.href = `/${foundStationId}`;
+            navigate(`/${foundStationId}`, { replace: true });
             return;
           }
 
@@ -171,8 +192,11 @@ export default function DaoRoute() {
           });
         }
 
+        console.log('[DaoRoute] Successfully loaded:', stationId);
         setLoading(false);
       } catch (e) {
+        // Clear loaded reference on error
+        loadedStationRef.current = null;
         console.error('[DaoRoute] Error loading station:', e);
         setError('Failed to load station data');
         setLoading(false);
@@ -220,7 +244,7 @@ export default function DaoRoute() {
         setLinkError('');
 
         // Redirect to station route
-        window.location.href = `/${linkStationId.trim()}`;
+        navigate(`/${linkStationId.trim()}`, { replace: true });
       } else {
         setLinkError(result.error || 'Failed to create station link proposal');
       }
@@ -292,12 +316,14 @@ export default function DaoRoute() {
                   To link an Orbit Station, you need at least {MINIMUM_VP_FOR_LINKING.toLocaleString()} VP.
                   Increase your voting power by locking more LP tokens in Kong Locker.
                 </p>
-                <button
-                  onClick={() => window.location.href = 'https://konglocker.com'}
-                  className="px-6 py-2 bg-executive-gold/20 text-executive-gold border border-executive-gold/30 hover:bg-executive-gold/30 rounded font-semibold"
+                <a
+                  href="https://konglocker.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block px-6 py-2 bg-executive-gold/20 text-executive-gold border border-executive-gold/30 hover:bg-executive-gold/30 rounded font-semibold"
                 >
                   Go to Kong Locker
-                </button>
+                </a>
               </>
             )}
 
@@ -308,7 +334,7 @@ export default function DaoRoute() {
             </div>
 
             <button
-              onClick={() => window.location.href = '/app'}
+              onClick={() => navigate('/app')}
               className="text-executive-lightGray/60 hover:text-executive-gold underline text-sm"
             >
               Return to Dashboard
