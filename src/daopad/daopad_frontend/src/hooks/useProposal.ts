@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../providers/AuthProvider/IIProvider';
-import { getProposalService } from '../services/backend';
+import { getProposalService, getAdminService } from '../services/backend';
 import { Principal } from '@dfinity/principal';
 
 // Helper: Map operation type string to enum variant
@@ -80,11 +80,11 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
     if (!identity || !tokenId || !orbitRequestId) return;
 
     try {
-      const proposalService = getProposalService(identity);
-      const actor = await proposalService.getActor();
+      const adminService = getAdminService(identity);
+      const actor = await adminService.getActor();
 
-      // Call new backend method
-      const voted = await actor.has_user_voted_on_orbit_request(
+      // Call admin canister methods (not backend!)
+      const voted = await actor.has_user_voted(
         identity.getPrincipal(),
         Principal.fromText(tokenId),
         orbitRequestId
@@ -94,7 +94,7 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
 
       // Get actual vote if voted
       if (voted) {
-        const vote = await actor.get_user_vote_on_orbit_request(
+        const vote = await actor.get_user_vote(
           identity.getPrincipal(),
           Principal.fromText(tokenId),
           orbitRequestId
@@ -117,21 +117,18 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
     setLoading(true);
     setError(null);
     try {
-      const proposalService = getProposalService(identity || null);
-      const result = await proposalService.getOrbitRequestProposal(
-        Principal.fromText(tokenId),
-        orbitRequestId
-      );
+      const adminService = getAdminService(identity || null);
+      const proposalData = await adminService.getProposal(tokenId, orbitRequestId);
 
-      if (result.success && result.data) {
+      if (proposalData) {
         // Convert BigInt values to numbers for display
         const proposal = {
-          ...result.data,
-          yes_votes: typeof result.data.yes_votes === 'bigint' ? Number(result.data.yes_votes) : result.data.yes_votes,
-          no_votes: typeof result.data.no_votes === 'bigint' ? Number(result.data.no_votes) : result.data.no_votes,
-          total_voting_power: typeof result.data.total_voting_power === 'bigint' ? Number(result.data.total_voting_power) : result.data.total_voting_power,
-          created_at: typeof result.data.created_at === 'bigint' ? Number(result.data.created_at) : result.data.created_at,
-          expires_at: typeof result.data.expires_at === 'bigint' ? Number(result.data.expires_at) : result.data.expires_at,
+          ...proposalData,
+          yes_votes: typeof proposalData.yes_votes === 'bigint' ? Number(proposalData.yes_votes) : proposalData.yes_votes,
+          no_votes: typeof proposalData.no_votes === 'bigint' ? Number(proposalData.no_votes) : proposalData.no_votes,
+          total_voting_power: typeof proposalData.total_voting_power === 'bigint' ? Number(proposalData.total_voting_power) : proposalData.total_voting_power,
+          created_at: typeof proposalData.created_at === 'bigint' ? Number(proposalData.created_at) : proposalData.created_at,
+          expires_at: typeof proposalData.expires_at === 'bigint' ? Number(proposalData.expires_at) : proposalData.expires_at,
         };
         setProposal(proposal);
 
@@ -169,14 +166,13 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
         operationType
       });
 
-      const proposalService = getProposalService(identity);
-      const actor = await proposalService.getActor();
+      const adminService = getAdminService(identity);
 
       // Pass operation type as STRING, not object
       console.log('[useProposal] Creating proposal for operation:', operationType);
 
-      const result = await actor.ensure_proposal_for_request(
-        Principal.fromText(tokenId),
+      const result = await adminService.ensureProposalForRequest(
+        tokenId,
         orbitRequestId,
         operationType  // ✅ Pass string directly: "EditAccount", "Transfer", etc.
       );
