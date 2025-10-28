@@ -73,7 +73,7 @@ export class UtilityService extends BackendServiceBase {
   static async getTokenMetadata(tokenCanisterId) {
     try {
       console.log('Fetching metadata for:', tokenCanisterId);
-      const agent = new HttpAgent({ host: 'https://ic0.app' });
+      const agent = new HttpAgent({ host: 'https://icp0.io' });
 
       // Always convert to string first, then to Principal
       let canisterIdString;
@@ -130,15 +130,6 @@ export class UtilityService extends BackendServiceBase {
       return {
         success: false,
         error: error.message,
-        data: {
-          name: 'Unknown Token',
-          symbol: 'N/A',
-          description: '',
-          logo: '',
-          decimals: '8',
-          fee: '0',
-          raw: {},
-        },
       };
     }
   }
