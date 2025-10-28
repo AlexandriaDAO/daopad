@@ -3,6 +3,13 @@ use crate::types::StorablePrincipal;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
+// Cache entry for total voting power with timestamp
+#[derive(Clone, Debug)]
+pub struct VotingPowerCache {
+    pub total_vp: u64,
+    pub timestamp: u64,
+}
+
 thread_local! {
     // ====================================================================
     // Unified Proposal Storage - ALL Orbit Operations
@@ -22,5 +29,13 @@ thread_local! {
     pub static UNIFIED_PROPOSAL_VOTES: RefCell<BTreeMap<
         (ProposalId, StorablePrincipal),
         VoteChoice
+    >> = RefCell::new(BTreeMap::new());
+
+    // Total voting power cache with TTL (1 hour = 3,600,000,000,000 nanoseconds)
+    // Key: token_canister_id
+    // Reduces expensive inter-canister calls by caching total VP
+    pub static TOTAL_VP_CACHE: RefCell<BTreeMap<
+        StorablePrincipal,
+        VotingPowerCache
     >> = RefCell::new(BTreeMap::new());
 }

@@ -284,9 +284,16 @@ pub async fn ensure_proposal_for_request(
     let now = time();
 
     // Calculate actual total voting power from Kong Locker
-    let total_voting_power = calculate_total_voting_power_for_token(token_id)
-        .await
-        .unwrap_or(1_000_000u64); // Fallback to 1M if calculation fails
+    let total_voting_power = match calculate_total_voting_power_for_token(token_id).await {
+        Ok(vp) => vp,
+        Err(e) => {
+            ic_cdk::println!(
+                "WARNING: Failed to calculate total VP for token {}: {}. Using fallback value of 1M.",
+                token_id, e
+            );
+            1_000_000u64 // Fallback to 1M if calculation fails
+        }
+    };
 
     // ATOMIC: Check-and-insert within single borrow scope
     UNIFIED_PROPOSALS.with(|proposals| {

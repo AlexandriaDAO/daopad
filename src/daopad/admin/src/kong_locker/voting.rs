@@ -80,10 +80,36 @@ pub async fn get_user_voting_power_for_token(
 }
 
 /// Calculate total voting power for a token across ALL Kong Locker users
-/// Queries Kong Locker factory to get all lock canisters, then sums their voting power
+/// Uses caching with 1-hour TTL to reduce cycles cost and latency
 pub async fn calculate_total_voting_power_for_token(
     token_canister_id: Principal
 ) -> Result<u64, String> {
+    use crate::storage::state::{TOTAL_VP_CACHE, VotingPowerCache};
+    use crate::types::StorablePrincipal;
+    use ic_cdk::api::time;
+
+    const CACHE_TTL_NANOS: u64 = 3_600_000_000_000; // 1 hour
+
+    let now = time();
+    let token_key = StorablePrincipal(token_canister_id);
+
+    // Check cache first
+    let cached = TOTAL_VP_CACHE.with(|cache| {
+        cache.borrow().get(&token_key).cloned()
+    });
+
+    if let Some(cache_entry) = cached {
+        if now.saturating_sub(cache_entry.timestamp) < CACHE_TTL_NANOS {
+            ic_cdk::println!("Using cached total VP for token {}: {}", token_canister_id, cache_entry.total_vp);
+            return Ok(cache_entry.total_vp);
+        } else {
+            ic_cdk::println!("Cache expired for token {}, recalculating...", token_canister_id);
+        }
+    }
+
+    // Cache miss or expired - calculate fresh value
+    ic_cdk::println!("Calculating total VP for token {}...", token_canister_id);
+
     // Step 1: Query Kong Locker factory for ALL lock canisters
     let kong_locker_factory = Principal::from_text("eazgb-giaaa-aaaap-qqc2q-cai")
         .map_err(|e| format!("Invalid Kong Locker factory ID: {}", e))?;
@@ -95,8 +121,12 @@ pub async fn calculate_total_voting_power_for_token(
         .map_err(|e| format!("Failed to query Kong Locker factory: {:?}", e))?
         .0;
 
+    let total_lock_canisters = lock_canisters.len();
+    ic_cdk::println!("Found {} lock canisters", total_lock_canisters);
+
     // Step 2: Sum voting power across all lock canisters
     let mut total_power = 0u64;
+    let mut failed_calls = 0usize;
     let kongswap_id = Principal::from_text("2ipq2-uqaaa-aaaar-qailq-cai")
         .map_err(|e| format!("Invalid KongSwap ID: {}", e))?;
 
@@ -112,10 +142,19 @@ pub async fn calculate_total_voting_power_for_token(
         )
         .await;
 
-        // If call fails or returns error, skip this user
+        // Handle failed calls with logging
         let user_balances = match user_balances_result {
             Ok((Ok(balances),)) => balances,
-            _ => continue,
+            Ok((Err(e),)) => {
+                failed_calls += 1;
+                ic_cdk::println!("Warning: KongSwap returned error for lock canister {}: {}", lock_canister, e);
+                continue;
+            }
+            Err((code, msg)) => {
+                failed_calls += 1;
+                ic_cdk::println!("Warning: Failed to query KongSwap for lock canister {}: {:?} - {}", lock_canister, code, msg);
+                continue;
+            }
         };
 
         // Calculate voting power for this specific token
@@ -132,9 +171,38 @@ pub async fn calculate_total_voting_power_for_token(
             })
             .sum();
 
-        total_power += (user_vp * 100.0) as u64;
+        // Use saturating_add to prevent overflow and round for precision
+        total_power = total_power.saturating_add((user_vp * 100.0).round() as u64);
     }
 
-    // Return total even if zero - proposals with 0 VP will fail voting naturally
+    // Check if too many calls failed (>20% failure rate)
+    if total_lock_canisters > 0 {
+        let failure_rate = (failed_calls as f64 / total_lock_canisters as f64) * 100.0;
+        if failure_rate > 20.0 {
+            let error_msg = format!(
+                "Too many failed calls: {}/{} ({:.1}% failure rate). Total VP calculation may be inaccurate.",
+                failed_calls, total_lock_canisters, failure_rate
+            );
+            ic_cdk::println!("ERROR: {}", error_msg);
+            return Err(error_msg);
+        } else if failed_calls > 0 {
+            ic_cdk::println!(
+                "Warning: {}/{} calls failed ({:.1}% failure rate), but within acceptable threshold",
+                failed_calls, total_lock_canisters, failure_rate
+            );
+        }
+    }
+
+    ic_cdk::println!("Calculated total VP: {} (from {} lock canisters, {} failures)",
+        total_power, total_lock_canisters, failed_calls);
+
+    // Cache the result
+    TOTAL_VP_CACHE.with(|cache| {
+        cache.borrow_mut().insert(token_key, VotingPowerCache {
+            total_vp: total_power,
+            timestamp: now,
+        });
+    });
+
     Ok(total_power)
 }
