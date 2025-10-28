@@ -43,10 +43,13 @@ const TreasuryShowcase: React.FC<TreasuryShowcaseProps> = ({ onSelectStation }) 
         />
       </CardHeader>
       <CardContent>
-        {isLoading && !treasuries ? (
+        {isLoading && (!treasuries || treasuries.length === 0) ? (
           <div className="space-y-2">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-12 bg-executive-darkGray/30 rounded animate-pulse" />
+            <p className="text-executive-lightGray/60 text-center py-2 text-sm">
+              Loading token treasuries...
+            </p>
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={i} className="h-16 bg-executive-darkGray/30 rounded animate-pulse" />
             ))}
           </div>
         ) : hasPartialData && (!treasuries || treasuries.length === 0) ? (
@@ -64,12 +67,12 @@ const TreasuryShowcase: React.FC<TreasuryShowcaseProps> = ({ onSelectStation }) 
                           hover:bg-executive-darkGray/50 transition-colors
                           cursor-pointer"
                 data-testid="treasury-item"
-                onClick={() => hasStation && onSelectStation?.(stationId)}
+                onClick={() => onSelectStation?.(hasStation ? stationId : tokenId)}
                 role="button"
                 tabIndex={0}
                 onKeyPress={(e) => {
-                  if ((e.key === 'Enter' || e.key === ' ') && hasStation) {
-                    onSelectStation?.(stationId);
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    onSelectStation?.(hasStation ? stationId : tokenId);
                   }
                 }}
               >
