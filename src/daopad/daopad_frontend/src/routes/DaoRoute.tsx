@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Outlet, Navigate } from 'react-router-dom';
 import { Principal } from '@dfinity/principal';
 import { getTokenService } from '../services/backend';
+import { UtilityService } from '../services/backend/utility/UtilityService';
 import DaoLayout from '../components/dao/DaoLayout';
 import { FallbackLoader } from '../components/ui/fallback-loader';
 import { useVoting } from '../hooks/useVoting';
@@ -81,12 +82,10 @@ export default function DaoRoute() {
           setTokenId(stationId);  // Store as token ID
 
           // Fetch token metadata to get real name and symbol
-          const metadataResult = isAuthenticated && identity
-            ? await tokenService.getTokenMetadata(stationPrincipal).catch(e => {
-                console.warn('[DaoRoute] Metadata fetch failed:', e);
-                return { success: false, error: e };
-              })
-            : { success: false };
+          const metadataResult = await UtilityService.getTokenMetadata(stationPrincipal).catch(e => {
+            console.warn('[DaoRoute] Metadata fetch failed:', e);
+            return { success: false, error: e };
+          });
 
           // Use real metadata if available, otherwise fallback to ID
           if (metadataResult.success && metadataResult.data) {
@@ -121,13 +120,11 @@ export default function DaoRoute() {
         // 2. PARALLEL DATA FETCHING (critical performance optimization)
         // Fetch all data simultaneously now that we have token ID
         const [metadataResult, overviewResult] = await Promise.all([
-          // Token metadata (only if authenticated)
-          isAuthenticated && identity
-            ? tokenService.getTokenMetadata(tokenPrincipal).catch(e => {
-                console.warn('[DaoRoute] Metadata fetch failed:', e);
-                return { success: false, error: e };
-              })
-            : Promise.resolve({ success: false }),
+          // Token metadata (public data)
+          UtilityService.getTokenMetadata(tokenPrincipal).catch(e => {
+            console.warn('[DaoRoute] Metadata fetch failed:', e);
+            return { success: false, error: e };
+          }),
 
           // Overview stats (works for anonymous)
           tokenService.getDaoOverview(tokenPrincipal).catch(e => {
