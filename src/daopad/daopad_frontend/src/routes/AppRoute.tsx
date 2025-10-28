@@ -15,7 +15,6 @@ import { getKongLockerService } from '../services/backend';
 
 // Components
 import KongLockerSetup from '../components/KongLockerSetup';
-import TokenTabs from '../components/TokenTabs';
 import PublicStatsStrip from '../components/PublicStatsStrip';
 import PublicActivityFeed from '../components/PublicActivityFeed';
 import TreasuryShowcase from '../components/TreasuryShowcase';
@@ -56,22 +55,23 @@ function AppRoute() {
     dispatch(setAuthInitialized(true));
   }, [identity, dispatch]);
 
-  // Load public data for logged-out users with proper cleanup and visibility handling
+  // Load public data for all users with proper cleanup and visibility handling
   useEffect(() => {
-    const startPolling = () => {
-      if (!isAuthenticated) {
-        // Always dispatch on initial load for anonymous users
-        dispatch(fetchPublicDashboard());
+    // Always fetch public data, but poll less frequently if authenticated
+    const pollInterval = isAuthenticated ? 60000 : 30000; // 60s for auth, 30s for anon
 
-        // Only start polling interval if document is visible
-        // This prevents unnecessary API calls when tab is in background
-        if (!document.hidden) {
-          intervalRef.current = setInterval(() => {
-            if (!document.hidden) {
-              dispatch(fetchPublicDashboard());
-            }
-          }, 30000);
-        }
+    const startPolling = () => {
+      // Always dispatch on initial load
+      dispatch(fetchPublicDashboard());
+
+      // Only start polling interval if document is visible
+      // This prevents unnecessary API calls when tab is in background
+      if (!document.hidden) {
+        intervalRef.current = setInterval(() => {
+          if (!document.hidden) {
+            dispatch(fetchPublicDashboard());
+          }
+        }, pollInterval);
       }
     };
 
@@ -86,18 +86,14 @@ function AppRoute() {
     const handleVisibilityChange = () => {
       if (document.hidden) {
         stopPolling();
-      } else if (!isAuthenticated) {
+      } else {
         // Resume polling when tab becomes visible
         stopPolling(); // Clear any existing interval first
         startPolling();
       }
     };
 
-    if (!isAuthenticated) {
-      startPolling();
-    } else {
-      stopPolling();
-    }
+    startPolling();
 
     // Add visibility change listener
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -244,20 +240,16 @@ function AppRoute() {
       </header>
 
     <main className="container mx-auto px-4 py-8">
-      {isAuthenticated ? (
-        // AUTHENTICATED USER PATH
-        shouldShowKongLockerSetup ? (
-          <div className="max-w-2xl mx-auto">
-            <KongLockerSetup
-              identity={identity}
-              onComplete={handleKongLockerComplete}
-            />
-          </div>
-        ) : (
-          <TokenTabs identity={identity} />
-        )
+      {isAuthenticated && shouldShowKongLockerSetup ? (
+        // ONLY special case: Kong Locker setup for new users
+        <div className="max-w-2xl mx-auto">
+          <KongLockerSetup
+            identity={identity}
+            onComplete={handleKongLockerComplete}
+          />
+        </div>
       ) : (
-        // ANONYMOUS USER PATH - Show public dashboard
+        // DEFAULT VIEW - Same for everyone (logged in or not)
         <div className="space-y-8">
           {/* Stats overview */}
           <section>
@@ -269,7 +261,7 @@ function AppRoute() {
             <PublicActivityFeed />
           </section>
 
-          {/* Treasury showcase */}
+          {/* Treasury showcase - shows ALL treasuries */}
           <section>
             <TreasuryShowcase onSelectStation={(stationId) => navigate(`/${stationId}`)} />
           </section>
