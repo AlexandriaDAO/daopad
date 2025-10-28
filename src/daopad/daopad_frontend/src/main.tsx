@@ -4,6 +4,7 @@ import { Provider } from 'react-redux';
 import App from './App';
 import { store } from './store/store';
 import IIProvider from './providers/AuthProvider/IIProvider';
+import ActorProvider from './providers/ActorProvider';
 import ErrorBoundary from './components/errors/ErrorBoundary';
 import './globals.css';
 
@@ -35,6 +36,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <ErrorBoundary level="app">
       <Provider store={store}>
         <IIProvider>
+          <ActorProvider />
           <App />
         </IIProvider>
       </Provider>
