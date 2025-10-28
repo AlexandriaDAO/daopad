@@ -20,8 +20,9 @@ const TreasuryShowcase: React.FC<TreasuryShowcaseProps> = ({ onSelectStation }) 
 
     const normalizedSearch = searchTerm.trim().toLowerCase();
     const filtered = normalizedSearch
-      ? treasuries.filter(({ tokenId }) =>
-          (tokenId || '').toLowerCase().includes(normalizedSearch))
+      ? treasuries.filter(({ tokenId, tokenSymbol }) =>
+          (tokenId || '').toLowerCase().includes(normalizedSearch) ||
+          (tokenSymbol || '').toLowerCase().includes(normalizedSearch))
       : treasuries;
 
     return filtered.slice(0, 10);
@@ -36,7 +37,7 @@ const TreasuryShowcase: React.FC<TreasuryShowcaseProps> = ({ onSelectStation }) 
         <Input
           className="mt-2 bg-executive-darkGray border-executive-gold/30
                      text-executive-lightGray placeholder:text-executive-lightGray/40"
-          placeholder="Search by token ID..."
+          placeholder="Search by token name or ID..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -54,7 +55,7 @@ const TreasuryShowcase: React.FC<TreasuryShowcaseProps> = ({ onSelectStation }) 
           </p>
         ) : filteredTreasuries.length > 0 ? (
           <div className="space-y-2 max-h-64 overflow-y-auto">
-            {filteredTreasuries.map(({ tokenId, stationId, hasStation }) => (
+            {filteredTreasuries.map(({ tokenId, tokenSymbol, stationId, hasStation }) => (
               <div
                 key={tokenId}
                 className="flex justify-between items-center p-2
@@ -73,8 +74,8 @@ const TreasuryShowcase: React.FC<TreasuryShowcaseProps> = ({ onSelectStation }) 
                 }}
               >
                 <div className="flex flex-col">
-                  <span className="text-xs font-mono text-executive-lightGray">
-                    Token: {tokenId.slice(0, 8)}...{tokenId.slice(-4)}
+                  <span className="text-sm font-semibold text-executive-lightGray">
+                    {tokenSymbol || `${tokenId.slice(0, 8)}...${tokenId.slice(-4)}`}
                   </span>
                   {hasStation ? (
                     <span className="text-xs text-executive-lightGray/40">

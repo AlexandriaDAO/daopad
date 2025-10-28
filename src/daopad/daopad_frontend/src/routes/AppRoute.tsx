@@ -16,7 +16,6 @@ import { getKongLockerService } from '../services/backend';
 // Components
 import KongLockerSetup from '../components/KongLockerSetup';
 import PublicStatsStrip from '../components/PublicStatsStrip';
-import PublicActivityFeed from '../components/PublicActivityFeed';
 import TreasuryShowcase from '../components/TreasuryShowcase';
 import RouteErrorBoundary from '../components/errors/RouteErrorBoundary';
 import { Button } from '@/components/ui/button';
@@ -264,11 +263,6 @@ function AppRoute() {
           {/* Stats overview */}
           <section>
             <PublicStatsStrip />
-          </section>
-
-          {/* Active proposals feed */}
-          <section>
-            <PublicActivityFeed />
           </section>
 
           {/* Treasury showcase - shows ALL treasuries */}

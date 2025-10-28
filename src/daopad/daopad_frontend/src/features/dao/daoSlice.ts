@@ -11,12 +11,11 @@ export const fetchPublicDashboard = createAsyncThunk(
       const tokenService = getTokenService(null);
       const kongService = getKongLockerService(null);
 
-      // Fetch available data (getSystemStats doesn't exist in backend)
-      const [proposals, stations, lockedTokens, registrations] =
+      // Fetch available data (no proposals needed for homepage)
+      const [stations, lockedTokens, registrations] =
         await Promise.all([
-          proposalService.listActive(),
           tokenService.listAllStations(),
-          kongService.listAllLockedTokens(), // NEW: Get all tokens with liquidity
+          kongService.listAllLockedTokens(), // Get all tokens with liquidity
           kongService.listAllRegistrations()
         ]);
 
@@ -43,6 +42,16 @@ export const fetchPublicDashboard = createAsyncThunk(
         return acc;
       }, {});
 
+      // Create token symbol map from Kong Locker data
+      const tokenSymbolMap = {};
+      if (lockedTokens.success && lockedTokens.data) {
+        lockedTokens.data.forEach(tokenInfo => {
+          if (tokenInfo.canister_id && tokenInfo.symbol) {
+            tokenSymbolMap[tokenInfo.canister_id] = tokenInfo.symbol;
+          }
+        });
+      }
+
       // Get all unique tokens (both with and without stations)
       const allTokens = new Set();
 
@@ -57,9 +66,10 @@ export const fetchPublicDashboard = createAsyncThunk(
         });
       }
 
-      // Create treasury list with status
+      // Create treasury list with status and token symbols
       const treasuries = Array.from(allTokens).map(tokenId => ({
         tokenId,
+        tokenSymbol: tokenSymbolMap[tokenId] || null,
         stationId: stationMap[tokenId] || null,
         hasStation: !!stationMap[tokenId]
       }));
@@ -77,16 +87,15 @@ export const fetchPublicDashboard = createAsyncThunk(
       return {
         stats: {
           participants: registrations.success ? registrations.data.length : 0,
-          activeProposals: proposals.success ?
-            proposals.data.filter(p => p.status?.Active !== undefined).length : 0,
+          activeProposals: 0,  // Removed from homepage
           treasuries: treasuries.length,
           registeredVoters: registrations.success ? registrations.data.length : 0,
           totalValueLocked: 0  // Would need KongSwap queries
         },
-        proposals: proposals.success ? proposals.data : [],
+        proposals: [],  // Removed from homepage
         treasuries,
         stationMappings,
-        hasErrors: !proposals.success || !stations.success || !lockedTokens.success || !registrations.success
+        hasErrors: !stations.success || !lockedTokens.success || !registrations.success
       };
     } catch (error) {
       return rejectWithValue(error.message);
