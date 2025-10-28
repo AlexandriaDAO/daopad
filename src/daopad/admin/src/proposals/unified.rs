@@ -1,7 +1,7 @@
 // Unified voting system for ALL Orbit operations
 // Admin canister version - handles voting and approval only
 
-use crate::kong_locker::voting::get_user_voting_power_for_token;
+use crate::kong_locker::voting::{get_user_voting_power_for_token, calculate_total_voting_power_for_token};
 use crate::storage::state::{
     UNIFIED_PROPOSALS, UNIFIED_PROPOSAL_VOTES,
 };
@@ -12,6 +12,9 @@ use crate::proposals::types::{
 use candid::Principal;
 use ic_cdk::api::time;
 use ic_cdk::{query, update};
+
+// Backend canister ID - only this canister can create proposals
+const BACKEND_CANISTER_ID: &str = "lwsav-iiaaa-aaaap-qp2qq-cai";
 
 /// Single voting endpoint for ALL Orbit operations
 #[update]
@@ -281,12 +284,32 @@ pub async fn ensure_proposal_for_request(
     request_type_str: String,
 ) -> Result<ProposalId, ProposalError> {
     let caller = ic_cdk::caller();
+
+    // Authentication: Only backend canister can create proposals
+    let backend_principal = Principal::from_text(BACKEND_CANISTER_ID)
+        .map_err(|_| ProposalError::AuthRequired)?;
+
+    if caller != backend_principal {
+        ic_cdk::println!(
+            "Unauthorized proposal creation attempt from {}. Only backend canister {} is allowed.",
+            caller, backend_principal
+        );
+        return Err(ProposalError::AuthRequired);
+    }
+
     let now = time();
 
-    // Use a realistic default total VP based on Kong Locker's scale
-    // Kong Locker VP = USD value * 100, so 1M VP = $10k locked
-    // Set high enough that single votes don't auto-execute
-    let total_voting_power = 100_000_000u64; // 100M VP = realistic threshold for large DAOs
+    // Calculate actual total voting power from Kong Locker
+    let total_voting_power = match calculate_total_voting_power_for_token(token_id).await {
+        Ok(vp) => vp,
+        Err(e) => {
+            ic_cdk::println!(
+                "WARNING: Failed to calculate total VP for token {}: {}. Using fallback value of 1M.",
+                token_id, e
+            );
+            1_000_000u64 // Fallback to 1M if calculation fails
+        }
+    };
 
     // ATOMIC: Check-and-insert within single borrow scope
     UNIFIED_PROPOSALS.with(|proposals| {
