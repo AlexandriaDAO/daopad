@@ -76,14 +76,38 @@ export default function DaoRoute() {
             return;
           }
 
-          // Token exists but has no station - show link station UI
-          console.log('[DaoRoute] Token has no station, showing link UI');
+          // Token exists but has no station - fetch metadata and show link station UI
+          console.log('[DaoRoute] Token has no station, fetching metadata...');
           setTokenId(stationId);  // Store as token ID
-          setToken({
-            canister_id: stationId,
-            symbol: stationId.slice(0, 8).toUpperCase(),
-            name: `${stationId.slice(0, 8).toUpperCase()} Treasury`
-          });
+
+          // Fetch token metadata to get real name and symbol
+          const metadataResult = isAuthenticated && identity
+            ? await tokenService.getTokenMetadata(stationPrincipal).catch(e => {
+                console.warn('[DaoRoute] Metadata fetch failed:', e);
+                return { success: false, error: e };
+              })
+            : { success: false };
+
+          // Use real metadata if available, otherwise fallback to ID
+          if (metadataResult.success && metadataResult.data) {
+            const symbol = metadataResult.data.symbol?.trim() || stationId.slice(0, 8).toUpperCase();
+            const name = metadataResult.data.name?.trim() || `${symbol} Treasury`;
+
+            setToken({
+              canister_id: stationId,
+              symbol,
+              name: name.slice(0, 100) // Limit to 100 chars to prevent UI issues
+            });
+          } else {
+            // Fallback for anonymous or failed metadata
+            const shortId = stationId.slice(0, 8);
+            setToken({
+              canister_id: stationId,
+              symbol: shortId.toUpperCase(),
+              name: `${shortId.toUpperCase()} Treasury`
+            });
+          }
+
           setOrbitStation(null);  // No station linked
           setError('no-station');  // Special error code to show link UI
           setLoading(false);
