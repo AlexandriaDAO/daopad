@@ -61,15 +61,25 @@ function AppRoute() {
     const pollInterval = isAuthenticated ? 60000 : 30000; // 60s for auth, 30s for anon
 
     const startPolling = () => {
-      // Always dispatch on initial load
-      dispatch(fetchPublicDashboard());
+      // Always dispatch on initial load with error handling
+      dispatch(fetchPublicDashboard())
+        .unwrap()
+        .catch((error) => {
+          console.error('Failed to fetch public dashboard:', error);
+          // Dashboard will show loading/empty state gracefully
+        });
 
       // Only start polling interval if document is visible
       // This prevents unnecessary API calls when tab is in background
       if (!document.hidden) {
         intervalRef.current = setInterval(() => {
           if (!document.hidden) {
-            dispatch(fetchPublicDashboard());
+            dispatch(fetchPublicDashboard())
+              .unwrap()
+              .catch((error) => {
+                console.error('Failed to fetch public dashboard (polling):', error);
+                // Continue polling - transient failures shouldn't stop updates
+              });
           }
         }, pollInterval);
       }
