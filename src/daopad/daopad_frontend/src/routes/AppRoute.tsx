@@ -16,7 +16,6 @@ import PublicStatsStrip from '../components/PublicStatsStrip';
 import TreasuryShowcase from '../components/TreasuryShowcase';
 import RouteErrorBoundary from '../components/errors/RouteErrorBoundary';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -29,7 +28,6 @@ function AppRoute() {
   const dispatch = useDispatch();
   const { principal, isAuthenticated } = useSelector(state => state.auth);
   const { icpBalance, isLoading: balanceLoading } = useSelector(state => state.balance);
-  const { kongLockerCanister } = useSelector(state => state.dao);
   const publicStats = useSelector(state => state.dao.publicDashboard.stats);
   const { login, identity } = useIdentity();
   const logout = useLogout();
@@ -189,11 +187,6 @@ function AppRoute() {
                     {copyFeedback ? '✓' : '⧉'}
                   </Button>
                 </div>
-                {kongLockerCanister && (
-                  <Badge className="bg-executive-mediumGray border-executive-gold/30 text-executive-goldLight" title={`Kong Locker: ${kongLockerCanister}`}>
-                    🔒 Connected
-                  </Badge>
-                )}
                 <Button
                   className="border-executive-gold/30 text-executive-goldLight hover:bg-executive-gold/10 hover:border-executive-gold"
                   variant="outline"
