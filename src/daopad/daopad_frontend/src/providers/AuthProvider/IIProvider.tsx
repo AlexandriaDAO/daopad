@@ -82,7 +82,7 @@ const IIProvider: React.FC<IIProviderProps> = ({ children }) => {
 				onError: (error?: string) => {
 					console.error("Login error:", error);
 				},
-				derivationOrigin: "https://yj5ba-aiaaa-aaaap-qkmoa-cai.icp0.io",
+				derivationOrigin: "https://l7rlj-6aaaa-aaaap-qp2ra-cai.icp0.io",
 				maxTimeToLive: BigInt(7) * BigInt(24) * BigInt(3_600_000_000_000), // 1 week
 			});
 		} catch (error) {
