@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Outlet, Navigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 import { Principal } from '@dfinity/principal';
 import { getTokenService } from '../services/backend';
 import DaoLayout from '../components/dao/DaoLayout';
@@ -15,8 +14,7 @@ import { Button } from '../components/ui/button';
 
 export default function DaoRoute() {
   const { stationId } = useParams();  // Changed from tokenId to stationId
-  const { identity, isAuthenticated } = useSelector((state: any) => state.auth);
-  const { login } = useAuth();
+  const { identity, isAuthenticated, login } = useAuth();
   const [token, setToken] = useState<any>(null);
   const [tokenId, setTokenId] = useState<string | null>(null);  // Store token ID internally
   const [loading, setLoading] = useState(true);
