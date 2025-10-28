@@ -81,17 +81,17 @@ export class TokenService extends BackendServiceBase {
   }
 
   /**
-   * Propose Orbit Station link for a token
+   * Link an Orbit Station to a token (immediate action, no voting)
    */
-  async proposeStationLink(tokenId, stationId) {
+  async linkStation(tokenId, stationId) {
     try {
       const actor = await this.getActor();
       const tokenPrincipal = this.toPrincipal(tokenId);
       const stationPrincipal = this.toPrincipal(stationId);
-      const result = await actor.propose_orbit_station_link(tokenPrincipal, stationPrincipal);
+      const result = await actor.link_orbit_station(tokenPrincipal, stationPrincipal);
       return this.wrapResult(result);
     } catch (error) {
-      console.error('Failed to propose station link:', error);
+      console.error('Failed to link station:', error);
       return { success: false, error: error.message };
     }
   }

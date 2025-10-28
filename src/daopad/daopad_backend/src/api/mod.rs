@@ -12,7 +12,7 @@ pub mod orbit_requests;
 mod orbit_security;
 mod orbit_transfers;
 mod orbit_users;
-mod proposals;
+mod stations;
 mod utils;
 
 pub use address_book::*;
@@ -55,5 +55,5 @@ pub use orbit_users::{
     create_remove_multiple_admins_request,
     list_orbit_users,
 };
-pub use proposals::*;
+pub use stations::link_orbit_station;
 pub use utils::*;
