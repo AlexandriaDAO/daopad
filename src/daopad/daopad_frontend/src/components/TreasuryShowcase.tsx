@@ -54,7 +54,7 @@ const TreasuryShowcase: React.FC<TreasuryShowcaseProps> = ({ onSelectStation }) 
           </p>
         ) : filteredTreasuries.length > 0 ? (
           <div className="space-y-2 max-h-64 overflow-y-auto">
-            {filteredTreasuries.map(({ tokenId, stationId }) => (
+            {filteredTreasuries.map(({ tokenId, stationId, hasStation }) => (
               <div
                 key={tokenId}
                 className="flex justify-between items-center p-2
@@ -63,11 +63,11 @@ const TreasuryShowcase: React.FC<TreasuryShowcaseProps> = ({ onSelectStation }) 
                           hover:bg-executive-darkGray/50 transition-colors
                           cursor-pointer"
                 data-testid="treasury-item"
-                onClick={() => onSelectStation?.(stationId)}
+                onClick={() => hasStation && onSelectStation?.(stationId)}
                 role="button"
                 tabIndex={0}
                 onKeyPress={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
+                  if ((e.key === 'Enter' || e.key === ' ') && hasStation) {
                     onSelectStation?.(stationId);
                   }
                 }}
@@ -76,14 +76,27 @@ const TreasuryShowcase: React.FC<TreasuryShowcaseProps> = ({ onSelectStation }) 
                   <span className="text-xs font-mono text-executive-lightGray">
                     Token: {tokenId.slice(0, 8)}...{tokenId.slice(-4)}
                   </span>
-                  <span className="text-xs text-executive-lightGray/40">
-                    Station: {stationId.slice(0, 8)}...
-                  </span>
+                  {hasStation ? (
+                    <span className="text-xs text-executive-lightGray/40">
+                      Station: {stationId.slice(0, 8)}...
+                    </span>
+                  ) : (
+                    <span className="text-xs text-executive-lightGray/60 italic">
+                      No station linked yet
+                    </span>
+                  )}
                 </div>
-                <Badge className="bg-executive-gold/20 text-executive-goldLight
-                                border-executive-gold/30">
-                  Active
-                </Badge>
+                {hasStation ? (
+                  <Badge className="bg-executive-gold/20 text-executive-goldLight
+                                  border-executive-gold/30">
+                    Active
+                  </Badge>
+                ) : (
+                  <Badge className="bg-executive-lightGray/10 text-executive-lightGray/60
+                                  border-executive-lightGray/20">
+                    Link Station
+                  </Badge>
+                )}
               </div>
             ))}
             {treasuries.length > 10 && (

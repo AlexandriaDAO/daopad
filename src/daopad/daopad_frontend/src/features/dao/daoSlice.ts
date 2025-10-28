@@ -12,10 +12,11 @@ export const fetchPublicDashboard = createAsyncThunk(
       const kongService = getKongLockerService(null);
 
       // Fetch available data (getSystemStats doesn't exist in backend)
-      const [proposals, stations, registrations] =
+      const [proposals, stations, lockedTokens, registrations] =
         await Promise.all([
           proposalService.listActive(),
           tokenService.listAllStations(),
+          kongService.listAllLockedTokens(), // NEW: Get all tokens with liquidity
           kongService.listAllRegistrations()
         ]);
 
@@ -27,7 +28,8 @@ export const fetchPublicDashboard = createAsyncThunk(
         return String(principal);
       };
 
-      const treasuryPairs = stations.success
+      // Create station mappings (tokens WITH stations)
+      const stationPairs = stations.success
         ? (stations.data || [])
             .map(([tokenPrincipal, stationPrincipal]) => ({
               tokenId: toPrincipalText(tokenPrincipal),
@@ -36,10 +38,36 @@ export const fetchPublicDashboard = createAsyncThunk(
             .filter(pair => pair.tokenId && pair.stationId)
         : [];
 
-      const stationMappings = treasuryPairs.reduce((acc, pair) => {
-        acc[pair.tokenId] = {
-          stationId: pair.stationId,
-          status: 'linked',
+      const stationMap = stationPairs.reduce((acc, pair) => {
+        acc[pair.tokenId] = pair.stationId;
+        return acc;
+      }, {});
+
+      // Get all unique tokens (both with and without stations)
+      const allTokens = new Set();
+
+      // Add tokens WITH stations
+      stationPairs.forEach(pair => allTokens.add(pair.tokenId));
+
+      // Add tokens WITHOUT stations (from Kong Locker)
+      if (lockedTokens.success && lockedTokens.data) {
+        lockedTokens.data.forEach(tokenInfo => {
+          const tokenId = tokenInfo.canister_id;
+          if (tokenId) allTokens.add(tokenId);
+        });
+      }
+
+      // Create treasury list with status
+      const treasuries = Array.from(allTokens).map(tokenId => ({
+        tokenId,
+        stationId: stationMap[tokenId] || null,
+        hasStation: !!stationMap[tokenId]
+      }));
+
+      const stationMappings = treasuries.reduce((acc, item) => {
+        acc[item.tokenId] = {
+          stationId: item.stationId,
+          status: item.hasStation ? 'linked' : 'unlinked',
           updatedAt: Date.now(),
           source: 'publicDashboard',
         };
@@ -51,14 +79,14 @@ export const fetchPublicDashboard = createAsyncThunk(
           participants: registrations.success ? registrations.data.length : 0,
           activeProposals: proposals.success ?
             proposals.data.filter(p => p.status?.Active !== undefined).length : 0,
-          treasuries: treasuryPairs.length,
+          treasuries: treasuries.length,
           registeredVoters: registrations.success ? registrations.data.length : 0,
           totalValueLocked: 0  // Would need KongSwap queries
         },
         proposals: proposals.success ? proposals.data : [],
-        treasuries: treasuryPairs,
+        treasuries,
         stationMappings,
-        hasErrors: !proposals.success || !stations.success || !registrations.success
+        hasErrors: !proposals.success || !stations.success || !lockedTokens.success || !registrations.success
       };
     } catch (error) {
       return rejectWithValue(error.message);
