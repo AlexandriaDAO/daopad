@@ -2,9 +2,10 @@
 use candid::{CandidType, Deserialize};
 
 /// Result type for submit_request_approval
+/// We use candid::Reserved for the Ok payload since we don't need to access the fields
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub enum SubmitRequestApprovalResult {
-    Ok(()),
+    Ok(candid::Reserved),
     Err(Error),
 }
 
