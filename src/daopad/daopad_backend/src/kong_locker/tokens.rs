@@ -1,7 +1,45 @@
 use crate::types::{TokenInfo, UserBalancesReply};
+use crate::storage::state::KONG_LOCKER_PRINCIPALS;
+use crate::types::StorablePrincipal;
 use candid::Principal;
 use ic_cdk::call;
 use std::collections::HashSet;
+
+/// Get ALL unique tokens that have locked liquidity across ALL lock canisters
+/// This is used for the public dashboard to show all DAOs
+pub async fn get_all_locked_tokens() -> Result<Vec<TokenInfo>, String> {
+    // Get all lock canister principals
+    let lock_canisters: Vec<Principal> = KONG_LOCKER_PRINCIPALS.with(|p| {
+        p.borrow()
+            .iter()
+            .map(|(_, canister)| canister.0)
+            .collect()
+    });
+
+    if lock_canisters.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut all_tokens = HashSet::new();
+
+    // Query each lock canister for its tokens
+    // Note: This is expensive - in production we'd cache this
+    for lock_canister in lock_canisters.iter() {
+        match get_user_locked_tokens(*lock_canister).await {
+            Ok(tokens) => {
+                for token in tokens {
+                    all_tokens.insert(token);
+                }
+            }
+            Err(e) => {
+                // Log error but continue with other canisters
+                ic_cdk::println!("Failed to get tokens for {}: {}", lock_canister, e);
+            }
+        }
+    }
+
+    Ok(all_tokens.into_iter().collect())
+}
 
 pub async fn get_user_locked_tokens(
     kong_locker_principal: Principal,

@@ -1107,6 +1107,9 @@ service : () -> {
   list_all_kong_locker_registrations : () -> (
       vec record { principal; principal },
     ) query;
+  // Get all unique tokens that have locked liquidity (for public dashboard)
+  // This is an update call because it queries KongSwap for each lock canister
+  list_all_locked_tokens : () -> (Result_18);
   list_all_orbit_stations : () -> (vec record { principal; principal }) query;
   list_orbit_accounts : (principal, text, nat16, nat64) -> (Result_32);
   list_orbit_canisters : (principal, ListExternalCanistersInputMinimal) -> (

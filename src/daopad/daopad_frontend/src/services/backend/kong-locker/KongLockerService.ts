@@ -59,6 +59,20 @@ export class KongLockerService extends BackendServiceBase {
   }
 
   /**
+   * List all tokens with locked liquidity (for public dashboard)
+   */
+  async listAllLockedTokens() {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.list_all_locked_tokens();
+      return this.wrapResult(result);
+    } catch (error) {
+      console.error('Failed to list locked tokens:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Get voting power for token
    */
   async getVotingPower(tokenId) {

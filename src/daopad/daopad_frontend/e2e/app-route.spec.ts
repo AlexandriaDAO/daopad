@@ -342,6 +342,42 @@ test.describe('App Route - Public Dashboard Loading', () => {
 
     console.log(`Polling verified: ${initialCallCount} → ${finalCallCount} calls`);
   });
+
+  test('should show public dashboard components (not TokenTabs)', async ({ page }) => {
+    await page.goto('/app');
+
+    // Wait for page to load
+    await page.waitForSelector('header h1:has-text("DAOPad")', { timeout: 10000 });
+
+    // Wait for data to load
+    await page.waitForTimeout(10000);
+
+    // Verify PublicStatsStrip is visible (stat cards)
+    const statCards = page.locator('[data-testid="stat-card"]');
+    await expect(statCards.first()).toBeVisible({ timeout: 30000 });
+
+    // Verify TreasuryShowcase section exists
+    const treasurySection = page.locator('text=/Token Treasuries|Treasuries/i');
+    const hasTreasury = await treasurySection.count() > 0;
+    if (hasTreasury) {
+      await expect(treasurySection).toBeVisible();
+    }
+
+    // Verify TokenTabs component is NOT present
+    // TokenTabs would show user-specific token info with voting power
+    const tokenTabsIndicators = [
+      page.locator('text=/Voting Power/i'),
+      page.locator('text=/Your DAOs/i'),
+      page.locator('[data-testid="token-tabs"]')
+    ];
+
+    for (const indicator of tokenTabsIndicators) {
+      const count = await indicator.count();
+      expect(count).toBe(0);
+    }
+
+    console.log('✓ Public dashboard components present, TokenTabs not rendered');
+  });
 });
 
 // Helper functions

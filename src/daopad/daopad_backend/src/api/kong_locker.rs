@@ -1,6 +1,6 @@
-use crate::kong_locker::{get_user_voting_power_for_token, register_with_kong_locker_internal};
+use crate::kong_locker::{get_all_locked_tokens, get_user_voting_power_for_token, register_with_kong_locker_internal};
 use crate::storage::state::KONG_LOCKER_PRINCIPALS;
-use crate::types::StorablePrincipal;
+use crate::types::{StorablePrincipal, TokenInfo};
 use candid::Principal;
 use ic_cdk::{query, update};
 
@@ -61,4 +61,11 @@ pub async fn get_my_voting_power_for_token(token_canister_id: Principal) -> Resu
     }
 
     get_user_voting_power_for_token(caller, token_canister_id).await
+}
+
+/// Get all unique tokens that have locked liquidity (for public dashboard)
+/// This is an update call because it queries KongSwap for each lock canister
+#[update]
+pub async fn list_all_locked_tokens() -> Result<Vec<TokenInfo>, String> {
+    get_all_locked_tokens().await
 }
