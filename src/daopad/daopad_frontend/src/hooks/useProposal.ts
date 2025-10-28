@@ -120,16 +120,23 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
       const adminService = getAdminService(identity || null);
       const proposalData = await adminService.getProposal(tokenId, orbitRequestId);
 
-      if (proposalData) {
+      console.log('[useProposal] Raw proposal data from admin canister:', proposalData);
+
+      // Candid opt type returns as array - unwrap it
+      if (proposalData && proposalData.length > 0) {
+        const rawProposal = proposalData[0];
+
         // Convert BigInt values to numbers for display
         const proposal = {
-          ...proposalData,
-          yes_votes: typeof proposalData.yes_votes === 'bigint' ? Number(proposalData.yes_votes) : proposalData.yes_votes,
-          no_votes: typeof proposalData.no_votes === 'bigint' ? Number(proposalData.no_votes) : proposalData.no_votes,
-          total_voting_power: typeof proposalData.total_voting_power === 'bigint' ? Number(proposalData.total_voting_power) : proposalData.total_voting_power,
-          created_at: typeof proposalData.created_at === 'bigint' ? Number(proposalData.created_at) : proposalData.created_at,
-          expires_at: typeof proposalData.expires_at === 'bigint' ? Number(proposalData.expires_at) : proposalData.expires_at,
+          ...rawProposal,
+          yes_votes: typeof rawProposal.yes_votes === 'bigint' ? Number(rawProposal.yes_votes) : rawProposal.yes_votes,
+          no_votes: typeof rawProposal.no_votes === 'bigint' ? Number(rawProposal.no_votes) : rawProposal.no_votes,
+          total_voting_power: typeof rawProposal.total_voting_power === 'bigint' ? Number(rawProposal.total_voting_power) : rawProposal.total_voting_power,
+          created_at: typeof rawProposal.created_at === 'bigint' ? Number(rawProposal.created_at) : rawProposal.created_at,
+          expires_at: typeof rawProposal.expires_at === 'bigint' ? Number(rawProposal.expires_at) : rawProposal.expires_at,
         };
+
+        console.log('[useProposal] Converted proposal for display:', proposal);
         setProposal(proposal);
 
         // NEW: Check if user has voted
