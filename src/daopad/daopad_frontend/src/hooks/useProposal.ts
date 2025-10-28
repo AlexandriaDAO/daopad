@@ -94,12 +94,16 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
 
       // Get actual vote if voted
       if (voted) {
-        const vote = await actor.get_user_vote(
+        const voteData = await actor.get_user_vote(
           identity.getPrincipal(),
           Principal.fromText(tokenId),
           orbitRequestId
         );
-        setUserVote(vote); // Will be { Yes: null } or { No: null }
+
+        // Candid opt type returns as array - unwrap it
+        const vote = voteData && voteData.length > 0 ? voteData[0] : null;
+        console.log('[checkVoteStatus] User vote:', { raw: voteData, unwrapped: vote });
+        setUserVote(vote); // Now properly unwrapped: { Yes: null } or { No: null }
       }
     } catch (err) {
       console.error('Failed to check vote status:', err);
