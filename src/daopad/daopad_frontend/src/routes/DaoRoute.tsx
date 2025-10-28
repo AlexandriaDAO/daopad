@@ -6,6 +6,11 @@ import { getTokenService } from '../services/backend';
 import DaoLayout from '../components/dao/DaoLayout';
 import { FallbackLoader } from '../components/ui/fallback-loader';
 import { useVoting } from '../hooks/useVoting';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Alert, AlertDescription } from '../components/ui/alert';
+import { Button } from '../components/ui/button';
 
 export default function DaoRoute() {
   const { stationId } = useParams();  // Changed from tokenId to stationId
@@ -16,9 +21,15 @@ export default function DaoRoute() {
   const [orbitStation, setOrbitStation] = useState<any>(null);
   const [overviewStats, setOverviewStats] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showLinkDialog, setShowLinkDialog] = useState<boolean>(false);
+  const [linkStationId, setLinkStationId] = useState<string>('');
+  const [linkError, setLinkError] = useState<string>('');
+  const [linking, setLinking] = useState<boolean>(false);
 
   // Fetch voting power using existing hook (once we have token ID)
   const { userVotingPower, loadingVP, fetchVotingPower } = useVoting(tokenId);
+
+  const MINIMUM_VP_FOR_LINKING = 10000;
 
   useEffect(() => {
     async function loadStation() {
@@ -150,47 +161,211 @@ export default function DaoRoute() {
     loadStation();
   }, [stationId, identity, isAuthenticated]);
 
+  const handleLinkStation = async () => {
+    // Validate identity
+    if (!identity) {
+      setLinkError('Please authenticate first');
+      return;
+    }
+
+    // Validate station ID
+    if (!linkStationId.trim()) {
+      setLinkError('Station ID is required');
+      return;
+    }
+
+    // Validate principal format
+    try {
+      Principal.fromText(linkStationId.trim());
+    } catch (err) {
+      setLinkError('Invalid station ID format');
+      return;
+    }
+
+    setLinking(true);
+    setLinkError('');
+
+    try {
+      const tokenService = getTokenService(identity);
+      const tokenPrincipal = Principal.fromText(tokenId);
+      const stationPrincipal = Principal.fromText(linkStationId.trim());
+
+      const result = await tokenService.proposeStationLink(tokenPrincipal, stationPrincipal);
+
+      if (result.success) {
+        // Success - reload page to show linked station
+        setShowLinkDialog(false);
+        setLinkStationId('');
+        setLinkError('');
+
+        // Redirect to station route
+        window.location.href = `/${linkStationId.trim()}`;
+      } else {
+        setLinkError(result.error || 'Failed to create station link proposal');
+      }
+    } catch (err) {
+      console.error('Error creating station link proposal:', err);
+      setLinkError(err.message || 'An error occurred');
+    } finally {
+      setLinking(false);
+    }
+  };
+
   if (loading) {
     return <FallbackLoader />;
   }
 
   // Special case: Token has no station linked - show link UI
   if (error === 'no-station' && token) {
+    const hasMinimumVP = userVotingPower >= MINIMUM_VP_FOR_LINKING;
+
     return (
       <DaoLayout
         token={token}
         orbitStation={null}
-        votingPower={0}
-        loadingVotingPower={false}
-        refreshVotingPower={() => {}}
+        votingPower={userVotingPower}
+        loadingVotingPower={loadingVP}
+        refreshVotingPower={fetchVotingPower}
       >
         <div className="max-w-2xl mx-auto py-12 px-4">
-          <div className="bg-executive-darkGray border border-executive-gold/20 rounded-lg p-8 text-center">
+          <div className="bg-executive-darkGray border border-executive-gold/20 rounded-lg p-8 text-center space-y-6">
             <h2 className="text-2xl font-display text-executive-ivory mb-4">
               No Orbit Station Linked
             </h2>
-            <p className="text-executive-lightGray/80 mb-6">
+
+            <p className="text-executive-lightGray/80">
               This token ({token.symbol}) has locked liquidity in Kong Locker but hasn't been linked to an Orbit Station yet.
             </p>
-            <p className="text-executive-lightGray/60 text-sm mb-6">
-              To enable governance and treasury management, this token needs to be linked to an Orbit Station through a community proposal.
-            </p>
-            <div className="bg-executive-charcoal/50 border border-executive-lightGray/10 rounded p-4 mb-6">
+
+            {/* Voting Power Display */}
+            <div className="bg-executive-charcoal/50 border border-executive-lightGray/10 rounded p-6">
+              <div className="text-sm text-executive-lightGray/60 mb-2">Your Voting Power</div>
+              {loadingVP ? (
+                <div className="text-executive-gold text-2xl font-bold">Loading...</div>
+              ) : (
+                <div className="text-executive-gold text-3xl font-bold">
+                  {userVotingPower.toLocaleString()} VP
+                </div>
+              )}
+              <div className="text-xs text-executive-lightGray/40 mt-2">
+                Minimum required: {MINIMUM_VP_FOR_LINKING.toLocaleString()} VP
+              </div>
+            </div>
+
+            {/* VP-Based Actions */}
+            {hasMinimumVP ? (
+              <>
+                <p className="text-executive-lightGray/80">
+                  You have sufficient voting power to link this token to an Orbit Station and enable DAO governance.
+                </p>
+                <button
+                  onClick={() => setShowLinkDialog(true)}
+                  disabled={!isAuthenticated}
+                  className="px-6 py-3 bg-executive-gold text-executive-charcoal hover:bg-executive-goldLight rounded font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Link Orbit Station
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-executive-lightGray/60 text-sm">
+                  To link an Orbit Station, you need at least {MINIMUM_VP_FOR_LINKING.toLocaleString()} VP.
+                  Increase your voting power by locking more LP tokens in Kong Locker.
+                </p>
+                <button
+                  onClick={() => window.location.href = 'https://konglocker.com'}
+                  className="px-6 py-2 bg-executive-gold/20 text-executive-gold border border-executive-gold/30 hover:bg-executive-gold/30 rounded font-semibold"
+                >
+                  Go to Kong Locker
+                </button>
+              </>
+            )}
+
+            <div className="bg-executive-charcoal/50 border border-executive-lightGray/10 rounded p-4">
               <p className="text-xs text-executive-lightGray/40 font-mono break-all">
                 Token ID: {token.canister_id}
               </p>
             </div>
-            <p className="text-executive-lightGray/60 text-sm">
-              Contact the DAO community to initiate a station linking proposal, or return to the main page.
-            </p>
+
             <button
               onClick={() => window.location.href = '/app'}
-              className="mt-6 px-6 py-2 bg-executive-gold text-executive-charcoal hover:bg-executive-goldLight rounded font-semibold"
+              className="text-executive-lightGray/60 hover:text-executive-gold underline text-sm"
             >
               Return to Dashboard
             </button>
           </div>
         </div>
+
+        {/* Link Station Dialog */}
+        <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
+          <DialogContent className="bg-executive-darkGray border-executive-gold/20">
+            <DialogHeader>
+              <DialogTitle className="text-executive-ivory">Link Orbit Station</DialogTitle>
+              <DialogDescription className="text-executive-lightGray">
+                Create a governance proposal to link an Orbit Station to {token.symbol}.
+                This requires community approval via weighted voting.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="station-id" className="text-executive-lightGray">
+                  Orbit Station Canister ID
+                </Label>
+                <Input
+                  id="station-id"
+                  value={linkStationId}
+                  onChange={(e) => setLinkStationId(e.target.value)}
+                  placeholder="e.g., fec7w-zyaaa-aaaaa-qaffq-cai"
+                  className="bg-executive-mediumGray border-executive-gold/30 text-executive-ivory"
+                />
+                <p className="text-xs text-executive-lightGray/60 mt-1">
+                  The Orbit Station canister to use for DAO governance
+                </p>
+              </div>
+
+              <div className="bg-executive-charcoal/50 rounded p-3">
+                <div className="text-xs text-executive-lightGray/60 space-y-1">
+                  <div className="flex justify-between">
+                    <span>Token:</span>
+                    <span className="font-mono">{token.symbol}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Your VP:</span>
+                    <span className="text-executive-gold">{userVotingPower.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {linkError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{linkError}</AlertDescription>
+                </Alert>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowLinkDialog(false);
+                  setLinkError('');
+                  setLinkStationId('');
+                }}
+                className="border-executive-gold/30 text-executive-lightGray hover:bg-executive-gold/10"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleLinkStation}
+                disabled={linking || !linkStationId.trim()}
+                className="bg-executive-gold text-executive-charcoal hover:bg-executive-goldLight"
+              >
+                {linking ? 'Creating Proposal...' : 'Create Proposal'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </DaoLayout>
     );
   }
