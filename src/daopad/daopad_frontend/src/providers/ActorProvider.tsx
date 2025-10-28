@@ -44,7 +44,7 @@ export default function ActorProvider() {
 			}
 			return data.args;
 		},
-		[clear, getIdentity]
+		[clear]
 	);
 
 	const onRequestError = useCallback((data: InterceptorErrorData) => {
@@ -84,7 +84,8 @@ export default function ActorProvider() {
 			backend.setInterceptors(interceptors);
 			admin.setInterceptors(interceptors);
 		});
-	}, [interceptors, backend, admin]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [interceptors]);
 
 	return null;
 }
