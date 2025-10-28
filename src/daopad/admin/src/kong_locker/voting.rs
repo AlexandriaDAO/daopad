@@ -1,6 +1,10 @@
 use candid::{CandidType, Deserialize, Principal};
 use ic_cdk::call;
 
+// External canister IDs for Kong Locker integration
+const KONG_LOCKER_FACTORY_ID: &str = "eazgb-giaaa-aaaap-qqc2q-cai";
+const KONGSWAP_CANISTER_ID: &str = "2ipq2-uqaaa-aaaar-qailq-cai";
+
 // UserBalancesReply type (copied from backend for Kong Locker queries)
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub enum UserBalancesReply {
@@ -23,7 +27,7 @@ pub async fn get_user_voting_power_for_token(
     token_canister_id: Principal,
 ) -> Result<u64, String> {
     // Step 1: Query Kong Locker factory to find user's lock canister
-    let kong_locker_factory = Principal::from_text("eazgb-giaaa-aaaap-qqc2q-cai")
+    let kong_locker_factory = Principal::from_text(KONG_LOCKER_FACTORY_ID)
         .map_err(|e| format!("Invalid Kong Locker factory ID: {}", e))?;
 
     let all_lock_canisters: Result<(Vec<(Principal, Principal)>,), _> =
@@ -41,7 +45,7 @@ pub async fn get_user_voting_power_for_token(
         .ok_or("No Kong Locker found for user. Please create one at kong.land")?;
 
     // Step 2: Query KongSwap with the user's lock canister ID
-    let kongswap_id = Principal::from_text("2ipq2-uqaaa-aaaar-qailq-cai")
+    let kongswap_id = Principal::from_text(KONGSWAP_CANISTER_ID)
         .map_err(|e| format!("Invalid KongSwap ID: {}", e))?;
 
     let user_balances_result: Result<
@@ -111,7 +115,7 @@ pub async fn calculate_total_voting_power_for_token(
     ic_cdk::println!("Calculating total VP for token {}...", token_canister_id);
 
     // Step 1: Query Kong Locker factory for ALL lock canisters
-    let kong_locker_factory = Principal::from_text("eazgb-giaaa-aaaap-qqc2q-cai")
+    let kong_locker_factory = Principal::from_text(KONG_LOCKER_FACTORY_ID)
         .map_err(|e| format!("Invalid Kong Locker factory ID: {}", e))?;
 
     let all_lock_canisters: Result<(Vec<(Principal, Principal)>,), _> =
@@ -127,7 +131,7 @@ pub async fn calculate_total_voting_power_for_token(
     // Step 2: Sum voting power across all lock canisters
     let mut total_power = 0u64;
     let mut failed_calls = 0usize;
-    let kongswap_id = Principal::from_text("2ipq2-uqaaa-aaaar-qailq-cai")
+    let kongswap_id = Principal::from_text(KONGSWAP_CANISTER_ID)
         .map_err(|e| format!("Invalid KongSwap ID: {}", e))?;
 
     for (_user, lock_canister) in lock_canisters {
@@ -171,8 +175,16 @@ pub async fn calculate_total_voting_power_for_token(
             })
             .sum();
 
-        // Use saturating_add to prevent overflow and round for precision
-        total_power = total_power.saturating_add((user_vp * 100.0).round() as u64);
+        // Validate VP value before conversion to prevent overflow/NaN issues
+        let vp_to_add = (user_vp * 100.0).round();
+        if vp_to_add.is_finite() && vp_to_add >= 0.0 && vp_to_add <= u64::MAX as f64 {
+            total_power = total_power.saturating_add(vp_to_add as u64);
+        } else {
+            ic_cdk::println!(
+                "Warning: Invalid VP value {} for lock canister {}. Skipping.",
+                vp_to_add, lock_canister
+            );
+        }
     }
 
     // Check if too many calls failed (>20% failure rate)

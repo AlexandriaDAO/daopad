@@ -1,10 +1,11 @@
 use crate::proposals::types::{ProposalId, UnifiedProposal, VoteChoice};
 use crate::types::StorablePrincipal;
+use candid::{CandidType, Deserialize};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 // Cache entry for total voting power with timestamp
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct VotingPowerCache {
     pub total_vp: u64,
     pub timestamp: u64,
