@@ -2,7 +2,7 @@ use candid::{Nat, Principal, CandidType, Deserialize};
 use ic_cdk::update;
 use std::collections::HashMap;
 use crate::storage::state::{
-    TOKEN_ORBIT_STATIONS, ORBIT_PROPOSALS
+    TOKEN_ORBIT_STATIONS
 };
 use crate::types::StorablePrincipal;
 use crate::types::orbit::{
@@ -94,19 +94,10 @@ pub async fn get_dao_overview(
 // ============================================================================
 
 /// Count active proposals across all types
-fn count_active_proposals(token_id: Principal) -> u64 {
-    let mut count = 0u64;
-
-    // Orbit link proposals (one per token)
-    ORBIT_PROPOSALS.with(|proposals| {
-        if let Some(p) = proposals.borrow().get(&StorablePrincipal(token_id)) {
-            if p.status == crate::proposals::orbit_link::ProposalStatus::Active {
-                count += 1;
-            }
-        }
-    });
-
-    count
+fn count_active_proposals(_token_id: Principal) -> u64 {
+    // No orbit link proposals exist anymore (linking is now immediate)
+    // Other proposal types counted elsewhere
+    0
 }
 
 /// Count recent proposals (within specified days)

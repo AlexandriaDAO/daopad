@@ -10,7 +10,6 @@ use crate::types::{AccountMinimalWithBalances, AccountAssetWithBalance};
 
 pub use api::*;
 pub use api::orbit_overview::DaoOverviewStats;
-pub use proposals::orbit_link::{OrbitLinkProposal, ProposalStatus};
 pub use proposals::{
     create_orbit_request_with_proposal,
     ensure_proposal_for_request,

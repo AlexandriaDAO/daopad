@@ -72,21 +72,6 @@ export class ProposalService extends BackendServiceBase {
   }
 
   /**
-   * Get active proposal for token
-   */
-  async getActiveForToken(tokenId) {
-    try {
-      const actor = await this.getActor();
-      const tokenPrincipal = this.toPrincipal(tokenId);
-      const result = await actor.get_active_proposal_for_token(tokenPrincipal);
-      return this.wrapOption(result);
-    } catch (error) {
-      console.error('Failed to get active proposal:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
    * Execute proposal (finalize result)
    */
   async execute(proposalId) {

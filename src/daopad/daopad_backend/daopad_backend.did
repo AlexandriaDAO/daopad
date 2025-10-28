@@ -497,19 +497,6 @@ type OrbitApprovalSummary = record {
   approver_id : text;
   decided_at : text;
 };
-type OrbitLinkProposal = record {
-  id : nat64;
-  status : ProposalStatus;
-  yes_votes : nat64;
-  voters : vec principal;
-  created_at : nat64;
-  token_canister_id : principal;
-  station_id : principal;
-  proposer : principal;
-  total_voting_power : nat64;
-  no_votes : nat64;
-  expires_at : nat64;
-};
 type OrbitOperation = variant {
   AddAsset : record { asset : AssetDetails };
   EditUser : record { groups : vec text; name : opt text; user_id : text };
@@ -597,7 +584,6 @@ type ProposalError = variant {
   Expired;
   AuthRequired;
 };
-type ProposalStatus = variant { Active; Approved; Rejected; Expired };
 type ProposalType = variant { Transfer; OrbitRequest : OrbitRequestType };
 type ProposalType_1 = variant {
   RemoveMember;
@@ -743,30 +729,30 @@ type RestoreExternalCanisterOperationInput = record {
 };
 type Result = variant { Ok : text; Err : text };
 type Result_1 = variant { Ok : SubmitRequestResult; Err : text };
-type Result_10 = variant { Ok : AccountWithAssets; Err : text };
-type Result_11 = variant { Ok : AgreementSnapshot; Err : text };
-type Result_12 = variant { Ok : AllVotingPowersResponse; Err : text };
-type Result_13 = variant { Ok : CanisterSnapshotsResult; Err : text };
-type Result_14 = variant { Ok : CanisterStatusResponse; Err : text };
-type Result_15 = variant { Ok : DaoOverviewStats; Err : text };
-type Result_16 = variant { Ok : GovernanceStats; Err : text };
-type Result_17 = variant { Ok : vec principal; Err : text };
-type Result_18 = variant { Ok : vec TokenInfo; Err : text };
-type Result_19 = variant { Ok : nat64; Err : text };
+type Result_10 = variant { Ok : AgreementSnapshot; Err : text };
+type Result_11 = variant { Ok : AllVotingPowersResponse; Err : text };
+type Result_12 = variant { Ok : CanisterSnapshotsResult; Err : text };
+type Result_13 = variant { Ok : CanisterStatusResponse; Err : text };
+type Result_14 = variant { Ok : DaoOverviewStats; Err : text };
+type Result_15 = variant { Ok : GovernanceStats; Err : text };
+type Result_16 = variant { Ok : vec principal; Err : text };
+type Result_17 = variant { Ok : vec TokenInfo; Err : text };
+type Result_18 = variant { Ok : nat64; Err : text };
+type Result_19 = variant { Ok : GetExternalCanisterResult; Err : text };
 type Result_2 = variant { Ok : vec SecurityCheck; Err : text };
-type Result_20 = variant { Ok : GetExternalCanisterResult; Err : text };
-type Result_21 = variant { Ok : vec SimpleRequest; Err : text };
-type Result_22 = variant { Ok : SystemInfoResponseMinimal; Err : text };
-type Result_23 = variant { Ok : ProposalConfig; Err : text };
-type Result_24 = variant { Ok : RequestPoliciesDetails; Err : text };
-type Result_25 = variant { Ok : Permission; Err : text };
-type Result_26 = variant { Ok : Account; Err : text };
-type Result_27 = variant { Ok : vec AccountMinimalWithBalances; Err : text };
-type Result_28 = variant { Ok : TreasuryManagementData; Err : text };
-type Result_29 = variant { Ok : vec OrbitRequestSummary; Err : text };
+type Result_20 = variant { Ok : vec SimpleRequest; Err : text };
+type Result_21 = variant { Ok : SystemInfoResponseMinimal; Err : text };
+type Result_22 = variant { Ok : ProposalConfig; Err : text };
+type Result_23 = variant { Ok : RequestPoliciesDetails; Err : text };
+type Result_24 = variant { Ok : Permission; Err : text };
+type Result_25 = variant { Ok : Account; Err : text };
+type Result_26 = variant { Ok : vec AccountMinimalWithBalances; Err : text };
+type Result_27 = variant { Ok : TreasuryManagementData; Err : text };
+type Result_28 = variant { Ok : vec OrbitRequestSummary; Err : text };
+type Result_29 = variant { Ok : VotingThresholds; Err : text };
 type Result_3 = variant { Ok : BackendStatusCheck; Err : text };
-type Result_30 = variant { Ok : VotingThresholds; Err : text };
-type Result_31 = variant { Ok : bool; Err : text };
+type Result_30 = variant { Ok : bool; Err : text };
+type Result_31 = variant { Ok; Err : text };
 type Result_32 = variant { Ok : ListAccountsResultMinimal; Err : text };
 type Result_33 = variant { Ok : ListExternalCanistersResult; Err : text };
 type Result_34 = variant { Ok : ListOrbitRequestsResponse; Err : text };
@@ -775,13 +761,12 @@ type Result_36 = variant { Ok : vec Asset; Err : text };
 type Result_37 = variant { Ok : vec Permission; Err : text };
 type Result_38 = variant { Ok : vec UserGroup; Err : text };
 type Result_39 = variant { Ok : EnhancedSecurityDashboard; Err : text };
-type Result_4 = variant { Ok : nat32; Err : text };
-type Result_40 = variant { Ok; Err : text };
-type Result_5 = variant { Ok : vec text; Err : text };
-type Result_6 = variant { Ok : text; Err : ProposalError };
-type Result_7 = variant { Ok : CreateAccountResponse; Err : text };
-type Result_8 = variant { Ok : vec opt AccountBalance; Err : text };
-type Result_9 = variant { Ok : AccountAssetInfo; Err : text };
+type Result_4 = variant { Ok : vec text; Err : text };
+type Result_5 = variant { Ok : text; Err : ProposalError };
+type Result_6 = variant { Ok : CreateAccountResponse; Err : text };
+type Result_7 = variant { Ok : vec opt AccountBalance; Err : text };
+type Result_8 = variant { Ok : AccountAssetInfo; Err : text };
+type Result_9 = variant { Ok : AccountWithAssets; Err : text };
 type SecurityCheck = record {
   status : CheckStatus;
   related_permissions : opt vec RelatedPermission;
@@ -943,7 +928,6 @@ service : () -> {
   check_system_restore : (principal) -> (Result_2);
   // Check treasury control: account transfers, asset management, treasury permissions
   check_treasury_control : (principal) -> (Result_2);
-  cleanup_expired_proposals : () -> (Result_4);
   configure_orbit_canister_request : (
       principal,
       ConfigureExternalCanisterOperationInput,
@@ -963,7 +947,7 @@ service : () -> {
   // 4. Verify accounts show AutoApproved policies
   // 
   // This is a one-time bootstrap process to enable autonomous DAOPad operations.
-  create_autoapprove_all_accounts : (principal) -> (Result_5);
+  create_autoapprove_all_accounts : (principal) -> (Result_4);
   // Create edit permission request
   // 
   // Creates a request in Orbit Station to modify a permission's access control.
@@ -986,7 +970,7 @@ service : () -> {
     ) -> (Result_1);
   // Create any Orbit request with auto-proposal
   create_orbit_request_with_proposal : (principal, OrbitOperation) -> (
-      Result_6,
+      Result_5,
     );
   create_orbit_treasury_account : (principal, text, opt text) -> (Result);
   // Create EditUser request to remove user from admin group
@@ -1007,32 +991,31 @@ service : () -> {
       opt text,
       principal,
     ) -> (Result);
-  create_treasury_account : (principal, CreateAccountConfig) -> (Result_7);
+  create_treasury_account : (principal, CreateAccountConfig) -> (Result_6);
   edit_treasury_asset : (principal, text, opt text, opt vec AssetMetadata) -> (
       Result,
     );
   // Create proposal in admin canister for an Orbit request
-  ensure_proposal_for_request : (principal, text, text) -> (Result_6);
-  fetch_orbit_account_balances : (principal, vec text) -> (Result_8);
+  ensure_proposal_for_request : (principal, text, text) -> (Result_5);
+  fetch_orbit_account_balances : (principal, vec text) -> (Result_7);
   fund_orbit_canister_request : (
       principal,
       FundExternalCanisterOperationInput,
       text,
       opt text,
     ) -> (Result_1);
-  get_account_assets : (principal, text) -> (Result_9);
-  get_account_with_assets : (principal, text) -> (Result_10);
-  get_active_proposal_for_token : (principal) -> (opt OrbitLinkProposal) query;
+  get_account_assets : (principal, text) -> (Result_8);
+  get_account_with_assets : (principal, text) -> (Result_9);
   get_address_book_entry : (GetAddressBookEntryInput) -> (
       GetAddressBookEntryResult,
     ) query;
-  get_agreement_by_station : (principal) -> (Result_11) query;
-  get_agreement_snapshot : (principal) -> (Result_11) query;
+  get_agreement_by_station : (principal) -> (Result_10) query;
+  get_agreement_snapshot : (principal) -> (Result_10) query;
   // Get all voting powers for a token with equity percentages
   // 
   // Returns list of all Kong Locker holders with their voting power and equity percentage.
   // Only includes users with voting_power > 0.
-  get_all_voting_powers_for_token : (principal) -> (Result_12);
+  get_all_voting_powers_for_token : (principal) -> (Result_11);
   get_available_assets : (principal) -> (ListAssetsResult);
   get_backend_principal : () -> (principal) query;
   // Get snapshots for a canister managed by Orbit Station
@@ -1042,65 +1025,67 @@ service : () -> {
   // 
   // Security: Validates principals and that the token is registered before
   // making inter-canister calls.
-  get_canister_snapshots : (principal, principal) -> (Result_13);
-  get_canister_status : (principal) -> (Result_14);
+  get_canister_snapshots : (principal, principal) -> (Result_12);
+  get_canister_status : (principal) -> (Result_13);
   // Get comprehensive DAO overview stats
   // Backend acts as admin proxy to query protected Orbit data
-  get_dao_overview : (principal) -> (Result_15);
+  get_dao_overview : (principal) -> (Result_14);
   get_default_voting_thresholds : () -> (VotingThresholds) query;
-  get_governance_stats : (principal) -> (Result_16) query;
-  get_high_vp_members : (principal, nat64) -> (Result_17);
+  get_governance_stats : (principal) -> (Result_15) query;
+  get_high_vp_members : (principal, nat64) -> (Result_16);
   get_kong_locker_factory_principal : () -> (principal) query;
   get_my_kong_locker_canister : () -> (opt principal) query;
-  get_my_locked_tokens : () -> (Result_18);
-  get_my_voting_power_for_token : (principal) -> (Result_19);
-  get_orbit_canister : (principal, principal) -> (Result_20);
+  get_my_locked_tokens : () -> (Result_17);
+  get_my_voting_power_for_token : (principal) -> (Result_18);
+  get_orbit_canister : (principal, principal) -> (Result_19);
   // EXPERIMENTAL: Ultra-simple request fetching - returns basic info only
-  get_orbit_requests_simple : () -> (Result_21);
+  get_orbit_requests_simple : () -> (Result_20);
   get_orbit_station_for_token : (principal) -> (opt principal) query;
-  get_orbit_system_info : (principal) -> (Result_22);
-  get_proposal_config : (principal, ProposalType) -> (Result_23) query;
+  get_orbit_system_info : (principal) -> (Result_21);
+  get_proposal_config : (principal, ProposalType) -> (Result_22) query;
   // Get detailed request policies information with resolved rule names
   // 
   // Returns all request policies with human-readable operation names and approval rules
-  get_request_policies_details : (principal) -> (Result_24);
+  get_request_policies_details : (principal) -> (Result_23);
   // Get specific permission details
   // 
   // Fetches a single permission by resource type from Orbit Station.
-  get_station_permission : (principal, Resource) -> (Result_25);
+  get_station_permission : (principal, Resource) -> (Result_24);
   // Get token ID for a given station ID (reverse lookup)
   get_token_for_station : (principal) -> (opt principal) query;
   // Get total voting power for a token across all Kong Locker users
   // 
   // This sums up the voting power of all registered users for a specific token.
   // Used by frontend to show user's VP as a percentage of total.
-  get_total_voting_power_for_token : (principal) -> (Result_19);
-  get_transfer_requests : (principal) -> (Result_5);
+  get_total_voting_power_for_token : (principal) -> (Result_18);
+  get_transfer_requests : (principal) -> (Result_4);
   // Get single account with all assets and fresh balances
   // 
   // Fetches account details from Orbit Station and ensures all asset balances are fresh.
   // If any balances are null or stale, calls fetch_account_balances to refresh them.
-  get_treasury_account_details : (principal, text) -> (Result_26);
+  get_treasury_account_details : (principal, text) -> (Result_25);
   // List all treasury accounts with complete asset and balance data
   // 
   // Returns all accounts in the station with their assets and fresh balances.
   // This is the primary method for the Treasury Tab to fetch multi-asset data.
-  get_treasury_accounts_with_balances : (principal) -> (Result_27);
+  get_treasury_accounts_with_balances : (principal) -> (Result_26);
   // Get comprehensive treasury management data for Operating Agreement Article V
   // 
   // This method aggregates:
   // - All treasury accounts with balances and policies
   // - Address book entries (authorized recipients)
   // - Backend privilege summary
-  get_treasury_management_data : (principal) -> (Result_28);
-  get_user_pending_requests : (principal, principal) -> (Result_29);
-  get_voting_thresholds : (principal) -> (Result_30) query;
+  get_treasury_management_data : (principal) -> (Result_27);
+  get_user_pending_requests : (principal, principal) -> (Result_28);
+  get_voting_thresholds : (principal) -> (Result_29) query;
   has_proposal_passed : (principal, ProposalType, nat64, nat64, nat64) -> (
-      Result_31,
+      Result_30,
     ) query;
   health_check : () -> (text) query;
   initialize_default_thresholds : (principal) -> (Result);
-  list_active_proposals : () -> (vec OrbitLinkProposal) query;
+  // Link an Orbit Station to a token (immediate action, no voting)
+  // Requires: 10K+ VP, station admin access, station not already linked
+  link_orbit_station : (principal, principal) -> (Result_31);
   list_address_book_entries : (ListAddressBookEntriesInput) -> (
       ListAddressBookEntriesResult,
     ) query;
@@ -1109,7 +1094,7 @@ service : () -> {
     ) query;
   // Get all unique tokens that have locked liquidity (for public dashboard)
   // This is an update call because it queries KongSwap for each lock canister
-  list_all_locked_tokens : () -> (Result_18);
+  list_all_locked_tokens : () -> (Result_17);
   list_all_orbit_stations : () -> (vec record { principal; principal }) query;
   list_orbit_accounts : (principal, text, nat16, nat64) -> (Result_32);
   list_orbit_canisters : (principal, ListExternalCanistersInputMinimal) -> (
@@ -1158,14 +1143,13 @@ service : () -> {
   // It combines perform_all_security_checks + build_dashboard to return
   // the full EnhancedSecurityDashboard with decentralization score.
   perform_security_check : (principal) -> (Result_39);
-  propose_orbit_station_link : (principal, principal) -> (Result_19);
   prune_orbit_canister_snapshots_request : (
       principal,
       PruneExternalCanisterOperationInput,
       text,
       opt text,
     ) -> (Result_1);
-  regenerate_agreement_snapshot : (principal, principal) -> (Result_11);
+  regenerate_agreement_snapshot : (principal, principal) -> (Result_10);
   register_with_kong_locker : (principal) -> (Result);
   // Remove dangerous permission from Operator group
   // 
@@ -1189,6 +1173,5 @@ service : () -> {
       opt text,
     ) -> (Result_1);
   unregister_kong_locker : () -> (Result);
-  validate_account_name : (principal, text) -> (Result_31);
-  vote_on_orbit_proposal : (nat64, bool) -> (Result_40);
+  validate_account_name : (principal, text) -> (Result_30);
 }

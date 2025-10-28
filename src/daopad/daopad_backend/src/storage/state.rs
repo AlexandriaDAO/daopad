@@ -1,4 +1,3 @@
-use crate::proposals::orbit_link::OrbitLinkProposal;
 use crate::proposals::types::{ProposalId, VoteChoice};
 use crate::storage::memory::{
     Memory, AGREEMENT_SNAPSHOTS_MEM_ID, KONG_LOCKER_PRINCIPALS_MEM_ID, MEMORY_MANAGER,
@@ -40,12 +39,6 @@ thread_local! {
             MEMORY_MANAGER.with(|m| m.borrow().get(AGREEMENT_SNAPSHOTS_MEM_ID))
         )
     );
-
-    // One active proposal per token (enforce at creation)
-    // IMPORTANT: Using regular BTreeMap (not stable memory) since proposals are temporary
-    // Proposals have a 7-day expiry and don't need to survive canister upgrades
-    // This is intentional - active proposals should be resolved before upgrades
-    pub static ORBIT_PROPOSALS: RefCell<BTreeMap<StorablePrincipal, OrbitLinkProposal>> = RefCell::new(BTreeMap::new());
 
     // Voting thresholds for each token's governance
     pub static VOTING_THRESHOLDS: RefCell<BTreeMap<StorablePrincipal, VotingThresholds>> = RefCell::new(BTreeMap::new());

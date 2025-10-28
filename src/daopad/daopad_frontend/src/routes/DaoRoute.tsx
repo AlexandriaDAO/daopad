@@ -235,7 +235,7 @@ export default function DaoRoute() {
       const tokenPrincipal = Principal.fromText(tokenId);
       const stationPrincipal = Principal.fromText(linkStationId.trim());
 
-      const result = await tokenService.proposeStationLink(tokenPrincipal, stationPrincipal);
+      const result = await tokenService.linkStation(tokenPrincipal, stationPrincipal);
 
       if (result.success) {
         // Success - reload page to show linked station
@@ -301,7 +301,7 @@ export default function DaoRoute() {
             {hasMinimumVP ? (
               <>
                 <p className="text-executive-lightGray/80">
-                  You have sufficient voting power to link this token to an Orbit Station and enable DAO governance.
+                  You have sufficient voting power to link this token to an Orbit Station.
                 </p>
                 <button
                   onClick={isAuthenticated ? () => setShowLinkDialog(true) : login}
@@ -348,8 +348,8 @@ export default function DaoRoute() {
             <DialogHeader>
               <DialogTitle className="text-executive-ivory">Link Orbit Station</DialogTitle>
               <DialogDescription className="text-executive-lightGray">
-                Create a governance proposal to link an Orbit Station to {token.symbol}.
-                This requires community approval via weighted voting.
+                Link an Orbit Station to {token.symbol}.
+                Requires 10,000+ voting power.
               </DialogDescription>
             </DialogHeader>
 
@@ -407,7 +407,7 @@ export default function DaoRoute() {
                 disabled={linking || !linkStationId.trim()}
                 className="bg-executive-gold text-executive-charcoal hover:bg-executive-goldLight"
               >
-                {linking ? 'Creating Proposal...' : 'Create Proposal'}
+                {linking ? 'Linking Station...' : 'Link Station'}
               </Button>
             </DialogFooter>
           </DialogContent>
