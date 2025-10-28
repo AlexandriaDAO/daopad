@@ -28,9 +28,8 @@ export default function DaoRoute() {
   const [linkError, setLinkError] = useState<string>('');
   const [linking, setLinking] = useState<boolean>(false);
 
-  // Loading guard refs to prevent redundant fetches
+  // Loading guard ref to prevent redundant fetches
   const loadedStationRef = useRef<string | null>(null);
-  const isMountedRef = useRef(false);
 
   // Fetch voting power using existing hook (once we have token ID)
   const { userVotingPower, loadingVP, fetchVotingPower } = useVoting(tokenId);
@@ -38,12 +37,6 @@ export default function DaoRoute() {
   const MINIMUM_VP_FOR_LINKING = 10000;
 
   useEffect(() => {
-    // Prevent double-fetch on mount (React 18 StrictMode)
-    if (!isMountedRef.current) {
-      isMountedRef.current = true;
-      return;
-    }
-
     async function loadStation() {
       if (!stationId) {
         setError('No station ID provided');
