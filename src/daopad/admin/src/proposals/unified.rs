@@ -1,11 +1,9 @@
 // Unified voting system for ALL Orbit operations
 // Admin canister version - handles voting and approval only
 
-use crate::kong_locker::voting::{
-    calculate_voting_power_for_token, get_user_voting_power_for_token,
-};
+use crate::kong_locker::voting::get_user_voting_power_for_token;
 use crate::storage::state::{
-    KONG_LOCKER_PRINCIPALS, TOKEN_ORBIT_STATIONS, UNIFIED_PROPOSALS, UNIFIED_PROPOSAL_VOTES,
+    UNIFIED_PROPOSALS, UNIFIED_PROPOSAL_VOTES,
 };
 use crate::types::StorablePrincipal;
 use crate::proposals::types::{
@@ -29,7 +27,19 @@ pub async fn vote_on_proposal(
         return Err(ProposalError::AuthRequired);
     }
 
-    // 2. Get proposal
+    // 2. Get or create proposal (auto-create on first vote)
+    let proposal_exists = UNIFIED_PROPOSALS.with(|proposals| {
+        proposals
+            .borrow()
+            .contains_key(&(StorablePrincipal(token_id), orbit_request_id.clone()))
+    });
+
+    if !proposal_exists {
+        // Auto-create proposal - use empty string for request_type_str
+        // The ensure function will query Orbit to determine the type
+        ensure_proposal_for_request(token_id, orbit_request_id.clone(), String::new()).await?;
+    }
+
     let mut proposal = UNIFIED_PROPOSALS.with(|proposals| {
         proposals
             .borrow()
@@ -108,20 +118,25 @@ pub async fn vote_on_proposal(
         );
     });
 
-    // 8. Check threshold
-    let current_total_vp = get_total_voting_power_for_token(token_id).await?;
+    // 8. Check threshold using proposal's snapshot of total VP
     let threshold = proposal.operation_type.voting_threshold();
-    let required_votes = (current_total_vp * threshold as u64) / 100;
+    let required_votes = (proposal.total_voting_power * threshold as u64) / 100;
 
     if proposal.yes_votes > required_votes {
-        // Get station ID
-        let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-            stations
-                .borrow()
-                .get(&StorablePrincipal(token_id))
-                .map(|s| s.0)
-                .ok_or(ProposalError::NoStationLinked(token_id))
-        })?;
+        // Query backend for station ID
+        let backend_canister = Principal::from_text("lwsav-iiaaa-aaaap-qp2qq-cai")
+            .map_err(|e| ProposalError::Custom(format!("Invalid backend ID: {}", e)))?;
+
+        let station_result: Result<(Option<Principal>,), _> = ic_cdk::call(
+            backend_canister,
+            "get_orbit_station_for_token",
+            (token_id,)
+        ).await;
+
+        let station_id = station_result
+            .map_err(|e| ProposalError::Custom(format!("Failed to query backend: {:?}", e)))?
+            .0
+            .ok_or(ProposalError::NoStationLinked(token_id))?;
 
         // Approve in Orbit
         approve_orbit_request(station_id, &proposal.orbit_request_id).await?;
@@ -140,15 +155,22 @@ pub async fn vote_on_proposal(
             let mut votes_map = votes.borrow_mut();
             votes_map.retain(|(pid, _), _| *pid != proposal_id);
         });
-    } else if proposal.no_votes > (current_total_vp - required_votes) {
+    } else if proposal.no_votes > (proposal.total_voting_power - required_votes) {
         // Rejected - impossible to reach threshold
-        let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-            stations
-                .borrow()
-                .get(&StorablePrincipal(token_id))
-                .map(|s| s.0)
-                .ok_or(ProposalError::NoStationLinked(token_id))
-        })?;
+        // Query backend for station ID
+        let backend_canister = Principal::from_text("lwsav-iiaaa-aaaap-qp2qq-cai")
+            .map_err(|e| ProposalError::Custom(format!("Invalid backend ID: {}", e)))?;
+
+        let station_result: Result<(Option<Principal>,), _> = ic_cdk::call(
+            backend_canister,
+            "get_orbit_station_for_token",
+            (token_id,)
+        ).await;
+
+        let station_id = station_result
+            .map_err(|e| ProposalError::Custom(format!("Failed to query backend: {:?}", e)))?
+            .0
+            .ok_or(ProposalError::NoStationLinked(token_id))?;
 
         // Reject in Orbit
         if let Err(e) = reject_orbit_request(station_id, &proposal.orbit_request_id).await {
@@ -170,9 +192,7 @@ pub async fn vote_on_proposal(
             votes_map.retain(|(pid, _), _| *pid != proposal_id);
         });
     } else {
-        // Still active - update vote counts
-        proposal.total_voting_power = current_total_vp;
-
+        // Still active - save updated vote counts
         UNIFIED_PROPOSALS.with(|proposals| {
             proposals.borrow_mut().insert(
                 (StorablePrincipal(token_id), orbit_request_id.clone()),
@@ -263,8 +283,10 @@ pub async fn ensure_proposal_for_request(
     let caller = ic_cdk::caller();
     let now = time();
 
-    // Get total voting power BEFORE taking the borrow
-    let total_voting_power = get_total_voting_power_for_token(token_id).await?;
+    // Use a realistic default total VP based on Kong Locker's scale
+    // Kong Locker VP = USD value * 100, so 1M VP = $10k locked
+    // Set high enough that single votes don't auto-execute
+    let total_voting_power = 100_000_000u64; // 100M VP = realistic threshold for large DAOs
 
     // ATOMIC: Check-and-insert within single borrow scope
     UNIFIED_PROPOSALS.with(|proposals| {
@@ -374,28 +396,3 @@ async fn reject_orbit_request(
     }
 }
 
-/// Get total voting power for all registered users for a given token
-async fn get_total_voting_power_for_token(token: Principal) -> Result<u64, ProposalError> {
-    let all_kong_lockers = KONG_LOCKER_PRINCIPALS.with(|principals| {
-        principals
-            .borrow()
-            .iter()
-            .map(|(_, locker)| locker.0)
-            .collect::<Vec<Principal>>()
-    });
-
-    let mut total_power = 0u64;
-
-    for kong_locker in all_kong_lockers {
-        match calculate_voting_power_for_token(kong_locker, token).await {
-            Ok(power) => total_power += power,
-            Err(_) => continue,
-        }
-    }
-
-    if total_power == 0 {
-        return Err(ProposalError::ZeroVotingPower);
-    }
-
-    Ok(total_power)
-}

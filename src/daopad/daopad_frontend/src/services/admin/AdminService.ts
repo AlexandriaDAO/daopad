@@ -1,20 +1,14 @@
 import { ActorSubclass, HttpAgent, Actor } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
 import { AuthClient } from '@dfinity/auth-client';
+import { idlFactory } from '../../declarations/admin';
+import type { _SERVICE } from '../../declarations/admin/admin.did.d';
 
 // Admin canister ID (hardcoded as per backend)
 const ADMIN_CANISTER_ID = 'odkrm-viaaa-aaaap-qp2oq-cai';
 
-// Admin canister interface (matching what admin canister expects)
-// We'll need to import the actual candid interface later
-interface AdminActor {
-  // Voting methods that admin canister handles
-  vote_on_proposal: (token_id: Principal, orbit_request_id: string, vote: boolean) => Promise<void>;
-  has_user_voted: (user: Principal, token_id: Principal, orbit_request_id: string) => Promise<boolean>;
-  get_user_vote: (user: Principal, token_id: Principal, orbit_request_id: string) => Promise<{ Yes: null } | { No: null } | null>;
-  get_proposal: (token_id: Principal, orbit_request_id: string) => Promise<any | null>;
-  ensure_proposal_for_request: (token_id: Principal, orbit_request_id: string, request_type: string) => Promise<any>;
-}
+// Use the generated type from Candid declarations
+type AdminActor = _SERVICE;
 
 export class AdminService {
   private actor: ActorSubclass<AdminActor> | null = null;
@@ -45,23 +39,7 @@ export class AdminService {
         await agent.fetchRootKey();
       }
 
-      const idlFactory = ({ IDL }: any) => {
-        // Basic IDL for voting methods
-        const VoteChoice = IDL.Variant({
-          'Yes': IDL.Null,
-          'No': IDL.Null,
-        });
-
-        return IDL.Service({
-          'vote_on_proposal': IDL.Func([IDL.Principal, IDL.Text, IDL.Bool], [], []),
-          'has_user_voted': IDL.Func([IDL.Principal, IDL.Principal, IDL.Text], [IDL.Bool], ['query']),
-          'get_user_vote': IDL.Func([IDL.Principal, IDL.Principal, IDL.Text], [IDL.Opt(VoteChoice)], ['query']),
-          'get_proposal': IDL.Func([IDL.Principal, IDL.Text], [IDL.Opt(IDL.Record({}))], ['query']),
-          'ensure_proposal_for_request': IDL.Func([IDL.Principal, IDL.Text, IDL.Text], [IDL.Record({})], []),
-        });
-      };
-
-      // Create actor
+      // Create actor using generated IDL factory
       this.actor = Actor.createActor(idlFactory, {
         agent,
         canisterId: Principal.fromText(ADMIN_CANISTER_ID),
@@ -74,7 +52,27 @@ export class AdminService {
   // Convenience methods for voting operations
   async voteOnProposal(tokenId: string, orbitRequestId: string, vote: boolean): Promise<void> {
     const actor = await this.getActor();
-    await actor.vote_on_proposal(Principal.fromText(tokenId), orbitRequestId, vote);
+    const result = await actor.vote_on_proposal(Principal.fromText(tokenId), orbitRequestId, vote);
+
+    // Handle Result type - throw error if Err variant
+    if ('Err' in result) {
+      const error = result.Err;
+      if ('Custom' in error) {
+        throw new Error(error.Custom);
+      } else if ('NoVotingPower' in error) {
+        throw new Error('You need LP tokens to vote.');
+      } else if ('AlreadyVoted' in error) {
+        throw new Error('You have already voted on this proposal.');
+      } else if ('NotActive' in error) {
+        throw new Error('This proposal is no longer active.');
+      } else if ('Expired' in error) {
+        throw new Error('This proposal has expired.');
+      } else if ('AuthRequired' in error) {
+        throw new Error('Authentication required.');
+      } else {
+        throw new Error(`Vote failed: ${JSON.stringify(error)}`);
+      }
+    }
   }
 
   async hasUserVoted(userId: Principal, tokenId: string, orbitRequestId: string): Promise<boolean> {
@@ -92,9 +90,21 @@ export class AdminService {
     return await actor.get_proposal(Principal.fromText(tokenId), orbitRequestId);
   }
 
-  async ensureProposalForRequest(tokenId: string, orbitRequestId: string, requestType: string): Promise<any> {
+  async ensureProposalForRequest(tokenId: string, orbitRequestId: string, requestType: string): Promise<bigint> {
     const actor = await this.getActor();
-    return await actor.ensure_proposal_for_request(Principal.fromText(tokenId), orbitRequestId, requestType);
+    const result = await actor.ensure_proposal_for_request(Principal.fromText(tokenId), orbitRequestId, requestType);
+
+    // Handle Result type
+    if ('Err' in result) {
+      const error = result.Err;
+      if ('Custom' in error) {
+        throw new Error(error.Custom);
+      } else {
+        throw new Error(`Failed to create proposal: ${JSON.stringify(error)}`);
+      }
+    }
+
+    return result.Ok;
   }
 }
 

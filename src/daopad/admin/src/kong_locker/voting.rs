@@ -1,5 +1,3 @@
-use crate::storage::state::KONG_LOCKER_PRINCIPALS;
-use crate::types::StorablePrincipal;
 use candid::{CandidType, Deserialize, Principal};
 use ic_cdk::call;
 
@@ -18,25 +16,31 @@ pub struct LPBalanceReply {
 
 // Note: Minimum VP checks are now handled directly in the proposal system
 
+/// Query Kong Locker to find user's lock canister, then get voting power
+/// No registration needed - queries Kong Locker factory directly
 pub async fn get_user_voting_power_for_token(
     caller: Principal,
     token_canister_id: Principal,
 ) -> Result<u64, String> {
-    let kong_locker_principal = KONG_LOCKER_PRINCIPALS.with(|principals| {
-        principals
-            .borrow()
-            .get(&StorablePrincipal(caller))
-            .map(|sp| sp.0)
-            .ok_or("Must register Kong Locker canister first".to_string())
-    })?;
+    // Step 1: Query Kong Locker factory to find user's lock canister
+    let kong_locker_factory = Principal::from_text("eazgb-giaaa-aaaap-qqc2q-cai")
+        .map_err(|e| format!("Invalid Kong Locker factory ID: {}", e))?;
 
-    calculate_voting_power_for_token(kong_locker_principal, token_canister_id).await
-}
+    let all_lock_canisters: Result<(Vec<(Principal, Principal)>,), _> =
+        call(kong_locker_factory, "get_all_lock_canisters", ()).await;
 
-pub async fn calculate_voting_power_for_token(
-    kong_locker_principal: Principal,
-    token_canister_id: Principal,
-) -> Result<u64, String> {
+    let lock_canisters = all_lock_canisters
+        .map_err(|e| format!("Failed to query Kong Locker factory: {:?}", e))?
+        .0;
+
+    // Find the user's lock canister
+    let kong_locker_principal = lock_canisters
+        .iter()
+        .find(|(user, _canister)| *user == caller)
+        .map(|(_user, canister)| *canister)
+        .ok_or("No Kong Locker found for user. Please create one at kong.land")?;
+
+    // Step 2: Query KongSwap with the user's lock canister ID
     let kongswap_id = Principal::from_text("2ipq2-uqaaa-aaaar-qailq-cai")
         .map_err(|e| format!("Invalid KongSwap ID: {}", e))?;
 
@@ -55,8 +59,7 @@ pub async fn calculate_voting_power_for_token(
         .0
         .map_err(|e| format!("KongSwap returned error: {}", e))?;
 
-    // Calculate TOTAL USD value for positions containing this specific token
-    // Important: Use the full usd_balance of the LP position (both sides combined)
+    // Step 3: Calculate voting power for this specific token
     let token_id_str = token_canister_id.to_string();
     let total_usd_value: f64 = user_balances
         .iter()
