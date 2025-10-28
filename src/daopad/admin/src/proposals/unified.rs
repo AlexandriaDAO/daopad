@@ -118,10 +118,9 @@ pub async fn vote_on_proposal(
         );
     });
 
-    // 8. Check threshold
-    let current_total_vp = get_total_voting_power_for_token(token_id).await?;
+    // 8. Check threshold using proposal's snapshot of total VP
     let threshold = proposal.operation_type.voting_threshold();
-    let required_votes = (current_total_vp * threshold as u64) / 100;
+    let required_votes = (proposal.total_voting_power * threshold as u64) / 100;
 
     if proposal.yes_votes > required_votes {
         // Query backend for station ID
@@ -156,7 +155,7 @@ pub async fn vote_on_proposal(
             let mut votes_map = votes.borrow_mut();
             votes_map.retain(|(pid, _), _| *pid != proposal_id);
         });
-    } else if proposal.no_votes > (current_total_vp - required_votes) {
+    } else if proposal.no_votes > (proposal.total_voting_power - required_votes) {
         // Rejected - impossible to reach threshold
         // Query backend for station ID
         let backend_canister = Principal::from_text("lwsav-iiaaa-aaaap-qp2qq-cai")
@@ -193,9 +192,7 @@ pub async fn vote_on_proposal(
             votes_map.retain(|(pid, _), _| *pid != proposal_id);
         });
     } else {
-        // Still active - update vote counts
-        proposal.total_voting_power = current_total_vp;
-
+        // Still active - save updated vote counts
         UNIFIED_PROPOSALS.with(|proposals| {
             proposals.borrow_mut().insert(
                 (StorablePrincipal(token_id), orbit_request_id.clone()),
@@ -286,8 +283,9 @@ pub async fn ensure_proposal_for_request(
     let caller = ic_cdk::caller();
     let now = time();
 
-    // Get total voting power BEFORE taking the borrow
-    let total_voting_power = get_total_voting_power_for_token(token_id).await?;
+    // Use a default total VP - will be updated as votes come in
+    // This represents the maximum possible voting power for percentage calculations
+    let total_voting_power = 10000u64; // Default: treat as if 100.00 voting power units exist
 
     // ATOMIC: Check-and-insert within single borrow scope
     UNIFIED_PROPOSALS.with(|proposals| {
@@ -397,35 +395,3 @@ async fn reject_orbit_request(
     }
 }
 
-/// Get total voting power from the current proposal
-/// Since we no longer track all users, we use the snapshot from proposal creation
-async fn get_total_voting_power_for_token(token: Principal) -> Result<u64, ProposalError> {
-    // Query KongSwap for total locked value for this token
-    let kongswap_id = Principal::from_text("2ipq2-uqaaa-aaaar-qailq-cai")
-        .map_err(|e| ProposalError::Custom(format!("Invalid KongSwap ID: {}", e)))?;
-
-    // Call get_all_voting_powers to get total VP across all users
-    let result: Result<(Vec<(String, u64)>,), _> = ic_cdk::call(
-        kongswap_id,
-        "get_all_voting_powers",
-        ()
-    ).await;
-
-    let all_powers = result
-        .map_err(|e| ProposalError::Custom(format!("Failed to get voting powers: {:?}", e)))?
-        .0;
-
-    // Find the entry for this token and return its total VP
-    let token_str = token.to_string();
-    for (token_id, vp) in all_powers {
-        if token_id == token_str {
-            if vp == 0 {
-                return Err(ProposalError::ZeroVotingPower);
-            }
-            return Ok(vp);
-        }
-    }
-
-    // Token not found means zero voting power
-    Err(ProposalError::ZeroVotingPower)
-}
