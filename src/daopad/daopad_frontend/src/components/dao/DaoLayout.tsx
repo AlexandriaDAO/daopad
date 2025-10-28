@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, Navigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
@@ -22,12 +22,28 @@ export default function DaoLayout({
   children
 }: DaoLayoutProps) {
   const location = useLocation();
-  const pathParts = location.pathname.split('/');
-  const currentTab = pathParts[pathParts.length - 1];
-  const stationId = orbitStation?.station_id;  // Use station ID for routing
+  const pathParts = location.pathname.split('/').filter(Boolean);
 
-  // Determine if we're on the overview (base station route)
-  const isOverview = pathParts.length === 2 || currentTab === stationId;
+  // Defensive check: ensure we have a base route ID
+  if (pathParts.length === 0) {
+    console.error('[DaoLayout] Invalid path:', location.pathname);
+    return <Navigate to="/app" replace />;
+  }
+
+  // Use URL param as source of truth (not derived state)
+  const baseRouteId = pathParts[0];
+  const currentTab = pathParts.length > 1 ? pathParts[pathParts.length - 1] : baseRouteId;
+  const isOverview = pathParts.length === 1;
+
+  // Build stable tab links using URL param
+  const tabLinks = {
+    overview: `/${baseRouteId}`,
+    agreement: `/${baseRouteId}/agreement`,
+    treasury: `/${baseRouteId}/treasury`,
+    activity: `/${baseRouteId}/activity`,
+    canisters: `/${baseRouteId}/canisters`,
+    settings: `/${baseRouteId}/settings`
+  };
 
   return (
     <div className="min-h-screen bg-executive-charcoal text-executive-lightGray">
@@ -96,22 +112,22 @@ export default function DaoLayout({
           {/* Mobile: Scrollable tabs | Desktop: Flex wrap */}
           <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
             <div className="inline-flex sm:flex sm:flex-wrap gap-1 min-w-full sm:min-w-0">
-              <TabButton to={`/${stationId}`} active={isOverview}>
+              <TabButton to={tabLinks.overview} active={isOverview}>
                 Overview
               </TabButton>
-              <TabButton to={`/${stationId}/agreement`} active={currentTab === 'agreement'}>
+              <TabButton to={tabLinks.agreement} active={currentTab === 'agreement'}>
                 Agreement
               </TabButton>
-              <TabButton to={`/${stationId}/treasury`} active={currentTab === 'treasury'}>
+              <TabButton to={tabLinks.treasury} active={currentTab === 'treasury'}>
                 Treasury
               </TabButton>
-              <TabButton to={`/${stationId}/activity`} active={currentTab === 'activity'}>
+              <TabButton to={tabLinks.activity} active={currentTab === 'activity'}>
                 Activity
               </TabButton>
-              <TabButton to={`/${stationId}/canisters`} active={currentTab === 'canisters'}>
+              <TabButton to={tabLinks.canisters} active={currentTab === 'canisters'}>
                 Canisters
               </TabButton>
-              <TabButton to={`/${stationId}/settings`} active={currentTab === 'settings'}>
+              <TabButton to={tabLinks.settings} active={currentTab === 'settings'}>
                 Settings
               </TabButton>
             </div>
