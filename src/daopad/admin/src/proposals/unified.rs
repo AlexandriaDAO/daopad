@@ -1,7 +1,7 @@
 // Unified voting system for ALL Orbit operations
 // Admin canister version - handles voting and approval only
 
-use crate::kong_locker::voting::get_user_voting_power_for_token;
+use crate::kong_locker::voting::{get_user_voting_power_for_token, calculate_total_voting_power_for_token};
 use crate::storage::state::{
     UNIFIED_PROPOSALS, UNIFIED_PROPOSAL_VOTES,
 };
@@ -283,10 +283,10 @@ pub async fn ensure_proposal_for_request(
     let caller = ic_cdk::caller();
     let now = time();
 
-    // Use a realistic default total VP based on Kong Locker's scale
-    // Kong Locker VP = USD value * 100, so 1M VP = $10k locked
-    // Set high enough that single votes don't auto-execute
-    let total_voting_power = 100_000_000u64; // 100M VP = realistic threshold for large DAOs
+    // Calculate actual total voting power from Kong Locker
+    let total_voting_power = calculate_total_voting_power_for_token(token_id)
+        .await
+        .unwrap_or(1_000_000u64); // Fallback to 1M if calculation fails
 
     // ATOMIC: Check-and-insert within single borrow scope
     UNIFIED_PROPOSALS.with(|proposals| {
