@@ -105,20 +105,6 @@ export default function DaoOverview() {
         </Card>
       )}
 
-      {/* Your Participation (authenticated only) */}
-      {isAuthenticated && (
-        <Card className="bg-executive-darkGray border-executive-mediumGray">
-          <CardHeader>
-            <CardTitle className="text-executive-ivory">Your Participation</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-executive-lightGray/70">
-              Connect your Kong Locker to see your voting power and participation metrics.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Navigation cards to tabs */}
       <div className="grid md:grid-cols-3 gap-4">
         <NavCard

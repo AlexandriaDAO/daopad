@@ -7,33 +7,27 @@ import { setAuthSuccess, clearAuth, setAuthLoading, setAuthInitialized } from '.
 import { fetchBalances } from '../state/balance/balanceThunks';
 import { clearBalances } from '../state/balance/balanceSlice';
 import {
-  setKongLockerCanister,
   clearDaoState,
   fetchPublicDashboard
 } from '../features/dao/daoSlice';
-import { getKongLockerService } from '../services/backend';
 
 // Components
-import KongLockerSetup from '../components/KongLockerSetup';
 import PublicStatsStrip from '../components/PublicStatsStrip';
 import TreasuryShowcase from '../components/TreasuryShowcase';
 import RouteErrorBoundary from '../components/errors/RouteErrorBoundary';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 function AppRoute() {
   const [copyFeedback, setCopyFeedback] = useState(false);
-  const [isCheckingKongLocker, setIsCheckingKongLocker] = useState(false);
   const intervalRef = useRef(null);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { principal, isAuthenticated } = useSelector(state => state.auth);
   const { icpBalance, isLoading: balanceLoading } = useSelector(state => state.balance);
-  const { kongLockerCanister } = useSelector(state => state.dao);
   const publicStats = useSelector(state => state.dao.publicDashboard.stats);
   const { login, identity } = useIdentity();
   const logout = useLogout();
@@ -45,7 +39,6 @@ function AppRoute() {
       dispatch(setAuthSuccess(principalText));
       // Fetch balances when authenticated
       dispatch(fetchBalances(identity));
-      checkKongLockerCanister();
     } else {
       dispatch(clearAuth());
       dispatch(clearBalances());
@@ -114,26 +107,6 @@ function AppRoute() {
     };
   }, [isAuthenticated, dispatch]);
 
-  const checkKongLockerCanister = async () => {
-    if (!identity) return;
-
-    setIsCheckingKongLocker(true);
-    try {
-      const kongLockerService = getKongLockerService(identity);
-      const result = await kongLockerService.getMyCanister();
-
-      if (result.success && result.data) {
-        // Convert Principal object to string
-        const canisterString = typeof result.data === 'string' ? result.data : result.data.toString();
-        dispatch(setKongLockerCanister(canisterString));
-      }
-    } catch (err) {
-      console.error('Error checking Kong Locker canister:', err);
-    } finally {
-      setIsCheckingKongLocker(false);
-    }
-  };
-
   const handleLogin = async () => {
     dispatch(setAuthLoading(true));
     try {
@@ -161,13 +134,6 @@ function AppRoute() {
       console.error('Failed to copy:', err);
     }
   };
-
-  const handleKongLockerComplete = () => {
-    // Kong Locker setup completed, component will automatically refresh
-  };
-
-  // Determine if we should show Kong Locker setup
-  const shouldShowKongLockerSetup = isAuthenticated && !kongLockerCanister && !isCheckingKongLocker;
 
   const handleReset = () => {
     // Optionally refetch data or reset route state
@@ -221,11 +187,6 @@ function AppRoute() {
                     {copyFeedback ? '✓' : '⧉'}
                   </Button>
                 </div>
-                {kongLockerCanister && (
-                  <Badge className="bg-executive-mediumGray border-executive-gold/30 text-executive-goldLight" title={`Kong Locker: ${kongLockerCanister}`}>
-                    🔒 Connected
-                  </Badge>
-                )}
                 <Button
                   className="border-executive-gold/30 text-executive-goldLight hover:bg-executive-gold/10 hover:border-executive-gold"
                   variant="outline"
@@ -249,28 +210,18 @@ function AppRoute() {
       </header>
 
     <main className="container mx-auto px-4 py-8">
-      {isAuthenticated && shouldShowKongLockerSetup ? (
-        // ONLY special case: Kong Locker setup for new users
-        <div className="max-w-2xl mx-auto">
-          <KongLockerSetup
-            identity={identity}
-            onComplete={handleKongLockerComplete}
-          />
-        </div>
-      ) : (
-        // DEFAULT VIEW - Same for everyone (logged in or not)
-        <div className="space-y-8">
-          {/* Stats overview */}
-          <section>
-            <PublicStatsStrip />
-          </section>
+      {/* DEFAULT VIEW - Same for everyone (logged in or not) */}
+      <div className="space-y-8">
+        {/* Stats overview */}
+        <section>
+          <PublicStatsStrip />
+        </section>
 
-          {/* Treasury showcase - shows ALL treasuries */}
-          <section>
-            <TreasuryShowcase onSelectStation={(stationId) => navigate(`/${stationId}`)} />
-          </section>
-        </div>
-      )}
+        {/* Treasury showcase - shows ALL treasuries */}
+        <section>
+          <TreasuryShowcase onSelectStation={(stationId) => navigate(`/${stationId}`)} />
+        </section>
+      </div>
     </main>
 
     <Toaster />
