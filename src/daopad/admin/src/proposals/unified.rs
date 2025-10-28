@@ -283,9 +283,10 @@ pub async fn ensure_proposal_for_request(
     let caller = ic_cdk::caller();
     let now = time();
 
-    // Use a default total VP - will be updated as votes come in
-    // This represents the maximum possible voting power for percentage calculations
-    let total_voting_power = 10000u64; // Default: treat as if 100.00 voting power units exist
+    // Use a realistic default total VP based on Kong Locker's scale
+    // Kong Locker VP = USD value * 100, so 1M VP = $10k locked
+    // Set high enough that single votes don't auto-execute
+    let total_voting_power = 100_000_000u64; // 100M VP = realistic threshold for large DAOs
 
     // ATOMIC: Check-and-insert within single borrow scope
     UNIFIED_PROPOSALS.with(|proposals| {
