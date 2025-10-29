@@ -6,6 +6,7 @@ import { store } from './store/store';
 import IIProvider from './providers/AuthProvider/IIProvider';
 import ActorProvider from './providers/ActorProvider';
 import ErrorBoundary from './components/errors/ErrorBoundary';
+import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 
 // Import testing utilities (exposes window.testTransferFlow)
@@ -36,6 +37,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <ErrorBoundary level="app">
       <Provider store={store}>
         <IIProvider>
+          <Toaster />
           <ActorProvider />
           <App />
         </IIProvider>

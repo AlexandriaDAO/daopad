@@ -1,7 +1,8 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { FallbackLoader } from './components/ui/fallback-loader';
 import LazyLoadErrorBoundary from './components/errors/LazyLoadErrorBoundary';
+import { toast } from 'sonner';
 
 // Code splitting: Lazy load routes for better initial bundle size
 const Homepage = lazy(() => import('./routes/Homepage'));
@@ -20,6 +21,29 @@ const DaoSettings = lazy(() => import('./routes/dao/DaoSettings'));
 const DaoEquity = lazy(() => import('./routes/dao/DaoEquity'));
 
 function App() {
+  useEffect(() => {
+		const urlParams = new URLSearchParams(window.location.search);
+		const success = urlParams.get("success");
+		const error = urlParams.get("error");
+
+		if (success !== null) {
+			toast.success("Payment completed successfully!");
+
+			// Clean up URL parameters
+			const newUrl = new URL(window.location.href);
+			newUrl.searchParams.delete("success");
+			window.history.replaceState({}, "", newUrl.toString());
+		}
+
+		if (error !== null) {
+			toast.error("Payment failed!");
+
+			// Clean up URL parameters
+			const newUrl = new URL(window.location.href);
+			newUrl.searchParams.delete("error");
+			window.history.replaceState({}, "", newUrl.toString());
+		}
+	}, []);
   return (
     <Router>
       <LazyLoadErrorBoundary>

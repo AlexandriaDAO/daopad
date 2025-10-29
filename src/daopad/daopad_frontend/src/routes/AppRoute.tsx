@@ -17,7 +17,6 @@ import TreasuryShowcase from '../components/TreasuryShowcase';
 import RouteErrorBoundary from '../components/errors/RouteErrorBoundary';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Toaster } from '@/components/ui/toaster';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 function AppRoute() {
@@ -224,7 +223,6 @@ function AppRoute() {
       </div>
     </main>
 
-    <Toaster />
     <footer className="border-t border-executive-gold/20 mt-16 bg-executive-darkGray">
       <div className="container mx-auto px-4 py-6 text-center">
         <div className="h-px bg-executive-gold/30 w-32 mx-auto mb-4"></div>

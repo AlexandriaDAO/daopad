@@ -51,7 +51,9 @@ export default function InvoiceList({ token, identity, refreshTrigger }: Invoice
   }, [identity, refreshTrigger]);
 
   const formatDate = (timestamp: bigint) => {
-    const date = new Date(Number(timestamp));
+    // Convert nanoseconds to milliseconds (divide by 1,000,000)
+    const timestampMs = Number(timestamp) / 1_000_000;
+    const date = new Date(timestampMs);
     return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
   };
 
