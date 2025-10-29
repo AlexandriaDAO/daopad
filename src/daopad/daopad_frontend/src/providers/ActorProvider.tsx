@@ -73,8 +73,15 @@ export default function ActorProvider() {
 	);
 
 	useEffect(() => {
-		if (!identity) return;
+		if (!identity) {
+			console.log('[ActorProvider] No identity yet');
+			return;
+		}
+
+		console.log('[ActorProvider] Identity changed:', identity.getPrincipal().toText());
+
 		ensureAllInitialized().then(() => {
+			console.log('[ActorProvider] Authenticating all actors with principal:', identity.getPrincipal().toText());
 			authenticateAll(identity);
 		});
 	}, [identity]);

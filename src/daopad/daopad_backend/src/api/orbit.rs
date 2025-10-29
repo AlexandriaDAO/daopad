@@ -1,4 +1,4 @@
-use crate::kong_locker::{get_kong_locker_for_user, get_user_locked_tokens};
+use crate::kong_locker::{get_or_lookup_kong_locker, get_user_locked_tokens};
 use crate::storage::state::TOKEN_ORBIT_STATIONS;
 use crate::types::orbit::{
     AccountBalance, AccountMetadata, AddAccountOperationInput, Allow, AuthScope,
@@ -28,8 +28,8 @@ pub async fn get_my_locked_tokens() -> Result<Vec<TokenInfo>, String> {
         return Err("Authentication required".to_string());
     }
 
-    let kong_locker_principal =
-        get_kong_locker_for_user(caller).ok_or("Must register Kong Locker canister first")?;
+    // Auto-lookup user's Kong Locker canister from factory if not cached
+    let kong_locker_principal = get_or_lookup_kong_locker(caller).await?;
 
     get_user_locked_tokens(kong_locker_principal).await
 }

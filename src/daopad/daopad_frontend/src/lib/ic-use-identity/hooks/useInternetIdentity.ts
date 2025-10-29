@@ -62,6 +62,8 @@ function login(loginOptions?:LoginOptions): void {
 		onError: onLoginError,
 		maxTimeToLive: ONE_HOUR_IN_NANOSECONDS,
 		windowOpenerFeatures: "width=400,height=650,left=100,top=100",
+		// Use Alexandria's canister as derivation origin for consistent principals
+		derivationOrigin: "https://yj5ba-aiaaa-aaaap-qkmoa-cai.icp0.io",
 		...loginOptions,
 	};
 

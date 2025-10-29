@@ -1,4 +1,4 @@
-use crate::kong_locker::registration::get_kong_locker_for_user;
+use crate::kong_locker::registration::get_or_lookup_kong_locker;
 use crate::types::UserBalancesReply;
 use candid::Principal;
 use ic_cdk::call;
@@ -9,8 +9,8 @@ pub async fn get_user_voting_power_for_token(
     caller: Principal,
     token_canister_id: Principal,
 ) -> Result<u64, String> {
-    let kong_locker_principal =
-        get_kong_locker_for_user(caller).ok_or("Must register Kong Locker canister first")?;
+    // Auto-lookup user's Kong Locker canister from factory if not cached
+    let kong_locker_principal = get_or_lookup_kong_locker(caller).await?;
 
     calculate_voting_power_for_token(kong_locker_principal, token_canister_id).await
 }
