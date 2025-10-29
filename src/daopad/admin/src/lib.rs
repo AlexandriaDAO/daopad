@@ -6,10 +6,14 @@ mod proposals;
 mod kong_locker;
 mod storage;
 mod types;
+mod equity;
 
 use candid::{CandidType, Deserialize, Principal};
 use ic_cdk::{init, update, query};
-use proposals::types::{ProposalId, UnifiedProposal, VoteChoice, ProposalError};
+use proposals::types::{
+    ProposalId, UnifiedProposal, VoteChoice, ProposalError,
+    EquityStationConfig, EquityTransferProposal, PaymentDestination, EquityProposalStatus
+};
 
 #[init]
 fn init() {
@@ -37,6 +41,22 @@ pub use proposals::unified::{
     list_unified_proposals,
     has_user_voted,
     get_user_vote,
+};
+
+// ============================================================================
+// Equity Station API - Re-exported from equity module
+// ============================================================================
+
+pub use equity::{
+    initialize_equity_station,
+    create_equity_transfer_proposal,
+    vote_on_equity_transfer,
+    execute_equity_transfer,
+    get_user_equity,
+    get_equity_holders,
+    get_equity_transfer_proposals,
+    get_equity_transfer_proposal,
+    is_equity_station,
 };
 
 // ============================================================================

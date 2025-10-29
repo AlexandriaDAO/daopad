@@ -1,3 +1,18 @@
+type EquityProposalStatus = variant { Approved; Proposed; Executed; Expired };
+type EquityTransferProposal = record {
+  status : EquityProposalStatus;
+  no_votes_pct : nat8;
+  payment_destination : PaymentDestination;
+  created_at : nat64;
+  seller : principal;
+  ckusdc_amount : nat64;
+  proposal_id : text;
+  station_id : principal;
+  buyer : principal;
+  expires_at : nat64;
+  yes_votes_pct : nat8;
+  percentage : nat8;
+};
 type OrbitOperationType = variant {
   RemoveAsset;
   AddUserGroup;
@@ -36,6 +51,10 @@ type OrbitOperationType = variant {
   RestoreExternalCanister;
   AddAccount;
 };
+type PaymentDestination = variant {
+  SellerAccount : text;
+  StationTreasury : principal;
+};
 type ProposalError = variant {
   AlreadyVoted : nat64;
   InvalidTransferDetails : text;
@@ -56,8 +75,10 @@ type ProposalError = variant {
   AuthRequired;
 };
 type ProposalStatus = variant { Active; Rejected; Executed; Expired };
-type Result = variant { Ok : nat64; Err : ProposalError };
-type Result_1 = variant { Ok; Err : ProposalError };
+type Result = variant { Ok : text; Err : text };
+type Result_1 = variant { Ok : nat64; Err : ProposalError };
+type Result_2 = variant { Ok; Err : text };
+type Result_3 = variant { Ok; Err : ProposalError };
 type TransferDetails = record {
   to : text;
   title : text;
@@ -84,16 +105,33 @@ type UnifiedProposal = record {
 };
 type VoteChoice = variant { No; Yes };
 service : () -> {
+  create_equity_transfer_proposal : (
+      principal,
+      principal,
+      nat8,
+      nat64,
+      PaymentDestination,
+    ) -> (Result);
   // Ensure a proposal exists for an Orbit request
-  ensure_proposal_for_request : (principal, text, text) -> (Result);
+  ensure_proposal_for_request : (principal, text, text) -> (Result_1);
+  execute_equity_transfer : (text) -> (Result_2);
+  get_equity_holders : (principal) -> (vec record { principal; nat8 }) query;
+  get_equity_transfer_proposal : (text) -> (opt EquityTransferProposal) query;
+  get_equity_transfer_proposals : (principal) -> (
+      vec EquityTransferProposal,
+    ) query;
   // Get a specific proposal
   get_proposal : (principal, text) -> (opt UnifiedProposal) query;
+  get_user_equity : (principal, principal) -> (nat8) query;
   // Get the user's vote on a proposal
   get_user_vote : (principal, principal, text) -> (opt VoteChoice) query;
   // Check if a user has voted on a proposal
   has_user_voted : (principal, principal, text) -> (bool) query;
+  initialize_equity_station : (principal, principal) -> (Result_2);
+  is_equity_station : (principal) -> (bool) query;
   // List all active proposals for a token
   list_unified_proposals : (principal) -> (vec UnifiedProposal) query;
+  vote_on_equity_transfer : (text, bool) -> (Result_2);
   // Single voting endpoint for ALL Orbit operations
-  vote_on_proposal : (principal, text, bool) -> (Result_1);
+  vote_on_proposal : (principal, text, bool) -> (Result_3);
 }

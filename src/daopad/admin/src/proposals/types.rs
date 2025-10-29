@@ -460,3 +460,48 @@ impl OrbitOperationType {
         }
     }
 }
+
+// ============================================================================
+// EQUITY STATION TYPES
+// ============================================================================
+
+/// Configuration for equity-based governance station
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct EquityStationConfig {
+    pub station_id: Principal,
+    pub creator: Principal,
+    pub created_at: u64,
+}
+
+/// Proposal to transfer equity ownership
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct EquityTransferProposal {
+    pub proposal_id: String,
+    pub station_id: Principal,
+    pub seller: Principal,
+    pub buyer: Principal,
+    pub percentage: u8,  // 1-100
+    pub ckusdc_amount: u64,
+    pub payment_destination: PaymentDestination,
+    pub status: EquityProposalStatus,
+    pub created_at: u64,
+    pub expires_at: u64,
+    pub yes_votes_pct: u8,  // Out of 100 total equity
+    pub no_votes_pct: u8,
+}
+
+/// Where payment should be sent for equity transfer
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub enum PaymentDestination {
+    SellerAccount(String),      // Account identifier
+    StationTreasury(Principal),  // Station principal
+}
+
+/// Status of equity transfer proposal
+#[derive(CandidType, Deserialize, Clone, Debug, PartialEq)]
+pub enum EquityProposalStatus {
+    Proposed,
+    Approved,  // 75% reached
+    Executed,  // Buyer executed
+    Expired,
+}

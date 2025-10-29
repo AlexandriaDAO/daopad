@@ -84,18 +84,24 @@ pub async fn vote_on_proposal(
         return Err(ProposalError::AlreadyVoted(proposal.id));
     }
 
-    // 6. Get voting power
-    let voting_power = match get_user_voting_power_for_token(voter, token_id).await {
-        Ok(vp) => vp,
-        Err(e) if e.contains("register") => {
-            return Err(ProposalError::Custom(
-                "You need to register with Kong Locker first.".to_string()
-            ));
-        },
-        Err(_) => {
-            return Err(ProposalError::Custom(
-                "You need LP tokens to vote.".to_string()
-            ));
+    // 6. Get voting power - ROUTE BASED ON STATION TYPE
+    let voting_power = if crate::equity::is_equity_station(token_id) {
+        // EQUITY STATION: Use equity % directly (SYNC)
+        crate::equity::get_user_equity(token_id, voter) as u64
+    } else {
+        // DAO STATION: Query Kong Locker (ASYNC - existing logic)
+        match get_user_voting_power_for_token(voter, token_id).await {
+            Ok(vp) => vp,
+            Err(e) if e.contains("register") => {
+                return Err(ProposalError::Custom(
+                    "You need to register with Kong Locker first.".to_string()
+                ));
+            },
+            Err(_) => {
+                return Err(ProposalError::Custom(
+                    "You need LP tokens to vote.".to_string()
+                ));
+            }
         }
     };
 
