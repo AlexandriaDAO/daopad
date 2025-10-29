@@ -5,6 +5,23 @@ Enable equity-based governance for any station as an alternative to Kong Locker 
 
 **Key Design**: Station creator gets 100% equity on initialization. Members transfer equity through proposals that require 75% approval from current equity holders (weighted by their %). No complex dilution - simple direct transfers: Seller -= X%, Buyer += X%.
 
+**Implementation Approach**: Two-part delivery
+- **Part 1**: Backend implementation with dfx testing (this document)
+- **Part 2**: Frontend UI after backend proven in production (separate PR)
+
+This prevents wasted UI work if backend needs iteration and allows implementation to focus purely on Rust/Candid without context-switching to React/TypeScript.
+
+## Simplifications Applied
+
+Based on one-shot implementation analysis, the following simplifications have been made to reduce complexity:
+
+- ✅ **Kept**: Voting integration for regular Orbit proposals (CORE REQUIREMENT - equity holders must govern their stations)
+- ✅ **Kept**: Stable storage from day 1 (production-ready immediately, no migration needed)
+- ❌ **Removed**: Backend admin verification (`verify_backend_is_station_admin`) - Admin just trusts Backend's principal
+- ❌ **Removed**: One-proposal-per-seller validation - Execution-time check prevents over-selling, no need to iterate all proposals
+- 🔒 **Safety**: Vote tallies use `checked_add()` to panic on overflow (u8 type, should never exceed 100%)
+- 📦 **Split**: Backend (Part 1 - this PR) and Frontend (Part 2 - after backend proven)
+
 ## Architecture
 
 ### Single Source of Truth: Admin Canister
@@ -106,46 +123,16 @@ enum VoteChoice {
 
 ### Backend Methods (Minimal - Just Initialization)
 
-#### verify_backend_is_station_admin (Helper)
-```rust
-// Verifies Backend canister has admin privileges in the station
-async fn verify_backend_is_station_admin(station_id: Principal) -> Result<(), String> {
-    let backend = ic_cdk::id();
-
-    // Call station to get user privileges
-    let result: Result<(GetUserPrivilegesResponse,), _> = ic_cdk::call(
-        station_id,
-        "get_user_privileges",
-        (backend,)
-    ).await;
-
-    match result {
-        Ok((response,)) => {
-            // Check if backend has admin privileges
-            // Response structure: GetUserPrivilegesResponse { privileges: Vec<Privilege> }
-            // We need at least RequestPolicyResource with Create permission
-            if response.privileges.iter().any(|p| p.is_admin_privilege()) {
-                Ok(())
-            } else {
-                Err("Backend is not admin of this station".to_string())
-            }
-        },
-        Err(e) => Err(format!("Failed to verify admin status: {:?}", e))
-    }
-}
-```
-
 #### create_equity_station
+**Simplified**: No admin verification - Admin canister will verify caller is Backend.
+
 ```rust
 #[update]
 async fn create_equity_station(station_id: Principal) -> Result<(), String> {
     let caller = ic_cdk::caller();
-
-    // Verify station exists and Backend is admin
-    verify_backend_is_station_admin(station_id).await?;
-
-    // Call Admin to initialize equity tracking
     let admin_canister = Principal::from_text("odkrm-viaaa-aaaap-qp2oq-cai").unwrap();
+
+    // Admin will verify caller == Backend canister
     let result: Result<(Result<(), String>,), _> = ic_cdk::call(
         admin_canister,
         "initialize_equity_station",
@@ -222,18 +209,8 @@ fn create_equity_transfer_proposal(
         return Err(format!("Insufficient equity: have {}%, need {}%", seller_equity, percentage));
     }
 
-    // CRITICAL: Only one active proposal per seller at a time
-    let has_active_proposal = EQUITY_TRANSFER_PROPOSALS.with(|proposals| {
-        proposals.borrow().iter().any(|(_, p)| {
-            p.seller == seller
-            && p.station_id == station_id
-            && (p.status == EquityProposalStatus::Proposed || p.status == EquityProposalStatus::Approved)
-        })
-    });
-
-    if has_active_proposal {
-        return Err("You already have an active equity transfer proposal. Wait for it to execute or expire.".to_string());
-    }
+    // No per-seller proposal limit - execution-time check prevents over-selling
+    // Seller can create multiple proposals; only execution transfers equity
 
     // Generate proposal ID
     let proposal_id = format!("{}-{}", ic_cdk::api::time(), seller.to_text());
@@ -305,11 +282,16 @@ fn vote_on_equity_transfer(proposal_id: String, approve: bool) -> Result<(), Str
         Ok(())
     })?;
 
-    // Update vote tallies (simple sum of equity percentages)
+    // Update vote tallies with overflow protection
+    // Use checked_add to panic if total exceeds u8::MAX (should never happen with correct logic)
     if approve {
-        proposal.yes_votes_pct += voter_equity;
+        proposal.yes_votes_pct = proposal.yes_votes_pct
+            .checked_add(voter_equity)
+            .expect("Vote tally overflow - invariant violated");
     } else {
-        proposal.no_votes_pct += voter_equity;
+        proposal.no_votes_pct = proposal.no_votes_pct
+            .checked_add(voter_equity)
+            .expect("Vote tally overflow - invariant violated");
     }
 
     // Check 75% threshold (out of 100 total equity)
@@ -448,13 +430,12 @@ fn is_equity_station(station_id: Principal) -> bool {
 }
 ```
 
-#### 6. Voting Power Integration
-**DO NOT MODIFY EXISTING VOTING FUNCTIONS**. Equity stations use separate voting logic from DAO stations:
+#### 6. Voting Power Integration (REQUIRED FOR MVP)
 
-- **DAO stations**: Use existing Kong Locker VP queries (async, complex)
-- **Equity stations**: Use `get_user_equity()` directly (sync, simple percentages)
+**CRITICAL**: Equity holders MUST be able to vote on regular Orbit Station proposals (treasury transfers, user management, etc). This is core functionality, not optional.
 
-When implementing regular proposal voting for equity stations, check `is_equity_station()` first:
+**Implementation**: Modify Admin's existing `vote_on_proposal()` function to route voting power based on station type. This allows equity stations to participate in all station governance, not just equity transfers.
+
 ```rust
 #[update]
 async fn vote_on_proposal(
@@ -467,9 +448,11 @@ async fn vote_on_proposal(
     // Route voting power check based on station type
     let voting_weight = if is_equity_station(station_id) {
         // Equity station: use equity percentage directly (1-100)
+        // This is SYNC and simple - no cross-canister calls
         get_user_equity(station_id, voter) as u64
     } else {
         // DAO station: query Kong Locker (returns VP in dollars × 100)
+        // This is ASYNC - uses existing Kong Locker integration
         get_kong_locker_vp(station_id, voter).await?
     };
 
@@ -478,12 +461,26 @@ async fn vote_on_proposal(
     }
 
     // Rest of voting logic (same for both types)...
+    // Tally votes, check thresholds, approve in Orbit if passed, etc.
 }
 ```
 
-## Frontend Requirements (REQUIRED FOR MVP)
+**Key Points:**
+- Equity voting is **sync** (simple HashMap lookup of equity %)
+- DAO voting is **async** (cross-canister Kong Locker call)
+- Same voting logic handles both after getting weight
+- **No changes to DAO voting** - just adding equity path
+- Equity holders govern treasury, users, policies - everything
 
-### New "Equity" Tab
+---
+
+# PART 2: FRONTEND REQUIREMENTS (SEPARATE PR)
+
+**⚠️ DO NOT IMPLEMENT UNTIL PART 1 BACKEND IS PROVEN IN PRODUCTION**
+
+The following frontend requirements are for a separate PR after backend testing is complete. This prevents wasted UI work if backend needs iteration.
+
+## New "Equity" Tab
 Add a new tab to station detail pages for equity stations only (check `is_equity_station()` first).
 
 **Tab Contents**:
@@ -607,10 +604,11 @@ Orbit Station executes treasury operation ✓
 
 ### Equity Transfers
 - ✅ Percentage 1-100 only (whole numbers, simple accounting)
-- ✅ Seller must have ≥ percentage being sold (checked at proposal AND execution)
-- ✅ Only one active proposal per seller (prevents double-spend)
+- ✅ Seller must have ≥ percentage being sold (checked at execution time)
+- ✅ No per-seller proposal limit (execution check prevents over-selling)
 - ✅ Proposals don't lock equity (seller can vote with full % during proposal)
 - ✅ 75% approval threshold (out of 100 total equity)
+- ✅ Vote tallies use `checked_add()` to panic on overflow (safety check)
 - ✅ 7-day expiry (no cancellation - wait for expiry)
 - ✅ Only buyer can execute
 - ✅ Manual payment (trust-based MVP)
@@ -716,10 +714,103 @@ dfx canister --network ic call $ADMIN vote_on_proposal "(
 # Voting weight = caller's equity % (80% for seller, 20% for buyer)
 ```
 
+## Success Criteria (Backend MVP Complete)
+
+The backend implementation is considered complete and production-ready when ALL of these dfx commands work correctly:
+
+### 1. Initialize Equity Station
+```bash
+export TEST_STATION="fec7w-zyaaa-aaaaa-qaffq-cai"
+export BACKEND="lwsav-iiaaa-aaaap-qp2qq-cai"
+export ADMIN="odkrm-viaaa-aaaap-qp2oq-cai"
+
+dfx identity use daopad
+dfx canister --network ic call $BACKEND create_equity_station "(principal \"$TEST_STATION\")"
+# Expected: (variant { Ok })
+```
+
+### 2. Verify Creator Has 100% Equity
+```bash
+dfx canister --network ic call $ADMIN get_equity_holders "(principal \"$TEST_STATION\")"
+# Expected: (vec { record { principal "<creator>"; 100 : nat8 } })
+
+dfx canister --network ic call $ADMIN is_equity_station "(principal \"$TEST_STATION\")"
+# Expected: (true)
+```
+
+### 3. Create Equity Transfer Proposal
+```bash
+dfx identity use buyer
+export BUYER=$(dfx identity get-principal)
+
+dfx identity use daopad  # Seller with 100% equity
+dfx canister --network ic call $ADMIN create_equity_transfer_proposal "(
+  principal \"$TEST_STATION\",
+  principal \"$BUYER\",
+  20 : nat8,
+  1000 : nat64,
+  variant { StationTreasury = principal \"$TEST_STATION\" }
+)"
+# Expected: (variant { Ok = "proposal_id_string" })
+```
+
+### 4. Vote on Equity Transfer
+```bash
+export PROPOSAL_ID="<id_from_step_3>"
+
+dfx canister --network ic call $ADMIN vote_on_equity_transfer "(\"$PROPOSAL_ID\", true)"
+# Expected: (variant { Ok })
+
+dfx canister --network ic call $ADMIN get_equity_transfer_proposal "(\"$PROPOSAL_ID\")"
+# Expected: status = Approved (since seller has 100% > 75% threshold)
+```
+
+### 5. Execute Equity Transfer
+```bash
+dfx identity use buyer
+dfx canister --network ic call $ADMIN execute_equity_transfer "(\"$PROPOSAL_ID\")"
+# Expected: (variant { Ok })
+
+# Verify equity balances changed correctly
+dfx canister --network ic call $ADMIN get_equity_holders "(principal \"$TEST_STATION\")"
+# Expected:
+# vec {
+#   record { principal "<seller>"; 80 : nat8 };  # 100 - 20
+#   record { principal "<buyer>"; 20 : nat8 }    # 0 + 20
+# }
+```
+
+### 6. Vote on Regular Orbit Proposal (CRITICAL - Tests Voting Integration)
+```bash
+# Create a regular Orbit Station proposal (treasury transfer, user management, etc)
+dfx canister --network ic call $BACKEND create_orbit_request_with_proposal "(
+  principal \"$TEST_STATION\",
+  variant { Transfer = record { ... } }
+)"
+# Returns: request_id
+
+# Vote using equity percentage (tests is_equity_station routing)
+dfx identity use daopad  # Has 80% equity
+dfx canister --network ic call $ADMIN vote_on_proposal "(
+  principal \"$TEST_STATION\",
+  \"<request_id>\",
+  variant { Yes }
+)"
+# Expected: Vote recorded with weight = 80
+# This proves equity voting integration works for ALL proposals, not just equity transfers
+```
+
+**✅ If all 6 test sequences pass, backend is production-ready and frontend can start.**
+
 ## Implementation Order
+
+### PART 1: BACKEND IMPLEMENTATION (THIS PR)
+
+**Goal**: Complete backend with dfx testing. Frontend comes after backend proven in production.
 
 1. **Admin types** (`admin/src/proposals/types.rs`)
    - Add equity structs: `EquityStationConfig`, `EquityTransferProposal`, etc.
+   - Use `u8` for vote tallies (will use `checked_add()`)
    - Add to candid exports
 
 2. **Admin storage** (`admin/src/storage/state.rs`)
@@ -728,39 +819,54 @@ dfx canister --network ic call $ADMIN vote_on_proposal "(
    - Use MemoryIds 10-13 (avoid conflicts)
 
 3. **Admin equity methods** (`admin/src/equity/mod.rs` - NEW FILE)
-   - Implement all 10 methods from plan
-   - `initialize_equity_station`
-   - `create_equity_transfer_proposal` (with one-proposal-per-seller check)
-   - `vote_on_equity_transfer`
-   - `execute_equity_transfer` (with invariant check)
-   - All query methods
+   - Implement all equity methods from plan
+   - `initialize_equity_station` (only callable by Backend)
+   - `create_equity_transfer_proposal` (NO one-proposal-per-seller check)
+   - `vote_on_equity_transfer` (use `checked_add()` for vote tallies)
+   - `execute_equity_transfer` (with invariant check: total must = 100%)
+   - All query methods (`get_equity_holders`, `is_equity_station`, etc)
 
-4. **Backend helper** (`daopad_backend/src/utils.rs`)
-   - Implement `verify_backend_is_station_admin()`
-   - Handle Orbit's GetUserPrivilegesResponse
-
-5. **Backend initialization** (`daopad_backend/src/api/equity.rs` - NEW FILE)
-   - Implement `create_equity_station()`
+4. **Backend initialization** (`daopad_backend/src/api/equity.rs` - NEW FILE)
+   - Implement `create_equity_station()` - simple wrapper
+   - NO admin verification - Admin will verify caller == Backend
    - Proper cross-canister error handling
 
-6. **Admin voting integration** (`admin/src/proposals/voting.rs`)
+5. **Admin voting integration** (`admin/src/proposals/voting.rs`) **← CRITICAL**
    - Modify `vote_on_proposal()` to check `is_equity_station()`
-   - Route to `get_user_equity()` OR `get_kong_locker_vp()` based on type
+   - Route to `get_user_equity()` (sync) OR `get_kong_locker_vp()` (async)
+   - This allows equity holders to vote on ALL proposals (treasury, users, etc)
 
-7. **Candid interfaces**
+6. **Candid interfaces**
    - `admin/admin.did` - add all equity methods
    - `daopad_backend/daopad_backend.did` - add `create_equity_station`
+   - Regenerate with candid-extractor
 
-8. **Deploy backend** (generates new declarations)
+7. **Deploy backend** (generates new declarations)
    ```bash
    ./deploy.sh --network ic --backend-only
    ```
 
-9. **Sync declarations** (CRITICAL - prevents "method not found" errors)
+8. **Sync declarations** (CRITICAL - prevents "method not found" errors)
    ```bash
    cp -r src/declarations/admin/* src/daopad/daopad_frontend/src/declarations/admin/
    cp -r src/declarations/daopad_backend/* src/daopad/daopad_frontend/src/declarations/daopad_backend/
    ```
+
+9. **Test with dfx** (see "Success Criteria" section above)
+   - Run all 6 test sequences
+   - Verify equity transfers work
+   - Verify regular Orbit voting works with equity routing
+   - All tests must pass before proceeding to Part 2
+
+**✅ Part 1 Complete When**: All dfx tests in Success Criteria pass
+
+---
+
+### PART 2: FRONTEND IMPLEMENTATION (SEPARATE PR)
+
+**⚠️ DO NOT START UNTIL PART 1 BACKEND PROVEN IN PRODUCTION**
+
+The following frontend work should be done as a separate PR after backend testing is complete:
 
 10. **Frontend Equity tab** (`daopad_frontend/src/components/EquityTab.tsx` - NEW FILE)
     - Check `is_equity_station()` on station page load
@@ -768,13 +874,18 @@ dfx canister --network ic call $ADMIN vote_on_proposal "(
     - Implement equity holders table
     - Implement transfer proposal UI
     - Implement voting UI
+    - See "Frontend Requirements" section below for details
 
 11. **Deploy frontend**
     ```bash
     ./deploy.sh --network ic --frontend-only
     ```
 
-12. **Test on mainnet** (use commands from "Testing Commands" section)
+12. **Browser testing**
+    - Test equity tab appears for equity stations
+    - Test transfer proposal creation
+    - Test voting on equity transfers
+    - Test equity holders can vote on regular proposals
 
 ## Design Decisions (Finalized)
 
@@ -787,7 +898,7 @@ dfx canister --network ic call $ADMIN vote_on_proposal "(
 ### 2. Direct Transfers (No Dilution, No Locking)
 - Simple math: Seller -= X%, Buyer += X%
 - Proposals don't lock equity (seller can vote during proposal)
-- One active proposal per seller (prevents double-spend)
+- No per-seller proposal limit (execution check prevents over-selling)
 - Easy to verify: total always = 100%
 
 ### 3. 100 Shares System
@@ -825,7 +936,7 @@ dfx canister --network ic call $ADMIN vote_on_proposal "(
 - Both work with same voting logic (just different weight sources)
 
 ### 9. Separation of Concerns
-- Backend: Station admin verification only
-- Admin: ALL equity logic (storage, proposals, voting)
+- Backend: Simple initialization wrapper (no admin verification)
+- Admin: ALL equity logic (storage, proposals, voting) + verifies Backend caller
 - Orbit Station: Treasury + execution (unchanged)
-- Frontend: Equity tab for equity stations only
+- Frontend: Equity tab for equity stations only (Part 2)
