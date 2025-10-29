@@ -69,9 +69,24 @@ pub fn list_all_orbit_stations() -> Vec<(Principal, Principal)> {
 
 #[update] // MUST be update, not query for cross-canister calls
 pub async fn get_orbit_system_info(token_canister_id: Principal) -> Result<SystemInfoResponseMinimal, String> {
-    // Get station ID for token
-    let station_id = get_orbit_station_for_token(token_canister_id)
-        .ok_or_else(|| format!("No Orbit Station found for token {}", token_canister_id))?;
+    // Check if this is an equity station (LLCs don't have tokens)
+    let admin_canister = Principal::from_text("odkrm-viaaa-aaaap-qp2oq-cai")
+        .expect("Invalid admin canister ID");
+
+    let is_equity_result: Result<(bool,), _> = ic_cdk::call(
+        admin_canister,
+        "is_equity_station",
+        (token_canister_id,)
+    ).await;
+
+    let station_id = if let Ok((true,)) = is_equity_result {
+        // This is an equity station - use it directly
+        token_canister_id
+    } else {
+        // This is a token - look up its station
+        get_orbit_station_for_token(token_canister_id)
+            .ok_or_else(|| format!("No Orbit Station found for token {}", token_canister_id))?
+    };
 
     // Call system_info on the station using MINIMAL types (no Option<T>)
     let result: Result<(SystemInfoResultMinimal,), _> = ic_cdk::call(
