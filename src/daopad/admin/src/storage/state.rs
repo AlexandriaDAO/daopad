@@ -64,6 +64,14 @@ thread_local! {
     // EQUITY STATION STABLE STORAGE
     // ====================================================================
     // Survives canister upgrades (unlike BTreeMap above)
+    //
+    // MEMORY ID ALLOCATION (to prevent collisions):
+    // - IDs 0-9: Reserved for future non-equity stable storage
+    // - ID 10: EQUITY_STATIONS (station configs)
+    // - ID 11: EQUITY_HOLDERS (equity ownership percentages)
+    // - ID 12: EQUITY_TRANSFER_PROPOSALS (transfer proposals)
+    // - ID 13: EQUITY_TRANSFER_VOTES (votes on transfers)
+    // - IDs 14+: Available for future expansion
 
     // Marks station as equity-based: station_id → EquityStationConfig
     pub static EQUITY_STATIONS: RefCell<StableBTreeMap<StorablePrincipal, StorableCandid<EquityStationConfig>, Memory>> =

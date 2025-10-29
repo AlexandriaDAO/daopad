@@ -43,25 +43,24 @@ pub struct PrincipalPair(pub Principal, pub Principal);
 
 impl Storable for PrincipalPair {
     fn to_bytes(&self) -> Cow<[u8]> {
+        let p1_bytes = self.0.as_slice();
+        let p2_bytes = self.1.as_slice();
         let mut bytes = Vec::new();
-        bytes.extend_from_slice(self.0.as_slice());
-        bytes.extend_from_slice(self.1.as_slice());
+        bytes.push(p1_bytes.len() as u8);  // Length prefix for first principal
+        bytes.extend_from_slice(p1_bytes);
+        bytes.extend_from_slice(p2_bytes);
         Cow::Owned(bytes)
     }
 
     fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        let first_len = 29.min(bytes.len());
-        let p1 = Principal::from_slice(&bytes[..first_len]);
-        let p2 = if bytes.len() > first_len {
-            Principal::from_slice(&bytes[first_len..])
-        } else {
-            Principal::anonymous()
-        };
+        let len = bytes[0] as usize;
+        let p1 = Principal::from_slice(&bytes[1..1+len]);
+        let p2 = Principal::from_slice(&bytes[1+len..]);
         Self(p1, p2)
     }
 
     const BOUND: Bound = Bound::Bounded {
-        max_size: 58, // 29 * 2
+        max_size: 59, // 1 (length prefix) + 29 (p1) + 29 (p2)
         is_fixed_size: false,
     };
 }
