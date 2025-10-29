@@ -13,9 +13,6 @@ use candid::Principal;
 use ic_cdk::api::time;
 use ic_cdk::{query, update};
 
-// Backend canister ID - only this canister can create proposals
-const BACKEND_CANISTER_ID: &str = "lwsav-iiaaa-aaaap-qp2qq-cai";
-
 /// Single voting endpoint for ALL Orbit operations
 #[update]
 pub async fn vote_on_proposal(
@@ -285,15 +282,8 @@ pub async fn ensure_proposal_for_request(
 ) -> Result<ProposalId, ProposalError> {
     let caller = ic_cdk::caller();
 
-    // Authentication: Only backend canister can create proposals
-    let backend_principal = Principal::from_text(BACKEND_CANISTER_ID)
-        .map_err(|_| ProposalError::AuthRequired)?;
-
-    if caller != backend_principal {
-        ic_cdk::println!(
-            "Unauthorized proposal creation attempt from {}. Only backend canister {} is allowed.",
-            caller, backend_principal
-        );
+    // Authentication: Any authenticated user can create proposals for community voting
+    if caller == Principal::anonymous() {
         return Err(ProposalError::AuthRequired);
     }
 

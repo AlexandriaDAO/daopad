@@ -68,7 +68,7 @@ function inferRequestType(operationType) {
 }
 
 export function useProposal(tokenId, orbitRequestId, operationType) {
-  const { identity } = useAuth();
+  const { identity, isAuthenticated } = useAuth();
   const [proposal, setProposal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hasVoted, setHasVoted] = useState(false);
@@ -209,6 +209,7 @@ export function useProposal(tokenId, orbitRequestId, operationType) {
     hasVoted, // Now properly tracked from backend
     userVote, // NEW: Actual vote choice
     error,
+    isAuthenticated, // NEW: Expose auth state to components
     fetchProposal,
     ensureProposal,
     checkVoteStatus // NEW: Expose for manual refresh
