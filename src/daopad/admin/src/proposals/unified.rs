@@ -13,9 +13,6 @@ use candid::Principal;
 use ic_cdk::api::time;
 use ic_cdk::{query, update};
 
-// Backend canister ID - only this canister can create proposals
-const BACKEND_CANISTER_ID: &str = "lwsav-iiaaa-aaaap-qp2qq-cai";
-
 /// Single voting endpoint for ALL Orbit operations
 #[update]
 pub async fn vote_on_proposal(
@@ -87,18 +84,24 @@ pub async fn vote_on_proposal(
         return Err(ProposalError::AlreadyVoted(proposal.id));
     }
 
-    // 6. Get voting power
-    let voting_power = match get_user_voting_power_for_token(voter, token_id).await {
-        Ok(vp) => vp,
-        Err(e) if e.contains("register") => {
-            return Err(ProposalError::Custom(
-                "You need to register with Kong Locker first.".to_string()
-            ));
-        },
-        Err(_) => {
-            return Err(ProposalError::Custom(
-                "You need LP tokens to vote.".to_string()
-            ));
+    // 6. Get voting power - ROUTE BASED ON STATION TYPE
+    let voting_power = if crate::equity::is_equity_station(token_id) {
+        // EQUITY STATION: Use equity % directly (SYNC)
+        crate::equity::get_user_equity(token_id, voter) as u64
+    } else {
+        // DAO STATION: Query Kong Locker (ASYNC - existing logic)
+        match get_user_voting_power_for_token(voter, token_id).await {
+            Ok(vp) => vp,
+            Err(e) if e.contains("register") => {
+                return Err(ProposalError::Custom(
+                    "You need to register with Kong Locker first.".to_string()
+                ));
+            },
+            Err(_) => {
+                return Err(ProposalError::Custom(
+                    "You need LP tokens to vote.".to_string()
+                ));
+            }
         }
     };
 
@@ -285,15 +288,8 @@ pub async fn ensure_proposal_for_request(
 ) -> Result<ProposalId, ProposalError> {
     let caller = ic_cdk::caller();
 
-    // Authentication: Only backend canister can create proposals
-    let backend_principal = Principal::from_text(BACKEND_CANISTER_ID)
-        .map_err(|_| ProposalError::AuthRequired)?;
-
-    if caller != backend_principal {
-        ic_cdk::println!(
-            "Unauthorized proposal creation attempt from {}. Only backend canister {} is allowed.",
-            caller, backend_principal
-        );
+    // Authentication: Any authenticated user can create proposals for community voting
+    if caller == Principal::anonymous() {
         return Err(ProposalError::AuthRequired);
     }
 

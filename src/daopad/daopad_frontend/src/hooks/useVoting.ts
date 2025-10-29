@@ -1,10 +1,13 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../providers/AuthProvider/IIProvider';
-import { getKongLockerService, getAdminService } from '../services/backend';
+import { useDaopadBackend, useAdmin } from './actors';
 import { Principal } from '@dfinity/principal';
 
 export function useVoting(tokenId) {
   const { identity } = useAuth();
+  const backend = useDaopadBackend();
+  const admin = useAdmin();
+
   const [voting, setVoting] = useState(false);
   const [userVotingPower, setUserVotingPower] = useState(0);
   const [loadingVP, setLoadingVP] = useState(false);
@@ -15,13 +18,18 @@ export function useVoting(tokenId) {
 
     try {
       setLoadingVP(true);
-      const kongService = getKongLockerService(identity);
-      const result = await kongService.getVotingPower(tokenId);
+      const tokenPrincipal = typeof tokenId === 'string' ? Principal.fromText(tokenId) : tokenId;
+      const result = await backend.actor?.get_my_voting_power_for_token(tokenPrincipal);
 
-      if (result.success) {
-        setUserVotingPower(Number(result.data));
+      if (!result) {
+        setUserVotingPower(0);
+        return;
+      }
+
+      if ('Ok' in result) {
+        setUserVotingPower(Number(result.Ok));
       } else {
-        console.error('Failed to fetch voting power:', result.error);
+        console.error('Failed to fetch voting power:', result.Err);
         setUserVotingPower(0);
       }
     } catch (err) {
@@ -30,7 +38,7 @@ export function useVoting(tokenId) {
     } finally {
       setLoadingVP(false);
     }
-  }, [identity, tokenId]);
+  }, [identity, tokenId, backend.actor]);
 
   // Auto-fetch voting power when identity or tokenId changes
   useEffect(() => {
@@ -44,10 +52,24 @@ export function useVoting(tokenId) {
 
     setVoting(true);
     try {
-      const adminService = getAdminService(identity);
-      await adminService.voteOnProposal(tokenId, orbitRequestId, voteChoice);
+      const tokenPrincipal = typeof tokenId === 'string' ? Principal.fromText(tokenId) : tokenId;
 
-      return { success: true };
+      // Call admin canister to vote
+      const result = await admin.actor?.vote_on_proposal(
+        tokenPrincipal,
+        orbitRequestId,
+        voteChoice
+      );
+
+      if (!result) {
+        throw new Error('Failed to call vote method');
+      }
+
+      if ('Ok' in result) {
+        return { success: true };
+      } else {
+        throw new Error(result.Err);
+      }
     } catch (error) {
       console.error('[useVoting] Vote error:', error);
 
@@ -87,7 +109,7 @@ export function useVoting(tokenId) {
     } finally {
       setVoting(false);
     }
-  }, [identity, tokenId]);
+  }, [identity, tokenId, admin.actor]);
 
   return {
     vote,

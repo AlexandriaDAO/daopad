@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useProposal } from '@/hooks/useProposal';
+import { useAuth } from '@/providers/AuthProvider/IIProvider';
 import VoteProgressBar from './VoteProgressBar';
 import VoteButtons from './VoteButtons';
 
@@ -59,14 +60,17 @@ function getOperationType(request) {
 
 export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
   const operationType = getOperationType(request);
-  const { proposal, loading, hasVoted, userVote, ensureProposal, fetchProposal } = useProposal(
+  const { login } = useAuth();
+  const { proposal, loading, hasVoted, userVote, error, isAuthenticated, ensureProposal, fetchProposal } = useProposal(
     tokenId,
     request.id,
     operationType
   );
 
-  // Auto-create proposal when card is viewed (only for Created status)
+  // Auto-create proposal when card is viewed (only for Created status and authenticated users)
   useEffect(() => {
+    let mounted = true;
+
     // Extract status from variant if needed (backend returns { Created: null })
     const statusValue = typeof request.status === 'object' && request.status !== null
       ? Object.keys(request.status)[0]
@@ -77,14 +81,24 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
       status: statusValue,
       hasProposal: !!proposal,
       loading,
+      isAuthenticated,
       operationType
     });
 
-    if (!proposal && !loading && (statusValue === 'Created' || statusValue === 'Scheduled')) {
-      console.log('[RequestCard] Creating proposal for request:', request.id);
-      ensureProposal();
+    // Only auto-create if user is authenticated
+    if (!proposal && !loading && (statusValue === 'Created' || statusValue === 'Scheduled') && isAuthenticated) {
+      console.log('[RequestCard] Creating proposal for authenticated user:', request.id);
+      ensureProposal().catch((err) => {
+        if (mounted) {
+          console.error('[RequestCard] Failed to create proposal:', err);
+        }
+      });
     }
-  }, [proposal, loading, request.status, ensureProposal]);
+
+    return () => {
+      mounted = false;
+    };
+  }, [proposal, loading, request.status, request.id, isAuthenticated, ensureProposal]);
 
   // Extract status from variant if needed
   const statusValue = typeof request.status === 'object' && request.status !== null
@@ -134,7 +148,37 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
               </div>
             )}
 
-            {!loading && !proposal && (
+            {/* Show login prompt for unauthenticated users */}
+            {!loading && !isAuthenticated && (
+              <div className="text-sm space-y-2">
+                <p className="text-muted-foreground">
+                  Log in to vote on this request
+                </p>
+                <button
+                  onClick={login}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm"
+                >
+                  Log In to Vote
+                </button>
+              </div>
+            )}
+
+            {/* Show error if proposal creation failed */}
+            {!loading && !proposal && isAuthenticated && error && (
+              <div className="text-sm space-y-2">
+                <p className="text-red-500 font-medium">
+                  Failed to create proposal
+                </p>
+                <p className="text-muted-foreground">
+                  {error.includes('AuthRequired')
+                    ? 'You are not authorized to create proposals. Please contact an administrator.'
+                    : error}
+                </p>
+              </div>
+            )}
+
+            {/* Only show "creating" message when authenticated and no error */}
+            {!loading && !proposal && isAuthenticated && !error && (
               <div className="text-sm text-muted-foreground">
                 Creating proposal for community vote...
               </div>

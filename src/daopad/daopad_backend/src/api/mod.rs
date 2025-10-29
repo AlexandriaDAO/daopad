@@ -1,5 +1,6 @@
 mod address_book;
 mod agreement_snapshot;
+mod equity;
 mod governance_config;
 mod kong_locker;
 mod orbit;
@@ -55,5 +56,6 @@ pub use orbit_users::{
     create_remove_multiple_admins_request,
     list_orbit_users,
 };
+pub use equity::*;
 pub use stations::link_orbit_station;
 pub use utils::*;
