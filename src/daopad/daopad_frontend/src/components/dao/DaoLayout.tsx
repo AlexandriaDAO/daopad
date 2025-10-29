@@ -12,6 +12,7 @@ interface DaoLayoutProps {
   loadingVotingPower?: boolean;
   refreshVotingPower?: () => void;
   children: React.ReactNode;
+  isEquityStation?: boolean;
 }
 
 export default function DaoLayout({
@@ -20,7 +21,8 @@ export default function DaoLayout({
   votingPower = 0,
   loadingVotingPower = false,
   refreshVotingPower,
-  children
+  children,
+  isEquityStation = false
 }: DaoLayoutProps) {
   const location = useLocation();
   const { identity } = useAuth();
@@ -44,6 +46,7 @@ export default function DaoLayout({
     overview: `/${baseRouteId}`,
     agreement: `/${baseRouteId}/agreement`,
     treasury: `/${baseRouteId}/treasury`,
+    equity: `/${baseRouteId}/equity`,
     activity: `/${baseRouteId}/activity`,
     canisters: `/${baseRouteId}/canisters`,
     invoices: `/${baseRouteId}/invoices`,
@@ -132,6 +135,11 @@ export default function DaoLayout({
               <TabButton to={tabLinks.treasury} active={currentTab === 'treasury'}>
                 Treasury
               </TabButton>
+              {isEquityStation && (
+                <TabButton to={tabLinks.equity} active={currentTab === 'equity'}>
+                  Equity
+                </TabButton>
+              )}
               <TabButton to={tabLinks.activity} active={currentTab === 'activity'}>
                 Activity
               </TabButton>
