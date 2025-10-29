@@ -119,3 +119,21 @@ Phase 2 (availible for those who have migrated to true DAOs):
 - Team member credit cards.
 - Crypto/fiat onramp/offramp rails for your revenue/expenses model.
 - File taxes as a company instead of a crypto entity.
+
+
+
+
+
+  # Send ALEX to Alexandria Reserves
+  dfx canister --network ic call ysy5f-2qaaa-aaaap-qkmmq-cai icrc1_transfer '(record {
+    to = record {
+      owner = principal "fec7w-zyaaa-aaaaa-qaffq-cai";
+      subaccount = opt blob "\3f\60\18\69\e4\8e\49\a1\92\cb\32\f5\5b\30\8a\18\00\00\00\0
+  0\00\00\00\00\00\00\00\00\00\00\00\00";
+    };
+    amount = AMOUNT_HERE;  # 8 decimals (100000000 = 1 ALEX)
+    fee = null;
+    memo = null;
+    created_at_time = null;
+  })'
+
