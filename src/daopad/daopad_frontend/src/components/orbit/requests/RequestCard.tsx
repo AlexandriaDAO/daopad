@@ -69,6 +69,8 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
 
   // Auto-create proposal when card is viewed (only for Created status and authenticated users)
   useEffect(() => {
+    let mounted = true;
+
     // Extract status from variant if needed (backend returns { Created: null })
     const statusValue = typeof request.status === 'object' && request.status !== null
       ? Object.keys(request.status)[0]
@@ -86,8 +88,16 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
     // Only auto-create if user is authenticated
     if (!proposal && !loading && (statusValue === 'Created' || statusValue === 'Scheduled') && isAuthenticated) {
       console.log('[RequestCard] Creating proposal for authenticated user:', request.id);
-      ensureProposal();
+      ensureProposal().catch((err) => {
+        if (mounted) {
+          console.error('[RequestCard] Failed to create proposal:', err);
+        }
+      });
     }
+
+    return () => {
+      mounted = false;
+    };
   }, [proposal, loading, request.status, request.id, isAuthenticated, ensureProposal]);
 
   // Extract status from variant if needed
