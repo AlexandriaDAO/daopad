@@ -69,6 +69,32 @@ export default function DaoRoute() {
           return;
         }
 
+        // 0. Check if this is an equity station first (LLCs don't need token links)
+        const adminService = getAdminService(identity);
+        const isEquity = await adminService.isEquityStation(stationId).catch(() => false);
+
+        if (isEquity) {
+          console.log('[DaoRoute] Loading equity station (no token required):', stationId);
+
+          // For equity stations, create minimal token data and load directly
+          const shortId = stationId.slice(0, 8);
+          setToken({
+            canister_id: stationId,
+            symbol: shortId.toUpperCase(),
+            name: `${shortId.toUpperCase()} LLC`
+          });
+
+          setOrbitStation({
+            station_id: stationId,
+            name: `${shortId.toUpperCase()} Treasury`
+          });
+
+          setTokenId(null); // No token for equity stations
+          setIsEquityStation(true);
+          setLoading(false);
+          return;
+        }
+
         // 1. Try reverse lookup (station ID -> token ID)
         const tokenResult = await tokenService.getTokenForStation(stationPrincipal).catch(e => {
           console.warn('[DaoRoute] Token lookup failed:', e);
@@ -187,12 +213,8 @@ export default function DaoRoute() {
           });
         }
 
-        // Check if this is an equity station
-        if (stationPrincipal) {
-          const adminService = getAdminService(identity);
-          const isEquity = await adminService.isEquityStation(stationId).catch(() => false);
-          setIsEquityStation(isEquity);
-        }
+        // Token-based stations are not equity stations (mutually exclusive)
+        setIsEquityStation(false);
 
         console.log('[DaoRoute] Successfully loaded:', stationId);
         setLoading(false);
