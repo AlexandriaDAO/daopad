@@ -88,7 +88,7 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
       console.log('[RequestCard] Creating proposal for authenticated user:', request.id);
       ensureProposal();
     }
-  }, [proposal, loading, request.status, isAuthenticated, ensureProposal]);
+  }, [proposal, loading, request.status, request.id, isAuthenticated, ensureProposal]);
 
   // Extract status from variant if needed
   const statusValue = typeof request.status === 'object' && request.status !== null
