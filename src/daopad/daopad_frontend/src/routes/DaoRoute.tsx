@@ -3,6 +3,7 @@ import { useParams, Outlet, Navigate, useNavigate } from 'react-router-dom';
 import { Principal } from '@dfinity/principal';
 import { getTokenService } from '../services/backend';
 import { UtilityService } from '../services/backend/utility/UtilityService';
+import { getAdminService } from '../services/admin/AdminService';
 import DaoLayout from '../components/dao/DaoLayout';
 import { FallbackLoader } from '../components/ui/fallback-loader';
 import { useVoting } from '../hooks/useVoting';
@@ -27,6 +28,7 @@ export default function DaoRoute() {
   const [linkStationId, setLinkStationId] = useState<string>('');
   const [linkError, setLinkError] = useState<string>('');
   const [linking, setLinking] = useState<boolean>(false);
+  const [isEquityStation, setIsEquityStation] = useState<boolean>(false);
 
   // Loading guard ref to prevent redundant fetches
   const loadedStationRef = useRef<string | null>(null);
@@ -185,6 +187,13 @@ export default function DaoRoute() {
           });
         }
 
+        // Check if this is an equity station
+        if (stationPrincipal) {
+          const adminService = getAdminService(identity);
+          const isEquity = await adminService.isEquityStation(stationId).catch(() => false);
+          setIsEquityStation(isEquity);
+        }
+
         console.log('[DaoRoute] Successfully loaded:', stationId);
         setLoading(false);
       } catch (e) {
@@ -264,6 +273,7 @@ export default function DaoRoute() {
         votingPower={userVotingPower}
         loadingVotingPower={loadingVP}
         refreshVotingPower={fetchVotingPower}
+        isEquityStation={false}
       >
         <div className="max-w-2xl mx-auto py-12 px-4">
           <div className="bg-executive-darkGray border border-executive-gold/20 rounded-lg p-8 text-center space-y-6">
@@ -421,6 +431,7 @@ export default function DaoRoute() {
       votingPower={userVotingPower}
       loadingVotingPower={loadingVP}
       refreshVotingPower={fetchVotingPower}
+      isEquityStation={isEquityStation}
     >
       <Outlet context={{
         token,
@@ -430,7 +441,8 @@ export default function DaoRoute() {
         isAuthenticated,
         votingPower: userVotingPower,
         loadingVotingPower: loadingVP,
-        refreshVotingPower: fetchVotingPower
+        refreshVotingPower: fetchVotingPower,
+        isEquityStation
       }} />
     </DaoLayout>
   );

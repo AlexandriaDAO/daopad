@@ -106,6 +106,77 @@ export class AdminService {
 
     return result.Ok;
   }
+
+  // ============================================================================
+  // EQUITY METHODS
+  // ============================================================================
+
+  async isEquityStation(stationId: string): Promise<boolean> {
+    const actor = await this.getActor();
+    return await actor.is_equity_station(Principal.fromText(stationId));
+  }
+
+  async getEquityHolders(stationId: string): Promise<Array<[Principal, number]>> {
+    const actor = await this.getActor();
+    return await actor.get_equity_holders(Principal.fromText(stationId));
+  }
+
+  async getUserEquity(stationId: string, user: Principal): Promise<number> {
+    const actor = await this.getActor();
+    return await actor.get_user_equity(Principal.fromText(stationId), user);
+  }
+
+  async createEquityTransferProposal(
+    stationId: string,
+    buyer: Principal,
+    percentage: number,
+    ckusdcAmount: bigint,
+    paymentDestination: { SellerAccount: string } | { StationTreasury: Principal }
+  ): Promise<string> {
+    const actor = await this.getActor();
+    const result = await actor.create_equity_transfer_proposal(
+      Principal.fromText(stationId),
+      buyer,
+      percentage,
+      ckusdcAmount,
+      paymentDestination
+    );
+
+    if ('Err' in result) {
+      throw new Error(result.Err);
+    }
+
+    return result.Ok;
+  }
+
+  async voteOnEquityTransfer(proposalId: string, approve: boolean): Promise<void> {
+    const actor = await this.getActor();
+    const result = await actor.vote_on_equity_transfer(proposalId, approve);
+
+    if ('Err' in result) {
+      throw new Error(result.Err);
+    }
+  }
+
+  async executeEquityTransfer(proposalId: string): Promise<void> {
+    const actor = await this.getActor();
+    const result = await actor.execute_equity_transfer(proposalId);
+
+    if ('Err' in result) {
+      throw new Error(result.Err);
+    }
+  }
+
+  async getEquityTransferProposals(stationId: string): Promise<any[]> {
+    const actor = await this.getActor();
+    return await actor.get_equity_transfer_proposals(Principal.fromText(stationId));
+  }
+
+  async getEquityTransferProposal(proposalId: string): Promise<any | null> {
+    const actor = await this.getActor();
+    const result = await actor.get_equity_transfer_proposal(proposalId);
+    return result.length > 0 ? result[0] : null;
+  }
 }
 
 // Export singleton instance for convenience
