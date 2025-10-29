@@ -1,13 +1,19 @@
+import React from 'react';
 import { useOutletContext } from 'react-router-dom';
+import UnifiedRequests from '../../components/orbit/UnifiedRequests';
 
+/**
+ * DaoInvoices - Shows transfer requests (invoices/payments) from Orbit Station
+ * Pre-filtered to show only Transfer domain requests
+ */
 export default function DaoInvoices() {
-    const { token } = useOutletContext<any>();
+  const { token, identity } = useOutletContext<any>();
 
-    return (
-      <div>
-        {/* Add your InvoicesTab component here */}
-        <h2>Invoices Tab</h2>
-        <p>Invoice management functionality goes here</p>
-      </div>
-    );
-  }
+  return (
+    <UnifiedRequests
+      tokenId={token.canister_id}
+      identity={identity}
+      defaultDomain="transfers"
+    />
+  );
+}

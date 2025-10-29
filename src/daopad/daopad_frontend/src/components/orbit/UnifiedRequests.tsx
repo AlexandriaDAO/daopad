@@ -16,13 +16,13 @@ import RequestFiltersCompact from './RequestFiltersCompact';
 import RequestStatusFilter from './RequestStatusFilter';
 import { REQUEST_DOMAIN_FILTERS, RequestDomains } from '../../utils/requestDomains';
 
-const UnifiedRequests = ({ tokenId, identity }) => {
+const UnifiedRequests = ({ tokenId, identity, defaultDomain = RequestDomains.All }) => {
   // State management
   const [requests, setRequests] = useState([]);
   const [treasuryProposal, setTreasuryProposal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedDomain, setSelectedDomain] = useState(RequestDomains.All);
+  const [selectedDomain, setSelectedDomain] = useState(defaultDomain);
   const [filters, setFilters] = useState({
     statuses: ['Created', 'Approved', 'Processing', 'Scheduled'],
     created_from: null,
