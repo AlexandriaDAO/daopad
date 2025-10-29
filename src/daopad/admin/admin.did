@@ -75,10 +75,11 @@ type ProposalError = variant {
   AuthRequired;
 };
 type ProposalStatus = variant { Active; Rejected; Executed; Expired };
-type Result = variant { Ok : text; Err : text };
-type Result_1 = variant { Ok : nat64; Err : ProposalError };
-type Result_2 = variant { Ok; Err : text };
-type Result_3 = variant { Ok; Err : ProposalError };
+type Result = variant { Ok; Err : text };
+type Result_1 = variant { Ok : text; Err : text };
+type Result_2 = variant { Ok : nat64; Err : ProposalError };
+type Result_3 = variant { Ok : VotingPowerResult; Err : text };
+type Result_4 = variant { Ok; Err : ProposalError };
 type TransferDetails = record {
   to : text;
   title : text;
@@ -104,17 +105,23 @@ type UnifiedProposal = record {
   transfer_details : opt TransferDetails;
 };
 type VoteChoice = variant { No; Yes };
+type VotingPowerResult = record {
+  source : VotingPowerSource;
+  voting_power : nat64;
+};
+type VotingPowerSource = variant { KongLocker; Equity };
 service : () -> {
+  cleanup_equity_data : (principal) -> (Result);
   create_equity_transfer_proposal : (
       principal,
       principal,
       nat8,
       nat64,
       PaymentDestination,
-    ) -> (Result);
+    ) -> (Result_1);
   // Ensure a proposal exists for an Orbit request
-  ensure_proposal_for_request : (principal, text, text) -> (Result_1);
-  execute_equity_transfer : (text) -> (Result_2);
+  ensure_proposal_for_request : (principal, text, text) -> (Result_2);
+  execute_equity_transfer : (text) -> (Result);
   get_equity_holders : (principal) -> (vec record { principal; nat8 }) query;
   get_equity_transfer_proposal : (text) -> (opt EquityTransferProposal) query;
   get_equity_transfer_proposals : (principal) -> (
@@ -125,13 +132,18 @@ service : () -> {
   get_user_equity : (principal, principal) -> (nat8) query;
   // Get the user's vote on a proposal
   get_user_vote : (principal, principal, text) -> (opt VoteChoice) query;
+  // Unified voting power query that routes by station type
+  // - Equity stations: Returns equity % as VP
+  // - Token stations: Returns Kong Locker VP
+  // Note: Must be update (not query) because Kong Locker path uses cross-canister calls
+  get_voting_power_display : (principal, principal) -> (Result_3);
   // Check if a user has voted on a proposal
   has_user_voted : (principal, principal, text) -> (bool) query;
-  initialize_equity_station : (principal, principal) -> (Result_2);
+  initialize_equity_station : (principal, principal) -> (Result);
   is_equity_station : (principal) -> (bool) query;
   // List all active proposals for a token
   list_unified_proposals : (principal) -> (vec UnifiedProposal) query;
-  vote_on_equity_transfer : (text, bool) -> (Result_2);
+  vote_on_equity_transfer : (text, bool) -> (Result);
   // Single voting endpoint for ALL Orbit operations
-  vote_on_proposal : (principal, text, bool) -> (Result_3);
+  vote_on_proposal : (principal, text, bool) -> (Result_4);
 }

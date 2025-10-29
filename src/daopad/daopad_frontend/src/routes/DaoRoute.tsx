@@ -89,7 +89,9 @@ export default function DaoRoute() {
             name: `${shortId.toUpperCase()} Treasury`
           });
 
-          setTokenId(null); // No token for equity stations
+          // For equity stations, use station ID as "token ID" for VP queries
+          // The backend will route to equity % instead of Kong Locker
+          setTokenId(stationId);
           setIsEquityStation(true);
           setLoading(false);
           return;
