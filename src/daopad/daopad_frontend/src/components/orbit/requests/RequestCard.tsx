@@ -61,7 +61,7 @@ function getOperationType(request) {
 export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
   const operationType = getOperationType(request);
   const { login } = useAuth();
-  const { proposal, loading, hasVoted, userVote, isAuthenticated, ensureProposal, fetchProposal } = useProposal(
+  const { proposal, loading, hasVoted, userVote, error, isAuthenticated, ensureProposal, fetchProposal } = useProposal(
     tokenId,
     request.id,
     operationType
@@ -163,8 +163,22 @@ export function RequestCard({ request, tokenId, userVotingPower, onVote }) {
               </div>
             )}
 
-            {/* Only show "creating" message when authenticated */}
-            {!loading && !proposal && isAuthenticated && (
+            {/* Show error if proposal creation failed */}
+            {!loading && !proposal && isAuthenticated && error && (
+              <div className="text-sm space-y-2">
+                <p className="text-red-500 font-medium">
+                  Failed to create proposal
+                </p>
+                <p className="text-muted-foreground">
+                  {error.includes('AuthRequired')
+                    ? 'You are not authorized to create proposals. Please contact an administrator.'
+                    : error}
+                </p>
+              </div>
+            )}
+
+            {/* Only show "creating" message when authenticated and no error */}
+            {!loading && !proposal && isAuthenticated && !error && (
               <div className="text-sm text-muted-foreground">
                 Creating proposal for community vote...
               </div>
