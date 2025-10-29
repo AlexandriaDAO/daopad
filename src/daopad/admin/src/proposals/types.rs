@@ -140,7 +140,7 @@ impl OrbitRequestType {
             | Self::SetDisasterRecovery | Self::ManageSystemInfo => 90,
 
             // Treasury operations
-            Self::Transfer | Self::AddAccount | Self::EditAccount => 75,
+            Self::Transfer | Self::AddAccount | Self::EditAccount => 50,
 
             // Governance changes
             Self::EditPermission | Self::AddRequestPolicy
@@ -355,7 +355,7 @@ impl OrbitOperationType {
             | Self::SetDisasterRecovery | Self::ManageSystemInfo => 90,
 
             // Treasury operations
-            Self::Transfer | Self::AddAccount | Self::EditAccount => 75,
+            Self::Transfer | Self::AddAccount | Self::EditAccount => 50,
 
             // Governance changes
             Self::EditPermission | Self::AddRequestPolicy
