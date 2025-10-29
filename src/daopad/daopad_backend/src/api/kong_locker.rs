@@ -60,7 +60,18 @@ pub async fn get_my_voting_power_for_token(token_canister_id: Principal) -> Resu
         return Err("Authentication required".to_string());
     }
 
-    get_user_voting_power_for_token(caller, token_canister_id).await
+    ic_cdk::println!("DEBUG: get_my_voting_power_for_token called by: {}", caller);
+
+    match get_user_voting_power_for_token(caller, token_canister_id).await {
+        Ok(vp) => {
+            ic_cdk::println!("DEBUG: Voting power calculated: {}", vp);
+            Ok(vp)
+        }
+        Err(e) => {
+            ic_cdk::println!("DEBUG: Error getting voting power: {}", e);
+            Err(e)
+        }
+    }
 }
 
 /// Get all unique tokens that have locked liquidity (for public dashboard)

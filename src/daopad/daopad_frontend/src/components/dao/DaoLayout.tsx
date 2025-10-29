@@ -2,7 +2,8 @@ import React from 'react';
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, User } from 'lucide-react';
+import { useAuth } from '@/providers/AuthProvider/IIProvider';
 
 interface DaoLayoutProps {
   token: any;
@@ -22,7 +23,10 @@ export default function DaoLayout({
   children
 }: DaoLayoutProps) {
   const location = useLocation();
+  const { identity } = useAuth();
   const pathParts = location.pathname.split('/').filter(Boolean);
+
+  const userPrincipal = identity?.getPrincipal()?.toText();
 
   // Defensive check: ensure we have a base route ID
   if (pathParts.length === 0) {
@@ -54,11 +58,17 @@ export default function DaoLayout({
       {/* Header with token info */}
       <header className="border-b border-executive-mediumGray bg-executive-darkGray">
         <div className="container mx-auto px-4 lg:px-6 max-w-7xl">
-          {/* Back button row */}
-          <div className="py-4">
+          {/* Back button row with user info */}
+          <div className="py-4 flex justify-between items-center flex-wrap gap-2">
             <Link to="/app" className="text-executive-gold hover:text-executive-goldLight inline-flex items-center gap-2">
               ← Back to Dashboard
             </Link>
+            {userPrincipal && (
+              <div className="flex items-center gap-2 text-xs text-executive-lightGray/70">
+                <User className="h-3 w-3" />
+                <span className="font-mono">{userPrincipal.slice(0, 20)}...{userPrincipal.slice(-10)}</span>
+              </div>
+            )}
           </div>
 
           {/* Main header content - responsive grid */}
