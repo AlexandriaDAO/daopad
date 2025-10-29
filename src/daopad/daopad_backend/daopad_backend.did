@@ -751,17 +751,18 @@ type Result_27 = variant { Ok : vec AccountMinimalWithBalances; Err : text };
 type Result_28 = variant { Ok : TreasuryManagementData; Err : text };
 type Result_29 = variant { Ok : vec OrbitRequestSummary; Err : text };
 type Result_3 = variant { Ok : BackendStatusCheck; Err : text };
-type Result_30 = variant { Ok : VotingThresholds; Err : text };
-type Result_31 = variant { Ok : bool; Err : text };
-type Result_32 = variant { Ok : ListAccountsResultMinimal; Err : text };
-type Result_33 = variant { Ok : ListExternalCanistersResult; Err : text };
-type Result_34 = variant { Ok : ListOrbitRequestsResponse; Err : text };
-type Result_35 = variant { Ok : vec UserDTO; Err : text };
-type Result_36 = variant { Ok : vec Asset; Err : text };
-type Result_37 = variant { Ok : vec Permission; Err : text };
-type Result_38 = variant { Ok : vec UserGroup; Err : text };
-type Result_39 = variant { Ok : EnhancedSecurityDashboard; Err : text };
+type Result_30 = variant { Ok : VotingPowerResult; Err : text };
+type Result_31 = variant { Ok : VotingThresholds; Err : text };
+type Result_32 = variant { Ok : bool; Err : text };
+type Result_33 = variant { Ok : ListAccountsResultMinimal; Err : text };
+type Result_34 = variant { Ok : ListExternalCanistersResult; Err : text };
+type Result_35 = variant { Ok : ListOrbitRequestsResponse; Err : text };
+type Result_36 = variant { Ok : vec UserDTO; Err : text };
+type Result_37 = variant { Ok : vec Asset; Err : text };
+type Result_38 = variant { Ok : vec Permission; Err : text };
+type Result_39 = variant { Ok : vec UserGroup; Err : text };
 type Result_4 = variant { Ok : vec text; Err : text };
+type Result_40 = variant { Ok : EnhancedSecurityDashboard; Err : text };
 type Result_5 = variant { Ok; Err : text };
 type Result_6 = variant { Ok : text; Err : ProposalError };
 type Result_7 = variant { Ok : CreateAccountResponse; Err : text };
@@ -870,6 +871,11 @@ type VotingPowerEntry = record {
   voting_power : nat64;
   equity_percentage : float64;
 };
+type VotingPowerResult = record {
+  source : VotingPowerSource;
+  voting_power : nat64;
+};
+type VotingPowerSource = variant { KongLocker; Equity };
 type VotingThresholds = record {
   transfer_funds : nat32;
   change_permissions : nat32;
@@ -1078,9 +1084,12 @@ service : () -> {
   // - Backend privilege summary
   get_treasury_management_data : (principal) -> (Result_28);
   get_user_pending_requests : (principal, principal) -> (Result_29);
-  get_voting_thresholds : (principal) -> (Result_30) query;
+  // Unified voting power query that routes by station type
+  // Wrapper around admin canister's get_voting_power_display
+  get_voting_power_display : (principal, principal) -> (Result_30);
+  get_voting_thresholds : (principal) -> (Result_31) query;
   has_proposal_passed : (principal, ProposalType, nat64, nat64, nat64) -> (
-      Result_31,
+      Result_32,
     ) query;
   health_check : () -> (text) query;
   initialize_default_thresholds : (principal) -> (Result);
@@ -1097,24 +1106,24 @@ service : () -> {
   // This is an update call because it queries KongSwap for each lock canister
   list_all_locked_tokens : () -> (Result_18);
   list_all_orbit_stations : () -> (vec record { principal; principal }) query;
-  list_orbit_accounts : (principal, text, nat16, nat64) -> (Result_32);
+  list_orbit_accounts : (principal, text, nat16, nat64) -> (Result_33);
   list_orbit_canisters : (principal, ListExternalCanistersInputMinimal) -> (
-      Result_33,
+      Result_34,
     );
   // List all requests from Orbit Station with domain filtering
   // 
   // This method acts as an admin proxy, allowing DAOPad to query
   // all requests regardless of user permissions.
-  list_orbit_requests : (principal, ListRequestsInput) -> (Result_34);
+  list_orbit_requests : (principal, ListRequestsInput) -> (Result_35);
   // List all users in Orbit Station with their groups
   // Backend acts as admin proxy to query protected data
-  list_orbit_users : (principal) -> (Result_35);
-  list_station_assets : (principal) -> (Result_36);
+  list_orbit_users : (principal) -> (Result_36);
+  list_station_assets : (principal) -> (Result_37);
   // List all permissions for a station (admin proxy)
   // 
   // Since Orbit restricts permission queries to admin users only, this backend method
   // acts as an admin proxy to fetch permissions on behalf of frontend users.
-  list_station_permissions : (principal, opt vec Resource) -> (Result_37);
+  list_station_permissions : (principal, opt vec Resource) -> (Result_38);
   // List all user groups in a station (admin proxy)
   // 
   // Fetches the complete list of user groups including Admin, Operator, and custom groups.
@@ -1122,8 +1131,8 @@ service : () -> {
   // 
   // Since Orbit restricts user group queries to admin users only, this backend method
   // acts as an admin proxy to fetch user groups on behalf of frontend users.
-  list_station_user_groups : (principal) -> (Result_38);
-  list_treasury_assets : (principal) -> (Result_36);
+  list_station_user_groups : (principal) -> (Result_39);
+  list_treasury_assets : (principal) -> (Result_37);
   monitor_orbit_canister_request : (
       principal,
       MonitorExternalCanisterOperationInput,
@@ -1143,7 +1152,7 @@ service : () -> {
   // This is the public-facing endpoint that frontend calls.
   // It combines perform_all_security_checks + build_dashboard to return
   // the full EnhancedSecurityDashboard with decentralization score.
-  perform_security_check : (principal) -> (Result_39);
+  perform_security_check : (principal) -> (Result_40);
   prune_orbit_canister_snapshots_request : (
       principal,
       PruneExternalCanisterOperationInput,
@@ -1174,5 +1183,5 @@ service : () -> {
       opt text,
     ) -> (Result_1);
   unregister_kong_locker : () -> (Result);
-  validate_account_name : (principal, text) -> (Result_31);
+  validate_account_name : (principal, text) -> (Result_32);
 }

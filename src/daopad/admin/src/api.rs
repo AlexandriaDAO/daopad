@@ -1,6 +1,8 @@
 // Minimal API types needed for admin canister to approve/reject Orbit requests
 use candid::{CandidType, Deserialize};
 
+pub mod voting_power;
+
 /// Result type for submit_request_approval
 /// We use candid::Reserved for the Ok payload since we don't need to access the fields
 #[derive(CandidType, Deserialize, Clone, Debug)]

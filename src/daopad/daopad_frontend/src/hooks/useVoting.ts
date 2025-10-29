@@ -12,14 +12,18 @@ export function useVoting(tokenId) {
   const [userVotingPower, setUserVotingPower] = useState(0);
   const [loadingVP, setLoadingVP] = useState(false);
 
-  // Fetch user's voting power for this token
+  // Fetch user's voting power for this token/station
+  // IMPORTANT: This now uses the unified VP query which routes by station type
   const fetchVotingPower = useCallback(async () => {
     if (!identity || !tokenId) return;
 
     try {
       setLoadingVP(true);
       const tokenPrincipal = typeof tokenId === 'string' ? Principal.fromText(tokenId) : tokenId;
-      const result = await backend.actor?.get_my_voting_power_for_token(tokenPrincipal);
+      const userPrincipal = identity.getPrincipal();
+
+      // Use unified VP query that routes by station type (equity % vs Kong Locker)
+      const result = await backend.actor?.get_voting_power_display(tokenPrincipal, userPrincipal);
 
       if (!result) {
         setUserVotingPower(0);
@@ -27,7 +31,8 @@ export function useVoting(tokenId) {
       }
 
       if ('Ok' in result) {
-        setUserVotingPower(Number(result.Ok));
+        // Extract voting_power from VotingPowerResult
+        setUserVotingPower(Number(result.Ok.voting_power));
       } else {
         console.error('Failed to fetch voting power:', result.Err);
         setUserVotingPower(0);
