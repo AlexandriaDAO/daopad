@@ -30,17 +30,9 @@ export default function CreateInvoice({
   const [amount, setAmount] = useState('');
   const [receiver, setReceiver] = useState('');
   const [description, setDescription] = useState('');
+  const [collateral, setCollateral] = useState<'ICP' | 'ckUSDT'>('ICP');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState('');
-
-  // Determine collateral based on token
-  const getCollateralForToken = (tokenSymbol?: string): 'ICP' | 'ckUSDT' => {
-    if (!tokenSymbol) return 'ICP'; // Default to ICP
-    const symbol = tokenSymbol.toUpperCase();
-    return symbol === 'CKUSDT' || symbol === 'USDT' ? 'ckUSDT' : 'ICP';
-  };
-
-  const collateral = getCollateralForToken(token?.symbol);
 
   // // Get treasury accounts from Redux
   // const treasuryAccounts = useSelector(state => 
@@ -227,12 +219,42 @@ export default function CreateInvoice({
             />
           </div>
 
+          {/* Collateral Selection */}
+          <div className="space-y-2">
+            <Label>Payment Currency *</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant={collateral === 'ICP' ? "default" : "outline"}
+                onClick={() => setCollateral('ICP')}
+                disabled={isCreating}
+                className="flex items-center justify-center gap-2"
+              >
+                <div className={`w-3 h-3 rounded-full ${collateral === 'ICP' ? 'bg-white' : 'bg-gray-400'}`} />
+                ICP
+              </Button>
+              <Button
+                type="button"
+                variant={collateral === 'ckUSDT' ? "default" : "outline"}
+                onClick={() => setCollateral('ckUSDT')}
+                disabled={isCreating}
+                className="flex items-center justify-center gap-2"
+              >
+                <div className={`w-3 h-3 rounded-full ${collateral === 'ckUSDT' ? 'bg-white' : 'bg-gray-400'}`} />
+                ckUSDT
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500">
+              Choose which cryptocurrency to receive after USD payment conversion
+            </p>
+          </div>
+
           {/* Payment Token Display */}
           <div className="space-y-2">
-            <Label>Payment Token</Label>
+            <Label>Selected Payment Currency</Label>
             <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
               <div className={`px-2 py-1 rounded text-xs font-medium ${
-                collateral === 'ICP' 
+                collateral === 'ICP'
                   ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
                   : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300'
               }`}>
@@ -243,7 +265,7 @@ export default function CreateInvoice({
               </span>
             </div>
             <p className="text-xs text-gray-500">
-              Payments will be converted to {collateral} and sent to the receiver
+              USD payments will be converted to {collateral} and sent to the treasury account
             </p>
           </div>
 

@@ -16,7 +16,8 @@ interface InvoicesPageProps {
 export default function InvoicesPage({ token, orbitStation, identity, isAuthenticated }: InvoicesPageProps) {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [canisterBalance, setCanisterBalance] = useState<string>('Loading...');
+  const [icpBalance, setIcpBalance] = useState<string>('Loading...');
+  const [ckusdtBalance, setCkusdtBalance] = useState<string>('Loading...');
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const canisterId = 'heuuj-6aaaa-aaaag-qc6na-cai';
 
@@ -25,47 +26,43 @@ export default function InvoicesPage({ token, orbitStation, identity, isAuthenti
     setRefreshTrigger(prev => prev + 1);
   };
 
-  const loadCanisterBalance = async () => {
-    if (!identity || !token) return;
+  const loadCanisterBalances = async () => {
+    if (!identity) return;
 
     try {
       setIsLoadingBalance(true);
       const invoiceService = getInvoiceService(identity);
-      
-      // Get balance based on token type
-      const tokenSymbol = token.symbol?.toUpperCase();
-      if (tokenSymbol === 'ICP') {
-        const balanceResult = await invoiceService.getCanisterIcpBalance();
-        if (balanceResult.success) {
-          // Convert from e8s to ICP
-          const icpBalance = Number(balanceResult.data) / 100_000_000;
-          setCanisterBalance(`${icpBalance.toFixed(8)} ICP`);
-        } else {
-          setCanisterBalance('Error loading balance');
-        }
-      } else if (tokenSymbol === 'CKUSDT' || tokenSymbol === 'USDT') {
-        const balanceResult = await invoiceService.getCanisterCkUsdtBalance();
-        if (balanceResult.success) {
-          // Convert from smallest unit to ckUSDT
-          const ckusdtBalance = Number(balanceResult.data) / 1_000_000;
-          setCanisterBalance(`${ckusdtBalance.toFixed(6)} ckUSDT`);
-        } else {
-          setCanisterBalance('Error loading balance');
-        }
+
+      // Load ICP balance
+      const icpResult = await invoiceService.getCanisterIcpBalance();
+      if (icpResult.success) {
+        const balance = Number(icpResult.data) / 100_000_000;
+        setIcpBalance(`${balance.toFixed(8)} ICP`);
       } else {
-        setCanisterBalance('Unsupported token');
+        setIcpBalance('Error loading');
       }
+
+      // Load ckUSDT balance
+      const ckusdtResult = await invoiceService.getCanisterCkUsdtBalance();
+      if (ckusdtResult.success) {
+        const balance = Number(ckusdtResult.data) / 1_000_000;
+        setCkusdtBalance(`${balance.toFixed(6)} ckUSDT`);
+      } else {
+        setCkusdtBalance('Error loading');
+      }
+
     } catch (error) {
-      console.error('Failed to load canister balance:', error);
-      setCanisterBalance('Error loading');
+      console.error('Failed to load balances:', error);
+      setIcpBalance('Error loading');
+      setCkusdtBalance('Error loading');
     } finally {
       setIsLoadingBalance(false);
     }
   };
 
   useEffect(() => {
-    loadCanisterBalance();
-  }, [identity, token]);
+    loadCanisterBalances();
+  }, [identity]);
 
   return (
     <div className="space-y-6" data-testid="invoices-overview">
@@ -94,7 +91,7 @@ export default function InvoicesPage({ token, orbitStation, identity, isAuthenti
       </div>
 
       {/* Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Canister ID Card */}
         <Card className="bg-executive-darkGray border-executive-mediumGray">
           <CardHeader className="pb-3">
@@ -113,16 +110,16 @@ export default function InvoicesPage({ token, orbitStation, identity, isAuthenti
           </CardContent>
         </Card>
 
-        {/* Canister Balance Card */}
+        {/* ICP Balance Card */}
         <Card className="bg-executive-darkGray border-executive-mediumGray">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between text-executive-ivory text-lg">
               <div className="flex items-center gap-2">
                 <Wallet className="h-5 w-5 text-executive-gold" />
-                Canister Balance
+                ICP Balance
               </div>
               <Button
-                onClick={loadCanisterBalance}
+                onClick={loadCanisterBalances}
                 variant="ghost"
                 size="sm"
                 className="h-8 w-8 p-0 text-executive-lightGray hover:text-executive-ivory hover:bg-executive-mediumGray/30"
@@ -133,12 +130,20 @@ export default function InvoicesPage({ token, orbitStation, identity, isAuthenti
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <p className="text-sm text-executive-lightGray/70">{token?.name || 'Token'} Balance:</p>
-              <p className="text-lg font-semibold text-executive-ivory">
-                {canisterBalance}
-              </p>
-            </div>
+            <p className="text-lg font-semibold text-executive-ivory">{icpBalance}</p>
+          </CardContent>
+        </Card>
+
+        {/* ckUSDT Balance Card */}
+        <Card className="bg-executive-darkGray border-executive-mediumGray">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-executive-ivory text-lg">
+              <Wallet className="h-5 w-5 text-executive-gold" />
+              ckUSDT Balance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-lg font-semibold text-executive-ivory">{ckusdtBalance}</p>
           </CardContent>
         </Card>
       </div>
