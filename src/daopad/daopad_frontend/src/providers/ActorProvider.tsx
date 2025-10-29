@@ -26,7 +26,9 @@ export default function ActorProvider() {
 	const onRequest = useCallback(
 		(data: InterceptorRequestData) => {
 			const id = getIdentity();
-			console.log("onRequest", data.args, data.methodName);
+			if (import.meta.env.DEV) {
+				console.log("onRequest", data.args, data.methodName);
+			}
 			if (
 				id &&
 				!isDelegationValid(
@@ -48,17 +50,23 @@ export default function ActorProvider() {
 	);
 
 	const onRequestError = useCallback((data: InterceptorErrorData) => {
-		console.log("onRequestError", data.args, data.methodName, data.error);
+		if (import.meta.env.DEV) {
+			console.log("onRequestError", data.args, data.methodName, data.error);
+		}
 		return data.error;
 	}, []);
 
 	const onResponse = useCallback((data: InterceptorResponseData) => {
-		console.log("onResponse", data.args, data.methodName, data.response);
+		if (import.meta.env.DEV) {
+			console.log("onResponse", data.args, data.methodName, data.response);
+		}
 		return data.response;
 	}, []);
 
 	const onResponseError = useCallback((data: InterceptorErrorData) => {
-		console.log("onResponseError", data.args, data.methodName, data.error);
+		if (import.meta.env.DEV) {
+			console.log("onResponseError", data.args, data.methodName, data.error);
+		}
 		return data.error;
 	}, []);
 
@@ -74,14 +82,20 @@ export default function ActorProvider() {
 
 	useEffect(() => {
 		if (!identity) {
-			console.log('[ActorProvider] No identity yet');
+			if (import.meta.env.DEV) {
+				console.log('[ActorProvider] No identity yet');
+			}
 			return;
 		}
 
-		console.log('[ActorProvider] Identity changed:', identity.getPrincipal().toText());
+		if (import.meta.env.DEV) {
+			console.log('[ActorProvider] Identity changed:', identity.getPrincipal().toText());
+		}
 
 		ensureAllInitialized().then(() => {
-			console.log('[ActorProvider] Authenticating all actors with principal:', identity.getPrincipal().toText());
+			if (import.meta.env.DEV) {
+				console.log('[ActorProvider] Authenticating all actors with principal:', identity.getPrincipal().toText());
+			}
 			authenticateAll(identity);
 		});
 	}, [identity]);
