@@ -8,7 +8,6 @@ export default function DaoInvoices() {
         {/* Add your InvoicesTab component here */}
         <h2>Invoices Tab</h2>
         <p>Invoice management functionality goes here</p>
-        <p>Token: {token}</p>
       </div>
     );
   }
