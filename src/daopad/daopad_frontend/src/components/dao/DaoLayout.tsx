@@ -47,7 +47,7 @@ export default function DaoLayout({
   };
 
   return (
-    <div className="min-h-screen bg-executive-charcoal text-executive-lightGray">
+    <div className="flex flex-col min-h-screen bg-executive-charcoal text-executive-lightGray">
       {/* Executive letterhead gold trim line */}
       <div className="h-1 bg-gradient-to-r from-transparent via-executive-gold to-transparent"></div>
 
@@ -140,7 +140,7 @@ export default function DaoLayout({
       </div>
 
       {/* Tab content */}
-      <main className="container mx-auto px-4 lg:px-6 max-w-7xl py-8">
+      <main className="flex-grow container mx-auto px-4 lg:px-6 max-w-7xl py-8">
         {children}
       </main>
 

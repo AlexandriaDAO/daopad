@@ -1,4 +1,4 @@
-.PHONY: daopad_backend admin help
+.PHONY: daopad_backend daopad_invoices admin help
 
 # Deploy Daopad backend canister
 daopad_backend:
@@ -8,7 +8,17 @@ daopad_backend:
 	candid-extractor target/wasm32-unknown-unknown/release/daopad_backend.wasm > src/daopad/daopad_backend/daopad_backend.did
 	dfx generate daopad_backend
 	cp -r src/declarations/daopad_backend src/daopad/daopad_frontend/src/declarations/
-	dfx deploy daopad_backend --argument "(opt \"fec7w-zyaaa-aaaaa-qaffq-cai\")";
+	dfx deploy daopad_backend --argument "(opt \"fec7w-zyaaa-aaaaa-qaffq-cai\")"
+
+# Deploy Daopad invoices canister
+daopad_invoices:
+	@echo "Deploying Daopad invoices canister..."
+	dfx canister create daopad_invoices --specified-id heuuj-6aaaa-aaaag-qc6na-cai
+	cargo build --release --target wasm32-unknown-unknown --package daopad_invoices
+	candid-extractor target/wasm32-unknown-unknown/release/daopad_invoices.wasm > src/daopad/daopad_invoices/daopad_invoices.did
+	dfx deploy daopad_invoices
+	dfx generate daopad_invoices
+	cp -r src/declarations/daopad_invoices src/daopad/daopad_frontend/src/declarations/
 
 # Deploy Admin canister
 admin:
