@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Alert, AlertDescription } from '../ui/alert';
 import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { getInvoiceService } from '../../services/backend/invoices/InvoiceService';
-import { getBackendService } from '../../services/backend/BackendService';
+import { getOrbitAccountsService } from '../../services/backend';
 import { parseIcrc1Address, formatSubaccount } from '../../utils/icrc1';
 
 interface CreateInvoiceProps {
@@ -63,8 +63,8 @@ export default function CreateInvoice({
     setError('');
 
     try {
-      const backendService = getBackendService(identity);
-      const accounts = await backendService.getTreasuryAccountsWithBalances(token.canister_id);
+      const accountsService = getOrbitAccountsService(identity);
+      const accounts = await accountsService.getTreasuryAccountsWithBalances(token.canister_id);
       setTreasuryAccounts(accounts);
 
       // Auto-select first compatible account
@@ -171,7 +171,7 @@ export default function CreateInvoice({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Invoice</DialogTitle>
           <DialogDescription>
