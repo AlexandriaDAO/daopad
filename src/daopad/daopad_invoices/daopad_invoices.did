@@ -21,19 +21,21 @@ type Invoice = record {
   id : text;
   url : text;
   status : InvoiceStatus;
+  treasury_owner : principal;
   fiat : nat64;
   collateral : Collateral;
   description : text;
   created_at : nat64;
+  orbit_account_id : text;
   crypto : nat64;
-  receiver : principal;
+  treasury_subaccount : opt blob;
 };
 type InvoiceStatus = variant { Paid; Inactive; Unpaid };
 type Result = variant { Ok : nat; Err : text };
 type Result_1 = variant { Ok : text; Err : text };
 type TransformArgs = record { context : blob; response : HttpResponse_1 };
 service : () -> {
-  create_invoice : (nat64, text, opt text, principal) -> (text);
+  create_invoice : (nat64, text, opt text, principal, text, text) -> (text);
   get_canister_ckusdt_balance : () -> (Result);
   get_canister_icp_balance : () -> (Result);
   get_ckusdt_balance : (principal) -> (Result);

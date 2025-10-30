@@ -1012,6 +1012,10 @@ service : () -> {
       opt text,
     ) -> (Result_1);
   get_account_assets : (principal, text) -> (Result_9);
+  // Gets the ICRC1 address for a treasury account
+  // Returns the ICRC1 address if found, error otherwise
+  // Note: Token compatibility validation should be done on frontend (it has full account data)
+  get_account_icrc1_address : (principal, text) -> (Result);
   get_account_with_assets : (principal, text) -> (Result_10);
   get_address_book_entry : (GetAddressBookEntryInput) -> (
       GetAddressBookEntryResult,

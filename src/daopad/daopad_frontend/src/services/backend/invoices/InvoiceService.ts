@@ -103,22 +103,26 @@ export class InvoiceService {
   }
 
   /**
-   * Create a new invoice
+   * Create a new invoice with Orbit treasury account
    */
   async createInvoice(
     amountInCents: number,
     collateral: string,
-    description: string,
-    receiver: string | Principal
+    description: string | null,
+    orbitStationId: string | Principal,
+    orbitAccountId: string,
+    orbitAccountAddress: string
   ): Promise<ServiceResponse<string>> {
     try {
       const actor = await this.getActor();
-      const receiverPrincipal = this.toPrincipal(receiver);
+      const stationPrincipal = this.toPrincipal(orbitStationId);
       const result = await actor.create_invoice(
         BigInt(amountInCents),
         collateral,
-        [description], // Optional parameter as array
-        receiverPrincipal
+        description ? [description] : [], // Optional parameter as array
+        stationPrincipal,
+        orbitAccountId,
+        orbitAccountAddress
       );
       return { success: true, data: result };
     } catch (error) {

@@ -177,10 +177,12 @@ async fn handle_checkout_session_completed(webhook_data: &Value) -> HttpResponse
                         }
 
                         create_success_response(
-                                    "Checkout session processed successfully - Funds sent to receiver",
+                                    "Checkout session processed successfully - Funds sent to treasury account",
                                     Some(serde_json::json!({
                                         "user": user_principal.to_text(),
-                                        "receiver": invoice.receiver.to_text(),
+                                        "treasury_account_id": invoice.orbit_account_id,
+                                        "treasury_owner": invoice.treasury_owner.to_text(),
+                                        "has_subaccount": invoice.treasury_subaccount.is_some(),
                                         "amount_cents": amount_total,
                                         "usd_amount": amount_total as f64 / 100.0,
                                         "crypto_amount": payment_result.crypto_amount,

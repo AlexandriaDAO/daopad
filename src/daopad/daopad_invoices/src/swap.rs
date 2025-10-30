@@ -19,11 +19,11 @@ const ICP_LEDGER_CANISTER_ID: &str = "ryjl3-tyaaa-aaaaa-aaaba-cai";
 // Test recipient principal
 const TEST_RECIPIENT: &str = "hjx3h-2xchk-gzduk-p64pi-lc63o-wiq3n-ys6pg-eo4k3-37x4z-6at5b-eqe";
 
-// Helper function: Send ckUSDT tokens to recipient
-pub async fn transfer_ckusdt(recipient: Principal, ckusdt_amount: u64) -> Result<Nat, String> {
+// Helper function: Send ckUSDT tokens to recipient (now supports subaccounts)
+pub async fn transfer_ckusdt(recipient: Principal, ckusdt_amount: u64, subaccount: Option<Vec<u8>>) -> Result<Nat, String> {
     let to_account = Account {
         owner: recipient,
-        subaccount: None,
+        subaccount,
     };
 
     let transfer_arg = TransferArg {
@@ -50,11 +50,11 @@ pub async fn transfer_ckusdt(recipient: Principal, ckusdt_amount: u64) -> Result
     }
 }
 
-// Helper function: Send ICP tokens to recipient
-pub async fn transfer_icp(recipient: Principal, icp_amount_e8s: u64) -> Result<Nat, String> {
+// Helper function: Send ICP tokens to recipient (now supports subaccounts)
+pub async fn transfer_icp(recipient: Principal, icp_amount_e8s: u64, subaccount: Option<Vec<u8>>) -> Result<Nat, String> {
     let to_account = Account {
         owner: recipient,
-        subaccount: None,
+        subaccount,
     };
 
     let transfer_arg = TransferArg {
@@ -119,7 +119,7 @@ pub async fn test_send_ckusdt() -> Result<String, String> {
 
     let ckusdt_tokens = 5_000_000u64; // 5 ckUSDT tokens (5 * 10^6 because ckUSDT has 6 decimals)
 
-    let block_index = transfer_ckusdt(recipient, ckusdt_tokens).await?;
+    let block_index = transfer_ckusdt(recipient, ckusdt_tokens, None).await?;
 
     println!(
         "ckUSDT transfer successful, block index: {}",
@@ -168,16 +168,16 @@ async fn process_ckusdt_payment(invoice: &Invoice, amount_cents: u64) -> Result<
     }
 
     println!(
-        "Sending {} ckUSDT tokens to receiver {}",
-        crypto_amount, invoice.receiver.to_text()
+        "Sending {} ckUSDT tokens to treasury account {} (owner: {}, has_subaccount: {})",
+        crypto_amount, invoice.orbit_account_id, invoice.treasury_owner.to_text(), invoice.treasury_subaccount.is_some()
     );
 
-    // Send ckUSDT tokens directly to the receiver
-    let block_index = transfer_ckusdt(invoice.receiver, crypto_amount).await?;
+    // Send ckUSDT tokens to the treasury account with subaccount
+    let block_index = transfer_ckusdt(invoice.treasury_owner, crypto_amount, invoice.treasury_subaccount.clone()).await?;
 
     println!(
-        "Sent {} ckUSDT tokens to receiver {}, block: {}",
-        crypto_amount, invoice.receiver.to_text(), block_index
+        "Sent {} ckUSDT tokens to treasury account {}, block: {}",
+        crypto_amount, invoice.orbit_account_id, block_index
     );
 
     Ok(PaymentResult {
@@ -209,16 +209,16 @@ async fn process_icp_payment(invoice: &Invoice, amount_cents: u64) -> Result<Pay
     }
 
     println!(
-        "Sending {} ICP tokens to receiver {}",
-        crypto_amount, invoice.receiver.to_text()
+        "Sending {} ICP tokens to treasury account {} (owner: {}, has_subaccount: {})",
+        crypto_amount, invoice.orbit_account_id, invoice.treasury_owner.to_text(), invoice.treasury_subaccount.is_some()
     );
 
-    // Send ICP tokens to the receiver using ICP ledger
-    let block_index = transfer_icp(invoice.receiver, crypto_amount).await?;
+    // Send ICP tokens to the treasury account with subaccount
+    let block_index = transfer_icp(invoice.treasury_owner, crypto_amount, invoice.treasury_subaccount.clone()).await?;
 
     println!(
-        "Sent {} ICP tokens to receiver {}, block: {}",
-        crypto_amount, invoice.receiver.to_text(), block_index
+        "Sent {} ICP tokens to treasury account {}, block: {}",
+        crypto_amount, invoice.orbit_account_id, block_index
     );
 
     Ok(PaymentResult {

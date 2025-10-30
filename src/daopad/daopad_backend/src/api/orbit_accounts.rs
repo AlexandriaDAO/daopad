@@ -600,3 +600,59 @@ pub async fn get_treasury_accounts_with_balances(
 
     Ok(accounts_with_balances)
 }
+
+// ===== ICRC1 ADDRESS PARSING FOR INVOICES =====
+
+/// Parses ICRC1 address format: "principal.subaccount-hex"
+/// Returns (Principal, Option<Vec<u8>>)
+///
+/// Examples:
+/// - "fec7w-zyaaa-aaaaa-qaffq-cai" → (principal, None)
+/// - "fec7w-zyaaa-aaaaa-qaffq-cai.886ee66a..." → (principal, Some([0x88, 0x6e, ...]))
+pub fn parse_icrc1_address(address: &str) -> Result<(Principal, Option<Vec<u8>>), String> {
+    let parts: Vec<&str> = address.split('.').collect();
+
+    // Parse principal from first part
+    let principal = Principal::from_text(parts[0])
+        .map_err(|e| format!("Invalid principal: {}", e))?;
+
+    // If no subaccount part, return None
+    if parts.len() == 1 {
+        return Ok((principal, None));
+    }
+
+    // Parse subaccount hex string
+    let subaccount_hex = parts[1];
+    let subaccount_bytes = hex::decode(subaccount_hex)
+        .map_err(|e| format!("Invalid subaccount hex: {}", e))?;
+
+    // Validate length is exactly 32 bytes
+    if subaccount_bytes.len() != 32 {
+        return Err(format!(
+            "Subaccount must be 32 bytes, got {}",
+            subaccount_bytes.len()
+        ));
+    }
+
+    Ok((principal, Some(subaccount_bytes)))
+}
+
+/// Gets the ICRC1 address for a treasury account
+/// Returns the ICRC1 address if found, error otherwise
+/// Note: Token compatibility validation should be done on frontend (it has full account data)
+#[update]
+pub async fn get_account_icrc1_address(
+    token_canister_id: Principal,
+    account_id: String,
+) -> Result<String, String> {
+    // Get account details
+    let account = get_treasury_account_details(token_canister_id, account_id.clone()).await?;
+
+    // Find the ICRC1 address for this account
+    let icrc1_address = account.addresses.iter()
+        .find(|addr| addr.format == "icrc1_account")
+        .ok_or("No ICRC1 address found for account")?;
+
+    // Return the address for frontend to use
+    Ok(icrc1_address.address.clone())
+}

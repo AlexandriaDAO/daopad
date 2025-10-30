@@ -14,6 +14,7 @@ use ic_cdk::{
     },
     caller, println,
 };
+use candid::Principal;
 
 use crate::storage::{add_invoice_for_principal, get_stripe_api_secret};
 use crate::types::{Invoice, InvoiceStatus, Collateral};
@@ -24,9 +25,46 @@ async fn generate_idempotency_key() -> String {
     hex::encode(&random_bytes.0[0..16]) // 16 bytes = 32 hex chars
 }
 
+// Parse ICRC1 address format: "principal.subaccount-hex"
+// Returns (Principal, Option<Vec<u8>>)
+fn parse_icrc1_address(address: &str) -> Result<(Principal, Option<Vec<u8>>), String> {
+    let parts: Vec<&str> = address.split('.').collect();
+
+    // Parse principal from first part
+    let principal = Principal::from_text(parts[0])
+        .map_err(|e| format!("Invalid principal: {}", e))?;
+
+    // If no subaccount part, return None
+    if parts.len() == 1 {
+        return Ok((principal, None));
+    }
+
+    // Parse subaccount hex string
+    let subaccount_hex = parts[1];
+    let subaccount_bytes = hex::decode(subaccount_hex)
+        .map_err(|e| format!("Invalid subaccount hex: {}", e))?;
+
+    // Validate length is exactly 32 bytes
+    if subaccount_bytes.len() != 32 {
+        return Err(format!(
+            "Subaccount must be 32 bytes, got {}",
+            subaccount_bytes.len()
+        ));
+    }
+
+    Ok((principal, Some(subaccount_bytes)))
+}
+
 //Update method using the HTTPS outcalls feature
 #[ic_cdk::update]
-async fn create_invoice(amount_in_cents: u64, collateral_name: String, description: Option<String>, receiver: candid::Principal) -> String {
+async fn create_invoice(
+    amount_in_cents: u64,
+    collateral_name: String,
+    description: Option<String>,
+    orbit_station_id: candid::Principal,
+    orbit_account_id: String,
+    orbit_account_address: String,
+) -> String {
     // Check if caller is anonymous - reject anonymous users
     let caller = caller();
     if caller == candid::Principal::anonymous() {
@@ -40,10 +78,19 @@ async fn create_invoice(amount_in_cents: u64, collateral_name: String, descripti
         _ => return "Error: Invalid collateral type. Must be 'ICP' or 'ckUSDT'".to_string(),
     };
 
+    // Parse the ICRC1 address into principal + subaccount
+    let (treasury_owner, treasury_subaccount) = match parse_icrc1_address(&orbit_account_address) {
+        Ok(parsed) => parsed,
+        Err(e) => return format!("Error parsing ICRC1 address: {}", e),
+    };
+
     // Process description (empty string if not provided)
     let invoice_description = description.unwrap_or_else(|| String::new());
 
-    println!("Creating invoice with collateral: {}, receiver: {}", collateral_name, receiver.to_text());
+    println!(
+        "Creating invoice with collateral: {}, orbit_account_id: {}, treasury_owner: {}, has_subaccount: {}",
+        collateral_name, orbit_account_id, treasury_owner.to_text(), treasury_subaccount.is_some()
+    );
 
     // Generate random idempotency key
     let idempotency_key = generate_idempotency_key().await;
@@ -165,7 +212,9 @@ async fn create_invoice(amount_in_cents: u64, collateral_name: String, descripti
                                     description: invoice_description,
                                     created_at: time(),
                                     status: InvoiceStatus::Unpaid,
-                                    receiver,
+                                    orbit_account_id: orbit_account_id.clone(),
+                                    treasury_owner,
+                                    treasury_subaccount,
                                 };
 
                                 add_invoice_for_principal(caller, invoice);

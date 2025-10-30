@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -7,8 +7,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Alert, AlertDescription } from '../ui/alert';
 import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { getInvoiceService } from '../../services/backend/invoices/InvoiceService';
-// import { fetchOrbitAccounts, selectOrbitAccountsLoading } from '../../features/orbit/orbitSlice';
-// import { selectFormattedAccounts } from '../../features/orbit/orbitSelectors';
+import { getBackendService } from '../../services/backend/BackendService';
+import { parseIcrc1Address, formatSubaccount } from '../../utils/icrc1';
 
 interface CreateInvoiceProps {
   open: boolean;
@@ -19,47 +19,72 @@ interface CreateInvoiceProps {
   onSuccess?: () => void;
 }
 
-export default function CreateInvoice({ 
-  open, 
-  onOpenChange, 
+export default function CreateInvoice({
+  open,
+  onOpenChange,
   token,
-  orbitStation, 
-  identity, 
-  onSuccess 
+  orbitStation,
+  identity,
+  onSuccess
 }: CreateInvoiceProps) {
   const [amount, setAmount] = useState('');
-  const [receiver, setReceiver] = useState('');
   const [description, setDescription] = useState('');
   const [collateral, setCollateral] = useState<'ICP' | 'ckUSDT'>('ICP');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState('');
 
-  // // Get treasury accounts from Redux
-  // const treasuryAccounts = useSelector(state => 
-  //   orbitStation ? selectFormattedAccounts(state, orbitStation.station_id, token?.symbol) : []
-  // );
+  // Treasury account state
+  const [treasuryAccounts, setTreasuryAccounts] = useState<any[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
 
-  // // Get loading state
-  // const isLoadingAccounts = useSelector(state =>
-  //   orbitStation ? selectOrbitAccountsLoading(state, orbitStation.station_id) : false
-  // );
+  // Fetch treasury accounts when dialog opens
+  useEffect(() => {
+    if (open && orbitStation && identity) {
+      fetchTreasuryAccounts();
+    }
+  }, [open, orbitStation, identity]);
 
-  // // Fetch treasury accounts when dialog opens
-  // useEffect(() => {
-  //   if (open && orbitStation && token) {
-  //     dispatch(fetchOrbitAccounts({
-  //       stationId: orbitStation.station_id,
-  //       identity: identity || null,
-  //       tokenId: token.canister_id,
-  //       searchQuery: '',
-  //       pagination: { limit: 20, offset: 0 }
-  //     }));
-  //   }
-  // }, [open, dispatch, orbitStation, token, identity]);
+  // Update selected account when collateral changes
+  useEffect(() => {
+    const compatibleAccounts = treasuryAccounts.filter(account =>
+      account.assets.some((asset: any) => asset.balance?.asset_symbol === collateral)
+    );
+
+    if (compatibleAccounts.length > 0 && !selectedAccountId) {
+      setSelectedAccountId(compatibleAccounts[0].id);
+    }
+  }, [collateral, treasuryAccounts]);
+
+  async function fetchTreasuryAccounts() {
+    if (!identity || !token) return;
+
+    setIsLoadingAccounts(true);
+    setError('');
+
+    try {
+      const backendService = getBackendService(identity);
+      const accounts = await backendService.getTreasuryAccountsWithBalances(token.canister_id);
+      setTreasuryAccounts(accounts);
+
+      // Auto-select first compatible account
+      const compatible = accounts.find((acc: any) =>
+        acc.assets.some((asset: any) => asset.balance?.asset_symbol === collateral)
+      );
+      if (compatible) {
+        setSelectedAccountId(compatible.id);
+      }
+    } catch (err) {
+      console.error('Failed to load treasury accounts:', err);
+      setError('Failed to load treasury accounts. Please try again.');
+    } finally {
+      setIsLoadingAccounts(false);
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!identity) {
       setError('Please login first');
       return;
@@ -70,8 +95,13 @@ export default function CreateInvoice({
       return;
     }
 
-    if (!receiver) {
-      setError('Please enter a receiver account');
+    if (!selectedAccountId) {
+      setError('Please select a treasury account');
+      return;
+    }
+
+    if (!orbitStation) {
+      setError('No orbit station found');
       return;
     }
 
@@ -79,28 +109,48 @@ export default function CreateInvoice({
     setError('');
 
     try {
+      // Find selected account
+      const selectedAccount = treasuryAccounts.find(acc => acc.id === selectedAccountId);
+
+      if (!selectedAccount) {
+        setError('Selected account not found');
+        return;
+      }
+
+      // Get ICRC1 address for the account
+      const icrc1Address = selectedAccount.addresses?.find(
+        (addr: any) => addr.format === 'icrc1_account'
+      );
+
+      if (!icrc1Address) {
+        setError('No ICRC1 address found for selected account');
+        return;
+      }
+
       const invoiceService = getInvoiceService(identity);
       const amountInCents = Math.round(parseFloat(amount) * 100);
-      
+
       const result = await invoiceService.createInvoice(
         amountInCents,
         collateral,
-        description.trim(),
-        receiver
+        description.trim() || null,
+        orbitStation.station_id,
+        selectedAccountId,
+        icrc1Address.address
       );
-      
+
       if (result.success) {
         // Reset form
         setAmount('');
-        setReceiver('');
+        setSelectedAccountId('');
         setDescription('');
-        
+
         onSuccess?.();
         onOpenChange(false);
       } else {
         setError(result.error || 'Failed to create invoice');
       }
-      
+
     } catch (err) {
       console.error('Failed to create invoice:', err);
       setError('Failed to create invoice. Please try again.');
@@ -113,6 +163,11 @@ export default function CreateInvoice({
     setAmount(presetAmount.toString());
     setError('');
   };
+
+  // Filter accounts by selected collateral
+  const compatibleAccounts = treasuryAccounts.filter(account =>
+    account.assets?.some((asset: any) => asset.balance?.asset_symbol === collateral)
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -135,24 +190,34 @@ export default function CreateInvoice({
         )}
 
         {/* Loading Treasury Accounts */}
-        {/* {orbitStation && isLoadingAccounts && (
+        {orbitStation && isLoadingAccounts && (
           <Alert>
             <RefreshCw className="h-4 w-4 animate-spin" />
             <AlertDescription>
               Loading treasury accounts...
             </AlertDescription>
           </Alert>
-        )} */}
+        )}
 
         {/* No Treasury Accounts Found (only show when not loading) */}
-        {/* {orbitStation && !isLoadingAccounts && treasuryAccounts.length === 0 && (
+        {orbitStation && !isLoadingAccounts && treasuryAccounts.length === 0 && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               No treasury accounts found. Please create treasury accounts before creating invoices.
             </AlertDescription>
           </Alert>
-        )} */}
+        )}
+
+        {/* No Compatible Accounts for Selected Collateral */}
+        {orbitStation && !isLoadingAccounts && treasuryAccounts.length > 0 && compatibleAccounts.length === 0 && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              No treasury accounts found that support {collateral}. Please configure an account with {collateral} in Orbit Station.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {error && (
           <Alert variant="destructive">
@@ -271,48 +336,70 @@ export default function CreateInvoice({
 
           {/* Treasury Account Selector */}
           <div className="space-y-2">
-            <Label htmlFor="receiver">Treasury Account *</Label>
-            {/* <Select
-              value={selectedAccount}
-              onValueChange={setSelectedAccount}
-              disabled={isCreating || treasuryAccounts.length === 0}
-            >
-              <SelectTrigger className="h-12">
-                <SelectValue 
-                  placeholder={
-                    treasuryAccounts.length === 0 
-                      ? "No treasury accounts available" 
-                      : "Select treasury account"
-                  } 
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {treasuryAccounts.map((account) => (
-                  <SelectItem key={account.id} value={account.id}>
-                    <div className="flex flex-col items-start">
-                      <span className="font-medium">
-                        {account.name || 'Unnamed Account'}
-                      </span>
-                      <span className="text-xs text-gray-500 font-mono">
-                        {account.id}
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select> */}
-            <Input
-              id="receiver"
-              type="text"
-              value={receiver}
-              onChange={(e) => setReceiver(e.target.value)}
-              placeholder="e.g., rdmx6-jaaaa-aaaaa-aaadq-cai"
-              className="py-3"
-              disabled={isCreating}
-            />
-            <p className="text-xs text-gray-500">
-              Treasury account where payments will be received
-            </p>
+            <Label htmlFor="account">Treasury Account *</Label>
+            {isLoadingAccounts ? (
+              <div className="flex items-center justify-center p-4 border rounded-lg">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <span className="text-sm text-gray-500">Loading accounts...</span>
+              </div>
+            ) : compatibleAccounts.length === 0 ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  No treasury accounts found that support {collateral}.
+                  Please configure an account in Orbit Station first.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <>
+                <Select
+                  value={selectedAccountId}
+                  onValueChange={setSelectedAccountId}
+                  disabled={isCreating || compatibleAccounts.length === 0}
+                >
+                  <SelectTrigger className="h-auto min-h-[48px]">
+                    <SelectValue placeholder="Select treasury account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {compatibleAccounts.map((account) => {
+                      const asset = account.assets?.find((a: any) => a.balance?.asset_symbol === collateral);
+                      const icrc1Addr = account.addresses?.find((a: any) => a.format === 'icrc1_account');
+                      const parsed = icrc1Addr ? parseIcrc1Address(icrc1Addr.address) : null;
+
+                      return (
+                        <SelectItem key={account.id} value={account.id}>
+                          <div className="flex flex-col items-start py-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">
+                                {account.name || 'Unnamed Account'}
+                              </span>
+                              {asset?.balance && (
+                                <span className="text-xs text-gray-600 dark:text-gray-400">
+                                  • {asset.balance.balance || '0'} {collateral}
+                                </span>
+                              )}
+                            </div>
+                            {parsed && (
+                              <div className="flex flex-col gap-0.5 mt-1">
+                                <span className="text-xs text-gray-500 font-mono">
+                                  {parsed.owner.toText().substring(0, 20)}...
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                  {formatSubaccount(parsed.subaccount)}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">
+                  Payments will be sent to this account's ICRC1 address
+                </p>
+              </>
+            )}
           </div>
 
           <DialogFooter>
@@ -327,9 +414,10 @@ export default function CreateInvoice({
             <Button
               type="submit"
               disabled={
-                !amount || 
-                parseFloat(amount) <= 0 || 
-                !receiver || receiver.length === 0 || 
+                !amount ||
+                parseFloat(amount) <= 0 ||
+                !selectedAccountId ||
+                compatibleAccounts.length === 0 ||
                 isCreating
               }
             >
