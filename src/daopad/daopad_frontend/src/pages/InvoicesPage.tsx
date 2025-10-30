@@ -137,9 +137,20 @@ export default function InvoicesPage({ token, orbitStation, identity, isAuthenti
         {/* ckUSDT Balance Card */}
         <Card className="bg-executive-darkGray border-executive-mediumGray">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-executive-ivory text-lg">
-              <Wallet className="h-5 w-5 text-executive-gold" />
-              ckUSDT Balance
+            <CardTitle className="flex items-center justify-between text-executive-ivory text-lg">
+              <div className="flex items-center gap-2">
+                <Wallet className="h-5 w-5 text-executive-gold" />
+                ckUSDT Balance
+              </div>
+              <Button
+                onClick={loadCanisterBalances}
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 text-executive-lightGray hover:text-executive-ivory hover:bg-executive-mediumGray/30"
+                disabled={isLoadingBalance}
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoadingBalance ? 'animate-spin' : ''}`} />
+              </Button>
             </CardTitle>
           </CardHeader>
           <CardContent>
