@@ -64,11 +64,16 @@ export default function CreateInvoice({
 
     try {
       const accountsService = getOrbitAccountsService(identity);
-      const accounts = await accountsService.getTreasuryAccountsWithBalances(token.canister_id);
-      setTreasuryAccounts(accounts);
+      const response = await accountsService.getTreasuryAccountsWithBalances(token.canister_id);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Failed to load treasury accounts');
+      }
+
+      setTreasuryAccounts(response.data);
 
       // Auto-select first compatible account
-      const compatible = accounts.find((acc: any) =>
+      const compatible = response.data.find((acc: any) =>
         acc.assets.some((asset: any) => asset.balance?.asset_symbol === collateral)
       );
       if (compatible) {
