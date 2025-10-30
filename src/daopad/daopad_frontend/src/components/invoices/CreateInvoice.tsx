@@ -43,7 +43,7 @@ export default function CreateInvoice({
     if (open && orbitStation && identity) {
       fetchTreasuryAccounts();
     }
-  }, [open, orbitStation, identity]);
+  }, [open, orbitStation, identity, token]);
 
   // Update selected account when collateral changes
   useEffect(() => {
@@ -57,17 +57,26 @@ export default function CreateInvoice({
   }, [collateral, treasuryAccounts]);
 
   async function fetchTreasuryAccounts() {
-    if (!identity || !token) return;
+    if (!identity || !orbitStation) return;
 
     setIsLoadingAccounts(true);
     setError('');
 
     try {
       const accountsService = getOrbitAccountsService(identity);
-      const response = await accountsService.getTreasuryAccountsWithBalances(token.canister_id);
+      // For equity stations (LLCs), use station_id directly
+      // For token-based DAOs, use token.canister_id
+      const stationOrTokenId = token?.canister_id || orbitStation.station_id;
+      const response = await accountsService.getTreasuryAccountsWithBalances(stationOrTokenId);
 
       if (!response.success || !response.data) {
         throw new Error(response.error || 'Failed to load treasury accounts');
+      }
+
+      console.log('[CreateInvoice] Treasury accounts loaded:', response.data);
+      console.log('[CreateInvoice] First account structure:', response.data[0]);
+      if (response.data[0]?.assets?.[0]) {
+        console.log('[CreateInvoice] First asset structure:', response.data[0].assets[0]);
       }
 
       setTreasuryAccounts(response.data);
@@ -78,6 +87,15 @@ export default function CreateInvoice({
       );
       if (compatible) {
         setSelectedAccountId(compatible.id);
+      } else {
+        console.log('[CreateInvoice] No compatible account found for collateral:', collateral);
+        console.log('[CreateInvoice] Accounts:', response.data.map((a: any) => ({
+          name: a.name,
+          assets: a.assets.map((asset: any) => ({
+            asset_id: asset.asset_id,
+            balance: asset.balance
+          }))
+        })));
       }
     } catch (err) {
       console.error('Failed to load treasury accounts:', err);
