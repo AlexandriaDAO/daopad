@@ -25,21 +25,28 @@ async fn generate_idempotency_key() -> String {
     hex::encode(&random_bytes.0[0..16]) // 16 bytes = 32 hex chars
 }
 
-// Parse ICRC1 address format: "principal.subaccount-hex"
-// Returns (Principal, Option<Vec<u8>>)
-fn parse_icrc1_address(address: &str) -> Result<(Principal, Option<Vec<u8>>), String> {
+// Parse Orbit's ICRC1 address format
+// Orbit returns: "account-text-with-checksum.subaccount-hex"
+// Example: "6ulqe-qaaaa-aaaac-a4w3a-cai-s7lkucq.886ee66a28974c4c86c8a0bce7eb870600000000000000000000000000000000"
+//
+// The principal (account owner) comes from orbit_station_id parameter
+// We only extract the subaccount hex from after the dot
+fn parse_orbit_icrc1_address(address: &str, station_principal: Principal) -> Result<(Principal, Option<Vec<u8>>), String> {
     let parts: Vec<&str> = address.split('.').collect();
 
-    // Parse principal from first part
-    let principal = Principal::from_text(parts[0])
-        .map_err(|e| format!("Invalid principal: {}", e))?;
-
-    // If no subaccount part, return None
+    // If no dot, assume it's a simple principal with no subaccount
     if parts.len() == 1 {
+        // Try to parse as principal (for backward compatibility)
+        let principal = Principal::from_text(parts[0])
+            .unwrap_or(station_principal);
         return Ok((principal, None));
     }
 
-    // Parse subaccount hex string
+    // Use the station_principal as the account owner
+    // The text before the dot is ICRC1 account text representation (includes checksum)
+    let principal = station_principal;
+
+    // Parse subaccount hex string after the dot
     let subaccount_hex = parts[1];
     let subaccount_bytes = hex::decode(subaccount_hex)
         .map_err(|e| format!("Invalid subaccount hex: {}", e))?;
@@ -79,7 +86,8 @@ async fn create_invoice(
     };
 
     // Parse the ICRC1 address into principal + subaccount
-    let (treasury_owner, treasury_subaccount) = match parse_icrc1_address(&orbit_account_address) {
+    // Use orbit_station_id as the account owner (treasury accounts are owned by the station)
+    let (treasury_owner, treasury_subaccount) = match parse_orbit_icrc1_address(&orbit_account_address, orbit_station_id) {
         Ok(parsed) => parsed,
         Err(e) => return format!("Error parsing ICRC1 address: {}", e),
     };

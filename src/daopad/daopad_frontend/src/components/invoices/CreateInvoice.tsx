@@ -390,7 +390,6 @@ export default function CreateInvoice({
                     {compatibleAccounts.map((account) => {
                       const asset = account.assets?.find((a: any) => a.asset_symbol === collateral);
                       const icrc1Addr = account.addresses?.find((a: any) => a.format === 'icrc1_account');
-                      const parsed = icrc1Addr ? parseIcrc1Address(icrc1Addr.address) : null;
 
                       return (
                         <SelectItem key={account.id} value={account.id}>
@@ -405,13 +404,10 @@ export default function CreateInvoice({
                                 </span>
                               )}
                             </div>
-                            {parsed && (
+                            {icrc1Addr && (
                               <div className="flex flex-col gap-0.5 mt-1">
                                 <span className="text-xs text-gray-500 font-mono">
-                                  {parsed.owner.toText().substring(0, 20)}...
-                                </span>
-                                <span className="text-xs text-gray-400">
-                                  {formatSubaccount(parsed.subaccount)}
+                                  {icrc1Addr.address.substring(0, 40)}...
                                 </span>
                               </div>
                             )}
