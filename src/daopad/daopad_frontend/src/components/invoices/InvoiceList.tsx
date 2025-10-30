@@ -206,7 +206,7 @@ export default function InvoiceList({ token, identity, refreshTrigger }: Invoice
                     </div>
 
                     <div className="text-xs text-executive-lightGray/60 font-mono">
-                      Receiver: {invoice.receiver.toText()}
+                      Treasury: {invoice.orbit_account_id}
                     </div>
 
                     <div className="text-xs text-executive-lightGray/50 font-mono">

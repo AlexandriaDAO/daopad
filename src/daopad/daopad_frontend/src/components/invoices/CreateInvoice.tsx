@@ -5,7 +5,7 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Alert, AlertDescription } from '../ui/alert';
-import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, ExternalLink } from 'lucide-react';
 import { getInvoiceService } from '../../services/backend/invoices/InvoiceService';
 import { getOrbitAccountsService } from '../../services/backend';
 import { parseIcrc1Address, formatSubaccount } from '../../utils/icrc1';
@@ -32,6 +32,7 @@ export default function CreateInvoice({
   const [collateral, setCollateral] = useState<'ICP' | 'ckUSDT'>('ICP');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState('');
+  const [stripeUrl, setStripeUrl] = useState<string>('');
 
   // Treasury account state
   const [treasuryAccounts, setTreasuryAccounts] = useState<any[]>([]);
@@ -42,6 +43,12 @@ export default function CreateInvoice({
   useEffect(() => {
     if (open && orbitStation && identity) {
       fetchTreasuryAccounts();
+      setStripeUrl(''); // Reset URL on open
+      setError('');
+    } else if (!open) {
+      // Reset state when closed
+      setStripeUrl('');
+      setError('');
     }
   }, [open, orbitStation, identity, token]);
 
@@ -166,13 +173,16 @@ export default function CreateInvoice({
       );
 
       if (result.success) {
-        // Reset form
+        // Show the Stripe URL
+        setStripeUrl(result.data);
+
+        // Reset form but keep modal open to show URL
         setAmount('');
         setSelectedAccountId('');
         setDescription('');
 
+        // Trigger refresh but don't close modal yet
         onSuccess?.();
-        onOpenChange(false);
       } else {
         setError(result.error || 'Failed to create invoice');
       }
@@ -249,6 +259,54 @@ export default function CreateInvoice({
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {stripeUrl && (
+          <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
+            <AlertDescription>
+              <div className="space-y-3">
+                <p className="font-medium text-green-800 dark:text-green-200">
+                  Invoice created successfully!
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => window.open(stripeUrl, '_blank')}
+                    variant="default"
+                    size="sm"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Open Payment Link
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(stripeUrl);
+                      alert('Link copied to clipboard!');
+                    }}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Copy Link
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setStripeUrl('');
+                      onOpenChange(false);
+                    }}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Close
+                  </Button>
+                </div>
+                <p className="text-xs text-green-700 dark:text-green-300 font-mono break-all">
+                  {stripeUrl}
+                </p>
+              </div>
+            </AlertDescription>
           </Alert>
         )}
 
