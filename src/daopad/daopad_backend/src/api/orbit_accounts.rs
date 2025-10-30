@@ -566,6 +566,26 @@ pub async fn get_treasury_accounts_with_balances(
         return Ok(vec![]);
     }
 
+    // 3. Fetch asset list to get symbols
+    let assets_result: Result<(ListAssetsResult,), _> = call(
+        station_id,
+        "list_assets",
+        (ListAssetsInput {},)
+    ).await;
+
+    // Create asset_id -> symbol mapping
+    let asset_symbol_map: std::collections::HashMap<String, String> = match assets_result {
+        Ok((ListAssetsResult::Ok { assets },)) => {
+            assets.into_iter()
+                .map(|asset| (asset.id, asset.symbol))
+                .collect()
+        }
+        _ => {
+            ic_cdk::println!("Warning: Failed to fetch asset list, symbols will be unknown");
+            std::collections::HashMap::new()
+        }
+    };
+
     // Transform accounts with balance data
     use crate::types::orbit::{AccountMinimalWithBalances, AccountAssetWithBalance};
 
@@ -578,9 +598,17 @@ pub async fn get_treasury_accounts_with_balances(
                 .into_iter()
                 .filter_map(|asset| {
                     // Only include assets that have balance data
-                    asset.balance.map(|balance| AccountAssetWithBalance {
-                        asset_id: asset.asset_id,
-                        balance,
+                    asset.balance.map(|balance| {
+                        let asset_symbol = asset_symbol_map
+                            .get(&asset.asset_id)
+                            .cloned()
+                            .unwrap_or_else(|| "UNKNOWN".to_string());
+
+                        AccountAssetWithBalance {
+                            asset_id: asset.asset_id,
+                            asset_symbol,
+                            balance,
+                        }
                     })
                 })
                 .collect();

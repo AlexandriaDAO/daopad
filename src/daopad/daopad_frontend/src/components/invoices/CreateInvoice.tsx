@@ -48,7 +48,7 @@ export default function CreateInvoice({
   // Update selected account when collateral changes
   useEffect(() => {
     const compatibleAccounts = treasuryAccounts.filter(account =>
-      account.assets.some((asset: any) => asset.balance?.asset_symbol === collateral)
+      account.assets?.some((asset: any) => asset.asset_symbol === collateral)
     );
 
     if (compatibleAccounts.length > 0 && !selectedAccountId) {
@@ -77,13 +77,15 @@ export default function CreateInvoice({
       console.log('[CreateInvoice] First account structure:', response.data[0]);
       if (response.data[0]?.assets?.[0]) {
         console.log('[CreateInvoice] First asset structure:', response.data[0].assets[0]);
+        console.log('[CreateInvoice] Balance object keys:', Object.keys(response.data[0].assets[0].balance));
+        console.log('[CreateInvoice] Full balance object:', JSON.stringify(response.data[0].assets[0].balance, null, 2));
       }
 
       setTreasuryAccounts(response.data);
 
       // Auto-select first compatible account
       const compatible = response.data.find((acc: any) =>
-        acc.assets.some((asset: any) => asset.balance?.asset_symbol === collateral)
+        acc.assets?.some((asset: any) => asset.asset_symbol === collateral)
       );
       if (compatible) {
         setSelectedAccountId(compatible.id);
@@ -91,8 +93,9 @@ export default function CreateInvoice({
         console.log('[CreateInvoice] No compatible account found for collateral:', collateral);
         console.log('[CreateInvoice] Accounts:', response.data.map((a: any) => ({
           name: a.name,
-          assets: a.assets.map((asset: any) => ({
+          assets: a.assets?.map((asset: any) => ({
             asset_id: asset.asset_id,
+            asset_symbol: asset.asset_symbol,
             balance: asset.balance
           }))
         })));
@@ -189,7 +192,7 @@ export default function CreateInvoice({
 
   // Filter accounts by selected collateral
   const compatibleAccounts = treasuryAccounts.filter(account =>
-    account.assets?.some((asset: any) => asset.balance?.asset_symbol === collateral)
+    account.assets?.some((asset: any) => asset.asset_symbol === collateral)
   );
 
   return (
@@ -385,7 +388,7 @@ export default function CreateInvoice({
                   </SelectTrigger>
                   <SelectContent>
                     {compatibleAccounts.map((account) => {
-                      const asset = account.assets?.find((a: any) => a.balance?.asset_symbol === collateral);
+                      const asset = account.assets?.find((a: any) => a.asset_symbol === collateral);
                       const icrc1Addr = account.addresses?.find((a: any) => a.format === 'icrc1_account');
                       const parsed = icrc1Addr ? parseIcrc1Address(icrc1Addr.address) : null;
 
@@ -398,7 +401,7 @@ export default function CreateInvoice({
                               </span>
                               {asset?.balance && (
                                 <span className="text-xs text-gray-600 dark:text-gray-400">
-                                  • {asset.balance.balance || '0'} {collateral}
+                                  • {Number(asset.balance.balance) / Math.pow(10, asset.balance.decimals)} {collateral}
                                 </span>
                               )}
                             </div>

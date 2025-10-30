@@ -17,6 +17,7 @@ type AccountAssetInfo = record {
 };
 type AccountAssetWithBalance = record {
   balance : AccountBalance;
+  asset_symbol : text;
   asset_id : text;
 };
 type AccountBalance = record {

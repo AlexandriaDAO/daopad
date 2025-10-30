@@ -308,6 +308,7 @@ pub struct AccountAssetMinimal {
 #[derive(CandidType, Serialize, Debug, Clone)]
 pub struct AccountAssetWithBalance {
     pub asset_id: String,
+    pub asset_symbol: String,     // Asset symbol (e.g., "ICP", "ckUSDT")
     pub balance: AccountBalance,  // Non-optional - always populated
 }
 
