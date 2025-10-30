@@ -187,6 +187,31 @@ export const fetchTreasuryAssets = createAsyncThunk(
   }
 );
 
+// Refresh treasury account balances by calling Orbit's fetch_account_balances
+export const refreshAccountBalances = createAsyncThunk(
+  'orbit/refreshBalances',
+  async ({ stationId, tokenId, identity, accountIds }, { rejectWithValue, dispatch }) => {
+    try {
+      const service = getOrbitAccountsService(identity);
+
+      // Step 1: Trigger fresh balance fetch at Orbit level
+      const refreshResponse = await service.fetchBalances(stationId, accountIds);
+
+      if (!refreshResponse.success) {
+        throw new Error(refreshResponse.error || 'Failed to refresh balances');
+      }
+
+      // Step 2: Re-fetch accounts to get updated balance data
+      await dispatch(fetchOrbitAccounts({ stationId, identity, tokenId })).unwrap();
+
+      return { stationId, tokenId, refreshedCount: accountIds.length };
+    } catch (error) {
+      console.error('Failed to refresh account balances:', error);
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 // Create transfer request (mutation)
 export const createTransferRequest = createAsyncThunk(
   'orbit/createTransferRequest',
@@ -417,6 +442,25 @@ const orbitSlice = createSlice({
         const { tokenId } = action.meta.arg;
         state.assets.loading[tokenId] = false;
         state.assets.error[tokenId] = action.payload;
+      });
+
+    // Refresh Account Balances
+    builder
+      .addCase(refreshAccountBalances.pending, (state, action) => {
+        const { stationId } = action.meta.arg;
+        state.accounts.loading[stationId] = true;
+        state.accounts.error[stationId] = null;
+      })
+      .addCase(refreshAccountBalances.fulfilled, (state, action) => {
+        const { stationId } = action.payload;
+        // Don't clear loading - fetchOrbitAccounts will handle it
+        // Just ensure we don't have stale error
+        state.accounts.error[stationId] = null;
+      })
+      .addCase(refreshAccountBalances.rejected, (state, action) => {
+        const { stationId } = action.meta.arg;
+        state.accounts.loading[stationId] = false;
+        state.accounts.error[stationId] = action.payload;
       });
 
     // Create Transfer Request

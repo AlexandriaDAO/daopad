@@ -12,6 +12,7 @@ import { Search, RefreshCw, ArrowUpRight, ChevronDown, ChevronRight } from 'luci
 import {
   fetchOrbitAccounts,
   fetchTreasuryAssets,
+  refreshAccountBalances,
   selectOrbitAccountsLoading,
   selectOrbitAccountsError,
 } from '@/features/orbit/orbitSlice';
@@ -100,15 +101,48 @@ export default function AccountsTable({ stationId, identity, tokenId, tokenSymbo
     setPagination({ ...pagination, offset: 0 }); // Reset to first page
   };
 
-  const handleRefresh = () => {
-    dispatch(fetchOrbitAccounts({
-      stationId,
-      identity: identity || null,
-      tokenId,
-      searchQuery,
-      pagination
-    }));
-  };
+  const handleRefresh = useCallback(async () => {
+    if (!stationId || !tokenId || !accounts || accounts.length === 0) {
+      // Fallback to simple re-fetch if no accounts loaded yet
+      dispatch(fetchOrbitAccounts({
+        stationId,
+        identity: identity || null,
+        tokenId,
+        searchQuery,
+        pagination
+      }));
+      return;
+    }
+
+    try {
+      // Extract account IDs from currently loaded accounts
+      const accountIds = accounts
+        .map(account => account.id)
+        .filter(Boolean);  // Remove any null/undefined
+
+      if (accountIds.length === 0) {
+        throw new Error('No account IDs found');
+      }
+
+      // Trigger Orbit-level balance refresh
+      await dispatch(refreshAccountBalances({
+        stationId,
+        tokenId,
+        identity: identity || null,
+        accountIds
+      })).unwrap();
+
+      // Show success toast
+      toast.success('Treasury Refreshed', {
+        description: `Updated balances for ${accountIds.length} account(s)`
+      });
+    } catch (error) {
+      console.error('Failed to refresh treasury balances:', error);
+      toast.error('Refresh Failed', {
+        description: error.message || 'Could not refresh treasury balances'
+      });
+    }
+  }, [dispatch, stationId, tokenId, identity, accounts, searchQuery, pagination, toast]);
 
   const handleTransfer = (account) => {
     debugLog('🔍 Transfer Button Clicked', () => {
