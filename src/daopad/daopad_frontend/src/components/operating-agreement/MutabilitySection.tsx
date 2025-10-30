@@ -71,17 +71,17 @@ export const MutabilitySection: React.FC<MutabilitySectionProps> = ({ data, toke
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-sm">
                   <thead>
-                    <tr className="border-b-2 border-gray-400 bg-gray-50">
-                      <th className="text-left p-2 font-semibold">Operation</th>
-                      <th className="text-left p-2 font-semibold">Modifies</th>
-                      <th className="text-center p-2 font-semibold">Threshold</th>
-                      <th className="text-center p-2 font-semibold">Duration</th>
-                      <th className="text-left p-2 font-semibold">Examples</th>
+                    <tr className="border-b-2 border-gray-600 bg-gray-700">
+                      <th className="text-left p-2 font-semibold text-gray-100">Operation</th>
+                      <th className="text-left p-2 font-semibold text-gray-100">Modifies</th>
+                      <th className="text-center p-2 font-semibold text-gray-100">Threshold</th>
+                      <th className="text-center p-2 font-semibold text-gray-100">Duration</th>
+                      <th className="text-left p-2 font-semibold text-gray-100">Examples</th>
                     </tr>
                   </thead>
                   <tbody>
                     {operations.map((op, idx) => (
-                      <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
+                      <tr key={idx} className="border-b border-gray-200 hover:bg-gray-700">
                         <td className="p-2 align-top">
                           <div className="font-semibold">{op.name}</div>
                           <div className={`text-xs font-bold ${getRiskColor(op.risk)}`}>
@@ -107,7 +107,7 @@ export const MutabilitySection: React.FC<MutabilitySectionProps> = ({ data, toke
                               <li key={i}>{example}</li>
                             ))}
                             {op.examples.length > 2 && (
-                              <li className="text-gray-500 italic">
+                              <li className="text-gray-400 italic">
                                 +{op.examples.length - 2} more
                               </li>
                             )}

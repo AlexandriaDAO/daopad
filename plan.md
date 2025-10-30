@@ -149,3 +149,73 @@ dfx canister --network ic call ysy5f-2qaaa-aaaap-qkmmq-cai icrc1_transfer '(reco
     memo = null;
     created_at_time = null;
   })'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# WorkingFjords ckUSDT
+6ulqe-qaaaa-aaaac-a4w3a-cai-s7lkucq.886ee66a28974c4c86c8a0bce7eb870600000000000000000000000000000000
+
+
+
+
+# Check daopad identity balance:
+dfx canister --network ic call cngnf-vqaaa-aaaar-qag4q-cai icrc1_balance_of '(record {
+    owner = principal "67ktx-ln42b-uzmo5-bdiyn-gu62c-cd4h4-a5qt3-2w3rs-cixdl-iaso2-mqe";
+  })'
+
+# Check destination address balance:
+dfx canister --network ic call cngnf-vqaaa-aaaar-qag4q-cai icrc1_balance_of '(record {
+    owner = principal "6ulqe-qaaaa-aaaac-a4w3a-cai";
+    subaccount = opt blob "\88\6e\e6\6a\28\97\4c\4c\86\c8\a0\bc\e7\eb\87\06\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00";
+  })'
+
+# Send ckUSDT to destination address (example: 1 ckUSDT = 1000000)
+dfx canister --network ic call cngnf-vqaaa-aaaar-qag4q-cai icrc1_transfer '(record {
+    to = record {
+      owner = principal "6ulqe-qaaaa-aaaac-a4w3a-cai";
+      subaccount = opt blob "\88\6e\e6\6a\28\97\4c\4c\86\c8\a0\bc\e7\eb\87\06\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00";
+    };
+    amount = AMOUNT_HERE;
+    fee = null;
+    memo = null;
+    created_at_time = null;
+  })'
+
+
+
+
+
+
+
+
+
+
+
+

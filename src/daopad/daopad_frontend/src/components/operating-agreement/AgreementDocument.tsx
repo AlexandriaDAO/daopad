@@ -275,16 +275,16 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
                 )}
 
                 {/* 2.6 Total Membership Stats */}
-                <div className="mt-6 p-4 bg-gray-50 rounded">
-                  <p>
+                <div className="mt-6 p-4 bg-gray-700 rounded">
+                  <p className="text-gray-100">
                     <strong>2.6 Current Membership Summary:</strong>
                   </p>
-                  <ul className="list-disc pl-8 mt-2 space-y-1">
+                  <ul className="list-disc pl-8 mt-2 space-y-1 text-gray-200">
                     <li>Managing Partners (Admins): {categories.admins.length}</li>
                     <li>Operators: {categories.operators.length}</li>
                     <li>General Members: {categories.members.length}</li>
                     <li>Inactive Members: {categories.inactive.length}</li>
-                    <li><strong>Total Registered: {data.users?.length || 0}</strong></li>
+                    <li><strong className="text-gray-100">Total Registered: {data.users?.length || 0}</strong></li>
                   </ul>
                 </div>
 
@@ -365,19 +365,19 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
 
               <div className="pl-4 mt-3 space-y-4">
                 {data.treasury.accounts.map((account, i) => (
-                  <div key={account.account_id} className="border-l-4 border-blue-400 pl-4 py-2 bg-gray-50">
-                    <h4 className="font-bold text-lg">{account.account_name}</h4>
+                  <div key={account.account_id} className="border-l-4 border-blue-400 pl-4 py-2 bg-gray-700">
+                    <h4 className="font-bold text-lg text-gray-100">{account.account_name}</h4>
 
                     {/* Account ID */}
-                    <div className="text-xs text-gray-500 font-mono mb-2">
+                    <div className="text-xs text-gray-400 font-mono mb-2">
                       ID: {account.account_id}
                     </div>
 
                     {/* Assets and Balances */}
                     {account.assets.length > 0 && (
                       <div className="mt-2">
-                        <p className="text-sm font-semibold">Holdings:</p>
-                        <ul className="list-disc pl-6 text-sm">
+                        <p className="text-sm font-semibold text-gray-100">Holdings:</p>
+                        <ul className="list-disc pl-6 text-sm text-gray-200">
                           {account.assets.map((asset, j) => (
                             <li key={j}>
                               {asset.balance_formatted} {asset.symbol}
@@ -389,19 +389,19 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
 
                     {/* Transfer Policy */}
                     <div className="mt-2">
-                      <p className="text-sm">
-                        <span className="font-semibold">Transfer Approval:</span> {account.transfer_policy}
+                      <p className="text-sm text-gray-200">
+                        <span className="font-semibold text-gray-100">Transfer Approval:</span> {account.transfer_policy}
                       </p>
-                      <p className="text-sm">
-                        <span className="font-semibold">Configuration Changes:</span> {account.config_policy}
+                      <p className="text-sm text-gray-200">
+                        <span className="font-semibold text-gray-100">Configuration Changes:</span> {account.config_policy}
                       </p>
                     </div>
 
                     {/* Addresses */}
                     {account.addresses.length > 0 && (
                       <div className="mt-2">
-                        <p className="text-sm font-semibold">Account Addresses:</p>
-                        <ul className="list-none pl-2 text-xs font-mono">
+                        <p className="text-sm font-semibold text-gray-100">Account Addresses:</p>
+                        <ul className="list-none pl-2 text-xs font-mono text-gray-300">
                           {account.addresses.map((addr, k) => (
                             <li key={k} className="break-all">
                               {addr.format}: <code className="bg-muted px-1 rounded">{addr.address}</code>
@@ -452,11 +452,11 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
 
               <table className="w-full border-collapse mt-3">
                 <thead>
-                  <tr className="border-b-2 border-gray-400">
-                    <th className="text-left p-2">Name</th>
-                    <th className="text-left p-2">Address</th>
-                    <th className="text-left p-2">Blockchain</th>
-                    <th className="text-left p-2">Purpose</th>
+                  <tr className="border-b-2 border-gray-600 bg-gray-700">
+                    <th className="text-left p-2 text-gray-100">Name</th>
+                    <th className="text-left p-2 text-gray-100">Address</th>
+                    <th className="text-left p-2 text-gray-100">Blockchain</th>
+                    <th className="text-left p-2 text-gray-100">Purpose</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -532,11 +532,11 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
               <p className="font-semibold mb-3">Member Equity Breakdown:</p>
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="border-b-2 border-gray-400">
-                    <th className="text-left p-2">Member</th>
-                    <th className="text-left p-2">Principal</th>
-                    <th className="text-right p-2">Voting Power</th>
-                    <th className="text-right p-2">Equity %</th>
+                  <tr className="border-b-2 border-gray-600 bg-gray-700">
+                    <th className="text-left p-2 text-gray-100">Member</th>
+                    <th className="text-left p-2 text-gray-100">Principal</th>
+                    <th className="text-right p-2 text-gray-100">Voting Power</th>
+                    <th className="text-right p-2 text-gray-100">Equity %</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -564,12 +564,12 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
                   })}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t-2 border-gray-400 font-bold">
-                    <td className="p-2" colSpan={2}>TOTAL</td>
-                    <td className="text-right p-2 font-mono">
+                  <tr className="border-t-2 border-gray-600 font-bold bg-gray-700">
+                    <td className="p-2 text-gray-100" colSpan={2}>TOTAL</td>
+                    <td className="text-right p-2 font-mono text-gray-100">
                       {data.votingPowers.total_voting_power.toLocaleString()}
                     </td>
-                    <td className="text-right p-2">100.00%</td>
+                    <td className="text-right p-2 text-gray-100">100.00%</td>
                   </tr>
                 </tfoot>
               </table>
