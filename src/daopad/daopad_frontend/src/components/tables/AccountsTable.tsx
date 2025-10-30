@@ -20,7 +20,7 @@ import TransferRequestDialog from '../orbit/TransferRequestDialog';
 import { useToast } from '@/hooks/use-toast';
 import { safeStringify, debugLog } from '@/utils/logging';
 
-export default function AccountsTable({ stationId, identity, tokenId, tokenSymbol, votingPower, loadingVotingPower = false }) {
+export default function AccountsTable({ stationId, identity, tokenId, tokenSymbol, votingPower, loadingVotingPower = false, isEquityStation = false }) {
   const { toast } = useToast();
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState('');

@@ -39,7 +39,7 @@ pub async fn get_transfer_requests_from_orbit(
 
 // =========== NEW ASSET QUERY METHODS ===========
 
-use crate::api::orbit::get_orbit_station_for_token;
+use crate::api::orbit::get_station_id_for_token_or_equity;
 use crate::types::orbit::{Account, AccountBalance};
 use crate::api::orbit_accounts::Asset;
 
@@ -106,9 +106,8 @@ pub async fn get_account_with_assets(
     token_canister_id: Principal,
     account_id: String,
 ) -> Result<AccountWithAssets, String> {
-    // Get station ID for this token
-    let station_id = get_orbit_station_for_token(token_canister_id)
-        .ok_or("No Orbit Station registered for this token")?;
+    // Get station ID for this token (supports both tokens and equity stations)
+    let station_id = get_station_id_for_token_or_equity(token_canister_id).await?;
 
     // Query account from Orbit
     let account_result: Result<(GetAccountResult,), _> = ic_cdk::call(
@@ -157,8 +156,7 @@ pub async fn get_account_with_assets(
 pub async fn list_station_assets(
     token_canister_id: Principal,
 ) -> Result<Vec<Asset>, String> {
-    let station_id = get_orbit_station_for_token(token_canister_id)
-        .ok_or("No Orbit Station registered for this token")?;
+    let station_id = get_station_id_for_token_or_equity(token_canister_id).await?;
 
     let result: Result<(ListAssetsResult,), _> = ic_cdk::call(
         station_id,
@@ -199,8 +197,7 @@ pub async fn get_account_assets(
     token_canister_id: Principal,
     account_id: String,
 ) -> Result<AccountAssetInfo, String> {
-    let station_id = get_orbit_station_for_token(token_canister_id)
-        .ok_or("No Orbit Station registered for this token")?;
+    let station_id = get_station_id_for_token_or_equity(token_canister_id).await?;
 
     // 1. Get account details
     let account_result: Result<(GetAccountResult,), _> = ic_cdk::call(

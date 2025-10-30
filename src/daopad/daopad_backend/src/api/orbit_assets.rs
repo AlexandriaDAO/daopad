@@ -232,13 +232,29 @@ pub enum ListAssetsResult {
 pub async fn list_treasury_assets(
     token_canister_id: Principal,
 ) -> Result<Vec<AssetResponse>, String> {
-    let station_id = TOKEN_ORBIT_STATIONS
-        .with(|s| {
-            s.borrow()
-                .get(&StorablePrincipal(token_canister_id))
-                .map(|s| s.0)
-        })
-        .ok_or_else(|| "No Orbit Station found for token".to_string())?;
+    // Check if equity station first (LLCs don't have tokens)
+    let admin_canister = Principal::from_text("odkrm-viaaa-aaaap-qp2oq-cai")
+        .expect("Invalid admin canister ID");
+
+    let is_equity_result: Result<(bool,), _> = ic_cdk::call(
+        admin_canister,
+        "is_equity_station",
+        (token_canister_id,)
+    ).await;
+
+    let station_id = if let Ok((true,)) = is_equity_result {
+        // This is an equity station - use it directly
+        token_canister_id
+    } else {
+        // This is a token - look up its station
+        TOKEN_ORBIT_STATIONS
+            .with(|s| {
+                s.borrow()
+                    .get(&StorablePrincipal(token_canister_id))
+                    .map(|s| s.0)
+            })
+            .ok_or_else(|| "No Orbit Station found for token".to_string())?
+    };
 
     let result: Result<(ListAssetsResult,), _> = call(
         station_id,

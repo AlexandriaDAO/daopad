@@ -12,7 +12,8 @@ export default function DaoTreasury() {
     identity,
     isAuthenticated,
     votingPower = 0,
-    loadingVotingPower = false
+    loadingVotingPower = false,
+    isEquityStation = false
   } = useOutletContext<any>();
 
   if (!orbitStation) {
@@ -37,6 +38,7 @@ export default function DaoTreasury() {
         tokenSymbol={token.symbol}
         votingPower={votingPower}
         loadingVotingPower={loadingVotingPower}
+        isEquityStation={isEquityStation}
       />
       {isAuthenticated && (
         <div className="space-y-4">

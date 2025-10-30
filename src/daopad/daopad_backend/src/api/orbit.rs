@@ -44,6 +44,30 @@ pub fn get_orbit_station_for_token(token_canister_id: Principal) -> Option<Princ
     })
 }
 
+/// Async helper to get station ID, supporting both token-based and equity stations
+/// For equity stations (LLCs), the station ID is the input itself
+/// For token-based DAOs, we look up the linked station
+pub async fn get_station_id_for_token_or_equity(token_canister_id: Principal) -> Result<Principal, String> {
+    // Check if this is an equity station first
+    let admin_canister = Principal::from_text("odkrm-viaaa-aaaap-qp2oq-cai")
+        .expect("Invalid admin canister ID");
+
+    let is_equity_result: Result<(bool,), _> = ic_cdk::call(
+        admin_canister,
+        "is_equity_station",
+        (token_canister_id,)
+    ).await;
+
+    if let Ok((true,)) = is_equity_result {
+        // This is an equity station - use it directly
+        Ok(token_canister_id)
+    } else {
+        // This is a token - look up its station
+        get_orbit_station_for_token(token_canister_id)
+            .ok_or_else(|| "No Orbit Station linked to this token".to_string())
+    }
+}
+
 /// Get token ID for a given station ID (reverse lookup)
 #[query]
 pub fn get_token_for_station(station_id: Principal) -> Option<Principal> {

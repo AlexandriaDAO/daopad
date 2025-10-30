@@ -6,7 +6,7 @@
 use candid::Principal;
 use ic_cdk::{api::call::CallResult, call};
 
-use crate::api::orbit::get_orbit_station_for_token;
+use crate::api::orbit::get_station_id_for_token_or_equity;
 use crate::types::orbit::{
     ChangeExternalCanisterOperationInput, ConfigureExternalCanisterOperationInput,
     CreateExternalCanisterOperationInput, ExternalCanisterCallerMethodCallInput,
@@ -26,8 +26,7 @@ async fn list_orbit_canisters(
     token_canister_id: Principal,
     filters: ListExternalCanistersInputMinimal,  // Single struct param (matches frontend)
 ) -> Result<ListExternalCanistersResult, String> {
-    let station_id = get_orbit_station_for_token(token_canister_id)
-        .ok_or_else(|| "No Orbit Station linked to this token".to_string())?;
+    let station_id = get_station_id_for_token_or_equity(token_canister_id).await?;
 
     // Use filters directly (already in correct format)
     let result: CallResult<(ListExternalCanistersResult,)> = call(
@@ -50,8 +49,7 @@ async fn get_orbit_canister(
     token_canister_id: Principal,
     canister_principal: Principal, // Changed to accept Principal instead of UUID
 ) -> Result<GetExternalCanisterResult, String> {
-    let station_id = get_orbit_station_for_token(token_canister_id)
-        .ok_or_else(|| "No Orbit Station linked to this token".to_string())?;
+    let station_id = get_station_id_for_token_or_equity(token_canister_id).await?;
 
     // Use the correct input type that Orbit expects
     use crate::types::orbit::GetExternalCanisterByPrincipalInput;
@@ -264,7 +262,6 @@ async fn get_canister_snapshots(
     token_canister_id: Principal,
     canister_principal: Principal,
 ) -> Result<crate::types::orbit::CanisterSnapshotsResult, String> {
-    use crate::api::orbit::get_orbit_station_for_token;
     use crate::types::orbit::{CanisterSnapshotsInput, CanisterSnapshotsResult};
 
     // Validate principals are not anonymous
@@ -272,10 +269,8 @@ async fn get_canister_snapshots(
         return Err("Invalid principal provided".to_string());
     }
 
-    // Get Orbit Station ID for this token
-    // Note: get_orbit_station_for_token already validates the token is registered
-    let station_id = get_orbit_station_for_token(token_canister_id)
-        .ok_or_else(|| "Token not registered with any Orbit Station".to_string())?;
+    // Get Orbit Station ID for this token (supports both tokens and equity stations)
+    let station_id = get_station_id_for_token_or_equity(token_canister_id).await?;
 
     // Create input for Orbit Station
     let input = CanisterSnapshotsInput {
