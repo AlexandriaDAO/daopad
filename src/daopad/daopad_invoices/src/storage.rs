@@ -5,7 +5,7 @@ use ic_cdk::{caller, init, post_upgrade, pre_upgrade, println, update};
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-const ADMIN_PRINCIPAL: &str = "mgxur-7e22f-jfivc-k7fnr-mcjv3-5o2xz-mmmu5-l5lpq-g5aob-dgs7a-oae";
+const ADMIN_PRINCIPAL: &str = "67ktx-ln42b-uzmo5-bdiyn-gu62c-cd4h4-a5qt3-2w3rs-cixdl-iaso2-mqe"; // daopad identity
 // const ADMIN_PRINCIPAL: Principal = Principal::anonymous();
 
 thread_local! {
