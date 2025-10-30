@@ -77,8 +77,8 @@ export default function CreateInvoice({
       console.log('[CreateInvoice] First account structure:', response.data[0]);
       if (response.data[0]?.assets?.[0]) {
         console.log('[CreateInvoice] First asset structure:', response.data[0].assets[0]);
-        console.log('[CreateInvoice] Balance object keys:', Object.keys(response.data[0].assets[0].balance));
-        console.log('[CreateInvoice] Full balance object:', JSON.stringify(response.data[0].assets[0].balance, null, 2));
+        // Note: Can't JSON.stringify balance because it contains BigInt
+        console.log('[CreateInvoice] Asset symbol:', response.data[0].assets[0].asset_symbol);
       }
 
       setTreasuryAccounts(response.data);
