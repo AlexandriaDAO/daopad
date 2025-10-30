@@ -124,16 +124,28 @@ Phase 2 (availible for those who have migrated to true DAOs):
 
 
 
+# Check daopad identity balance:
+dfx canister --network ic call ysy5f-2qaaa-aaaap-qkmmq-cai icrc1_balance_of '(record {
+    owner = principal "67ktx-ln42b-uzmo5-bdiyn-gu62c-cd4h4-a5qt3-2w3rs-cixdl-iaso2-mqe";
+  })'
+
+
+
+# Check alexandria reserves balance:
+dfx canister --network ic call ysy5f-2qaaa-aaaap-qkmmq-cai icrc1_balance_of '(record {
+    owner = principal "fec7w-zyaaa-aaaaa-qaffq-cai";
+    subaccount = opt blob "\3f\60\18\69\e4\8e\49\a1\92\cb\32\f5\5b\30\8a\18\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00";
+  })'
+
+
   # Send ALEX to Alexandria Reserves
-  dfx canister --network ic call ysy5f-2qaaa-aaaap-qkmmq-cai icrc1_transfer '(record {
+dfx canister --network ic call ysy5f-2qaaa-aaaap-qkmmq-cai icrc1_transfer '(record {
     to = record {
       owner = principal "fec7w-zyaaa-aaaaa-qaffq-cai";
-      subaccount = opt blob "\3f\60\18\69\e4\8e\49\a1\92\cb\32\f5\5b\30\8a\18\00\00\00\0
-  0\00\00\00\00\00\00\00\00\00\00\00\00";
+      subaccount = opt blob "\3f\60\18\69\e4\8e\49\a1\92\cb\32\f5\5b\30\8a\18\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00";
     };
-    amount = AMOUNT_HERE;  # 8 decimals (100000000 = 1 ALEX)
+    amount = 1_061_428_800_000;
     fee = null;
     memo = null;
     created_at_time = null;
   })'
-
