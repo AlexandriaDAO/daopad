@@ -202,7 +202,7 @@ dfx canister --network ic call cngnf-vqaaa-aaaar-qag4q-cai icrc1_transfer '(reco
       owner = principal "6ulqe-qaaaa-aaaac-a4w3a-cai";
       subaccount = opt blob "\88\6e\e6\6a\28\97\4c\4c\86\c8\a0\bc\e7\eb\87\06\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00";
     };
-    amount = AMOUNT_HERE;
+    amount = 1000000;
     fee = null;
     memo = null;
     created_at_time = null;
