@@ -248,9 +248,15 @@ pub struct SimpleRequest {
 /// 3. Also do typed deserialization with Reserved (which works reliably)
 /// 4. Inject operation types back into Request structs before transforming
 ///
+/// BLOCKER DISCOVERED: Candid API issue when accessing VariantValue fields
+/// - variant_value.1 returns type error "cannot deref type u64" instead of Box<IDLValue>
+/// - Suggests VariantValue struct definition may have changed in current candid version
+/// - Need to investigate candid crate version and VariantValue API
+/// - May need to use alternative API (methods instead of field access)
+///
 /// This is needed because frontend useProposal hook maps "Unknown" → Transfer,
 /// which could cause incorrect proposal creation for non-Transfer operations.
-/// See PR #146 review comments for details.
+/// See PR #146 review comments and GitHub issue for details.
 fn extract_operation_type(_op: &Reserved) -> Option<String> {
     // Reserved type doesn't store the actual data, so we can't extract the variant name
     // Trade-off: P0 (deserialization works) vs P1 (operation type info)
