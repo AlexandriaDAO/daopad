@@ -1,411 +1,14 @@
-use candid::types::Label;
-use candid::{
-    encode_args,
-    types::value::{IDLArgs, IDLField, IDLValue},
-    CandidType, Deserialize, Principal,
-};
-use ic_cdk::{api::call::call_raw, update};
+use candid::{CandidType, Deserialize, Principal, encode_args};
+use candid::types::value::{IDLValue, IDLArgs};
+use ic_cdk::{update, api::call::call_raw};
 use serde::de::Error as SerdeError;
-use std::collections::HashMap;
 
 // UUID type alias matching Orbit (spec.did line 5)
 type UUID = String;
 type TimestampRFC3339 = String;
 
-// Helper utilities for decoding Orbit responses ---------------------------------
-
-fn label_name(label: &Label) -> Option<String> {
-    match label {
-        Label::Named(name) => Some(name.clone()),
-        Label::Id(id) => {
-            // Map common Candid hash IDs to their string names
-            Some(match *id {
-                // Status values
-                3736853960 => "Created".to_string(),
-                4044063083 => "Completed".to_string(),
-                1821510295 => "Approved".to_string(),
-                2442362239 => "Rejected".to_string(),
-                3456837432 => "Cancelled".to_string(),
-                479410653 => "Failed".to_string(),
-                1598796536 => "Scheduled".to_string(),
-                1131829668 => "Processing".to_string(),
-                // Operation types - Complete list from Orbit Station
-                3021957963 => "Transfer".to_string(),
-                4287966380 => "AddAccount".to_string(),
-                3079972771 => "EditAccount".to_string(),
-                1463549164 => "AddUser".to_string(),
-                2809532821 => "EditUser".to_string(),
-                187551411 => "AddUserGroup".to_string(),
-                1580938602 => "EditUserGroup".to_string(),
-                3849454576 => "RemoveUserGroup".to_string(),
-                2059919693 => "SystemUpgrade".to_string(),
-                280265689 => "EditPermission".to_string(),
-                3455700448 => "AddRequestPolicy".to_string(),
-                1762024471 => "EditRequestPolicy".to_string(),
-                1986913693 => "RemoveRequestPolicy".to_string(),
-                3091046230 => "AddAddressBookEntry".to_string(),
-                2371390847 => "EditAddressBookEntry".to_string(),
-                2166307769 => "RemoveAddressBookEntry".to_string(),
-                2817676770 => "ManageSystemInfo".to_string(),
-                1326933314 => "ChangeExternalCanister".to_string(),
-                2261062350 => "CreateExternalCanister".to_string(),
-                4028719216 => "CallExternalCanister".to_string(),
-                1658194488 => "SetDisasterRecovery".to_string(),
-                1284867448 => "ConfigureExternalCanister".to_string(),
-                2508075287 => "FundExternalCanister".to_string(),
-                526130198 => "SnapshotExternalCanister".to_string(),
-                4243557088 => "RestoreExternalCanister".to_string(),
-                927880892 => "PruneExternalCanister".to_string(),
-                2034781231 => "AddAsset".to_string(),
-                1541426022 => "EditAsset".to_string(),
-                144695020 => "RemoveAsset".to_string(),
-                1355527724 => "MonitorExternalCanister".to_string(),
-                4169954068 => "AddNamedRule".to_string(),
-                1268373963 => "EditNamedRule".to_string(),
-                3536889937 => "RemoveNamedRule".to_string(),
-                2185663487 => "SystemRestore".to_string(),
-                _ => {
-                    // Log unknown hashes for future mapping
-                    ic_cdk::println!("Unknown hash: {} (0x{:x})", id, id);
-                    format!("Unknown_{}", id) // More visible fallback
-                }
-            })
-        },
-        Label::Unnamed(idx) => Some(idx.to_string()),
-    }
-}
-
-fn field<'a>(fields: &'a [IDLField], name: &str) -> Option<&'a IDLValue> {
-    // Calculate Candid hash for the field name
-    let hash = candid_hash(name);
-
-    fields.iter().find_map(|f| match &f.id {
-        Label::Named(label) if label == name => Some(&f.val),
-        Label::Id(id) if *id == hash => Some(&f.val),
-        _ => None,
-    })
-}
-
-// Helper function to compute Candid hash for field names
-fn candid_hash(name: &str) -> u32 {
-    let mut hash: u32 = 0;
-    for byte in name.bytes() {
-        hash = hash.wrapping_mul(223).wrapping_add(byte as u32);
-    }
-    hash
-}
-
-fn idl_to_string(value: &IDLValue) -> Option<String> {
-    match value {
-        IDLValue::Text(s) => Some(s.clone()),
-        IDLValue::Number(n) => Some(n.clone()),
-        IDLValue::Float64(n) => Some(n.to_string()),
-        IDLValue::Float32(n) => Some(n.to_string()),
-        IDLValue::Int(i) => Some(i.to_string()),
-        IDLValue::Int64(i) => Some(i.to_string()),
-        IDLValue::Int32(i) => Some(i.to_string()),
-        IDLValue::Int16(i) => Some(i.to_string()),
-        IDLValue::Int8(i) => Some(i.to_string()),
-        IDLValue::Nat(n) => Some(n.to_string()),
-        IDLValue::Nat64(n) => Some(n.to_string()),
-        IDLValue::Nat32(n) => Some(n.to_string()),
-        IDLValue::Nat16(n) => Some(n.to_string()),
-        IDLValue::Nat8(n) => Some(n.to_string()),
-        IDLValue::Principal(p) | IDLValue::Service(p) => Some(p.to_text()),
-        IDLValue::Opt(inner) => idl_to_string(inner),
-        IDLValue::Null | IDLValue::None | IDLValue::Reserved => None,
-        _ => None,
-    }
-}
-
-fn ignore_operation<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let _ = IDLValue::deserialize(deserializer)
-        .map_err(|e| D::Error::custom(format!("failed to decode Orbit operation: {e}")))?;
-    Ok(None)
-}
-
-fn ignore_evaluation_result<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let _ = IDLValue::deserialize(deserializer)
-        .map_err(|e| D::Error::custom(format!("failed to decode evaluation result: {e}")))?;
-    Ok(None)
-}
-
-fn idl_opt_text(value: &IDLValue) -> Option<String> {
-    match value {
-        IDLValue::Null | IDLValue::None | IDLValue::Reserved => None,
-        IDLValue::Opt(inner) => idl_opt_text(inner),
-        _ => idl_to_string(value),
-    }
-}
-
-fn idl_to_u64(value: &IDLValue) -> Option<u64> {
-    idl_to_string(value)?.parse().ok()
-}
-
-fn parse_status(value: &IDLValue) -> (String, Option<String>) {
-    if let IDLValue::Variant(variant) = value {
-        if let Some(label) = label_name(&variant.0.id) {
-            let detail = match &variant.0.val {
-                IDLValue::Record(fields) => {
-                    if label == "Cancelled" {
-                        field(fields, "reason").and_then(idl_opt_text)
-                    } else if label == "Scheduled" {
-                        field(fields, "scheduled_at").and_then(idl_to_string)
-                    } else if label == "Processing" {
-                        field(fields, "started_at").and_then(idl_to_string)
-                    } else if label == "Completed" {
-                        field(fields, "completed_at").and_then(idl_to_string)
-                    } else if label == "Failed" {
-                        field(fields, "reason").and_then(idl_opt_text)
-                    } else {
-                        None
-                    }
-                }
-                IDLValue::Text(s) => Some(s.clone()),
-                _ => None,
-            };
-            return (label, detail);
-        }
-    }
-    ("Unknown".to_string(), None)
-}
-
-fn parse_error_message(value: &IDLValue) -> String {
-    if let IDLValue::Record(fields) = value {
-        let code = field(fields, "code")
-            .and_then(idl_to_string)
-            .unwrap_or_else(|| "unknown".to_string());
-        let message = field(fields, "message")
-            .and_then(idl_opt_text)
-            .unwrap_or_else(|| "".to_string());
-        let details = field(fields, "details").and_then(|d| {
-            if let IDLValue::Vec(entries) = d {
-                let rendered: Vec<String> = entries
-                    .iter()
-                    .filter_map(|entry| {
-                        if let IDLValue::Record(fields) = entry {
-                            if fields.len() == 2 {
-                                let key = fields
-                                    .iter()
-                                    .find(|f| matches!(f.id, Label::Unnamed(0)))
-                                    .and_then(|f| idl_to_string(&f.val))
-                                    .unwrap_or_default();
-                                let value = fields
-                                    .iter()
-                                    .find(|f| matches!(f.id, Label::Unnamed(1)))
-                                    .and_then(|f| idl_to_string(&f.val))
-                                    .unwrap_or_default();
-                                if !key.is_empty() || !value.is_empty() {
-                                    return Some(format!("{}: {}", key, value));
-                                }
-                            }
-                        }
-                        None
-                    })
-                    .collect();
-                if rendered.is_empty() {
-                    None
-                } else {
-                    Some(rendered.join("; "))
-                }
-            } else {
-                None
-            }
-        });
-
-        return if let Some(details) = details {
-            let base = if message.is_empty() {
-                code.clone()
-            } else {
-                message.clone()
-            };
-            format!("{} ({})", base, details)
-        } else if message.is_empty() {
-            code
-        } else {
-            message
-        };
-    }
-    "Orbit Station error".to_string()
-}
-
-fn parse_additional_info(value: &IDLValue) -> HashMap<String, String> {
-    let mut map = HashMap::new();
-    if let IDLValue::Vec(items) = value {
-        for item in items {
-            if let IDLValue::Record(fields) = item {
-                if let Some(id) = field(fields, "id").and_then(idl_to_string) {
-                    let name = field(fields, "requester_name")
-                        .and_then(idl_to_string)
-                        .unwrap_or_default();
-                    map.insert(id, name);
-                }
-            }
-        }
-    }
-    map
-}
-
-fn parse_approvals(value: &IDLValue) -> Vec<OrbitApprovalSummary> {
-    if let IDLValue::Vec(items) = value {
-        items
-            .iter()
-            .filter_map(|item| {
-                if let IDLValue::Record(fields) = item {
-                    let approver = field(fields, "approver_id").and_then(idl_to_string)?;
-                    let (status, detail) = field(fields, "status")
-                        .map(parse_status)
-                        .unwrap_or_default();
-                    let decided_at = field(fields, "decided_at")
-                        .and_then(idl_to_string)
-                        .unwrap_or_default();
-                    Some(OrbitApprovalSummary {
-                        approver_id: approver,
-                        status,
-                        status_detail: detail,
-                        decided_at,
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect()
-    } else {
-        Vec::new()
-    }
-}
-
-fn parse_requests(
-    value: &IDLValue,
-    info_map: &HashMap<String, String>,
-) -> Vec<OrbitRequestSummary> {
-    if let IDLValue::Vec(items) = value {
-        items
-            .iter()
-            .filter_map(|item| {
-                if let IDLValue::Record(fields) = item {
-                    let id = field(fields, "id").and_then(idl_to_string)?;
-                    let title = field(fields, "title")
-                        .and_then(idl_to_string)
-                        .unwrap_or_else(|| "Untitled request".to_string());
-                    let summary = field(fields, "summary").and_then(idl_opt_text);
-                    let requested_by = field(fields, "requested_by")
-                        .and_then(idl_to_string)
-                        .unwrap_or_default();
-                    let created_at = field(fields, "created_at")
-                        .and_then(idl_to_string)
-                        .unwrap_or_default();
-                    let expiration_dt = field(fields, "expiration_dt")
-                        .and_then(idl_to_string)
-                        .unwrap_or_default();
-                    let (status, status_detail) = field(fields, "status")
-                        .map(parse_status)
-                        .unwrap_or_default();
-                    let approvals = field(fields, "approvals")
-                        .map(|v| parse_approvals(v))
-                        .unwrap_or_default();
-
-                    // Extract operation type from the request
-                    let operation = field(fields, "operation")
-                        .and_then(|v| {
-                            // Operation is a variant like { Transfer: {...} }
-                            if let IDLValue::Variant(variant) = v {
-                                label_name(&variant.0.id)
-                            } else {
-                                None
-                            }
-                        });
-
-                    let requester_name = info_map.get(&id).cloned();
-
-                    Some(OrbitRequestSummary {
-                        id,
-                        title,
-                        summary,
-                        status,
-                        status_detail,
-                        requested_by,
-                        requester_name,
-                        created_at,
-                        expiration_dt,
-                        approvals,
-                        operation,
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect()
-    } else {
-        Vec::new()
-    }
-}
-
-fn parse_list_requests_response(raw_bytes: Vec<u8>) -> Result<ListOrbitRequestsResponse, String> {
-    let args = IDLArgs::from_bytes(&raw_bytes)
-        .map_err(|e| format!("Failed to parse Orbit response: {e}"))?;
-    let value = args
-        .args
-        .into_iter()
-        .next()
-        .ok_or_else(|| "Orbit response was empty".to_string())?;
-
-    let variant = match value {
-        IDLValue::Variant(variant) => variant,
-        _ => return Err("Unexpected Orbit response type".to_string()),
-    };
-
-    // Check if it's Ok variant (either by name or by hash)
-    // 17724 is the hash of "Ok" in Candid
-    let is_ok = match &variant.0.id {
-        Label::Named(name) => name == "Ok",
-        Label::Id(id) => *id == 17724,  // Candid hash of "Ok"
-        _ => false,
-    };
-
-    let is_err = match &variant.0.id {
-        Label::Named(name) => name == "Err",
-        Label::Id(id) => *id == 3456837,  // Candid hash of "Err"
-        _ => false,
-    };
-
-    if is_ok {
-        let record = match &variant.0.val {
-            IDLValue::Record(fields) => fields,
-            _ => return Err("Orbit returned an unexpected record".to_string()),
-        };
-
-        let info_map = field(record, "additional_info")
-            .map(|v| parse_additional_info(v))
-            .unwrap_or_default();
-
-        let requests = field(record, "requests")
-            .map(|v| parse_requests(v, &info_map))
-            .unwrap_or_default();
-
-        let total = field(record, "total").and_then(idl_to_u64).unwrap_or(0);
-
-        let next_offset = field(record, "next_offset").and_then(idl_to_u64);
-
-        Ok(ListOrbitRequestsResponse {
-            requests,
-            total,
-            next_offset,
-        })
-    } else if is_err {
-        Err(parse_error_message(&variant.0.val))
-    } else {
-        let label = label_name(&variant.0.id).unwrap_or_else(|| "Unknown".to_string());
-        Err(format!("Orbit returned unexpected variant: {label}"))
-    }
-}
-
+// ------------------------------------------------------------------------------
+// TYPE DEFINITIONS (matches Orbit Station spec.did)
 // ------------------------------------------------------------------------------
 
 // Exact RequestStatusCode from spec.did lines 302-311
@@ -456,6 +59,7 @@ pub enum RequestStatus {
     Failed { reason: Option<String> },
 }
 
+// DAOPad simplified response types (returned to frontend)
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct OrbitApprovalSummary {
     pub approver_id: String,
@@ -486,25 +90,173 @@ pub struct ListOrbitRequestsResponse {
     pub next_offset: Option<u64>,
 }
 
-// Complete RequestOperation variant (spec.did lines 1030-1099)
-// Use IDLValue so we can accept any variant Orbit returns
+// Helper to deserialize operation but just extract variant name
+fn deserialize_operation<'de, D>(deserializer: D) -> Result<IDLValue, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    IDLValue::deserialize(deserializer)
+        .map_err(|e| D::Error::custom(format!("failed to decode Orbit operation: {e}")))
+}
 
+// Complete Request type matching Orbit's actual response (spec.did)
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct Request {
     pub id: UUID,
     pub title: String,
     pub summary: Option<String>,
-    #[serde(default, deserialize_with = "ignore_operation")]
-    pub operation: Option<String>,
+    #[serde(deserialize_with = "deserialize_operation")]
+    pub operation: IDLValue,  // ✅ Use IDLValue to handle any operation type
     pub requested_by: UUID,
     pub approvals: Vec<RequestApproval>,
     pub created_at: TimestampRFC3339,
     pub status: RequestStatus,
     pub expiration_dt: TimestampRFC3339,
     pub execution_plan: RequestExecutionSchedule,
-    pub deduplication_key: Option<String>,
-    pub tags: Vec<String>,
+    // NOTE: deduplication_key and tags are NOT in Orbit's response type, only in input type
 }
+
+// Complete operation type enum for OUTPUT (what Orbit returns)
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub enum RequestOperationOutput {
+    Transfer(TransferOperationOutput),
+    AddAccount(AddAccountOperationOutput),
+    EditAccount(EditAccountOperationOutput),
+    AddUser(AddUserOperationOutput),
+    EditUser(EditUserOperationOutput),
+    AddAddressBookEntry(AddAddressBookEntryOperationOutput),
+    EditAddressBookEntry(EditAddressBookEntryOperationOutput),
+    RemoveAddressBookEntry(RemoveAddressBookEntryOperationOutput),
+    AddUserGroup(AddUserGroupOperationOutput),
+    EditUserGroup(EditUserGroupOperationOutput),
+    RemoveUserGroup(RemoveUserGroupOperationOutput),
+    SystemUpgrade(SystemUpgradeOperationOutput),
+    SystemRestore(SystemRestoreOperationOutput),
+    ChangeExternalCanister(ChangeExternalCanisterOperationOutput),
+    ConfigureExternalCanister(ConfigureExternalCanisterOperationOutput),
+    CreateExternalCanister(CreateExternalCanisterOperationOutput),
+    CallExternalCanister(CallExternalCanisterOperationOutput),
+    FundExternalCanister(FundExternalCanisterOperationOutput),
+    MonitorExternalCanister(MonitorExternalCanisterOperationOutput),
+    SnapshotExternalCanister(SnapshotExternalCanisterOperationOutput),
+    RestoreExternalCanister(RestoreExternalCanisterOperationOutput),
+    PruneExternalCanister(PruneExternalCanisterOperationOutput),
+    EditPermission(EditPermissionOperationOutput),
+    AddRequestPolicy(AddRequestPolicyOperationOutput),
+    EditRequestPolicy(EditRequestPolicyOperationOutput),
+    RemoveRequestPolicy(RemoveRequestPolicyOperationOutput),
+    ManageSystemInfo(ManageSystemInfoOperationOutput),
+    SetDisasterRecovery(SetDisasterRecoveryOperationOutput),
+    AddAsset(AddAssetOperationOutput),
+    EditAsset(EditAssetOperationOutput),
+    RemoveAsset(RemoveAssetOperationOutput),
+    AddNamedRule(AddNamedRuleOperationOutput),
+    EditNamedRule(EditNamedRuleOperationOutput),
+    RemoveNamedRule(RemoveNamedRuleOperationOutput),
+}
+
+// Operation output types (simplified - only what we need to extract operation type)
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct TransferOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct AddAccountOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct EditAccountOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct AddUserOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct EditUserOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct AddAddressBookEntryOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct EditAddressBookEntryOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct RemoveAddressBookEntryOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct AddUserGroupOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct EditUserGroupOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct RemoveUserGroupOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct SystemUpgradeOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct SystemRestoreOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct ChangeExternalCanisterOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct ConfigureExternalCanisterOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct CreateExternalCanisterOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct CallExternalCanisterOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct FundExternalCanisterOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct MonitorExternalCanisterOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct SnapshotExternalCanisterOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct RestoreExternalCanisterOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct PruneExternalCanisterOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct EditPermissionOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct AddRequestPolicyOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct EditRequestPolicyOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct RemoveRequestPolicyOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct ManageSystemInfoOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct SetDisasterRecoveryOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct AddAssetOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct EditAssetOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct RemoveAssetOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct AddNamedRuleOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct EditNamedRuleOperationOutput {}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct RemoveNamedRuleOperationOutput {}
 
 // Exact ListRequestsInput from spec.did lines 1442-1471
 #[derive(CandidType, Deserialize, Clone, Debug)]
@@ -605,8 +357,8 @@ pub struct RequestAdditionalInfo {
     pub id: UUID,
     pub requester_name: String,
     pub approvers: Vec<DisplayUser>,
-    #[serde(default, deserialize_with = "ignore_evaluation_result")]
-    pub evaluation_result: Option<String>,
+    #[serde(default)]
+    pub evaluation_result: Option<IDLValue>,  // Use IDLValue for flexible deserialization
 }
 
 #[derive(CandidType, Deserialize, Clone, Debug)]
@@ -675,51 +427,188 @@ pub enum SubmitRequestApprovalResult {
     Err(Error),
 }
 
-use crate::storage::state::TOKEN_ORBIT_STATIONS;
-use crate::types::StorablePrincipal;
-
-/// List all requests from Orbit Station with domain filtering
-///
-/// This method acts as an admin proxy, allowing DAOPad to query
-/// all requests regardless of user permissions.
-#[update]
-pub async fn list_orbit_requests(
-    token_canister_id: Principal,
-    filters: ListRequestsInput,
-) -> Result<ListOrbitRequestsResponse, String> {
-    // Get station ID from storage
-    let station_id = TOKEN_ORBIT_STATIONS.with(|stations| {
-        stations
-            .borrow()
-            .get(&StorablePrincipal(token_canister_id))
-            .map(|s| s.0)
-            .ok_or_else(|| {
-                format!(
-                    "No Orbit Station linked to token {}",
-                    token_canister_id.to_text()
-                )
-            })
-    })?;
-
-    let args =
-        encode_args((filters,)).map_err(|e| format!("Failed to encode Orbit request: {e}"))?;
-
-    let raw_bytes = call_raw(station_id, "list_requests", args, 0)
-        .await
-        .map_err(|(code, msg)| format!("IC call failed: ({:?}, {})", code, msg))?;
-
-    parse_list_requests_response(raw_bytes)
-}
-
-// ❌ REMOVED: submit_request_approval - replaced by liquid democracy voting
-// All Orbit requests now go through vote_on_orbit_request in proposals/orbit_requests.rs
-
 // Simple types for experimental endpoint
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct SimpleRequest {
     pub id: String,
     pub title: String,
     pub status: String,
+}
+
+// ------------------------------------------------------------------------------
+// HELPER FUNCTIONS (pure transformations, no manual decoding)
+// ------------------------------------------------------------------------------
+
+/// Extract operation type name from IDLValue variant
+fn extract_operation_type(op: &IDLValue) -> Option<String> {
+    use candid::types::Label;
+
+    if let IDLValue::Variant(variant) = op {
+        // Extract variant name from label
+        match &variant.0.id {
+            Label::Named(name) => Some(name.clone()),
+            Label::Id(_) => {
+                // For hash-based labels, return None (shouldn't happen with proper deserialization)
+                None
+            }
+            Label::Unnamed(_) => None,
+        }
+    } else {
+        None
+    }
+}
+
+/// Format status enum to string
+fn format_status(status: &RequestStatus) -> String {
+    match status {
+        RequestStatus::Created => "Created",
+        RequestStatus::Approved => "Approved",
+        RequestStatus::Rejected => "Rejected",
+        RequestStatus::Cancelled { .. } => "Cancelled",
+        RequestStatus::Scheduled { .. } => "Scheduled",
+        RequestStatus::Processing { .. } => "Processing",
+        RequestStatus::Completed { .. } => "Completed",
+        RequestStatus::Failed { .. } => "Failed",
+    }.to_string()
+}
+
+/// Extract status detail (reason, timestamp, etc.)
+fn extract_status_detail(status: &RequestStatus) -> Option<String> {
+    match status {
+        RequestStatus::Cancelled { reason } => reason.clone(),
+        RequestStatus::Scheduled { scheduled_at } => Some(scheduled_at.clone()),
+        RequestStatus::Processing { started_at } => Some(started_at.clone()),
+        RequestStatus::Completed { completed_at } => Some(completed_at.clone()),
+        RequestStatus::Failed { reason } => reason.clone(),
+        _ => None,
+    }
+}
+
+/// Transform approvals to simplified format
+fn transform_approvals(approvals: Vec<RequestApproval>) -> Vec<OrbitApprovalSummary> {
+    approvals.into_iter().map(|a| {
+        let status = match a.status {
+            RequestApprovalStatus::Approved => "Approved",
+            RequestApprovalStatus::Rejected => "Rejected",
+        }.to_string();
+
+        OrbitApprovalSummary {
+            approver_id: a.approver_id,
+            status,
+            status_detail: a.status_reason,
+            decided_at: a.decided_at,
+        }
+    }).collect()
+}
+
+/// Find requester name from additional info
+fn find_requester_name(request_id: &str, additional_info: &[RequestAdditionalInfo]) -> Option<String> {
+    additional_info
+        .iter()
+        .find(|info| info.id == request_id)
+        .map(|info| info.requester_name.clone())
+}
+
+/// Transform Orbit response to DAOPad simplified format
+fn transform_orbit_response(orbit: ListRequestsResponse) -> ListOrbitRequestsResponse {
+    ListOrbitRequestsResponse {
+        requests: orbit.requests.into_iter().map(|r| {
+            OrbitRequestSummary {
+                id: r.id.clone(),
+                title: r.title,
+                summary: r.summary,
+                status: format_status(&r.status),
+                status_detail: extract_status_detail(&r.status),
+                requested_by: r.requested_by.clone(),
+                requester_name: find_requester_name(&r.id, &orbit.additional_info),
+                created_at: r.created_at,
+                expiration_dt: r.expiration_dt,
+                approvals: transform_approvals(r.approvals),
+                operation: extract_operation_type(&r.operation),
+            }
+        }).collect(),
+        total: orbit.total,
+        next_offset: orbit.next_offset,
+    }
+}
+
+// ------------------------------------------------------------------------------
+// ENDPOINTS (using typed ic_cdk::call, no manual decoding!)
+// ------------------------------------------------------------------------------
+
+/// Get station ID from storage for a given token canister
+fn get_station_id(token_canister_id: Principal) -> Result<Principal, String> {
+    crate::api::orbit::get_orbit_station_for_token(token_canister_id)
+        .ok_or_else(|| format!(
+            "No station found for token canister {}. Has the station been initialized?",
+            token_canister_id
+        ))
+}
+
+/// List orbit requests with proper typed deserialization
+#[update]
+pub async fn list_orbit_requests(
+    token_canister_id: Principal,
+    filters: ListRequestsInput,
+) -> Result<ListOrbitRequestsResponse, String> {
+    // Get station ID from storage
+    let station_id = get_station_id(token_canister_id)
+        .map_err(|e| {
+            ic_cdk::println!(
+                "❌ Storage lookup failed for token {}: {}",
+                token_canister_id,
+                e
+            );
+            e
+        })?;
+
+    ic_cdk::println!(
+        "🔍 list_orbit_requests: token={}, station={}, filters={:?}",
+        token_canister_id,
+        station_id,
+        filters
+    );
+
+    // ✅ Use call_raw but decode with proper types (not manual parsing!)
+    let args = encode_args((filters,))
+        .map_err(|e| format!("Failed to encode request: {}", e))?;
+
+    let raw_bytes = call_raw(station_id, "list_requests", args, 0)
+        .await
+        .map_err(|(code, msg)| format!("IC call failed: ({:?}, {})", code, msg))?;
+
+    // ✅ Decode using Candid's proper deserializer (no manual parsing!)
+    let args = IDLArgs::from_bytes(&raw_bytes)
+        .map_err(|e| format!("Failed to parse Candid bytes: {}", e))?;
+
+    // Deserialize using serde's Deserialize trait on IDLValue
+    let idl_value = args.args.into_iter()
+        .next()
+        .ok_or_else(|| "Empty response from Orbit".to_string())?;
+
+    let result: ListRequestsResult = serde::Deserialize::deserialize(idl_value)
+        .map_err(|e: candid::Error| format!("Failed to deserialize response: {}", e))?;
+
+    match result {
+        ListRequestsResult::Ok(response) => {
+            ic_cdk::println!(
+                "✅ Orbit returned {} requests (total: {})",
+                response.requests.len(),
+                response.total
+            );
+            // Transform Orbit response to DAOPad simplified format
+            Ok(transform_orbit_response(response))
+        }
+        ListRequestsResult::Err(e) => {
+            let error_msg = format!(
+                "Orbit error: {} - {}",
+                e.code,
+                e.message.unwrap_or_else(|| "No message".to_string())
+            );
+            ic_cdk::println!("❌ Orbit error: {}", error_msg);
+            Err(error_msg)
+        }
+    }
 }
 
 /// EXPERIMENTAL: Ultra-simple request fetching - returns basic info only
@@ -750,24 +639,40 @@ pub async fn get_orbit_requests_simple() -> Result<Vec<SimpleRequest>, String> {
         tags: None,
     };
 
+    // ✅ Use call_raw but decode with proper types
     let args = encode_args((filters,))
         .map_err(|e| format!("Failed to encode request: {}", e))?;
 
     let raw_bytes = call_raw(station_id, "list_requests", args, 0)
         .await
-        .map_err(|(code, msg)| format!("Call failed: ({:?}, {})", code, msg))?;
+        .map_err(|(code, msg)| format!("IC call failed: ({:?}, {})", code, msg))?;
 
-    // Use our existing parser which now handles hash IDs
-    let response = parse_list_requests_response(raw_bytes)?;
+    // ✅ Decode using Candid's proper deserializer
+    let args = IDLArgs::from_bytes(&raw_bytes)
+        .map_err(|e| format!("Failed to parse Candid bytes: {}", e))?;
 
-    // Convert to simple format
-    let simple_requests = response.requests.into_iter().map(|r| {
-        SimpleRequest {
-            id: r.id.chars().take(8).collect(),  // Shorten ID for display
-            title: r.title,
-            status: r.status,
+    // Deserialize using serde's Deserialize trait on IDLValue
+    let idl_value = args.args.into_iter()
+        .next()
+        .ok_or_else(|| "Empty response from Orbit".to_string())?;
+
+    let result: ListRequestsResult = serde::Deserialize::deserialize(idl_value)
+        .map_err(|e: candid::Error| format!("Failed to deserialize response: {}", e))?;
+
+    match result {
+        ListRequestsResult::Ok(response) => {
+            Ok(response.requests.into_iter().map(|r| SimpleRequest {
+                id: r.id.chars().take(8).collect(),  // Keep first 8 chars for backward compat
+                title: r.title,
+                status: format_status(&r.status),
+            }).collect())
         }
-    }).collect();
-
-    Ok(simple_requests)
+        ListRequestsResult::Err(e) => {
+            Err(format!(
+                "Orbit error: {} - {}",
+                e.code,
+                e.message.unwrap_or_else(|| "No message".to_string())
+            ))
+        }
+    }
 }
