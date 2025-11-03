@@ -13,6 +13,7 @@ pub mod orbit_requests;
 mod orbit_security;
 mod orbit_transfers;
 mod orbit_users;
+pub mod security;  // New security module
 mod stations;
 mod utils;
 
@@ -39,6 +40,7 @@ pub use orbit_overview::*;
 pub use orbit_permissions::*;
 pub use orbit_requests::*;
 pub use orbit_security::*;
+pub use security::{SecurityCheck, EnhancedSecurityDashboard};
 pub use orbit_transfers::{
     // ❌ REMOVED: approve_orbit_request - replaced by liquid democracy voting
     get_transfer_requests_from_orbit,
