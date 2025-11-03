@@ -1,4 +1,5 @@
 mod api;
+mod client;
 mod kong_locker;
 mod proposals;
 mod storage;

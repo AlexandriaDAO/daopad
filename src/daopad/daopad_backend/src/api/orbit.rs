@@ -1,3 +1,4 @@
+use crate::client::OrbitClient;
 use crate::kong_locker::{get_or_lookup_kong_locker, get_user_locked_tokens};
 use crate::storage::state::TOKEN_ORBIT_STATIONS;
 use crate::types::orbit::{
@@ -112,30 +113,16 @@ pub async fn get_orbit_system_info(token_canister_id: Principal) -> Result<Syste
     };
 
     // Call system_info on the station using MINIMAL types (no Option<T>)
-    let result: Result<(SystemInfoResultMinimal,), _> = ic_cdk::call(
+    let system = OrbitClient::call::<_, SystemInfoResultMinimal, _>(
         station_id,
         "system_info",
-        ()
-    ).await;
+        (),
+    ).await?;
 
-    match result {
-        Ok((system_info_result,)) => {
-            match system_info_result {
-                SystemInfoResultMinimal::Ok { system } => {
-                    Ok(SystemInfoResponseMinimal {
-                        station_id,
-                        system_info: system,
-                    })
-                },
-                SystemInfoResultMinimal::Err(e) => {
-                    Err(format!("Orbit Station error: {:?}", e))
-                }
-            }
-        },
-        Err((code, msg)) => {
-            Err(format!("Failed to call system_info: {:?} - {}", code, msg))
-        }
-    }
+    Ok(SystemInfoResponseMinimal {
+        station_id,
+        system_info: system,
+    })
 }
 
 #[update]
@@ -165,17 +152,8 @@ pub async fn list_orbit_accounts(
         },
     };
 
-    // Call the Orbit Station canister with minimal types
-    let result: Result<(ListAccountsResultMinimal,), _> =
-        ic_cdk::call(station_id, "list_accounts", (input,)).await;
-
-    match result {
-        Ok((response,)) => Ok(response),
-        Err((code, msg)) => Err(format!(
-            "Failed to call Orbit Station list_accounts: {:?} - {}",
-            code, msg
-        )),
-    }
+    // Call the Orbit Station canister with minimal types using OrbitClient
+    OrbitClient::call_raw(station_id, "list_accounts", input).await
 }
 
 #[update]
@@ -186,20 +164,8 @@ pub async fn fetch_orbit_account_balances(
     // Build the input for fetch_account_balances
     let input = FetchAccountBalancesInput { account_ids };
 
-    // Call the Orbit Station canister
-    let result: Result<(FetchAccountBalancesResult,), _> =
-        ic_cdk::call(station_id, "fetch_account_balances", (input,)).await;
-
-    match result {
-        Ok((FetchAccountBalancesResult::Ok { balances },)) => Ok(balances),
-        Ok((FetchAccountBalancesResult::Err(e),)) => {
-            Err(format!("Failed to fetch account balances: {}", e))
-        }
-        Err((code, msg)) => Err(format!(
-            "Failed to call Orbit Station fetch_account_balances: {:?} - {}",
-            code, msg
-        )),
-    }
+    // Call the Orbit Station canister using OrbitClient
+    OrbitClient::fetch_account_balances(station_id, input).await
 }
 
 #[update]
@@ -263,23 +229,13 @@ pub async fn create_orbit_treasury_account(
         expiration_dt: None,
     };
 
-    // Call Orbit Station to create the request
-    let result: Result<(CreateRequestResult,), _> =
-        ic_cdk::call(station_id, "create_request", (request_input,)).await;
+    // Call Orbit Station to create the request using OrbitClient
+    let response = OrbitClient::create_request(station_id, request_input).await?;
 
-    match result {
-        Ok((CreateRequestResult::Ok(response),)) => Ok(format!(
-            "Successfully created treasury account request. Request ID: {}. Status: {:?}",
-            response.request.id, response.request.status
-        )),
-        Ok((CreateRequestResult::Err(e),)) => {
-            Err(format!("Failed to create treasury account request: {}", e))
-        }
-        Err((code, msg)) => Err(format!(
-            "Failed to call Orbit Station: {:?} - {}",
-            code, msg
-        )),
-    }
+    Ok(format!(
+        "Successfully created treasury account request. Request ID: {}. Status: {:?}",
+        response.request.id, response.request.status
+    ))
 }
 
 // Treasury Transfer Methods
@@ -404,31 +360,22 @@ pub async fn get_treasury_management_data(
         },
     };
 
-    let accounts_result: Result<(ListAccountsResultMinimal,), _> = ic_cdk::call(
+    let (accounts, privileges) = OrbitClient::call::<_, ListAccountsResultMinimal, _>(
         station_id,
         "list_accounts",
-        (accounts_input,)
-    ).await;
-
-    let (accounts, privileges) = match accounts_result {
-        Ok((ListAccountsResultMinimal::Ok { accounts, privileges, .. },)) => (accounts, privileges),
-        Ok((ListAccountsResultMinimal::Err(e),)) => {
-            return Err(format!("Failed to list accounts: {:?}", e));
-        }
-        Err((code, msg)) => {
-            return Err(format!("Failed to call list_accounts: {:?} - {}", code, msg));
-        }
-    };
+        accounts_input,
+    ).await?;
 
     // 3. Get all assets once for lookup
-    let assets_result: Result<(crate::api::orbit_transfers::ListAssetsResult,), _> = ic_cdk::call(
+    use crate::api::orbit_transfers::{ListAssetsInput, ListAssetsResult};
+    let assets_result: Result<(ListAssetsResult,), _> = ic_cdk::call(
         station_id,
         "list_assets",
-        (crate::api::orbit_transfers::ListAssetsInput { paginate: None },)
+        (ListAssetsInput { paginate: None },)
     ).await;
 
     let asset_map: HashMap<String, Asset> = match assets_result {
-        Ok((crate::api::orbit_transfers::ListAssetsResult::Ok { assets, .. },)) => {
+        Ok((ListAssetsResult::Ok { assets, .. },)) => {
             assets.into_iter().map(|a| (a.id.clone(), a)).collect()
         }
         _ => HashMap::new(),
@@ -478,43 +425,38 @@ pub async fn get_treasury_management_data(
         });
     }
 
-    // 5. Get address book entries
+    // 5. Get address book entries using OrbitClient
     let address_book_input = ListAddressBookInput {
         ids: None,
         addresses: None,
         paginate: None,
     };
 
-    let address_book_result: Result<(ListAddressBookResult,), _> = ic_cdk::call(
+    let address_book_entries = OrbitClient::call::<_, ListAddressBookResult, _>(
         station_id,
         "list_address_book_entries",
-        (address_book_input,)
-    ).await;
+        address_book_input,
+    ).await.unwrap_or_default();
 
-    let address_book = match address_book_result {
-        Ok((ListAddressBookResult::Ok { address_book_entries, .. },)) => {
-            address_book_entries.iter().map(|entry| {
-                // Extract name from metadata if present
-                let name = entry.metadata.iter()
-                    .find(|m| m.key == "name")
-                    .map(|m| m.value.clone())
-                    .unwrap_or_else(|| entry.address_owner.clone());
+    let address_book: Vec<TreasuryAddressBookEntry> = address_book_entries.iter().map(|entry| {
+        // Extract name from metadata if present
+        let name = entry.metadata.iter()
+            .find(|m| m.key == "name")
+            .map(|m| m.value.clone())
+            .unwrap_or_else(|| entry.address_owner.clone());
 
-                let purpose = entry.metadata.iter()
-                    .find(|m| m.key == "purpose")
-                    .map(|m| m.value.clone());
+        let purpose = entry.metadata.iter()
+            .find(|m| m.key == "purpose")
+            .map(|m| m.value.clone());
 
-                TreasuryAddressBookEntry {
-                    id: entry.id.clone(),
-                    name,
-                    address: entry.address.clone(),
-                    blockchain: entry.blockchain.clone(),
-                    purpose,
-                }
-            }).collect()
+        TreasuryAddressBookEntry {
+            id: entry.id.clone(),
+            name,
+            address: entry.address.clone(),
+            blockchain: entry.blockchain.clone(),
+            purpose,
         }
-        _ => vec![],
-    };
+    }).collect();
 
     // 6. Generate summary of backend's privileges
     let transfer_count = treasury_accounts.iter().filter(|a| a.can_transfer).count();
