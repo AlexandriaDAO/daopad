@@ -1,7 +1,7 @@
 type Account = record {
   id : text;
   configs_request_policy : opt RequestPolicyRule;
-  metadata : vec AssetMetadata;
+  metadata : vec MetadataItem;
   name : text;
   assets : vec AccountAsset;
   addresses : vec AccountAddress;
@@ -35,7 +35,7 @@ type AccountCallerPrivileges = record {
 };
 type AccountMinimal = record {
   id : text;
-  metadata : vec AssetMetadata;
+  metadata : vec MetadataItem;
   name : text;
   assets : vec AccountAsset;
   addresses : vec AccountAddress;
@@ -44,7 +44,7 @@ type AccountMinimal = record {
 type AccountMinimalWithBalances = record {
   id : text;
   configs_request_policy : opt RequestPolicyRule;
-  metadata : vec AssetMetadata;
+  metadata : vec MetadataItem;
   name : text;
   assets : vec AccountAssetWithBalance;
   addresses : vec AccountAddress;
@@ -56,7 +56,7 @@ type AccountWithAssets = record {
   account : Account;
 };
 type AddAddressBookEntryOperationInput = record {
-  metadata : vec AssetMetadata;
+  metadata : vec MetadataItem;
   labels : vec text;
   blockchain : text;
   address : text;
@@ -73,7 +73,7 @@ type AddAssetInput = record {
 };
 type AddressBookEntry = record {
   id : text;
-  metadata : vec AssetMetadata;
+  metadata : vec MetadataItem;
   labels : vec text;
   blockchain : text;
   address : text;
@@ -108,7 +108,7 @@ type Asset = record {
   id : text;
   decimals : nat32;
   standards : vec text;
-  metadata : vec AssetMetadata;
+  metadata : vec MetadataItem;
   name : text;
   blockchain : text;
   symbol : text;
@@ -145,7 +145,7 @@ type CanisterSnapshot = record {
 };
 type CanisterSnapshotsResult = variant {
   Ok : vec CanisterSnapshot;
-  Err : Error;
+  Err : Error_1;
 };
 type CanisterStatusResponse = record {
   status : text;
@@ -164,9 +164,9 @@ type ChangeExternalCanisterOperationInput = record {
   external_canister_id : text;
 };
 type ChangeMetadata = variant {
-  OverrideSpecifiedBy : vec AssetMetadata;
+  OverrideSpecifiedBy : vec MetadataItem;
   RemoveKeys : vec text;
-  ReplaceAllBy : vec AssetMetadata;
+  ReplaceAllBy : vec MetadataItem;
 };
 type CheckStatus = variant { Error; Fail; Pass; Warn };
 type ConfigureExternalCanisterKind = variant {
@@ -182,7 +182,7 @@ type CreateAccountConfig = record {
   configs_request_policy : opt RequestPolicyRule;
   read_permission : Allow;
   configs_permission : Allow;
-  metadata : vec AssetMetadata;
+  metadata : vec MetadataItem;
   name : text;
   transfer_request_policy : opt RequestPolicyRule;
   asset_ids : vec text;
@@ -217,6 +217,10 @@ type CreateRequestInput = record {
   summary : opt text;
   operation : RequestOperationInput;
 };
+type CreateRequestResult = variant {
+  Ok : SubmitRequestResponse;
+  Err : Error_1;
+};
 type CycleObtainStrategyMinimal = variant {
   Disabled;
   MintFromNativeToken : record { account_id : text };
@@ -248,6 +252,11 @@ type EnhancedSecurityDashboard = record {
   decentralization_score : nat8;
 };
 type Error = record {
+  code : text;
+  message : opt text;
+  details : opt vec record { text; text };
+};
+type Error_1 = record {
   code : text;
   message : opt text;
   details : opt vec record { text; text };
@@ -339,14 +348,14 @@ type GetAddressBookEntryResult = variant {
     privileges : AddressBookEntryCallerPrivileges;
     address_book_entry : AddressBookEntry;
   };
-  Err : Error;
+  Err : Error_1;
 };
 type GetExternalCanisterResult = variant {
   Ok : record {
     privileges : ExternalCanisterCallerPrivileges;
     canister : ExternalCanister;
   };
-  Err : Error;
+  Err : Error_1;
 };
 type GovernanceStats = record {
   active_proposals : nat64;
@@ -363,7 +372,7 @@ type ListAccountsResultMinimal = variant {
     privileges : vec AccountCallerPrivileges;
     accounts : vec AccountMinimal;
   };
-  Err : Error;
+  Err : Error_1;
 };
 type ListAddressBookEntriesInput = record {
   ids : opt vec text;
@@ -382,11 +391,11 @@ type ListAddressBookEntriesResponse = record {
 };
 type ListAddressBookEntriesResult = variant {
   Ok : ListAddressBookEntriesResponse;
-  Err : Error;
+  Err : Error_1;
 };
 type ListAssetsResult = variant {
   Ok : record { assets : vec Asset };
-  Err : Error;
+  Err : Error_1;
 };
 type ListExternalCanistersInputMinimal = record {
   states : vec ExternalCanisterState;
@@ -401,7 +410,7 @@ type ListExternalCanistersResult = variant {
     canisters : vec ExternalCanister;
     next_offset : opt nat64;
   };
-  Err : Error;
+  Err : Error_1;
 };
 type ListOrbitRequestsResponse = record {
   total : nat64;
@@ -461,6 +470,7 @@ type ListRequestsOperationType = variant {
   AddAccount;
 };
 type LogVisibility = variant { controllers; public };
+type MetadataItem = record { key : text; value : text };
 type MonitorExternalCanisterKind = variant { Start : MonitoringConfig; Stop };
 type MonitorExternalCanisterOperationInput = record {
   kind : MonitorExternalCanisterKind;
@@ -640,7 +650,7 @@ type RequestPolicyRule = variant {
   AutoApproved;
   AllOf : vec RequestPolicyRule;
   AnyOf : vec RequestPolicyRule;
-  AllowListedByMetadata : AssetMetadata;
+  AllowListedByMetadata : MetadataItem;
   NamedRule : text;
 };
 type RequestPolicyWithAccount = record {
@@ -729,7 +739,7 @@ type RestoreExternalCanisterOperationInput = record {
   snapshot_id : text;
 };
 type Result = variant { Ok : text; Err : text };
-type Result_1 = variant { Ok : SubmitRequestResult; Err : text };
+type Result_1 = variant { Ok : CreateRequestResult; Err : text };
 type Result_10 = variant { Ok : AccountWithAssets; Err : text };
 type Result_11 = variant { Ok : AgreementSnapshot; Err : text };
 type Result_12 = variant { Ok : AllVotingPowersResponse; Err : text };
@@ -940,7 +950,7 @@ service : () -> {
       text,
       opt text,
     ) -> (Result_1);
-  create_address_book_request : (CreateRequestInput) -> (SubmitRequestResult);
+  create_address_book_request : (CreateRequestInput) -> (CreateRequestResult);
   // Create EditAccount requests to set AutoApproved for all accounts
   // 
   // IMPORTANT: Backend cannot approve these requests (separation of duties).
@@ -999,7 +1009,7 @@ service : () -> {
       principal,
     ) -> (Result);
   create_treasury_account : (principal, CreateAccountConfig) -> (Result_7);
-  edit_treasury_asset : (principal, text, opt text, opt vec AssetMetadata) -> (
+  edit_treasury_asset : (principal, text, opt text, opt vec MetadataItem) -> (
       Result,
     );
   // Create proposal in admin canister for an Orbit request
