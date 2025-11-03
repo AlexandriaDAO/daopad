@@ -241,9 +241,19 @@ pub struct SimpleRequest {
 
 /// Extract operation type name - Reserved doesn't store data, so we can't extract it
 /// Returns None since we're using Reserved type for operation
+///
+/// TODO(P1): Implement two-pass hybrid approach to extract operation types:
+/// 1. Use call_raw to get raw Candid bytes
+/// 2. Parse with IDLArgs to extract operation variant names into HashMap<request_id, operation_type>
+/// 3. Also do typed deserialization with Reserved (which works reliably)
+/// 4. Inject operation types back into Request structs before transforming
+///
+/// This is needed because frontend useProposal hook maps "Unknown" → Transfer,
+/// which could cause incorrect proposal creation for non-Transfer operations.
+/// See PR #146 review comments for details.
 fn extract_operation_type(_op: &Reserved) -> Option<String> {
     // Reserved type doesn't store the actual data, so we can't extract the variant name
-    // This is a trade-off: simpler deserialization vs. losing operation type info
+    // Trade-off: P0 (deserialization works) vs P1 (operation type info)
     None
 }
 

@@ -1,0 +1,71 @@
+--- a/src/daopad/daopad_backend/src/api/orbit_requests.rs
++++ b/src/daopad/daopad_backend/src/api/orbit_requests.rs
+@@ -116,20 +116,22 @@ pub struct Request {
+ }
+
+ // Exact ListRequestsInput from spec.did
++// CRITICAL: Field order MUST match Candid exactly (from didc bind)!
+ #[derive(CandidType, Deserialize, Clone, Debug)]
+ pub struct ListRequestsInput {
+-    pub requester_ids: Option<Vec<UUID>>,
+-    pub approver_ids: Option<Vec<UUID>>,
+-    pub statuses: Option<Vec<RequestStatusCode>>,
+-    pub operation_types: Option<Vec<ListRequestsOperationType>>,
+-    pub expiration_from_dt: Option<TimestampRFC3339>,
+-    pub expiration_to_dt: Option<TimestampRFC3339>,
+-    pub created_from_dt: Option<TimestampRFC3339>,
++    pub sort_by: Option<ListRequestsSortBy>,           // 1st
++    pub with_evaluation_results: bool,                 // 2nd
++    pub expiration_from_dt: Option<TimestampRFC3339>,  // 3rd
+     pub created_to_dt: Option<TimestampRFC3339>,
++    pub statuses: Option<Vec<RequestStatusCode>>,
++    pub approver_ids: Option<Vec<UUID>>,
++    pub expiration_to_dt: Option<TimestampRFC3339>,
+     pub paginate: Option<PaginationInput>,
+-    pub sort_by: Option<ListRequestsSortBy>,  // ✅ FIXED: Now Option<enum> as in spec
++    pub requester_ids: Option<Vec<UUID>>,
++    pub operation_types: Option<Vec<ListRequestsOperationType>>,
+     pub only_approvable: bool,
+-    pub with_evaluation_results: bool,
++    pub created_from_dt: Option<TimestampRFC3339>,
++    // NOTE: tags and deduplication_keys not in didc bind output - removed
+-    pub deduplication_keys: Option<Vec<String>>,
+-    pub tags: Option<Vec<String>>,
+ }
+
+ // PaginationInput from spec.did
+@@ -420,8 +422,8 @@ pub async fn get_orbit_requests_simple(token_canister_id: Principal) -> Result<
+     let station_id = get_station_id(token_canister_id)?;
+
+     let filters = ListRequestsInput {
+-        statuses: None,
+-        requester_ids: None,
+-        approver_ids: None,
+-        created_from_dt: None,
+-        created_to_dt: None,
+-        expiration_from_dt: None,
+-        expiration_to_dt: None,
+-        operation_types: None,
+-        paginate: Some(PaginationInput {
+-            offset: None,
+-            limit: Some(10),
+-        }),
+         sort_by: None,
+-        only_approvable: false,
+         with_evaluation_results: false,
+-        deduplication_keys: None,
+-        tags: None,
++        expiration_from_dt: None,
++        created_to_dt: None,
++        statuses: None,
++        approver_ids: None,
++        expiration_to_dt: None,
++        paginate: Some(PaginationInput {
++            offset: None,
++            limit: Some(10),
++        }),
++        requester_ids: None,
++        operation_types: None,
++        only_approvable: false,
++        created_from_dt: None,
+     };
