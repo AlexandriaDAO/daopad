@@ -1,5 +1,4 @@
-use candid::{CandidType, Deserialize, Principal};
-use candid::types::value::IDLValue;
+use candid::{CandidType, Deserialize, Principal, Reserved};
 use ic_cdk::update;
 
 // UUID type alias matching Orbit (spec.did line 5)
@@ -89,17 +88,8 @@ pub struct ListOrbitRequestsResponse {
     pub next_offset: Option<u64>,
 }
 
-// Helper to deserialize operation as IDLValue to extract variant name
-fn deserialize_operation<'de, D>(deserializer: D) -> Result<IDLValue, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    use serde::de::Error as SerdeError;
-    IDLValue::deserialize(deserializer)
-        .map_err(|e| D::Error::custom(format!("failed to decode Orbit operation: {e}")))
-}
-
 // ✅ FIXED: Field order MUST match Orbit's candid exactly (from didc bind output)
+// Using Reserved for operation field since we don't need to parse its complex structure
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct Request {
     pub id: UUID,
@@ -110,28 +100,27 @@ pub struct Request {
     pub created_at: TimestampRFC3339,
     pub requested_by: UUID,
     pub summary: Option<String>,
-    #[serde(deserialize_with = "deserialize_operation")]
-    pub operation: IDLValue,  // Use IDLValue to handle any operation variant
+    pub operation: Reserved,  // Use Reserved - can deserialize any Candid type
     pub approvals: Vec<RequestApproval>,
 }
 
 // Exact ListRequestsInput from spec.did
+// CRITICAL: Field order MUST match Candid exactly (from didc bind)!
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct ListRequestsInput {
-    pub requester_ids: Option<Vec<UUID>>,
-    pub approver_ids: Option<Vec<UUID>>,
-    pub statuses: Option<Vec<RequestStatusCode>>,
-    pub operation_types: Option<Vec<ListRequestsOperationType>>,
-    pub expiration_from_dt: Option<TimestampRFC3339>,
-    pub expiration_to_dt: Option<TimestampRFC3339>,
-    pub created_from_dt: Option<TimestampRFC3339>,
-    pub created_to_dt: Option<TimestampRFC3339>,
-    pub paginate: Option<PaginationInput>,
-    pub sort_by: Option<ListRequestsSortBy>,  // ✅ FIXED: Now Option<enum> as in spec
-    pub only_approvable: bool,
-    pub with_evaluation_results: bool,
-    pub deduplication_keys: Option<Vec<String>>,
-    pub tags: Option<Vec<String>>,
+    pub sort_by: Option<ListRequestsSortBy>,           // 1st
+    pub with_evaluation_results: bool,                 // 2nd
+    pub expiration_from_dt: Option<TimestampRFC3339>,  // 3rd
+    pub created_to_dt: Option<TimestampRFC3339>,       // 4th
+    pub statuses: Option<Vec<RequestStatusCode>>,      // 5th
+    pub approver_ids: Option<Vec<UUID>>,               // 6th
+    pub expiration_to_dt: Option<TimestampRFC3339>,    // 7th
+    pub paginate: Option<PaginationInput>,             // 8th
+    pub requester_ids: Option<Vec<UUID>>,              // 9th
+    pub operation_types: Option<Vec<ListRequestsOperationType>>, // 10th
+    pub only_approvable: bool,                         // 11th
+    pub created_from_dt: Option<TimestampRFC3339>,     // 12th
+    // NOTE: tags and deduplication_keys not in didc bind output
 }
 
 // PaginationInput from spec.did
@@ -207,42 +196,29 @@ pub struct DisplayUser {
     pub name: String,
 }
 
-// Helper to deserialize evaluation_result as IDLValue (we don't use this field)
-fn deserialize_evaluation_result<'de, D>(deserializer: D) -> Result<Option<IDLValue>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    use serde::de::Error as SerdeError;
-    Option::<IDLValue>::deserialize(deserializer)
-        .map_err(|e| D::Error::custom(format!("failed to decode evaluation result: {e}")))
-}
-
-// RequestAdditionalInfo with evaluation_result as IDLValue (complex nested type we don't use)
+// RequestAdditionalInfo with evaluation_result as Reserved (complex nested type we don't use)
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct RequestAdditionalInfo {
     pub id: UUID,
-    #[serde(deserialize_with = "deserialize_evaluation_result")]
-    pub evaluation_result: Option<IDLValue>,
+    pub evaluation_result: Option<Reserved>,  // Use Reserved for complex type we don't need
     pub requester_name: String,
     pub approvers: Vec<DisplayUser>,
 }
 
-// ✅ FIXED: Field order matches Orbit's candid exactly
+// ✅ CRITICAL FIX: Field order MUST match DID file EXACTLY (not didc bind output!)
+// From orbit_station.did: requests, total, next_offset, privileges, additional_info
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct ListRequestsResultOk {
-    pub total: u64,
-    pub privileges: Vec<RequestCallerPrivileges>,
-    pub requests: Vec<Request>,
-    pub next_offset: Option<u64>,
-    pub additional_info: Vec<RequestAdditionalInfo>,
+    pub requests: Vec<Request>,          // 1st in DID
+    pub total: u64,                       // 2nd in DID
+    pub next_offset: Option<u64>,         // 3rd in DID
+    pub privileges: Vec<RequestCallerPrivileges>,  // 4th in DID
+    pub additional_info: Vec<RequestAdditionalInfo>,  // 5th in DID
 }
 
-// Candid Result is represented as an enum variant, not Rust Result type
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub enum ListRequestsResult {
-    Ok(ListRequestsResultOk),
-    Err(Error),
-}
+// ✅ CRITICAL FIX: Candid Result type is std::result::Result, not a custom enum!
+// This is the actual type returned by Orbit's list_requests endpoint
+pub type ListRequestsResult = std::result::Result<ListRequestsResultOk, Error>;
 
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct Error {
@@ -263,18 +239,12 @@ pub struct SimpleRequest {
 // HELPER FUNCTIONS (pure transformations, no manual decoding)
 // ------------------------------------------------------------------------------
 
-/// Extract operation type name from IDLValue variant
-fn extract_operation_type(op: &IDLValue) -> Option<String> {
-    use candid::types::Label;
-
-    if let IDLValue::Variant(variant) = op {
-        match &variant.0.id {
-            Label::Named(name) => Some(name.clone()),
-            _ => None,
-        }
-    } else {
-        None
-    }
+/// Extract operation type name - Reserved doesn't store data, so we can't extract it
+/// Returns None since we're using Reserved type for operation
+fn extract_operation_type(_op: &Reserved) -> Option<String> {
+    // Reserved type doesn't store the actual data, so we can't extract the variant name
+    // This is a trade-off: simpler deserialization vs. losing operation type info
+    None
 }
 
 /// Format status enum to string
@@ -388,7 +358,7 @@ pub async fn list_orbit_requests(
         ic_cdk::call(station_id, "list_requests", (filters,)).await;
 
     match result {
-        Ok((ListRequestsResult::Ok(response),)) => {
+        Ok((Ok(response),)) => {
             ic_cdk::println!(
                 "✅ Orbit returned {} requests (total: {})",
                 response.requests.len(),
@@ -396,7 +366,7 @@ pub async fn list_orbit_requests(
             );
             Ok(transform_orbit_response(response))
         }
-        Ok((ListRequestsResult::Err(e),)) => {
+        Ok((Err(e),)) => {
             let error_msg = format!(
                 "Orbit error: {} - {}",
                 e.code,
@@ -420,23 +390,21 @@ pub async fn get_orbit_requests_simple(token_canister_id: Principal) -> Result<V
     let station_id = get_station_id(token_canister_id)?;
 
     let filters = ListRequestsInput {
-        statuses: None,
-        requester_ids: None,
-        approver_ids: None,
-        created_from_dt: None,
-        created_to_dt: None,
+        sort_by: None,
+        with_evaluation_results: false,
         expiration_from_dt: None,
+        created_to_dt: None,
+        statuses: None,
+        approver_ids: None,
         expiration_to_dt: None,
-        operation_types: None,
         paginate: Some(PaginationInput {
             offset: None,
             limit: Some(10),
         }),
-        sort_by: None,
+        requester_ids: None,
+        operation_types: None,
         only_approvable: false,
-        with_evaluation_results: false,
-        deduplication_keys: None,
-        tags: None,
+        created_from_dt: None,
     };
 
     // ✅ Use typed ic_cdk::call
@@ -444,14 +412,14 @@ pub async fn get_orbit_requests_simple(token_canister_id: Principal) -> Result<V
         ic_cdk::call(station_id, "list_requests", (filters,)).await;
 
     match result {
-        Ok((ListRequestsResult::Ok(response),)) => {
+        Ok((Ok(response),)) => {
             Ok(response.requests.into_iter().map(|r| SimpleRequest {
                 id: r.id,  // ✅ FIXED: Preserve full UUID, no truncation
                 title: r.title,
                 status: format_status(&r.status),
             }).collect())
         }
-        Ok((ListRequestsResult::Err(e),)) => {
+        Ok((Err(e),)) => {
             Err(format!(
                 "Orbit error: {} - {}",
                 e.code,

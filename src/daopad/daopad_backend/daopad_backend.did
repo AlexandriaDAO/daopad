@@ -419,10 +419,8 @@ type ListOrbitRequestsResponse = record {
 };
 type ListRequestsInput = record {
   sort_by : opt ListRequestsSortBy;
-  deduplication_keys : opt vec text;
   with_evaluation_results : bool;
   expiration_from_dt : opt text;
-  tags : opt vec text;
   created_to_dt : opt text;
   statuses : opt vec RequestStatusCode;
   approver_ids : opt vec text;

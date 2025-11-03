@@ -315,8 +315,6 @@ pub async fn get_user_pending_requests(
         sort_by: None,
         only_approvable: false,
         with_evaluation_results: false,
-        deduplication_keys: Some(vec![]), // CRITICAL: Include ALL fields!
-        tags: Some(vec![]),               // Even if empty!
     };
 
     // Call list_orbit_requests to get all AddUser requests
