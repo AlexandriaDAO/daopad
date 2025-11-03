@@ -1,17 +1,16 @@
-use candid::{CandidType, Deserialize, Principal, encode_args};
-use candid::types::value::{IDLValue, IDLArgs};
-use ic_cdk::{update, api::call::call_raw};
-use serde::de::Error as SerdeError;
+use candid::{CandidType, Deserialize, Principal};
+use candid::types::value::IDLValue;
+use ic_cdk::update;
 
 // UUID type alias matching Orbit (spec.did line 5)
 type UUID = String;
 type TimestampRFC3339 = String;
 
 // ------------------------------------------------------------------------------
-// TYPE DEFINITIONS (matches Orbit Station spec.did)
+// TYPE DEFINITIONS (matches Orbit Station spec.did - generated with didc bind)
 // ------------------------------------------------------------------------------
 
-// Exact RequestStatusCode from spec.did lines 302-311
+// Exact RequestStatusCode from spec.did
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub enum RequestStatusCode {
     Created,
@@ -46,7 +45,7 @@ pub enum RequestApprovalStatus {
     Rejected,
 }
 
-// Exact RequestStatus from spec.did lines 280-300
+// Exact RequestStatus from spec.did
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub enum RequestStatus {
     Created,
@@ -90,175 +89,33 @@ pub struct ListOrbitRequestsResponse {
     pub next_offset: Option<u64>,
 }
 
-// Helper to deserialize operation but just extract variant name
+// Helper to deserialize operation as IDLValue to extract variant name
 fn deserialize_operation<'de, D>(deserializer: D) -> Result<IDLValue, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
+    use serde::de::Error as SerdeError;
     IDLValue::deserialize(deserializer)
         .map_err(|e| D::Error::custom(format!("failed to decode Orbit operation: {e}")))
 }
 
-// Complete Request type matching Orbit's actual response (spec.did)
+// ✅ FIXED: Field order MUST match Orbit's candid exactly (from didc bind output)
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct Request {
     pub id: UUID,
+    pub status: RequestStatus,  // ✅ Status comes BEFORE title in Orbit's candid!
     pub title: String,
+    pub execution_plan: RequestExecutionSchedule,
+    pub expiration_dt: TimestampRFC3339,
+    pub created_at: TimestampRFC3339,
+    pub requested_by: UUID,
     pub summary: Option<String>,
     #[serde(deserialize_with = "deserialize_operation")]
-    pub operation: IDLValue,  // ✅ Use IDLValue to handle any operation type
-    pub requested_by: UUID,
+    pub operation: IDLValue,  // Use IDLValue to handle any operation variant
     pub approvals: Vec<RequestApproval>,
-    pub created_at: TimestampRFC3339,
-    pub status: RequestStatus,
-    pub expiration_dt: TimestampRFC3339,
-    pub execution_plan: RequestExecutionSchedule,
-    // NOTE: deduplication_key and tags are NOT in Orbit's response type, only in input type
 }
 
-// Complete operation type enum for OUTPUT (what Orbit returns)
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub enum RequestOperationOutput {
-    Transfer(TransferOperationOutput),
-    AddAccount(AddAccountOperationOutput),
-    EditAccount(EditAccountOperationOutput),
-    AddUser(AddUserOperationOutput),
-    EditUser(EditUserOperationOutput),
-    AddAddressBookEntry(AddAddressBookEntryOperationOutput),
-    EditAddressBookEntry(EditAddressBookEntryOperationOutput),
-    RemoveAddressBookEntry(RemoveAddressBookEntryOperationOutput),
-    AddUserGroup(AddUserGroupOperationOutput),
-    EditUserGroup(EditUserGroupOperationOutput),
-    RemoveUserGroup(RemoveUserGroupOperationOutput),
-    SystemUpgrade(SystemUpgradeOperationOutput),
-    SystemRestore(SystemRestoreOperationOutput),
-    ChangeExternalCanister(ChangeExternalCanisterOperationOutput),
-    ConfigureExternalCanister(ConfigureExternalCanisterOperationOutput),
-    CreateExternalCanister(CreateExternalCanisterOperationOutput),
-    CallExternalCanister(CallExternalCanisterOperationOutput),
-    FundExternalCanister(FundExternalCanisterOperationOutput),
-    MonitorExternalCanister(MonitorExternalCanisterOperationOutput),
-    SnapshotExternalCanister(SnapshotExternalCanisterOperationOutput),
-    RestoreExternalCanister(RestoreExternalCanisterOperationOutput),
-    PruneExternalCanister(PruneExternalCanisterOperationOutput),
-    EditPermission(EditPermissionOperationOutput),
-    AddRequestPolicy(AddRequestPolicyOperationOutput),
-    EditRequestPolicy(EditRequestPolicyOperationOutput),
-    RemoveRequestPolicy(RemoveRequestPolicyOperationOutput),
-    ManageSystemInfo(ManageSystemInfoOperationOutput),
-    SetDisasterRecovery(SetDisasterRecoveryOperationOutput),
-    AddAsset(AddAssetOperationOutput),
-    EditAsset(EditAssetOperationOutput),
-    RemoveAsset(RemoveAssetOperationOutput),
-    AddNamedRule(AddNamedRuleOperationOutput),
-    EditNamedRule(EditNamedRuleOperationOutput),
-    RemoveNamedRule(RemoveNamedRuleOperationOutput),
-}
-
-// Operation output types (simplified - only what we need to extract operation type)
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct TransferOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct AddAccountOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct EditAccountOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct AddUserOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct EditUserOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct AddAddressBookEntryOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct EditAddressBookEntryOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct RemoveAddressBookEntryOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct AddUserGroupOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct EditUserGroupOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct RemoveUserGroupOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct SystemUpgradeOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct SystemRestoreOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct ChangeExternalCanisterOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct ConfigureExternalCanisterOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct CreateExternalCanisterOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct CallExternalCanisterOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct FundExternalCanisterOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct MonitorExternalCanisterOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct SnapshotExternalCanisterOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct RestoreExternalCanisterOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct PruneExternalCanisterOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct EditPermissionOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct AddRequestPolicyOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct EditRequestPolicyOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct RemoveRequestPolicyOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct ManageSystemInfoOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct SetDisasterRecoveryOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct AddAssetOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct EditAssetOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct RemoveAssetOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct AddNamedRuleOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct EditNamedRuleOperationOutput {}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct RemoveNamedRuleOperationOutput {}
-
-// Exact ListRequestsInput from spec.did lines 1442-1471
+// Exact ListRequestsInput from spec.did
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct ListRequestsInput {
     pub requester_ids: Option<Vec<UUID>>,
@@ -270,22 +127,21 @@ pub struct ListRequestsInput {
     pub created_from_dt: Option<TimestampRFC3339>,
     pub created_to_dt: Option<TimestampRFC3339>,
     pub paginate: Option<PaginationInput>,
-    #[serde(default)]
-    pub sort_by: (),  // Removed - Option<enum> causes OptionVisitor errors in Candid 0.10.18
+    pub sort_by: Option<ListRequestsSortBy>,  // ✅ FIXED: Now Option<enum> as in spec
     pub only_approvable: bool,
     pub with_evaluation_results: bool,
     pub deduplication_keys: Option<Vec<String>>,
     pub tags: Option<Vec<String>>,
 }
 
-// PaginationInput from spec.did lines 12-19
+// PaginationInput from spec.did
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct PaginationInput {
     pub offset: Option<u64>,
     pub limit: Option<u16>,
 }
 
-// Sort options from spec.did lines 1432-1439
+// Sort options from spec.did
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub enum ListRequestsSortBy {
     CreatedAt(SortByDirection),
@@ -299,10 +155,10 @@ pub enum SortByDirection {
     Desc,
 }
 
-// Complete operation type enum from spec.did lines 1352-1430
+// Complete operation type enum from spec.did
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub enum ListRequestsOperationType {
-    Transfer(Option<UUID>), // Optional account ID filter
+    Transfer(Option<UUID>),
     EditAccount,
     AddAccount,
     AddUser,
@@ -345,86 +201,54 @@ pub struct RequestCallerPrivileges {
     pub can_approve: bool,
 }
 
-// This matches Orbit's actual return type
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct DisplayUser {
     pub id: UUID,
     pub name: String,
 }
 
+// Helper to deserialize evaluation_result as IDLValue (we don't use this field)
+fn deserialize_evaluation_result<'de, D>(deserializer: D) -> Result<Option<IDLValue>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error as SerdeError;
+    Option::<IDLValue>::deserialize(deserializer)
+        .map_err(|e| D::Error::custom(format!("failed to decode evaluation result: {e}")))
+}
+
+// RequestAdditionalInfo with evaluation_result as IDLValue (complex nested type we don't use)
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct RequestAdditionalInfo {
     pub id: UUID,
+    #[serde(deserialize_with = "deserialize_evaluation_result")]
+    pub evaluation_result: Option<IDLValue>,
     pub requester_name: String,
     pub approvers: Vec<DisplayUser>,
-    #[serde(default)]
-    pub evaluation_result: Option<IDLValue>,  // Use IDLValue for flexible deserialization
 }
 
+// ✅ FIXED: Field order matches Orbit's candid exactly
 #[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct ListRequestsResponse {
-    pub requests: Vec<Request>,
-    pub next_offset: Option<u64>,
+pub struct ListRequestsResultOk {
     pub total: u64,
     pub privileges: Vec<RequestCallerPrivileges>,
+    pub requests: Vec<Request>,
+    pub next_offset: Option<u64>,
     pub additional_info: Vec<RequestAdditionalInfo>,
 }
 
+// Candid Result is represented as an enum variant, not Rust Result type
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub enum ListRequestsResult {
-    Ok(ListRequestsResponse),
+    Ok(ListRequestsResultOk),
     Err(Error),
 }
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct ErrorDetail(pub String, pub String);
 
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct Error {
     pub code: String,
     pub message: Option<String>,
-    pub details: Option<Vec<ErrorDetail>>,
-}
-
-// Get request types
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct GetRequestInput {
-    pub request_id: UUID,
-    pub with_full_info: Option<bool>,
-}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct GetRequestResponse {
-    pub request: Request,
-    pub privileges: RequestCallerPrivileges,
-    pub additional_info: RequestAdditionalInfo,
-}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub enum GetRequestResult {
-    Ok(GetRequestResponse),
-    Err(Error),
-}
-
-// Submit approval types
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct SubmitRequestApprovalInput {
-    pub request_id: UUID,
-    pub decision: RequestApprovalStatus,
-    pub reason: Option<String>,
-}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub struct SubmitRequestApprovalResponse {
-    pub request: Request,
-    pub privileges: RequestCallerPrivileges,
-    pub additional_info: RequestAdditionalInfo,
-}
-
-#[derive(CandidType, Deserialize, Clone, Debug)]
-pub enum SubmitRequestApprovalResult {
-    Ok(SubmitRequestApprovalResponse),
-    Err(Error),
+    pub details: Option<Vec<(String, String)>>,
 }
 
 // Simple types for experimental endpoint
@@ -444,14 +268,9 @@ fn extract_operation_type(op: &IDLValue) -> Option<String> {
     use candid::types::Label;
 
     if let IDLValue::Variant(variant) = op {
-        // Extract variant name from label
         match &variant.0.id {
             Label::Named(name) => Some(name.clone()),
-            Label::Id(_) => {
-                // For hash-based labels, return None (shouldn't happen with proper deserialization)
-                None
-            }
-            Label::Unnamed(_) => None,
+            _ => None,
         }
     } else {
         None
@@ -510,7 +329,7 @@ fn find_requester_name(request_id: &str, additional_info: &[RequestAdditionalInf
 }
 
 /// Transform Orbit response to DAOPad simplified format
-fn transform_orbit_response(orbit: ListRequestsResponse) -> ListOrbitRequestsResponse {
+fn transform_orbit_response(orbit: ListRequestsResultOk) -> ListOrbitRequestsResponse {
     ListOrbitRequestsResponse {
         requests: orbit.requests.into_iter().map(|r| {
             OrbitRequestSummary {
@@ -533,7 +352,7 @@ fn transform_orbit_response(orbit: ListRequestsResponse) -> ListOrbitRequestsRes
 }
 
 // ------------------------------------------------------------------------------
-// ENDPOINTS (using typed ic_cdk::call, no manual decoding!)
+// ENDPOINTS (using typed ic_cdk::call with proper types!)
 // ------------------------------------------------------------------------------
 
 /// Get station ID from storage for a given token canister
@@ -551,14 +370,9 @@ pub async fn list_orbit_requests(
     token_canister_id: Principal,
     filters: ListRequestsInput,
 ) -> Result<ListOrbitRequestsResponse, String> {
-    // Get station ID from storage
     let station_id = get_station_id(token_canister_id)
         .map_err(|e| {
-            ic_cdk::println!(
-                "❌ Storage lookup failed for token {}: {}",
-                token_canister_id,
-                e
-            );
+            ic_cdk::println!("❌ Storage lookup failed for token {}: {}", token_canister_id, e);
             e
         })?;
 
@@ -569,37 +383,20 @@ pub async fn list_orbit_requests(
         filters
     );
 
-    // ✅ Use call_raw but decode with proper types (not manual parsing!)
-    let args = encode_args((filters,))
-        .map_err(|e| format!("Failed to encode request: {}", e))?;
-
-    let raw_bytes = call_raw(station_id, "list_requests", args, 0)
-        .await
-        .map_err(|(code, msg)| format!("IC call failed: ({:?}, {})", code, msg))?;
-
-    // ✅ Decode using Candid's proper deserializer (no manual parsing!)
-    let args = IDLArgs::from_bytes(&raw_bytes)
-        .map_err(|e| format!("Failed to parse Candid bytes: {}", e))?;
-
-    // Deserialize using serde's Deserialize trait on IDLValue
-    let idl_value = args.args.into_iter()
-        .next()
-        .ok_or_else(|| "Empty response from Orbit".to_string())?;
-
-    let result: ListRequestsResult = serde::Deserialize::deserialize(idl_value)
-        .map_err(|e: candid::Error| format!("Failed to deserialize response: {}", e))?;
+    // ✅ Use TYPED ic_cdk::call now that we have correct types!
+    let result: Result<(ListRequestsResult,), _> =
+        ic_cdk::call(station_id, "list_requests", (filters,)).await;
 
     match result {
-        ListRequestsResult::Ok(response) => {
+        Ok((ListRequestsResult::Ok(response),)) => {
             ic_cdk::println!(
                 "✅ Orbit returned {} requests (total: {})",
                 response.requests.len(),
                 response.total
             );
-            // Transform Orbit response to DAOPad simplified format
             Ok(transform_orbit_response(response))
         }
-        ListRequestsResult::Err(e) => {
+        Ok((ListRequestsResult::Err(e),)) => {
             let error_msg = format!(
                 "Orbit error: {} - {}",
                 e.code,
@@ -608,19 +405,22 @@ pub async fn list_orbit_requests(
             ic_cdk::println!("❌ Orbit error: {}", error_msg);
             Err(error_msg)
         }
+        Err((code, msg)) => {
+            let error_msg = format!("IC call failed: ({:?}, {})", code, msg);
+            ic_cdk::println!("❌ IC call failed: {}", error_msg);
+            Err(error_msg)
+        }
     }
 }
 
 /// EXPERIMENTAL: Ultra-simple request fetching - returns basic info only
+/// ✅ FIXED: Removed hardcoded principal, now uses token canister lookup
 #[update]
-pub async fn get_orbit_requests_simple() -> Result<Vec<SimpleRequest>, String> {
-    // Use the ALEX token station directly
-    let station_id = Principal::from_text("fec7w-zyaaa-aaaaa-qaffq-cai")
-        .map_err(|e| format!("Failed to parse station ID: {}", e))?;
+pub async fn get_orbit_requests_simple(token_canister_id: Principal) -> Result<Vec<SimpleRequest>, String> {
+    let station_id = get_station_id(token_canister_id)?;
 
-    // Minimal filter - get all statuses for now
     let filters = ListRequestsInput {
-        statuses: None,  // Get all statuses
+        statuses: None,
         requester_ids: None,
         approver_ids: None,
         created_from_dt: None,
@@ -630,49 +430,36 @@ pub async fn get_orbit_requests_simple() -> Result<Vec<SimpleRequest>, String> {
         operation_types: None,
         paginate: Some(PaginationInput {
             offset: None,
-            limit: Some(10),  // Get 10 requests
+            limit: Some(10),
         }),
-        sort_by: (),
+        sort_by: None,
         only_approvable: false,
         with_evaluation_results: false,
         deduplication_keys: None,
         tags: None,
     };
 
-    // ✅ Use call_raw but decode with proper types
-    let args = encode_args((filters,))
-        .map_err(|e| format!("Failed to encode request: {}", e))?;
-
-    let raw_bytes = call_raw(station_id, "list_requests", args, 0)
-        .await
-        .map_err(|(code, msg)| format!("IC call failed: ({:?}, {})", code, msg))?;
-
-    // ✅ Decode using Candid's proper deserializer
-    let args = IDLArgs::from_bytes(&raw_bytes)
-        .map_err(|e| format!("Failed to parse Candid bytes: {}", e))?;
-
-    // Deserialize using serde's Deserialize trait on IDLValue
-    let idl_value = args.args.into_iter()
-        .next()
-        .ok_or_else(|| "Empty response from Orbit".to_string())?;
-
-    let result: ListRequestsResult = serde::Deserialize::deserialize(idl_value)
-        .map_err(|e: candid::Error| format!("Failed to deserialize response: {}", e))?;
+    // ✅ Use typed ic_cdk::call
+    let result: Result<(ListRequestsResult,), _> =
+        ic_cdk::call(station_id, "list_requests", (filters,)).await;
 
     match result {
-        ListRequestsResult::Ok(response) => {
+        Ok((ListRequestsResult::Ok(response),)) => {
             Ok(response.requests.into_iter().map(|r| SimpleRequest {
-                id: r.id.chars().take(8).collect(),  // Keep first 8 chars for backward compat
+                id: r.id,  // ✅ FIXED: Preserve full UUID, no truncation
                 title: r.title,
                 status: format_status(&r.status),
             }).collect())
         }
-        ListRequestsResult::Err(e) => {
+        Ok((ListRequestsResult::Err(e),)) => {
             Err(format!(
                 "Orbit error: {} - {}",
                 e.code,
                 e.message.unwrap_or_else(|| "No message".to_string())
             ))
+        }
+        Err((code, msg)) => {
+            Err(format!("IC call failed: ({:?}, {})", code, msg))
         }
     }
 }

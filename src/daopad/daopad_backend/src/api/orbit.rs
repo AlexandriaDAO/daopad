@@ -312,7 +312,7 @@ pub async fn get_user_pending_requests(
             offset: None,
             limit: Some(50),
         }),
-        sort_by: (),
+        sort_by: None,
         only_approvable: false,
         with_evaluation_results: false,
         deduplication_keys: Some(vec![]), // CRITICAL: Include ALL fields!

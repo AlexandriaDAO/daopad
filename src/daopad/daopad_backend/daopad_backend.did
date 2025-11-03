@@ -418,7 +418,7 @@ type ListOrbitRequestsResponse = record {
   next_offset : opt nat64;
 };
 type ListRequestsInput = record {
-  sort_by : null;
+  sort_by : opt ListRequestsSortBy;
   deduplication_keys : opt vec text;
   with_evaluation_results : bool;
   expiration_from_dt : opt text;
@@ -468,6 +468,11 @@ type ListRequestsOperationType = variant {
   AddNamedRule;
   RestoreExternalCanister : opt principal;
   AddAccount;
+};
+type ListRequestsSortBy = variant {
+  ExpirationDt : SortByDirection;
+  LastModificationDt : SortByDirection;
+  CreatedAt : SortByDirection;
 };
 type LogVisibility = variant { controllers; public };
 type MetadataItem = record { key : text; value : text };
@@ -795,6 +800,7 @@ type SnapshotExternalCanisterOperationInput = record {
   force : bool;
   external_canister_id : text;
 };
+type SortByDirection = variant { Asc; Desc };
 type SubmitRequestResponse = record {
   privileges : RequestCallerPrivilegesDTO;
   request : RequestDTO;
@@ -1060,7 +1066,8 @@ service : () -> {
   get_my_voting_power_for_token : (principal) -> (Result_19);
   get_orbit_canister : (principal, principal) -> (Result_20);
   // EXPERIMENTAL: Ultra-simple request fetching - returns basic info only
-  get_orbit_requests_simple : () -> (Result_21);
+  // ✅ FIXED: Removed hardcoded principal, now uses token canister lookup
+  get_orbit_requests_simple : (principal) -> (Result_21);
   get_orbit_station_for_token : (principal) -> (opt principal) query;
   get_orbit_system_info : (principal) -> (Result_22);
   get_proposal_config : (principal, ProposalType) -> (Result_23) query;
