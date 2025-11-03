@@ -900,7 +900,6 @@ service : () -> {
       opt text,
     ) -> (Result_1);
   // Check if treasury accounts have AutoApproved transfer policies
-  // This is CRITICAL for DAOPad liquid democracy to work
   check_account_autoapproved_status : (principal) -> (Result_2);
   // Check addressbook injection with allowlisted policies
   check_addressbook_injection : (principal) -> (Result_2);
@@ -1056,8 +1055,6 @@ service : () -> {
   get_orbit_system_info : (principal) -> (Result_22);
   get_proposal_config : (principal, ProposalType) -> (Result_23) query;
   // Get detailed request policies information with resolved rule names
-  // 
-  // Returns all request policies with human-readable operation names and approval rules
   get_request_policies_details : (principal) -> (Result_24);
   // Get specific permission details
   // 
@@ -1144,19 +1141,10 @@ service : () -> {
       text,
       opt text,
     ) -> (Result_1);
-  // Perform all security checks in one call
-  // 
-  // This is a convenience method that calls all 17 individual security check methods
-  // and combines their results into a single response. This is useful for:
-  // - Getting a complete security overview in one call
-  // - Frontend components that need all checks at once
-  // - Simplifying frontend code by providing a single endpoint
+  // Comprehensive check: runs all individual security checks and returns a combined result
   perform_all_security_checks : (principal) -> (Result_2);
   // Perform comprehensive security analysis and return dashboard with score
-  // 
-  // This is the public-facing endpoint that frontend calls.
-  // It combines perform_all_security_checks + build_dashboard to return
-  // the full EnhancedSecurityDashboard with decentralization score.
+  // This is the main public-facing endpoint that frontend calls.
   perform_security_check : (principal) -> (Result_40);
   prune_orbit_canister_snapshots_request : (
       principal,
