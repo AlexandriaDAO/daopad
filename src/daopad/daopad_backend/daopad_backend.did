@@ -1122,10 +1122,7 @@ service : () -> {
   list_orbit_canisters : (principal, ListExternalCanistersInputMinimal) -> (
       Result_34,
     );
-  // List all requests from Orbit Station with domain filtering
-  // 
-  // This method acts as an admin proxy, allowing DAOPad to query
-  // all requests regardless of user permissions.
+  // List orbit requests with proper typed deserialization
   list_orbit_requests : (principal, ListRequestsInput) -> (Result_35);
   // List all users in Orbit Station with their groups
   // Backend acts as admin proxy to query protected data
