@@ -6,8 +6,7 @@ use crate::storage::memory::{
 use crate::types::{AgreementSnapshot, StorablePrincipal, VotingThresholds};
 use ic_stable_structures::StableBTreeMap;
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap, HashSet};
-use candid::Principal;
+use std::collections::BTreeMap;
 
 thread_local! {
     pub static KONG_LOCKER_PRINCIPALS: RefCell<StableBTreeMap<StorablePrincipal, StorablePrincipal, Memory>> = RefCell::new(

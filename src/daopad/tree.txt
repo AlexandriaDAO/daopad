@@ -2,7 +2,7 @@
 │   ├── agents/
 │   ├── prompts/
 │   ├── workflows/
-│   └── settings.local.json (26 lines)
+│   └── settings.local.json (35 lines)
 ├── .dfx_temp/
 │   └── .config/
 │       └── dfx/
@@ -12,78 +12,138 @@
 │           │       ├── identity.json (5 lines)
 │           ├── config.json (3 lines)
 │           └── identity.json (3 lines)
+├── admin/
+│   ├── src/
+│   │   ├── api/
+│   │   │   └── voting_power.rs (46 lines)
+│   │   ├── equity/
+│   │   │   └── mod.rs (315 lines)
+│   │   ├── kong_locker/
+│   │   │   ├── mod.rs (4 lines)
+│   │   │   └── voting.rs (234 lines)
+│   │   ├── proposals/
+│   │   │   ├── mod.rs (6 lines)
+│   │   │   ├── types.rs (508 lines)
+│   │   │   └── unified.rs (418 lines)
+│   │   ├── storage/
+│   │   │   ├── mod.rs (4 lines)
+│   │   │   └── state.rs (100 lines)
+│   │   ├── types/
+│   │   │   ├── mod.rs (4 lines)
+│   │   │   └── storage.rs (112 lines)
+│   │   ├── api.rs (36 lines)
+│   │   └── lib.rs (73 lines)
+│   ├── admin.did (150 lines)
+│   └── Cargo.toml (18 lines)
 ├── daopad_backend/
 │   ├── src/
 │   │   ├── api/
 │   │   │   ├── address_book.rs (228 lines)
+│   │   │   ├── agreement_snapshot.rs (190 lines)
+│   │   │   ├── equity.rs (60 lines)
 │   │   │   ├── governance_config.rs (316 lines)
-│   │   │   ├── kong_locker.rs (65 lines)
-│   │   │   ├── mod.rs (52 lines)
-│   │   │   ├── orbit_accounts.rs (408 lines)
-│   │   │   ├── orbit_assets.rs (270 lines)
-│   │   │   ├── orbit_canisters.rs (306 lines)
-│   │   │   ├── orbit_permissions.rs (148 lines)
-│   │   │   ├── orbit_requests.rs (737 lines)
-│   │   │   ├── orbit_security.rs (2107 lines)
-│   │   │   ├── orbit_transfers.rs (300 lines)
+│   │   │   ├── kong_locker.rs (83 lines)
+│   │   │   ├── mod.rs (62 lines)
+│   │   │   ├── orbit_accounts.rs (686 lines)
+│   │   │   ├── orbit_assets.rs (286 lines)
+│   │   │   ├── orbit_canisters.rs (295 lines)
+│   │   │   ├── orbit_overview.rs (253 lines)
+│   │   │   ├── orbit_permissions.rs (249 lines)
+│   │   │   ├── orbit_requests.rs (774 lines)
+│   │   │   ├── orbit_security.rs (2053 lines)
+│   │   │   ├── orbit_transfers.rs (297 lines)
 │   │   │   ├── orbit_users.rs (154 lines)
-│   │   │   ├── orbit.rs (506 lines)
-│   │   │   ├── proposals.rs (41 lines)
+│   │   │   ├── orbit.rs (579 lines)
+│   │   │   ├── stations.rs (129 lines)
 │   │   │   └── utils.rs (19 lines)
 │   │   ├── kong_locker/
 │   │   │   ├── mod.rs (8 lines)
-│   │   │   ├── registration.rs (47 lines)
-│   │   │   ├── tokens.rs (82 lines)
+│   │   │   ├── registration.rs (83 lines)
+│   │   │   ├── tokens.rs (120 lines)
 │   │   │   └── voting.rs (60 lines)
 │   │   ├── proposals/
-│   │   │   ├── mod.rs (24 lines)
-│   │   │   ├── orbit_link.rs (357 lines)
-│   │   │   ├── orbit_requests.rs (468 lines)
-│   │   │   ├── storage.rs (52 lines)
-│   │   │   ├── treasury.rs (681 lines)
+│   │   │   ├── mod.rs (18 lines)
 │   │   │   ├── types.rs (251 lines)
+│   │   │   ├── unified.rs (557 lines)
 │   │   │   └── voting.rs (2 lines)
 │   │   ├── storage/
-│   │   │   ├── memory.rs (20 lines)
+│   │   │   ├── memory.rs (21 lines)
 │   │   │   ├── mod.rs (3 lines)
-│   │   │   └── state.rs (74 lines)
+│   │   │   └── state.rs (49 lines)
 │   │   ├── types/
 │   │   │   ├── governance.rs (24 lines)
 │   │   │   ├── kong_locker.rs (34 lines)
 │   │   │   ├── mod.rs (10 lines)
-│   │   │   ├── orbit.rs (1367 lines)
-│   │   │   └── storage.rs (22 lines)
-│   │   └── lib.rs (46 lines)
-│   ├── Cargo.toml (18 lines)
-│   ├── daopad_backend.did (1213 lines)
+│   │   │   ├── orbit.rs (1508 lines)
+│   │   │   └── storage.rs (48 lines)
+│   │   └── lib.rs (54 lines)
+│   ├── Cargo.toml (20 lines)
+│   ├── daopad_backend.did (1193 lines)
 │   └── README.md (104 lines)
 ├── daopad_frontend/
+│   ├── e2e/
+│   │   ├── helpers/
+│   │   │   ├── auth.ts (43 lines)
+│   │   │   ├── data-verifier.ts (141 lines)
+│   │   │   ├── test-readiness.ts (22 lines)
+│   │   │   ├── testUtils.ts (149 lines)
+│   │   │   └── treasury-test-setup.ts (177 lines)
+│   │   ├── setup/
+│   │   │   └── auth.setup.ts (7 lines)
+│   │   ├── activity.spec.ts (257 lines)
+│   │   ├── agreement.spec.ts (476 lines)
+│   │   ├── app-route.spec.ts (409 lines)
+│   │   ├── canisters.spec.ts (96 lines)
+│   │   ├── dao-header.spec.ts (73 lines)
+│   │   ├── debug-page-load.spec.ts (45 lines)
+│   │   ├── manual-auth-setup.spec.ts (98 lines)
+│   │   ├── minimal-smoke.spec.ts (56 lines)
+│   │   ├── settings.spec.ts (217 lines)
+│   │   ├── treasury-enhanced.spec.ts (471 lines)
+│   │   ├── treasury-manual.spec.ts (114 lines)
+│   │   └── treasury.spec.ts (271 lines)
+│   ├── playwright-report/
+│   │   ├── trace/
+│   │   │   ├── assets/
+│   │   │   │   ├── codeMirrorModule-eyVcHN77.js (25 lines)
+│   │   │   │   └── defaultSettingsView-w0zYjHsW.js (266 lines)
+│   │   │   ├── index.Bx16ehp1.js (3 lines)
+│   │   │   ├── sw.bundle.js (4 lines)
+│   │   │   ├── uiMode.DRQ310U5.js (6 lines)
+│   ├── scripts/
+│   │   └── setup-test-auth.js (41 lines)
 │   ├── src/
 │   │   ├── __tests__/
+│   │   │   ├── integration/
+│   │   │   │   ├── README.md (269 lines)
+│   │   │   │   ├── setup.ts (56 lines)
+│   │   │   │   └── treasury-accounts.test.ts (416 lines)
 │   │   │   ├── PermissionsSubtabs.test.ts (196 lines)
 │   │   │   └── PermissionsTab.test.ts (95 lines)
 │   │   ├── components/
 │   │   │   ├── address-book/
-│   │   │   │   ├── AddressBookDialog.tsx (156 lines)
+│   │   │   │   ├── AddressBookDialog.tsx (158 lines)
 │   │   │   │   ├── AddressBookForm.tsx (370 lines)
 │   │   │   │   ├── AddressBookTable.tsx (196 lines)
 │   │   │   │   ├── BlockchainIcon.tsx (64 lines)
 │   │   │   │   └── ShortenedAddress.tsx (63 lines)
 │   │   │   ├── canisters/
-│   │   │   │   ├── CanisterCard.tsx (222 lines)
+│   │   │   │   ├── CanisterCard.tsx (230 lines)
 │   │   │   │   ├── CanisterDetails.tsx (207 lines)
 │   │   │   │   ├── CanisterFilters.tsx (183 lines)
 │   │   │   │   ├── CanisterMethods.tsx (280 lines)
 │   │   │   │   ├── CanisterOverview.tsx (402 lines)
 │   │   │   │   ├── CanisterSettings.tsx (448 lines)
 │   │   │   │   ├── CanisterSnapshots.tsx (411 lines)
-│   │   │   │   ├── CanistersTab.tsx (188 lines)
+│   │   │   │   ├── CanistersTab.tsx (205 lines)
 │   │   │   │   ├── CanisterUpgrades.tsx (417 lines)
 │   │   │   │   ├── CreateCanisterWizard.tsx (442 lines)
 │   │   │   │   ├── CyclesManagement.tsx (419 lines)
 │   │   │   │   └── MethodCallDialog.tsx (294 lines)
 │   │   │   ├── common/
 │   │   │   │   └── BalanceErrorBoundary.tsx (80 lines)
+│   │   │   ├── dao/
+│   │   │   │   └── DaoLayout.tsx (202 lines)
 │   │   │   ├── errors/
 │   │   │   │   ├── ErrorBoundary.tsx (83 lines)
 │   │   │   │   ├── ErrorFallback.tsx (96 lines)
@@ -91,10 +151,13 @@
 │   │   │   │   └── RouteErrorBoundary.tsx (13 lines)
 │   │   │   ├── inputs/
 │   │   │   │   └── AddressInput.tsx (219 lines)
+│   │   │   ├── invoices/
+│   │   │   │   ├── CreateInvoice.tsx (524 lines)
+│   │   │   │   └── InvoiceList.tsx (247 lines)
 │   │   │   ├── operating-agreement/
 │   │   │   │   ├── AgreementDocument.tsx (700 lines)
 │   │   │   │   ├── MutabilitySection.tsx (306 lines)
-│   │   │   │   └── OperatingAgreementTab.tsx (164 lines)
+│   │   │   │   └── OperatingAgreementTab.tsx (261 lines)
 │   │   │   ├── orbit/
 │   │   │   │   ├── account-wizard/
 │   │   │   │   │   ├── AccountConfigStep.tsx (164 lines)
@@ -109,18 +172,18 @@
 │   │   │   │   │   ├── RequestPolicyForm.tsx (279 lines)
 │   │   │   │   │   └── RuleBuilder.tsx (386 lines)
 │   │   │   │   ├── requests/
-│   │   │   │   │   ├── RequestCard.tsx (174 lines)
-│   │   │   │   │   ├── RequestDialog.tsx (697 lines)
+│   │   │   │   │   ├── RequestCard.tsx (228 lines)
+│   │   │   │   │   ├── RequestDialog.tsx (652 lines)
 │   │   │   │   │   ├── RequestFilters.tsx (206 lines)
 │   │   │   │   │   ├── RequestList.tsx (49 lines)
 │   │   │   │   │   ├── RequestOperationView.tsx (578 lines)
-│   │   │   │   │   ├── VoteButtons.tsx (143 lines)
+│   │   │   │   │   ├── VoteButtons.tsx (152 lines)
 │   │   │   │   │   └── VoteProgressBar.tsx (72 lines)
-│   │   │   │   ├── AccountSetupDialog.tsx (398 lines)
-│   │   │   │   ├── AssetDialog.tsx (404 lines)
+│   │   │   │   ├── AccountSetupDialog.tsx (331 lines)
+│   │   │   │   ├── AssetDialog.tsx (352 lines)
 │   │   │   │   ├── AssetsPage.tsx (339 lines)
-│   │   │   │   ├── CreateAccountDialog.tsx (338 lines)
-│   │   │   │   ├── ExternalCanisterDialog.tsx (571 lines)
+│   │   │   │   ├── CreateAccountDialog.tsx (334 lines)
+│   │   │   │   ├── ExternalCanisterDialog.tsx (529 lines)
 │   │   │   │   ├── ExternalCanistersPage.tsx (404 lines)
 │   │   │   │   ├── OrbitRequestsList.tsx (264 lines)
 │   │   │   │   ├── OrbitSetupInstructions.tsx (214 lines)
@@ -132,20 +195,26 @@
 │   │   │   │   ├── RequestFilters.tsx (212 lines)
 │   │   │   │   ├── RequestFiltersCompact.tsx (340 lines)
 │   │   │   │   ├── RequestList.tsx (318 lines)
-│   │   │   │   ├── TransferDialog.tsx (388 lines)
-│   │   │   │   ├── TransferRequestDialog.tsx (336 lines)
-│   │   │   │   └── UnifiedRequests.tsx (377 lines)
+│   │   │   │   ├── RequestStatusFilter.tsx (84 lines)
+│   │   │   │   ├── TransferDialog.tsx (390 lines)
+│   │   │   │   ├── TransferRequestDialog.tsx (258 lines)
+│   │   │   │   └── UnifiedRequests.tsx (376 lines)
 │   │   │   ├── permissions/
 │   │   │   │   ├── index.ts (1 lines)
 │   │   │   │   └── PermissionsTable.tsx (407 lines)
 │   │   │   ├── security/
-│   │   │   │   ├── AdminRemovalActions.tsx (195 lines)
-│   │   │   │   ├── AutoApprovedSetupWizard.tsx (227 lines)
+│   │   │   │   ├── AdminRemovalActions.tsx (204 lines)
+│   │   │   │   ├── AutoApprovedSetupWizard.tsx (242 lines)
 │   │   │   │   ├── DAOTransitionChecklist.tsx (329 lines)
+│   │   │   │   ├── PermissionFixActions.tsx (207 lines)
 │   │   │   │   ├── RequestPoliciesView.tsx (297 lines)
-│   │   │   │   └── SecurityDashboard.tsx (232 lines)
+│   │   │   │   └── SecurityDashboard.tsx (257 lines)
+│   │   │   ├── shared/
+│   │   │   │   ├── BaseFormDialog.tsx (157 lines)
+│   │   │   │   ├── DialogLayout.tsx (47 lines)
+│   │   │   │   └── index.ts (3 lines)
 │   │   │   ├── tables/
-│   │   │   │   ├── AccountsTable.tsx (339 lines)
+│   │   │   │   ├── AccountsTable.tsx (588 lines)
 │   │   │   │   └── OrbitTable.tsx (352 lines)
 │   │   │   ├── token/
 │   │   │   │   ├── TokenHeader.tsx (71 lines)
@@ -183,17 +252,17 @@
 │   │   │   │   ├── theme-toggle.tsx (39 lines)
 │   │   │   │   ├── toaster.tsx (21 lines)
 │   │   │   │   └── tooltip.tsx (31 lines)
-│   │   │   ├── DaoProposals.tsx (347 lines)
-│   │   │   ├── DAOSettings.tsx (330 lines)
+│   │   │   ├── DaoProposals.tsx (357 lines)
+│   │   │   ├── DAOSettings.tsx (343 lines)
 │   │   │   ├── KongLockerSetup.tsx (230 lines)
 │   │   │   ├── OrbitStationTest.tsx (66 lines)
 │   │   │   ├── ProposalCard.tsx (168 lines)
 │   │   │   ├── ProposalDetailsModal.tsx (179 lines)
 │   │   │   ├── PublicActivityFeed.tsx (123 lines)
 │   │   │   ├── PublicStatsStrip.tsx (79 lines)
-│   │   │   ├── TokenDashboard.tsx (621 lines)
-│   │   │   ├── TokenTabs.tsx (222 lines)
-│   │   │   └── TreasuryShowcase.tsx (92 lines)
+│   │   │   ├── TokenDashboard.tsx (701 lines)
+│   │   │   ├── TokenTabs.tsx (395 lines)
+│   │   │   └── TreasuryShowcase.tsx (123 lines)
 │   │   ├── constants/
 │   │   │   └── operationThresholds.ts (770 lines)
 │   │   ├── daopad_frontend/
@@ -207,11 +276,11 @@
 │   │   │   │   │   └── authUtils.ts (94 lines)
 │   │   │   │   └── authSlice.ts (63 lines)
 │   │   │   ├── dao/
-│   │   │   │   └── daoSlice.ts (247 lines)
+│   │   │   │   └── daoSlice.ts (281 lines)
 │   │   │   ├── orbit/
 │   │   │   │   ├── orbitSelectors.test.ts (268 lines)
 │   │   │   │   ├── orbitSelectors.ts (227 lines)
-│   │   │   │   └── orbitSlice.ts (447 lines)
+│   │   │   │   └── orbitSlice.ts (538 lines)
 │   │   │   ├── station/
 │   │   │   │   └── stationSlice.ts (416 lines)
 │   │   │   └── token/
@@ -224,41 +293,76 @@
 │   │   │       ├── station.did.d.ts (1703 lines)
 │   │   │       └── station.did.ts (2164 lines)
 │   │   ├── hooks/
+│   │   │   ├── actors/
+│   │   │   │   ├── index.tsx (3 lines)
+│   │   │   │   ├── useAdmin.tsx (11 lines)
+│   │   │   │   └── useDaopadBackend.tsx (11 lines)
+│   │   │   ├── index.ts (15 lines)
 │   │   │   ├── use-toast.ts (7 lines)
 │   │   │   ├── useActiveStation.ts (54 lines)
 │   │   │   ├── useDebounce.ts (55 lines)
+│   │   │   ├── useDialogState.ts (38 lines)
 │   │   │   ├── useFilter.ts (256 lines)
 │   │   │   ├── useIdentity.tsx (6 lines)
 │   │   │   ├── useLogout.tsx (13 lines)
+│   │   │   ├── useOrbitAction.ts (66 lines)
 │   │   │   ├── usePagination.ts (175 lines)
-│   │   │   ├── useProposal.ts (166 lines)
+│   │   │   ├── useProposal.ts (218 lines)
 │   │   │   ├── useSmartFetch.ts (53 lines)
 │   │   │   ├── useStationService.ts (97 lines)
 │   │   │   ├── useTokenMetadata.ts (46 lines)
-│   │   │   └── useVoting.ts (144 lines)
+│   │   │   └── useVoting.ts (142 lines)
 │   │   ├── lib/
+│   │   │   ├── ic-use-identity/
+│   │   │   │   ├── hooks/
+│   │   │   │   │   ├── useIdentity.ts (52 lines)
+│   │   │   │   │   └── useInternetIdentity.ts (108 lines)
+│   │   │   │   ├── store/
+│   │   │   │   │   ├── accessors.ts (37 lines)
+│   │   │   │   │   ├── index.ts (38 lines)
+│   │   │   │   │   └── mutators.ts (40 lines)
+│   │   │   │   ├── index.tsx (23 lines)
+│   │   │   │   ├── init.tsx (204 lines)
+│   │   │   │   └── types.ts (214 lines)
 │   │   │   └── utils.ts (6 lines)
 │   │   ├── lp_lock_frontend/
 │   │   │   └── lp_lock_frontend.did (1 lines)
 │   │   ├── pages/
-│   │   │   ├── AddressBookPage.tsx (285 lines)
-│   │   │   ├── DashboardPage.tsx (362 lines)
+│   │   │   ├── AddressBookPage.tsx (290 lines)
+│   │   │   ├── DashboardPage.tsx (363 lines)
+│   │   │   ├── InvoicesPage.tsx (180 lines)
 │   │   │   ├── PermissionsPage.tsx (177 lines)
 │   │   │   └── RequestsPage.tsx (302 lines)
 │   │   ├── providers/
-│   │   │   └── AuthProvider/
-│   │   │       └── IIProvider.tsx (117 lines)
+│   │   │   ├── AuthProvider/
+│   │   │   │   └── IIProvider.tsx (41 lines)
+│   │   │   └── ActorProvider.tsx (113 lines)
 │   │   ├── routes/
-│   │   │   ├── AppRoute.tsx (344 lines)
-│   │   │   └── Homepage.tsx (671 lines)
+│   │   │   ├── dao/
+│   │   │   │   ├── DaoActivity.tsx (10 lines)
+│   │   │   │   ├── DaoAgreement.tsx (17 lines)
+│   │   │   │   ├── DaoCanisters.tsx (16 lines)
+│   │   │   │   ├── DaoEquity.tsx (555 lines)
+│   │   │   │   ├── DaoInvoices.tsx (17 lines)
+│   │   │   │   ├── DaoOverview.tsx (187 lines)
+│   │   │   │   ├── DaoSettings.tsx (18 lines)
+│   │   │   │   └── DaoTreasury.tsx (52 lines)
+│   │   │   ├── AppRoute.tsx (241 lines)
+│   │   │   ├── DaoRoute.tsx (474 lines)
+│   │   │   ├── Homepage.tsx (757 lines)
+│   │   │   └── OperatingAgreement.tsx (98 lines)
 │   │   ├── services/
 │   │   │   ├── __tests__/
 │   │   │   │   └── orbitEncoding.test.ts (449 lines)
+│   │   │   ├── admin/
+│   │   │   │   └── AdminService.ts (190 lines)
 │   │   │   ├── backend/
 │   │   │   │   ├── base/
 │   │   │   │   │   └── BackendServiceBase.ts (147 lines)
+│   │   │   │   ├── invoices/
+│   │   │   │   │   └── InvoiceService.ts (269 lines)
 │   │   │   │   ├── kong-locker/
-│   │   │   │   │   └── KongLockerService.ts (110 lines)
+│   │   │   │   │   └── KongLockerService.ts (129 lines)
 │   │   │   │   ├── orbit/
 │   │   │   │   │   ├── address-book/
 │   │   │   │   │   │   └── OrbitAddressBookService.ts (249 lines)
@@ -266,19 +370,21 @@
 │   │   │   │   │   │   └── OrbitCanisterService.ts (400 lines)
 │   │   │   │   │   ├── governance/
 │   │   │   │   │   │   └── OrbitGovernanceService.ts (165 lines)
+│   │   │   │   │   ├── permissions/
+│   │   │   │   │   │   └── OrbitPermissionService.ts (185 lines)
 │   │   │   │   │   ├── security/
 │   │   │   │   │   │   └── OrbitSecurityService.ts (433 lines)
 │   │   │   │   │   ├── users/
 │   │   │   │   │   │   └── OrbitUserService.ts (117 lines)
-│   │   │   │   │   ├── OrbitAccountsService.ts (232 lines)
+│   │   │   │   │   ├── OrbitAccountsService.ts (297 lines)
 │   │   │   │   │   └── OrbitRequestsService.ts (192 lines)
 │   │   │   │   ├── proposals/
-│   │   │   │   │   └── ProposalService.ts (171 lines)
+│   │   │   │   │   └── ProposalService.ts (164 lines)
 │   │   │   │   ├── tokens/
-│   │   │   │   │   └── TokenService.ts (83 lines)
+│   │   │   │   │   └── TokenService.ts (149 lines)
 │   │   │   │   ├── utility/
-│   │   │   │   │   └── UtilityService.ts (152 lines)
-│   │   │   │   ├── index.ts (35 lines)
+│   │   │   │   │   └── UtilityService.ts (143 lines)
+│   │   │   │   ├── index.ts (37 lines)
 │   │   │   │   └── OrbitAgreementService.ts (183 lines)
 │   │   │   ├── orbit/
 │   │   │   │   ├── stationClient.ts (234 lines)
@@ -294,7 +400,7 @@
 │   │   │       ├── balanceSlice.ts (37 lines)
 │   │   │       └── balanceThunks.ts (30 lines)
 │   │   ├── store/
-│   │   │   └── store.ts (37 lines)
+│   │   │   └── store.ts (58 lines)
 │   │   ├── tests/
 │   │   │   └── App.test.tsx (17 lines)
 │   │   ├── types/
@@ -316,24 +422,47 @@
 │   │   │   ├── canisterCapabilities.ts (48 lines)
 │   │   │   ├── format.test.ts (229 lines)
 │   │   │   ├── format.ts (251 lines)
+│   │   │   ├── icrc1.ts (53 lines)
 │   │   │   ├── logging.ts (26 lines)
 │   │   │   ├── mainnetTesting.ts (100 lines)
 │   │   │   ├── orbit-helpers.ts (402 lines)
 │   │   │   ├── permissionRisk.ts (83 lines)
+│   │   │   ├── principal.ts (46 lines)
 │   │   │   ├── reportGenerator.ts (200 lines)
 │   │   │   ├── requestDomains.ts (86 lines)
 │   │   │   ├── serialization.ts (67 lines)
 │   │   │   └── validation.ts (32 lines)
-│   │   ├── App.tsx (26 lines)
-│   │   ├── main.tsx (58 lines)
+│   │   ├── App.tsx (75 lines)
+│   │   ├── main.tsx (67 lines)
 │   │   ├── setupTests.ts (6 lines)
 │   │   ├── testOrbitCall.tsx (88 lines)
 │   │   └── vite-env.d.ts (2 lines)
-│   ├── .ic-assets.json5 (7 lines)
+│   ├── test-results/
+│   │   ├── minimal-smoke-Smoke-Tests--9e46c-oads-without-requiring-auth-anonymous-parallel/
+│   │   ├── minimal-smoke-Smoke-Tests--ec862-cs-can-navigate-to-DAO-page-anonymous-parallel/
+│   │   ├── minimal-smoke-Smoke-Tests--fdef8-asics-can-load-app-homepage-anonymous-parallel/
+│   │   ├── .last-run.json (8 lines)
+│   │   └── results.json (298 lines)
+│   ├── .ic-assets.json5 (43 lines)
 │   ├── components.json (17 lines)
-│   ├── package.json (92 lines)
-│   └── vite.config.ts (81 lines)
+│   ├── package.json (104 lines)
+│   ├── playwright.ci.config.ts (31 lines)
+│   ├── playwright.config.ts (70 lines)
+│   └── vite.config.ts (86 lines)
+├── daopad_invoices/
+│   ├── src/
+│   │   ├── exchange_rate.rs (112 lines)
+│   │   ├── http.rs (130 lines)
+│   │   ├── lib.rs (17 lines)
+│   │   ├── queries.rs (98 lines)
+│   │   ├── storage.rs (187 lines)
+│   │   ├── stripe.rs (281 lines)
+│   │   ├── swap.rs (229 lines)
+│   │   ├── types.rs (48 lines)
+│   │   └── webhook.rs (222 lines)
+│   ├── Cargo.toml (18 lines)
+│   ├── daopad_invoices.did (61 lines)
 ├── scripts/
 ├── .mcp.json (12 lines)
-├── CLAUDE.md (450 lines)
+├── CLAUDE.md (233 lines)
 ├── deploy.sh (399 lines)

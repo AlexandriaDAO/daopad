@@ -131,60 +131,6 @@ pub enum OrbitRequestType {
     Other(String),
 }
 
-impl OrbitRequestType {
-    /// Get voting threshold percentage for this operation type
-    pub fn voting_threshold(&self) -> u8 {
-        match self {
-            // Critical operations
-            Self::SystemUpgrade | Self::SystemRestore
-            | Self::SetDisasterRecovery | Self::ManageSystemInfo => 90,
-
-            // Treasury operations
-            Self::Transfer | Self::AddAccount | Self::EditAccount => 50,
-
-            // Governance changes
-            Self::EditPermission | Self::AddRequestPolicy
-            | Self::EditRequestPolicy | Self::RemoveRequestPolicy => 70,
-
-            // Canister and automation
-            Self::CreateExternalCanister | Self::ConfigureExternalCanister
-            | Self::ChangeExternalCanister | Self::CallExternalCanister
-            | Self::FundExternalCanister | Self::MonitorExternalCanister
-            | Self::SnapshotExternalCanister | Self::RestoreExternalCanister
-            | Self::PruneExternalCanister | Self::AddNamedRule
-            | Self::EditNamedRule | Self::RemoveNamedRule => 60,
-
-            // User and group management
-            Self::AddUser | Self::EditUser | Self::RemoveUser
-            | Self::AddUserGroup | Self::EditUserGroup | Self::RemoveUserGroup => 50,
-
-            // Asset management
-            Self::AddAsset | Self::EditAsset | Self::RemoveAsset => 40,
-
-            // Address book
-            Self::AddAddressBookEntry | Self::EditAddressBookEntry
-            | Self::RemoveAddressBookEntry => 30,
-
-            // Unknown operations default to high threshold for safety
-            Self::Other(_) => 75,
-        }
-    }
-
-    /// Get voting duration in hours for this operation type
-    pub fn voting_duration_hours(&self) -> u64 {
-        match self {
-            // Critical operations need more deliberation
-            Self::SystemUpgrade | Self::SystemRestore => 72, // 3 days
-
-            // Financial operations
-            Self::Transfer | Self::AddAccount | Self::EditAccount => 48, // 2 days
-
-            // Most operations
-            _ => 24, // 1 day default
-        }
-    }
-}
-
 #[derive(CandidType, Deserialize, Clone, Debug, PartialEq)]
 pub enum ProposalStatus {
     Active,

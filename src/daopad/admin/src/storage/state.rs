@@ -6,7 +6,7 @@ use crate::types::{
     StorablePrincipal, StorableCandid, PrincipalPair,
     StorableString, StringPrincipalPair
 };
-use candid::{CandidType, Deserialize, Principal};
+use candid::{CandidType, Deserialize};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use ic_stable_structures::{

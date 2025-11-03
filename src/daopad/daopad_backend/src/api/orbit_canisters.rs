@@ -13,7 +13,7 @@ use crate::types::orbit::{
     FundExternalCanisterOperationInput, GetExternalCanisterResult,
     ListExternalCanistersResult,
     // Minimal types (no Option<T>)
-    ListExternalCanistersInputMinimal, PaginationInputMinimal, ExternalCanisterState,
+    ListExternalCanistersInputMinimal,
     MonitorExternalCanisterOperationInput, PruneExternalCanisterOperationInput,
     RestoreExternalCanisterOperationInput, SnapshotExternalCanisterOperationInput,
     SubmitRequestResult,

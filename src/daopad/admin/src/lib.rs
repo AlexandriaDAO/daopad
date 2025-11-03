@@ -8,11 +8,11 @@ mod storage;
 mod types;
 mod equity;
 
-use candid::{CandidType, Deserialize, Principal};
-use ic_cdk::{init, update, query};
+use candid::Principal;
+use ic_cdk::init;
 use proposals::types::{
     ProposalId, UnifiedProposal, VoteChoice, ProposalError,
-    EquityStationConfig, EquityTransferProposal, PaymentDestination, EquityProposalStatus
+    EquityTransferProposal, PaymentDestination
 };
 
 #[init]

@@ -1,6 +1,5 @@
 use crate::types::{TokenInfo, UserBalancesReply};
 use crate::storage::state::KONG_LOCKER_PRINCIPALS;
-use crate::types::StorablePrincipal;
 use candid::Principal;
 use ic_cdk::call;
 use std::collections::HashSet;

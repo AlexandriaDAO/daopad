@@ -13,7 +13,7 @@ use crate::types::orbit::{
     PaginationInput, PaginationInputMinimal,
     RequestPoliciesDetails, RequestPolicyInfo, RequestSpecifier,
     ListNamedRulesResult, ListNamedRulesInput, NamedRule,
-    Account, AccountMinimal,
+    AccountMinimal,
     ListAccountsInputMinimal, ListAccountsResultMinimal,
 };
 
@@ -787,7 +787,7 @@ fn check_asset_management_impl(
 // ===== CHECK CATEGORY 7: SYSTEM CONFIGURATION =====
 
 fn check_system_configuration_impl(
-    system: &crate::types::orbit::SystemInfoMinimal,
+    _system: &crate::types::orbit::SystemInfoMinimal,
     permissions: &Vec<Permission>,
     user_groups: &Vec<crate::types::orbit::UserGroup>
 ) -> Vec<SecurityCheck> {

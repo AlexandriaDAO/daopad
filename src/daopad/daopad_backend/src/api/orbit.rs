@@ -5,11 +5,10 @@ use crate::types::orbit::{
     FetchAccountBalancesInput, FetchAccountBalancesResult,
     // Minimal types (no Option<T>)
     SystemInfoResultMinimal, SystemInfoResponseMinimal, PaginationInputMinimal,
-    ListAccountsInputMinimal, ListAccountsResultMinimal, AccountMinimal,
+    ListAccountsInputMinimal, ListAccountsResultMinimal,
     // Original types still needed for some operations
     TreasuryManagementData, TreasuryAccountDetails,
     TreasuryAddressBookEntry, AssetBalanceInfo, ListAddressBookInput, ListAddressBookResult,
-    RequestPolicyRule,
 };
 use crate::types::StorablePrincipal;
 use crate::types::TokenInfo;
@@ -530,26 +529,6 @@ pub async fn get_treasury_management_data(
         address_book,
         backend_privileges_summary: backend_summary,
     })
-}
-
-// Helper: Format policy for human reading
-fn format_policy(policy: &Option<RequestPolicyRule>) -> String {
-    match policy {
-        None => "No policy configured".to_string(),
-        Some(RequestPolicyRule::AutoApproved) => "Auto-Approved".to_string(),
-        Some(RequestPolicyRule::Quorum(q)) => {
-            format!("Requires {} approver(s)", q.min_approved)
-        }
-        Some(RequestPolicyRule::QuorumPercentage(qp)) => {
-            format!("Requires {}% approval", qp.min_approved)
-        }
-        Some(RequestPolicyRule::AllowListed) => "Allow-listed".to_string(),
-        Some(RequestPolicyRule::AllowListedByMetadata(_)) => "Allow-listed by metadata".to_string(),
-        Some(RequestPolicyRule::AnyOf(_)) => "Any-of rule".to_string(),
-        Some(RequestPolicyRule::AllOf(_)) => "All-of rule".to_string(),
-        Some(RequestPolicyRule::Not(_)) => "Negation rule".to_string(),
-        Some(RequestPolicyRule::NamedRule(id)) => format!("Named rule: {}", id),
-    }
 }
 
 fn nat_to_u64(nat: &candid::Nat) -> u64 {

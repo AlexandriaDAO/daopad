@@ -1,5 +1,5 @@
-use crate::kong_locker::voting::{calculate_voting_power_for_token, get_user_voting_power_for_token};
-use crate::storage::state::{KONG_LOCKER_PRINCIPALS, TOKEN_ORBIT_STATIONS};
+use crate::kong_locker::voting::get_user_voting_power_for_token;
+use crate::storage::state::TOKEN_ORBIT_STATIONS;
 use crate::types::StorablePrincipal;
 use candid::{CandidType, Deserialize, Nat, Principal};
 use ic_cdk::update;
@@ -226,7 +226,7 @@ impl OrbitOperationType {
     }
 }
 
-use crate::proposals::types::{ProposalError, ProposalId, ProposalStatus, VoteChoice};
+use crate::proposals::types::{ProposalError, ProposalId, ProposalStatus};
 
 /// Enum for all possible Orbit operations
 #[derive(CandidType, Deserialize, Clone, Debug)]
@@ -473,85 +473,4 @@ async fn create_add_asset_request_in_orbit(
         "AddAsset operation is not yet implemented in Orbit integration. \
          The type definitions need to be updated to support asset management operations.".to_string()
     ))
-}
-
-/// Single approval function (no duplication)
-async fn approve_orbit_request(station_id: Principal, request_id: &str) -> Result<(), ProposalError> {
-    use crate::api::{SubmitRequestApprovalInput, SubmitRequestApprovalResult, RequestApprovalStatus};
-
-    let input = SubmitRequestApprovalInput {
-        request_id: request_id.to_string(),
-        decision: RequestApprovalStatus::Approved,
-        reason: Some("Community vote passed".to_string()),
-    };
-
-    let result: Result<(SubmitRequestApprovalResult,), _> =
-        ic_cdk::call(station_id, "submit_request_approval", (input,)).await;
-
-    match result {
-        Ok((SubmitRequestApprovalResult::Ok(_),)) => Ok(()),
-        Ok((SubmitRequestApprovalResult::Err(e),)) => Err(ProposalError::OrbitError {
-            code: e.code.clone(),
-            message: e.message.clone().unwrap_or_else(|| "No message provided".to_string()),
-            details: format_orbit_error_details(&e),
-        }),
-        Err((code, msg)) => Err(ProposalError::IcCallFailed {
-            code: code as i32,
-            message: msg,
-        }),
-    }
-}
-
-async fn reject_orbit_request(
-    station_id: Principal,
-    request_id: &str,
-) -> Result<(), ProposalError> {
-    use crate::api::{SubmitRequestApprovalInput, SubmitRequestApprovalResult, RequestApprovalStatus};
-
-    let input = SubmitRequestApprovalInput {
-        request_id: request_id.to_string(),
-        decision: RequestApprovalStatus::Rejected,
-        reason: Some("Community vote rejected".to_string()),
-    };
-
-    let result: Result<(SubmitRequestApprovalResult,), _> =
-        ic_cdk::call(station_id, "submit_request_approval", (input,)).await;
-
-    match result {
-        Ok((SubmitRequestApprovalResult::Ok(_),)) => Ok(()),
-        Ok((SubmitRequestApprovalResult::Err(e),)) => Err(ProposalError::OrbitError {
-            code: e.code.clone(),
-            message: e.message.clone().unwrap_or_else(|| "No message provided".to_string()),
-            details: format_orbit_error_details(&e),
-        }),
-        Err((code, msg)) => Err(ProposalError::IcCallFailed {
-            code: code as i32,
-            message: msg,
-        }),
-    }
-}
-
-async fn get_total_voting_power_for_token(token: Principal) -> Result<u64, ProposalError> {
-    let all_kong_lockers = KONG_LOCKER_PRINCIPALS.with(|principals| {
-        principals
-            .borrow()
-            .iter()
-            .map(|(_, locker)| locker.0)
-            .collect::<Vec<Principal>>()
-    });
-
-    let mut total_power = 0u64;
-
-    for kong_locker in all_kong_lockers {
-        match calculate_voting_power_for_token(kong_locker, token).await {
-            Ok(power) => total_power += power,
-            Err(_) => continue,
-        }
-    }
-
-    if total_power == 0 {
-        return Err(ProposalError::ZeroVotingPower);
-    }
-
-    Ok(total_power)
 }

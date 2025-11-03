@@ -6,7 +6,7 @@ mod types;
 
 use candid::{Nat, Principal};
 use ic_cdk::init;
-use crate::types::{AccountMinimalWithBalances, AccountAssetWithBalance};
+use crate::types::AccountMinimalWithBalances;
 
 pub use api::*;
 pub use api::orbit_overview::DaoOverviewStats;

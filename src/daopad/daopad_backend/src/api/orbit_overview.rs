@@ -11,7 +11,6 @@ use crate::types::orbit::{
     SystemInfoResultMinimal, SystemInfoMinimal,  // Use minimal (no Option<T> fields)
     UserDTO, AccountMinimal,  // Use minimal account type
 };
-use crate::proposals::types::ProposalStatus;
 use crate::api::orbit_accounts::{Asset, ListAssetsInput, ListAssetsResult};
 
 /// Aggregate overview stats for a DAO
@@ -101,9 +100,9 @@ fn count_active_proposals(_token_id: Principal) -> u64 {
 }
 
 /// Count recent proposals (within specified days)
-fn count_recent_proposals(token_id: Principal, days: u64) -> u64 {
+fn count_recent_proposals(_token_id: Principal, days: u64) -> u64 {
     let now = ic_cdk::api::time();
-    let threshold = now.saturating_sub(days * 24 * 60 * 60 * 1_000_000_000);
+    let _threshold = now.saturating_sub(days * 24 * 60 * 60 * 1_000_000_000);
 
     let _count = 0u64;
     0
