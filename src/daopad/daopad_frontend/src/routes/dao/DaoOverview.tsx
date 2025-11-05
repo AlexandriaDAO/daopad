@@ -12,87 +12,76 @@ export default function DaoOverview() {
       {/* Compact System Overview */}
       <Card className="bg-executive-darkGray border-executive-mediumGray">
         <CardContent className="pt-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {/* Token Info */}
-            <div>
-              <label className="text-sm text-executive-lightGray/70">Token</label>
-              <div className="font-medium text-executive-ivory mt-1">{token.symbol}</div>
+          <div className="space-y-4">
+            {/* Token Information */}
+            <div className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-3">
+              <div className="text-sm text-executive-lightGray/70">Token Symbol:</div>
+              <div className="font-medium text-executive-ivory">{token.symbol}</div>
+
+              <div className="text-sm text-executive-lightGray/70">Token Name:</div>
+              <div className="font-medium text-executive-ivory">{token.name}</div>
+
+              <div className="text-sm text-executive-lightGray/70">Token Canister:</div>
+              <div className="font-mono text-sm text-executive-ivory">{token.canister_id}</div>
             </div>
 
-            <div>
-              <label className="text-sm text-executive-lightGray/70">Name</label>
-              <div className="font-medium text-executive-ivory mt-1">{token.name}</div>
-            </div>
-
-            <div className="col-span-2">
-              <label className="text-sm text-executive-lightGray/70">Token Canister</label>
-              <div className="font-mono text-xs text-executive-ivory mt-1">{token.canister_id}</div>
-            </div>
-
-            {/* Station Info */}
+            {/* Station Information */}
             {orbitStation ? (
               <>
-                <div className="col-span-2">
-                  <label className="text-sm text-executive-lightGray/70">Treasury Station</label>
-                  <div className="font-mono text-xs text-executive-ivory mt-1">{orbitStation.station_id}</div>
-                </div>
+                <div className="border-t border-executive-mediumGray/30 pt-4">
+                  <div className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-3">
+                    <div className="text-sm text-executive-lightGray/70">Treasury Station:</div>
+                    <div className="font-mono text-sm text-executive-ivory">{orbitStation.station_id}</div>
 
-                <div>
-                  <label className="text-sm text-executive-lightGray/70">Status</label>
-                  <div className="text-sm text-green-600 mt-1">✓ Operational</div>
-                </div>
-              </>
-            ) : (
-              <div className="col-span-3">
-                <OrbitStationPlaceholder tokenSymbol={token.symbol} />
-              </div>
-            )}
-
-            {/* Treasury Stats */}
-            {overviewStats && overviewStats.treasury_total_icp > 0 && (
-              <>
-                <div>
-                  <label className="text-sm text-executive-lightGray/70">Treasury Value</label>
-                  <div className="font-medium text-executive-ivory mt-1">
-                    {formatICP(Number(overviewStats.treasury_total_icp))} ICP
+                    <div className="text-sm text-executive-lightGray/70">Status:</div>
+                    <div className="text-sm text-green-600">✓ Operational</div>
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-sm text-executive-lightGray/70">Accounts</label>
-                  <div className="font-medium text-executive-ivory mt-1">
-                    {overviewStats.treasury_account_count}
-                  </div>
-                </div>
-              </>
-            )}
+                {/* Treasury & Governance Stats */}
+                {overviewStats && (
+                  <div className="border-t border-executive-mediumGray/30 pt-4">
+                    <div className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-3">
+                      {overviewStats.treasury_total_icp > 0 && (
+                        <>
+                          <div className="text-sm text-executive-lightGray/70">Treasury Value:</div>
+                          <div className="font-medium text-executive-ivory">
+                            {formatICP(Number(overviewStats.treasury_total_icp))} ICP
+                          </div>
 
-            {/* Governance Stats */}
-            {overviewStats && (
-              <>
-                <div>
-                  <label className="text-sm text-executive-lightGray/70">Active Proposals</label>
-                  <div className="font-medium text-executive-ivory mt-1">
-                    {overviewStats.active_proposal_count}
-                  </div>
-                </div>
+                          <div className="text-sm text-executive-lightGray/70">Treasury Accounts:</div>
+                          <div className="font-medium text-executive-ivory">
+                            {overviewStats.treasury_account_count}
+                          </div>
+                        </>
+                      )}
 
-                <div>
-                  <label className="text-sm text-executive-lightGray/70">Recent (30d)</label>
-                  <div className="font-medium text-executive-ivory mt-1">
-                    {overviewStats.recent_proposal_count}
-                  </div>
-                </div>
+                      <div className="text-sm text-executive-lightGray/70">Active Proposals:</div>
+                      <div className="font-medium text-executive-ivory">
+                        {overviewStats.active_proposal_count}
+                      </div>
 
-                {overviewStats.member_count > 0 && (
-                  <div>
-                    <label className="text-sm text-executive-lightGray/70">Members</label>
-                    <div className="font-medium text-executive-ivory mt-1">
-                      {overviewStats.member_count}
+                      <div className="text-sm text-executive-lightGray/70">Recent Proposals:</div>
+                      <div className="font-medium text-executive-ivory">
+                        {overviewStats.recent_proposal_count} (last 30 days)
+                      </div>
+
+                      {overviewStats.member_count > 0 && (
+                        <>
+                          <div className="text-sm text-executive-lightGray/70">Members:</div>
+                          <div className="font-medium text-executive-ivory">
+                            {overviewStats.member_count}
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
               </>
+            ) : (
+              <div className="border-t border-executive-mediumGray/30 pt-4">
+                <OrbitStationPlaceholder tokenSymbol={token.symbol} />
+              </div>
             )}
           </div>
         </CardContent>
