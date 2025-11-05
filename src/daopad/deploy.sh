@@ -82,7 +82,7 @@ if [ "$NETWORK" == "ic" ]; then
     echo ""
     echo "Mainnet Canister IDs:"
     echo "  Backend:  lwsav-iiaaa-aaaap-qp2qq-cai"
-    echo "  Frontend: l7rlj-6aaaa-aaaaa-qaffq-cai"
+    echo "  Frontend: l7rlj-6aaaa-aaaap-qp2ra-cai"
     echo "  Alexandria Station: $ALEXANDRIA_STATION_ID"
 fi
 
@@ -259,7 +259,7 @@ if [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "frontend" ]; then
         # Deploy to mainnet using standard dfx deploy
         echo "Deploying frontend to mainnet..."
         if dfx deploy --network ic daopad_frontend; then
-            FRONTEND_ID=$(dfx canister --network ic id daopad_frontend 2>/dev/null || echo "l7rlj-6aaaa-aaaaa-qaffq-cai")
+            FRONTEND_ID=$(dfx canister --network ic id daopad_frontend 2>/dev/null || echo "l7rlj-6aaaa-aaaap-qp2ra-cai")
             echo "✓ Frontend deployed successfully"
             echo "   Frontend URL: https://$FRONTEND_ID.icp0.io/"
             FRONTEND_DEPLOYED=true
@@ -308,7 +308,7 @@ if [ "$NETWORK" == "ic" ]; then
     fi
     
     if [ "$FRONTEND_DEPLOYED" == true ]; then
-        FRONTEND_ID=$(dfx canister --network ic id daopad_frontend 2>/dev/null || echo "l7rlj-6aaaa-aaaaa-qaffq-cai")
+        FRONTEND_ID=$(dfx canister --network ic id daopad_frontend 2>/dev/null || echo "l7rlj-6aaaa-aaaap-qp2ra-cai")
         echo "  ✓ Frontend: https://$FRONTEND_ID.icp0.io/"
     elif [ "$DEPLOY_TARGET" == "all" ] || [ "$DEPLOY_TARGET" == "frontend" ]; then
         echo "  ❌ Frontend: Deployment failed"
