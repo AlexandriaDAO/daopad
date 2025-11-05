@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import OrbitStationPlaceholder from '../../components/orbit/OrbitStationPlaceholder';
 import DAOSettings from '../../components/DAOSettings';
 
@@ -9,158 +9,142 @@ export default function DaoOverview() {
 
   return (
     <div className="space-y-6" data-testid="dao-overview">
-      {/* Basic DAO information */}
+      {/* Compact System Overview */}
       <Card className="bg-executive-darkGray border-executive-mediumGray">
-        <CardHeader>
-          <CardTitle className="text-executive-ivory">DAO Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h2 className="text-2xl font-bold text-executive-ivory">{token.symbol} DAO</h2>
-            <p className="text-executive-lightGray/70 mt-1">{token.name}</p>
-            <p className="text-sm text-executive-lightGray/50 font-mono mt-2">
-              Token Canister: {token.canister_id}
-            </p>
-          </div>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {/* Token Info */}
+            <div>
+              <label className="text-sm text-executive-lightGray/70">Token</label>
+              <div className="font-medium text-executive-ivory mt-1">{token.symbol}</div>
+            </div>
 
-          {orbitStation ? (
-            <div className="mt-4 p-4 bg-executive-mediumGray/30 rounded">
-              <p className="text-sm text-executive-lightGray">
-                <span className="text-executive-gold">Treasury Station:</span>{' '}
-                <span className="font-mono">{orbitStation.station_id}</span>
-              </p>
-              <p className="text-sm text-green-600 mt-2">✓ DAO is operational</p>
+            <div>
+              <label className="text-sm text-executive-lightGray/70">Name</label>
+              <div className="font-medium text-executive-ivory mt-1">{token.name}</div>
             </div>
-          ) : (
-            <div className="mt-4">
-              <OrbitStationPlaceholder tokenSymbol={token.symbol} />
+
+            <div className="col-span-2">
+              <label className="text-sm text-executive-lightGray/70">Token Canister</label>
+              <div className="font-mono text-xs text-executive-ivory mt-1">{token.canister_id}</div>
             </div>
-          )}
+
+            {/* Station Info */}
+            {orbitStation ? (
+              <>
+                <div className="col-span-2">
+                  <label className="text-sm text-executive-lightGray/70">Treasury Station</label>
+                  <div className="font-mono text-xs text-executive-ivory mt-1">{orbitStation.station_id}</div>
+                </div>
+
+                <div>
+                  <label className="text-sm text-executive-lightGray/70">Status</label>
+                  <div className="text-sm text-green-600 mt-1">✓ Operational</div>
+                </div>
+              </>
+            ) : (
+              <div className="col-span-3">
+                <OrbitStationPlaceholder tokenSymbol={token.symbol} />
+              </div>
+            )}
+
+            {/* Treasury Stats */}
+            {overviewStats && overviewStats.treasury_total_icp > 0 && (
+              <>
+                <div>
+                  <label className="text-sm text-executive-lightGray/70">Treasury Value</label>
+                  <div className="font-medium text-executive-ivory mt-1">
+                    {formatICP(Number(overviewStats.treasury_total_icp))} ICP
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm text-executive-lightGray/70">Accounts</label>
+                  <div className="font-medium text-executive-ivory mt-1">
+                    {overviewStats.treasury_account_count}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Governance Stats */}
+            {overviewStats && (
+              <>
+                <div>
+                  <label className="text-sm text-executive-lightGray/70">Active Proposals</label>
+                  <div className="font-medium text-executive-ivory mt-1">
+                    {overviewStats.active_proposal_count}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm text-executive-lightGray/70">Recent (30d)</label>
+                  <div className="font-medium text-executive-ivory mt-1">
+                    {overviewStats.recent_proposal_count}
+                  </div>
+                </div>
+
+                {overviewStats.member_count > 0 && (
+                  <div>
+                    <label className="text-sm text-executive-lightGray/70">Members</label>
+                    <div className="font-medium text-executive-ivory mt-1">
+                      {overviewStats.member_count}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Treasury Summary (visible to everyone) */}
-      {overviewStats && overviewStats.treasury_total_icp > 0 && (
-        <Card
-          className="bg-executive-darkGray border-executive-mediumGray"
-          data-testid="treasury-summary"
-        >
-          <CardHeader>
-            <CardTitle className="text-executive-ivory">💰 Treasury Summary</CardTitle>
-          </CardHeader>
-          <CardContent className="grid md:grid-cols-2 gap-4">
-            <StatItem
-              label="Total Value"
-              value={`${formatICP(Number(overviewStats.treasury_total_icp))} ICP`}
-              testId="treasury-total"
-            />
-            <StatItem
-              label="Accounts"
-              value={String(overviewStats.treasury_account_count)}
-              testId="account-count"
-            />
-          </CardContent>
-        </Card>
-      )}
+      {/* Quick Navigation */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Link to={`/${token.canister_id}/treasury`}>
+          <Card className="bg-executive-darkGray border-executive-mediumGray hover:border-executive-gold transition-colors h-full">
+            <CardContent className="pt-6 text-center">
+              <div className="text-2xl mb-2">💰</div>
+              <div className="font-medium text-executive-ivory">Treasury</div>
+            </CardContent>
+          </Card>
+        </Link>
 
-      {/* Governance Activity (visible to everyone) */}
-      {overviewStats && (
-        <Card
-          className="bg-executive-darkGray border-executive-mediumGray"
-          data-testid="governance-activity"
-        >
-          <CardHeader>
-            <CardTitle className="text-executive-ivory">📊 Governance Activity</CardTitle>
-          </CardHeader>
-          <CardContent className="grid md:grid-cols-2 gap-4">
-            <StatItem
-              label="Active Proposals"
-              value={String(overviewStats.active_proposal_count)}
-              testId="active-proposals"
-            />
-            <StatItem
-              label="Recent (30 days)"
-              value={String(overviewStats.recent_proposal_count)}
-              testId="recent-proposals"
-            />
-          </CardContent>
-        </Card>
-      )}
+        <Link to={`/${token.canister_id}/activity`}>
+          <Card className="bg-executive-darkGray border-executive-mediumGray hover:border-executive-gold transition-colors h-full">
+            <CardContent className="pt-6 text-center">
+              <div className="text-2xl mb-2">📊</div>
+              <div className="font-medium text-executive-ivory">Activity</div>
+            </CardContent>
+          </Card>
+        </Link>
 
-      {/* Community Stats (visible to everyone) */}
-      {overviewStats && overviewStats.member_count > 0 && (
-        <Card
-          className="bg-executive-darkGray border-executive-mediumGray"
-          data-testid="community-stats"
-        >
-          <CardHeader>
-            <CardTitle className="text-executive-ivory">👥 Community</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <StatItem
-              label="Members"
-              value={String(overviewStats.member_count)}
-              testId="member-count"
-            />
-          </CardContent>
-        </Card>
-      )}
+        <Link to={`/${token.canister_id}/agreement`}>
+          <Card className="bg-executive-darkGray border-executive-mediumGray hover:border-executive-gold transition-colors h-full">
+            <CardContent className="pt-6 text-center">
+              <div className="text-2xl mb-2">📜</div>
+              <div className="font-medium text-executive-ivory">Agreement</div>
+            </CardContent>
+          </Card>
+        </Link>
 
-      {/* Navigation cards to tabs */}
-      <div className="grid md:grid-cols-3 gap-4">
-        <NavCard
-          to={`/dao/${token.canister_id}/treasury`}
-          title="Treasury"
-          description="View accounts, balances, and manage treasury assets"
-          icon="💰"
-        />
-        <NavCard
-          to={`/dao/${token.canister_id}/activity`}
-          title="Activity"
-          description="Recent proposals, requests, and governance activity"
-          icon="📊"
-        />
-        <NavCard
-          to={`/dao/${token.canister_id}/agreement`}
-          title="Operating Agreement"
-          description="View the DAO's operating agreement and bylaws"
-          icon="📜"
-        />
-        <NavCard
-          to={`/dao/${token.canister_id}/canisters`}
-          title="Canisters"
-          description="Manage canister infrastructure and deployments"
-          icon="🔧"
-        />
+        <Link to={`/${token.canister_id}/canisters`}>
+          <Card className="bg-executive-darkGray border-executive-mediumGray hover:border-executive-gold transition-colors h-full">
+            <CardContent className="pt-6 text-center">
+              <div className="text-2xl mb-2">🔧</div>
+              <div className="font-medium text-executive-ivory">Canisters</div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
-      {/* DAO Settings Section */}
-      <div className="mt-8">
-        <h2 className="text-2xl font-bold text-executive-ivory mb-6">Settings & Configuration</h2>
-        <DAOSettings
-          tokenCanisterId={token.canister_id}
-          identity={identity}
-          stationId={orbitStation?.station_id || null}
-          tokenSymbol={token.symbol}
-          tokenId={token.canister_id}
-        />
-      </div>
-    </div>
-  );
-}
-
-// Helper component for stat display
-interface StatItemProps {
-  label: string;
-  value: string;
-  testId?: string;
-}
-
-function StatItem({ label, value, testId }: StatItemProps) {
-  return (
-    <div data-testid={testId}>
-      <p className="text-sm text-executive-lightGray/70">{label}</p>
-      <p className="text-2xl font-bold text-executive-ivory mt-1">{value}</p>
+      {/* Settings Section */}
+      <DAOSettings
+        tokenCanisterId={token.canister_id}
+        identity={identity}
+        stationId={orbitStation?.station_id || null}
+        tokenSymbol={token.symbol}
+        tokenId={token.canister_id}
+      />
     </div>
   );
 }
@@ -169,25 +153,4 @@ function StatItem({ label, value, testId }: StatItemProps) {
 function formatICP(e8s: number): string {
   const icp = e8s / 100_000_000;
   return icp.toFixed(2);
-}
-
-interface NavCardProps {
-  to: string;
-  title: string;
-  description: string;
-  icon: string;
-}
-
-function NavCard({ to, title, description, icon }: NavCardProps) {
-  return (
-    <Link to={to}>
-      <Card className="bg-executive-darkGray border-executive-mediumGray hover:border-executive-gold transition-colors h-full">
-        <CardContent className="pt-6">
-          <div className="text-3xl mb-3">{icon}</div>
-          <h3 className="text-lg font-semibold text-executive-ivory mb-2">{title}</h3>
-          <p className="text-sm text-executive-lightGray/70">{description}</p>
-        </CardContent>
-      </Card>
-    </Link>
-  );
 }

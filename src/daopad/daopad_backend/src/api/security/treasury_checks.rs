@@ -1,4 +1,4 @@
-use super::security_utils::{SecurityCheck, CheckStatus, Severity, RelatedPermission};
+use super::security_utils::{SecurityCheck, CheckStatus, Severity};
 use super::governance_checks::check_permission_by_resource;
 use crate::types::orbit::{
     Permission, Resource, ResourceAction, UserGroup,
@@ -6,9 +6,6 @@ use crate::types::orbit::{
     PaginationInputMinimal,
 };
 use candid::Principal;
-use std::collections::HashMap;
-
-const ADMIN_GROUP_ID: &str = "00000000-0000-4000-8000-000000000000";
 
 // ===== DATA FETCHING =====
 

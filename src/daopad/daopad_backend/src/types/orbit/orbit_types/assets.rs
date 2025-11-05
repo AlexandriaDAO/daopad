@@ -1,7 +1,7 @@
 // Asset-related types for Orbit Station
 // Domain: Asset management, asset metadata, and asset balances
 
-use candid::{CandidType, Nat};
+use candid::CandidType;
 use serde::{Deserialize, Serialize};
 
 use super::accounts::AccountBalance;

@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use super::requests::RequestPolicyRule;
-use super::users::UserGroup;
 
 #[derive(CandidType, Deserialize, Debug)]
 pub struct NetworkInput {
