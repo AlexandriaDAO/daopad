@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import OrbitStationPlaceholder from '../../components/orbit/OrbitStationPlaceholder';
+import DAOSettings from '../../components/DAOSettings';
 
 export default function DaoOverview() {
   const { token, orbitStation, overviewStats, identity, isAuthenticated } = useOutletContext<any>();
@@ -120,12 +121,6 @@ export default function DaoOverview() {
           icon="📊"
         />
         <NavCard
-          to={`/dao/${token.canister_id}/settings`}
-          title="Settings"
-          description="Manage DAO configuration and permissions"
-          icon="⚙️"
-        />
-        <NavCard
           to={`/dao/${token.canister_id}/agreement`}
           title="Operating Agreement"
           description="View the DAO's operating agreement and bylaws"
@@ -136,6 +131,18 @@ export default function DaoOverview() {
           title="Canisters"
           description="Manage canister infrastructure and deployments"
           icon="🔧"
+        />
+      </div>
+
+      {/* DAO Settings Section */}
+      <div className="mt-8">
+        <h2 className="text-2xl font-bold text-executive-ivory mb-6">Settings & Configuration</h2>
+        <DAOSettings
+          tokenCanisterId={token.canister_id}
+          identity={identity}
+          stationId={orbitStation?.station_id || null}
+          tokenSymbol={token.symbol}
+          tokenId={token.canister_id}
         />
       </div>
     </div>

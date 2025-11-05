@@ -49,8 +49,7 @@ export default function DaoLayout({
     equity: `/${baseRouteId}/equity`,
     activity: `/${baseRouteId}/activity`,
     canisters: `/${baseRouteId}/canisters`,
-    invoices: `/${baseRouteId}/invoices`,
-    settings: `/${baseRouteId}/settings`
+    invoices: `/${baseRouteId}/invoices`
   };
 
   return (
@@ -148,9 +147,6 @@ export default function DaoLayout({
               </TabButton>
               <TabButton to={tabLinks.invoices} active={currentTab === 'invoices'}>
                 Invoices
-              </TabButton>
-              <TabButton to={tabLinks.settings} active={currentTab === 'settings'}>
-                Settings
               </TabButton>
             </div>
           </div>

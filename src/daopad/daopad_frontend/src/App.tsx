@@ -17,7 +17,6 @@ const DaoTreasury = lazy(() => import('./routes/dao/DaoTreasury'));
 const DaoActivity = lazy(() => import('./routes/dao/DaoActivity'));
 const DaoCanisters = lazy(() => import('./routes/dao/DaoCanisters'));
 const DaoInvoices = lazy(() => import('./routes/dao/DaoInvoices'));
-const DaoSettings = lazy(() => import('./routes/dao/DaoSettings'));
 const DaoEquity = lazy(() => import('./routes/dao/DaoEquity'));
 
 function App() {
@@ -62,7 +61,6 @@ function App() {
               <Route path="activity" element={<DaoActivity />} />
               <Route path="canisters" element={<DaoCanisters />} />
               <Route path="invoices" element={<DaoInvoices />} />
-              <Route path="settings" element={<DaoSettings />} />
             </Route>
           </Routes>
         </Suspense>
