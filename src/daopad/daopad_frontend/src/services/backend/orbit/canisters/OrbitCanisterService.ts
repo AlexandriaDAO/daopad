@@ -7,7 +7,12 @@ export class OrbitCanisterService extends BackendServiceBase {
    * @param {string|Principal} tokenId - Token canister ID (backend looks up station)
    * @param {Object} filters - Optional filters
    */
-  async listCanisters(tokenId, filters = {}) {
+  async listCanisters(tokenId, filters = {
+    canister_ids: [],
+    labels: [],
+    states: [],
+    paginate: { offset: 0, limit: 50 }
+  }) {
     try {
       const actor = await this.getActor();
       const tokenPrincipal = this.toPrincipal(tokenId);
