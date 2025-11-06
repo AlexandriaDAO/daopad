@@ -1,3 +1,17 @@
+/**
+ * AUTHENTICATION LIMITATION:
+ * These tests are skipped because Treasury features require ICP Internet Identity
+ * authentication, which Playwright cannot automate (see CLAUDE.md).
+ *
+ * These features must be tested manually:
+ * 1. Navigate to Treasury tab while authenticated
+ * 2. Verify account list loads
+ * 3. Verify balances display correctly
+ * 4. Test accordion expand/collapse
+ *
+ * TODO: Consider creating mock authenticated state for E2E testing
+ */
+
 import { test, expect } from '@playwright/test';
 import { authenticateForTests } from './helpers/auth';
 import { existsSync } from 'node:fs';
@@ -10,7 +24,10 @@ import {
   OrbitAccount
 } from './helpers/treasury-test-setup';
 
-test.describe('Treasury Enhanced - Data Pipeline', () => {
+test.describe.skip('Treasury Enhanced - Data Pipeline', () => {
+  // SKIPPED: Requires ICP authentication which Playwright cannot handle
+  // See CLAUDE.md: "Playwright's not compatible with ICP Auth"
+  // Manual testing required for authenticated features
   let testState: TreasuryTestState;
 
   test.beforeEach(async ({ page }) => {
@@ -381,7 +398,8 @@ test.describe('Treasury Enhanced - Data Pipeline', () => {
   });
 });
 
-test.describe('Treasury Enhanced - Error Scenarios', () => {
+test.describe.skip('Treasury Enhanced - Error Scenarios', () => {
+  // SKIPPED: Authentication required
   let testState: TreasuryTestState;
 
   test.beforeEach(async ({ page }) => {
