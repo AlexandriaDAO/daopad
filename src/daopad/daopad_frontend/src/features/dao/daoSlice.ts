@@ -5,6 +5,7 @@ import { getProposalService, getTokenService, getKongLockerService } from '../..
 export const fetchPublicDashboard = createAsyncThunk(
   'dao/fetchPublicDashboard',
   async (_, { rejectWithValue }) => {
+    console.log('[Redux] fetchPublicDashboard thunk called');
     try {
       // Create services with null identity for anonymous access
       const proposalService = getProposalService(null);
@@ -84,7 +85,7 @@ export const fetchPublicDashboard = createAsyncThunk(
         return acc;
       }, {});
 
-      return {
+      const result = {
         stats: {
           participants: registrations.success ? registrations.data.length : 0,
           activeProposals: 0,  // Removed from homepage
@@ -97,7 +98,13 @@ export const fetchPublicDashboard = createAsyncThunk(
         stationMappings,
         hasErrors: !stations.success || !lockedTokens.success || !registrations.success
       };
+      console.log('[Redux] fetchPublicDashboard thunk returning data', {
+        treasuriesCount: treasuries.length,
+        participants: result.stats.participants
+      });
+      return result;
     } catch (error) {
+      console.error('[Redux] fetchPublicDashboard thunk error:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -220,10 +227,15 @@ const daoSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchPublicDashboard.pending, (state) => {
+        console.log('[Redux] fetchPublicDashboard.pending action dispatched');
         state.publicDashboard.isLoading = true;
         state.publicDashboard.error = null;
       })
       .addCase(fetchPublicDashboard.fulfilled, (state, action) => {
+        console.log('[Redux] fetchPublicDashboard.fulfilled action dispatched', {
+          stats: action.payload.stats,
+          treasuriesCount: action.payload.treasuries?.length || 0
+        });
         state.publicDashboard.stats = action.payload.stats;
         state.publicDashboard.proposals = action.payload.proposals;
         state.publicDashboard.treasuries = action.payload.treasuries;
@@ -242,6 +254,7 @@ const daoSlice = createSlice({
         }
       })
       .addCase(fetchPublicDashboard.rejected, (state, action) => {
+        console.error('[Redux] fetchPublicDashboard.rejected action dispatched', action.payload);
         state.publicDashboard.isLoading = false;
         state.publicDashboard.error = action.payload;
         // Keep stale data if it exists

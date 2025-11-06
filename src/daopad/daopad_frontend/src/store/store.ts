@@ -50,7 +50,7 @@ export const store = configureStore({
                     'token/fetchMetadata/fulfilled'
                 ],
             },
-        }).concat(actionLoggerMiddleware),
+        }).concat(actionLoggerMiddleware()),
 });
 
 // Infer the `RootState` and `AppDispatch` types from the store itself
