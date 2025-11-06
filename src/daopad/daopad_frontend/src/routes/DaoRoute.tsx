@@ -117,7 +117,7 @@ export default function DaoRoute() {
             // Token has a station, redirect to it
             const foundStationId = stationForTokenResult.data.toString();
             console.log('[DaoRoute] Found station for token, redirecting:', foundStationId);
-            navigate(`/${foundStationId}`, { replace: true });
+            navigate(`/dao/${foundStationId}`, { replace: true });
             return;
           }
 
@@ -270,7 +270,7 @@ export default function DaoRoute() {
         setLinkError('');
 
         // Redirect to station route
-        navigate(`/${linkStationId.trim()}`, { replace: true });
+        navigate(`/dao/${linkStationId.trim()}`, { replace: true });
       } else {
         setLinkError(result.error || 'Failed to create station link proposal');
       }
