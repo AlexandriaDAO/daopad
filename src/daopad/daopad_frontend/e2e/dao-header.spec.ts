@@ -30,13 +30,13 @@ test.describe('DAO Header & Navigation', () => {
     // Navigate to DAO page
     await page.goto(`${BASE_URL}/dao/${ALEX_TOKEN_ID}`);
 
-    // Verify all 6 tabs are visible
+    // Verify core navigation tabs are visible (Settings merged into Overview)
     await expect(page.getByRole('link', { name: 'Overview' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Agreement' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Treasury' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Activity' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Canisters' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Invoices' })).toBeVisible();
   });
 
   test('should highlight active tab', async ({ page }) => {
@@ -47,12 +47,12 @@ test.describe('DAO Header & Navigation', () => {
     const treasuryTab = page.getByRole('link', { name: 'Treasury' });
     await expect(treasuryTab).toHaveClass(/border-executive-gold/);
 
-    // Navigate to Settings tab
-    await page.goto(`${BASE_URL}/dao/${ALEX_TOKEN_ID}/settings`);
+    // Navigate to Activity tab
+    await page.goto(`${BASE_URL}/dao/${ALEX_TOKEN_ID}/activity`);
 
-    // Settings tab should have active styling
-    const settingsTab = page.getByRole('link', { name: 'Settings' });
-    await expect(settingsTab).toHaveClass(/border-executive-gold/);
+    // Activity tab should have active styling
+    const activityTab = page.getByRole('link', { name: 'Activity' });
+    await expect(activityTab).toHaveClass(/border-executive-gold/);
   });
 
   test('should be responsive on mobile viewport', async ({ page }) => {
@@ -64,9 +64,9 @@ test.describe('DAO Header & Navigation', () => {
     const overviewTab = page.getByRole('link', { name: 'Overview' });
     await expect(overviewTab).toBeVisible();
 
-    // Check if we can scroll to last tab (Settings)
-    const settingsTab = page.getByRole('link', { name: 'Settings' });
-    await settingsTab.scrollIntoViewIfNeeded();
-    await expect(settingsTab).toBeVisible();
+    // Check if we can scroll to last tab (Invoices)
+    const invoicesTab = page.getByRole('link', { name: 'Invoices' });
+    await invoicesTab.scrollIntoViewIfNeeded();
+    await expect(invoicesTab).toBeVisible();
   });
 });
