@@ -53,8 +53,9 @@ const DAOSettings: React.FC<DAOSettingsProps> = ({ tokenCanisterId, identity, st
 
     useEffect(() => {
         const fetchSystemInfo = async () => {
-            if (!tokenCanisterId) {
-                setError('No token canister ID provided');
+            // Check if stationId is provided (required for Orbit Station API)
+            if (!stationId) {
+                setError('No Orbit Station linked to this DAO');
                 setLoading(false);
                 return;
             }
@@ -64,7 +65,8 @@ const DAOSettings: React.FC<DAOSettingsProps> = ({ tokenCanisterId, identity, st
                 setError(null);
 
                 const governanceService = getOrbitGovernanceService(identity || null);
-                const result = await governanceService.getSystemInfo(tokenCanisterId);
+                // Use stationId instead of tokenCanisterId - system info comes from the Orbit Station
+                const result = await governanceService.getSystemInfo(stationId);
 
                 // Handle service response
                 if (result.success) {
@@ -82,7 +84,7 @@ const DAOSettings: React.FC<DAOSettingsProps> = ({ tokenCanisterId, identity, st
         };
 
         fetchSystemInfo();
-    }, [tokenCanisterId]);
+    }, [stationId, identity]);
 
     const copyToClipboard = (text: string): void => {
         navigator.clipboard.writeText(text);
