@@ -4,7 +4,7 @@
 use candid::{CandidType, Nat};
 use serde::{Deserialize, Serialize};
 
-use super::system::{PaginationInput, Error, Allow, AuthScope};
+use super::system::{PaginationInput, Error, Allow};
 use super::requests::RequestPolicyRule;
 use super::assets::AccountAsset;
 

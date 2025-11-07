@@ -6,8 +6,6 @@ use crate::types::orbit::{
 };
 use candid::Principal;
 
-const ADMIN_GROUP_ID: &str = "00000000-0000-4000-8000-000000000000";
-
 // ===== DATA FETCHING =====
 
 pub async fn fetch_system_info(station_id: Principal) -> Result<SystemInfoMinimal, String> {

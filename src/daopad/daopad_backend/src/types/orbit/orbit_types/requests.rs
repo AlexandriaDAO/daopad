@@ -4,7 +4,7 @@
 use candid::{CandidType, Nat};
 use serde::{Deserialize, Serialize};
 
-use super::system::{Error, UUID, PaginationInput};
+use super::system::Error;
 use super::users::{AddUserOperationInput, EditUserOperationInput, UserSpecifier};
 use super::accounts::{AccountMetadata, AddAccountOperationInput, EditAccountOperationInput};
 use super::assets::{AddAssetOperationInput, EditAssetOperationInput, RemoveAssetOperationInput};

@@ -3,7 +3,7 @@ use crate::kong_locker::{get_or_lookup_kong_locker, get_user_locked_tokens};
 use crate::storage::state::TOKEN_ORBIT_STATIONS;
 use crate::types::orbit::{
     AccountBalance, AccountMetadata, AddAccountOperationInput, Allow, AuthScope,
-    FetchAccountBalancesInput, FetchAccountBalancesResult,
+    FetchAccountBalancesInput,
     // Minimal types (no Option<T>)
     SystemInfoResultMinimal, SystemInfoResponseMinimal, PaginationInputMinimal,
     ListAccountsInputMinimal, ListAccountsResultMinimal,
@@ -175,7 +175,7 @@ pub async fn create_orbit_treasury_account(
     account_type: Option<String>, // e.g., "reserves", "operations", etc.
 ) -> Result<String, String> {
     use crate::types::{
-        CreateRequestInput, CreateRequestResult, RequestExecutionSchedule, RequestOperationInput,
+        CreateRequestInput, RequestExecutionSchedule, RequestOperationInput,
     };
 
     // ICP asset UUID - this is constant in Orbit Station

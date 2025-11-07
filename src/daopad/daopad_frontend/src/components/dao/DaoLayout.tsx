@@ -50,8 +50,8 @@ export default function DaoLayout({
     equity: `/dao/${baseRouteId}/equity`,
     activity: `/dao/${baseRouteId}/activity`,
     canisters: `/dao/${baseRouteId}/canisters`,
-    invoices: `/dao/${baseRouteId}/invoices`,
-    settings: `/dao/${baseRouteId}/settings`
+    invoices: `/dao/${baseRouteId}/invoices`
+    // Note: Settings merged into Overview tab
   };
 
   return (
@@ -149,9 +149,6 @@ export default function DaoLayout({
               </TabButton>
               <TabButton to={tabLinks.invoices} active={currentTab === 'invoices'}>
                 Invoices
-              </TabButton>
-              <TabButton to={tabLinks.settings} active={currentTab === 'settings'}>
-                Settings
               </TabButton>
             </div>
           </div>

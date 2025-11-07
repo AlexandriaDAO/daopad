@@ -5,13 +5,12 @@ use super::security_utils::{
 use crate::types::orbit::{
     Permission, RequestPolicy, RequestPolicyRule,
     Resource, ResourceAction, UserAction, PermissionAction,
-    UserGroup, UserSpecifier,
+    UserGroup,
     ListPermissionsInput, ListPermissionsResult,
     PaginationInput, ListRequestPoliciesResult,
     ExternalCanisterAction,
 };
 use candid::Principal;
-use std::collections::HashMap;
 
 const ADMIN_GROUP_ID: &str = "00000000-0000-4000-8000-000000000000";
 

@@ -224,6 +224,7 @@ impl OrbitClient {
     /// ```ignore
     /// let users = OrbitClient::list_users(station_id, input).await?;
     /// ```
+    #[allow(dead_code)]
     pub async fn list_users(
         station_id: Principal,
         input: impl CandidType,
@@ -237,6 +238,7 @@ impl OrbitClient {
     /// ```ignore
     /// let accounts = OrbitClient::list_accounts(station_id, input).await?;
     /// ```
+    #[allow(dead_code)]
     pub async fn list_accounts(
         station_id: Principal,
         input: impl CandidType,

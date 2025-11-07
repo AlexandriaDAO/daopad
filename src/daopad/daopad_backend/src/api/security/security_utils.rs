@@ -4,7 +4,6 @@ use serde::Serialize;
 use crate::types::orbit::{
     Resource, ResourceAction, ExternalCanisterAction, SystemAction, UserAction,
     PermissionAction, RequestPolicyRule, RequestSpecifier, UserSpecifier,
-    Quorum, QuorumPercentage,
 };
 
 // ===== TYPE DEFINITIONS =====
