@@ -37,19 +37,21 @@ export default function DaoLayout({
   }
 
   // Use URL param as source of truth (not derived state)
-  const baseRouteId = pathParts[0];
-  const currentTab = pathParts.length > 1 ? pathParts[pathParts.length - 1] : baseRouteId;
-  const isOverview = pathParts.length === 1;
+  // pathParts[0] is 'dao', pathParts[1] is the stationId
+  const baseRouteId = pathParts[1];
+  const currentTab = pathParts.length > 2 ? pathParts[pathParts.length - 1] : 'overview';
+  const isOverview = pathParts.length === 2;
 
   // Build stable tab links using URL param
   const tabLinks = {
-    overview: `/${baseRouteId}`,
-    agreement: `/${baseRouteId}/agreement`,
-    treasury: `/${baseRouteId}/treasury`,
-    equity: `/${baseRouteId}/equity`,
-    activity: `/${baseRouteId}/activity`,
-    canisters: `/${baseRouteId}/canisters`,
-    invoices: `/${baseRouteId}/invoices`
+    overview: `/dao/${baseRouteId}`,
+    agreement: `/dao/${baseRouteId}/agreement`,
+    treasury: `/dao/${baseRouteId}/treasury`,
+    equity: `/dao/${baseRouteId}/equity`,
+    activity: `/dao/${baseRouteId}/activity`,
+    canisters: `/dao/${baseRouteId}/canisters`,
+    invoices: `/dao/${baseRouteId}/invoices`
+    // Note: Settings merged into Overview tab
   };
 
   return (

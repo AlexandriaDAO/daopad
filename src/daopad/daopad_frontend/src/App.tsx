@@ -53,7 +53,7 @@ function App() {
             <Route path="/agreement/:stationId" element={<OperatingAgreement />} />
 
             {/* Station routes - using station ID as primary identifier */}
-            <Route path="/:stationId" element={<DaoRoute />}>
+            <Route path="/dao/:stationId" element={<DaoRoute />}>
               <Route index element={<DaoOverview />} />
               <Route path="agreement" element={<DaoAgreement />} />
               <Route path="treasury" element={<DaoTreasury />} />

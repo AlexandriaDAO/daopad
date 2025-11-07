@@ -87,7 +87,7 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
   };
 
   return (
-    <div className="prose prose-lg max-w-none font-serif">
+    <div className="prose prose-lg max-w-none font-serif" data-testid="agreement-document">
       {/* Header */}
       <div className="text-center mb-8 border-b-2 border-gray-800 pb-4">
         <h1 className="text-3xl font-bold mb-2">
@@ -508,92 +508,99 @@ const AgreementDocument = ({ data, tokenSymbol, stationId }) => {
       </section>
 
       {/* Article VI: Equity Distribution */}
-      {data.votingPowers && data.votingPowers.total_holders > 0 && (
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold border-b border-gray-400 pb-2">
-            ARTICLE VI: EQUITY DISTRIBUTION
-          </h2>
-          <div className="mt-4 space-y-3">
+      <section className="mb-8">
+        <h2 className="text-2xl font-bold border-b border-gray-400 pb-2">
+          ARTICLE VI: EQUITY DISTRIBUTION
+        </h2>
+        <div className="mt-4 space-y-3">
+          <p>
+            <strong>6.1 Equity Basis.</strong> Member equity is determined by voting
+            power derived from permanently locked liquidity pool (LP) tokens in Kong Locker
+            canisters. Voting power equals the total USD value of locked LP tokens
+            containing the {tokenSymbol} token, multiplied by 100.
+          </p>
+
+          {data.votingPowers && data.votingPowers.total_holders > 0 ? (
+            <>
+              <p>
+                <strong>6.2 Current Equity Distribution.</strong> As of {formatDate()},
+                the Company has {data.votingPowers.total_holders} equity holder
+                {data.votingPowers.total_holders !== 1 ? 's' : ''} with total voting
+                power of {data.votingPowers.total_voting_power.toLocaleString()}.
+              </p>
+
+              <div className="mt-4">
+                <p className="font-semibold mb-3">Member Equity Breakdown:</p>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b-2 border-gray-600 bg-gray-700">
+                      <th className="text-left p-2 text-gray-100">Member</th>
+                      <th className="text-left p-2 text-gray-100">Principal</th>
+                      <th className="text-right p-2 text-gray-100">Voting Power</th>
+                      <th className="text-right p-2 text-gray-100">Equity %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.votingPowers.entries.map((entry, i) => {
+                      const user = data.users?.find(u =>
+                        u.identities?.[0]?.toString() === entry.user_principal
+                      );
+                      const userName = user?.name || 'Unregistered Member';
+                      return (
+                        <tr key={i} className="border-b border-gray-200">
+                          <td className="p-2">{userName}</td>
+                          <td className="p-2">
+                            <code className="text-xs bg-muted text-foreground px-1 rounded">
+                              {formatPrincipal(entry.user_principal)}
+                            </code>
+                          </td>
+                          <td className="text-right p-2 font-mono">
+                            {entry.voting_power.toLocaleString()}
+                          </td>
+                          <td className="text-right p-2 font-bold">
+                            {entry.equity_percentage.toFixed(2)}%
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-gray-600 font-bold bg-gray-700">
+                      <td className="p-2 text-gray-100" colSpan={2}>TOTAL</td>
+                      <td className="text-right p-2 font-mono text-gray-100">
+                        {data.votingPowers.total_voting_power.toLocaleString()}
+                      </td>
+                      <td className="text-right p-2 text-gray-100">100.00%</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <p className="mt-4">
+                <strong>6.3 Dynamic Equity.</strong> Equity percentages automatically
+                adjust based on changes in locked LP token values and the addition or
+                removal of liquidity by members. All equity calculations are performed
+                on-chain and are verifiable at any time.
+              </p>
+
+              <p>
+                <strong>6.4 Verification.</strong> Equity percentages can be independently
+                verified by querying:
+              </p>
+              <ul className="list-disc pl-8 mt-2 space-y-1">
+                <li>Kong Locker Factory: <code className="bg-muted text-foreground px-1 rounded text-sm">eazgb-giaaa-aaaap-qqc2q-cai</code></li>
+                <li>KongSwap for LP positions: <code className="bg-muted text-foreground px-1 rounded text-sm">2ipq2-uqaaa-aaaar-qailq-cai</code></li>
+                <li>DAOPad Backend for equity distribution: <code className="bg-muted text-foreground px-1 rounded text-sm">lwsav-iiaaa-aaaap-qp2qq-cai</code></li>
+              </ul>
+            </>
+          ) : (
             <p>
-              <strong>6.1 Equity Basis.</strong> Member equity is determined by voting
-              power derived from permanently locked liquidity pool (LP) tokens in Kong Locker
-              canisters. Voting power equals the total USD value of locked LP tokens
-              containing the {tokenSymbol} token, multiplied by 100.
+              <strong>6.2 Current Equity Distribution.</strong> No equity distribution data is currently available.
+              Equity will be calculated based on Kong Locker voting power once members lock liquidity.
             </p>
-
-            <p>
-              <strong>6.2 Current Equity Distribution.</strong> As of {formatDate()},
-              the Company has {data.votingPowers.total_holders} equity holder
-              {data.votingPowers.total_holders !== 1 ? 's' : ''} with total voting
-              power of {data.votingPowers.total_voting_power.toLocaleString()}.
-            </p>
-
-            <div className="mt-4">
-              <p className="font-semibold mb-3">Member Equity Breakdown:</p>
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b-2 border-gray-600 bg-gray-700">
-                    <th className="text-left p-2 text-gray-100">Member</th>
-                    <th className="text-left p-2 text-gray-100">Principal</th>
-                    <th className="text-right p-2 text-gray-100">Voting Power</th>
-                    <th className="text-right p-2 text-gray-100">Equity %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.votingPowers.entries.map((entry, i) => {
-                    const user = data.users?.find(u =>
-                      u.identities?.[0]?.toString() === entry.user_principal
-                    );
-                    const userName = user?.name || 'Unregistered Member';
-                    return (
-                      <tr key={i} className="border-b border-gray-200">
-                        <td className="p-2">{userName}</td>
-                        <td className="p-2">
-                          <code className="text-xs bg-muted text-foreground px-1 rounded">
-                            {formatPrincipal(entry.user_principal)}
-                          </code>
-                        </td>
-                        <td className="text-right p-2 font-mono">
-                          {entry.voting_power.toLocaleString()}
-                        </td>
-                        <td className="text-right p-2 font-bold">
-                          {entry.equity_percentage.toFixed(2)}%
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 border-gray-600 font-bold bg-gray-700">
-                    <td className="p-2 text-gray-100" colSpan={2}>TOTAL</td>
-                    <td className="text-right p-2 font-mono text-gray-100">
-                      {data.votingPowers.total_voting_power.toLocaleString()}
-                    </td>
-                    <td className="text-right p-2 text-gray-100">100.00%</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-
-            <p className="mt-4">
-              <strong>6.3 Dynamic Equity.</strong> Equity percentages automatically
-              adjust based on changes in locked LP token values and the addition or
-              removal of liquidity by members. All equity calculations are performed
-              on-chain and are verifiable at any time.
-            </p>
-
-            <p>
-              <strong>6.4 Verification.</strong> Equity percentages can be independently
-              verified by querying:
-            </p>
-            <ul className="list-disc pl-8 mt-2 space-y-1">
-              <li>Kong Locker Factory: <code className="bg-muted text-foreground px-1 rounded text-sm">eazgb-giaaa-aaaap-qqc2q-cai</code></li>
-              <li>KongSwap for LP positions: <code className="bg-muted text-foreground px-1 rounded text-sm">2ipq2-uqaaa-aaaar-qailq-cai</code></li>
-              <li>DAOPad Backend for equity distribution: <code className="bg-muted text-foreground px-1 rounded text-sm">lwsav-iiaaa-aaaap-qp2qq-cai</code></li>
-            </ul>
-          </div>
-        </section>
-      )}
+          )}
+        </div>
+      </section>
 
       {/* Article VII: External Canisters */}
       {data.canisters && data.canisters.total > 0 && (
